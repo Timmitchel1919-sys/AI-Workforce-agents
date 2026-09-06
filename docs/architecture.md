@@ -10,26 +10,26 @@ boundary, human approval gates, project-isolated context, a structured audit
 log, and durable persistence behind an interface — all behind **provider- and
 project-agnostic contracts**.
 
-Through Phase 2A there is still no autonomous planning engine, no network
-calls, and no real project or AI-provider integrations. Every external
+As of Phase 2B there is a real model-provider adapter (Anthropic), but still no
+autonomous planning engine and no real project integration. Every external
 capability (a model provider, an external tool, a real project such as Money
 Mind, a database) enters only through an interface in
 [`contracts/`](../contracts/index.ts) with an implementation under
-[`adapters/`](../adapters/).
+[`adapters/`](../adapters/). The core imports no vendor SDK.
 
 ## 2. Technology decisions
 
-| Concern              | Choice                                      | Why                                                                                                                 |
-| -------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Language             | TypeScript (strict)                         | Strong contracts, compiler-enforced state machines, refactor safety.                                                |
-| Runtime              | Node.js ≥ 20                                | Ubiquitous, first-class TypeScript tooling, built-in test runner.                                                   |
-| Module system        | ESM (`NodeNext`)                            | Matches modern Node; explicit `.js` import specifiers.                                                              |
-| Tests                | `node:test` + `node:assert/strict`          | Zero dependencies, deterministic, fast.                                                                             |
-| Build                | `tsc` only                                  | No bundler needed for a library-shaped core.                                                                        |
-| Runtime dependencies | **none**                                    | Smaller attack surface, nothing to audit, nothing to lock into.                                                     |
-| Persistence          | `Repository<T>` interface; JSON files first | Durable without coupling the core to a DB. See [ADR-0002](adr/0002-local-json-file-persistence.md).                 |
-| Lint / format        | ESLint 9 (syntactic) + Prettier 3, dev-only | Real value now the codebase has grown. `tsc` stays the type gate. See [ADR-0003](adr/0003-code-quality-tooling.md). |
-| CI                   | GitHub Actions (Node 20 + 22)               | typecheck → lint → format → test → build on push/PR. No secrets.                                                    |
+| Concern              | Choice                                      | Why                                                                                                                                                                                             |
+| -------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language             | TypeScript (strict)                         | Strong contracts, compiler-enforced state machines, refactor safety.                                                                                                                            |
+| Runtime              | Node.js ≥ 20                                | Ubiquitous, first-class TypeScript tooling, built-in test runner.                                                                                                                               |
+| Module system        | ESM (`NodeNext`)                            | Matches modern Node; explicit `.js` import specifiers.                                                                                                                                          |
+| Tests                | `node:test` + `node:assert/strict`          | Zero dependencies, deterministic, fast.                                                                                                                                                         |
+| Build                | `tsc` only                                  | No bundler needed for a library-shaped core.                                                                                                                                                    |
+| Runtime dependencies | **none in core**                            | Smaller attack surface. The only SDK, `@anthropic-ai/sdk`, is an **optional peer dependency** used solely by the Anthropic adapter. See [ADR-0004](adr/0004-model-provider-layer-anthropic.md). |
+| Persistence          | `Repository<T>` interface; JSON files first | Durable without coupling the core to a DB. See [ADR-0002](adr/0002-local-json-file-persistence.md).                                                                                             |
+| Lint / format        | ESLint 9 (syntactic) + Prettier 3, dev-only | Real value now the codebase has grown. `tsc` stays the type gate. See [ADR-0003](adr/0003-code-quality-tooling.md).                                                                             |
+| CI                   | GitHub Actions (Node 20 + 22)               | typecheck → lint → format → test → build on push/PR. No secrets.                                                                                                                                |
 
 See [ADR-0001](adr/0001-modular-provider-agnostic-workforce.md) for the
 foundational architecture decision.
@@ -50,10 +50,13 @@ core/
   approvals/approval-system  ApprovalSystem — human approval records.
   context/context-system    ContextSystem — project-isolated task/project/agent context.
   audit/audit-log           AuditLog + AuditSink — structured audit events, optionally persisted.
+  providers/model-provider-registry  ModelProviderRegistry — resolve providers by id (provider-neutral).
+  providers/audited-model-provider   AuditedModelProvider — audit decorator around any ModelProvider.
   orchestrator/orchestrator  Orchestrator — validate → permit → gate → dispatch → record.
   index.ts                  Barrel export for the whole core.
 adapters/
   models/model-provider     ModelProvider contract + EchoModelProvider double.
+  models/anthropic-model-provider  AnthropicModelProvider + config + transport seam + error mapping.
   tools/tool-provider       ToolProvider contract + InMemoryToolProvider double.
   projects/project-adapter  ProjectAdapter contract + BaseProjectAdapter helper.
   persistence/json-file-persistence  JsonFileRepository / JsonFilePersistence (durable, node:fs).
@@ -63,7 +66,10 @@ tests/
   persistence.test.ts       Repository save/load/update/isolation, survives reinit.
   approval-execution.test.ts  Approval gate, resume, reject, expiry, persistence.
   permission-enforcement.test.ts  Allowed/denied dispatch, every permission scope.
+  anthropic-provider.test.ts  Config, request/response mapping, every failure class, redaction.
+  model-provider-layer.test.ts  Registry, audit decorator, provider independence, core isolation.
 docs/                       This documentation + ADRs.
+.env.example                Placeholder environment configuration (never a real .env).
 .github/workflows/ci.yml    Continuous integration.
 ```
 
@@ -160,7 +166,9 @@ timestamp, optional task/agent/project ids, `data`), writes it to a pluggable
 a `Repository<AuditEvent>` is supplied — persists it. Event types:
 `task_created`, `task_assigned`, `agent_executed`, `handoff_created`,
 `permission_decision`, `approval_requested`, `approval_decided`, `task_resumed`,
-`task_completed`, `task_failed`.
+`task_completed`, `task_failed`, `model_provider_requested`,
+`model_execution_started`, `model_execution_completed`,
+`model_execution_failed`.
 
 ### Persistence
 
@@ -241,17 +249,51 @@ Project context is isolated by default. A task is permanently bound to the first
 project it is stored under; rebinding throws. Agent context is stored per
 `(project, agent)` pair. No API returns context across project boundaries.
 
-## 8. Provider adapters
+## 8. Model & tool provider layer
 
-`ModelProvider` and `ToolProvider` are provider-neutral. The core never imports
-a vendor SDK. Phase 2A still ships only in-process doubles:
+`ModelProvider` (`{ id, generate(request) }`) and `ToolProvider` are
+provider-neutral. The core never imports a vendor SDK.
 
-- `EchoModelProvider` — deterministic, offline, echoes the last message.
+**Doubles** (offline, deterministic):
+
+- `EchoModelProvider` — echoes the last message.
 - `InMemoryToolProvider` — dispatches to an explicit handler map; unknown tools
   throw. No shell, filesystem, or credential access.
 
-Real providers (OpenAI / Anthropic / Google) arrive in a later phase as new
-files under `adapters/models/` implementing `ModelProvider`.
+**Anthropic adapter** (`adapters/models/anthropic-model-provider.ts`) — the only
+module that knows the Anthropic SDK:
+
+- **Config** — `loadAnthropicConfig(input?, env?)` resolves `apiKey` (required),
+  `model`, `timeoutMs`, `maxTokens`, `maxRetries` from an explicit object → env
+  vars (`ANTHROPIC_*`) → defaults, throwing `ProviderConfigError` on missing or
+  invalid values. `describe()` returns the resolved config **without the key**.
+- **Transport seam** — a local `AnthropicTransport` interface. The real one
+  lazily `import()`s `@anthropic-ai/sdk` on first use (clear
+  `ProviderConfigError` if not installed); tests inject a stub and never load
+  the SDK or hit the network.
+- **Mapping** — Workforce `ModelRequest` → Anthropic params (system messages
+  split into `system`, only `user`/`assistant` in `messages`, `max_tokens` from
+  config) → SDK → adapter → `ModelResponse` (text blocks concatenated, `usage`
+  mapped). Malformed replies raise `ProviderResponseError`.
+- **Errors** — `mapAnthropicError` translates failures onto the
+  provider-neutral hierarchy in `contracts/`: `ProviderAuthError` (401/403),
+  `ProviderRateLimitError` (429, retryable), `ProviderTimeoutError` (retryable),
+  `ProviderUnavailableError` (connection / 5xx, retryable),
+  `ProviderRequestError` (400/422), else `ProviderError`. Every derived message
+  is run through `redactSecrets` — the key never appears in an error.
+
+**Registry** — `ModelProviderRegistry` (core) resolves providers by id
+("anthropic", "openai", ...) from factories the wiring layer registers; it
+imports nothing provider-specific. `anthropicFactory(config, options)` (adapter)
+produces such a factory, so core still never imports the adapter. Future
+providers plug in the same way with no core change.
+
+**Audit** — `AuditedModelProvider` (core) wraps any `ModelProvider` and records
+`model_provider_requested`, `model_execution_started`,
+`model_execution_completed`, `model_execution_failed` with provider, model,
+token usage and sizes, plus correlation ids read from `request.metadata`. It
+never records keys or headers. Prompt/response **content is not logged unless
+`logContent: true`** is explicitly set (then only a truncated preview).
 
 ## 9. Project adapters
 
@@ -292,24 +334,42 @@ stays zero. `tsc --noEmit` remains the type-correctness gate. See
 ## 13. Testing
 
 `npm test` compiles with `tsc` and runs `node --test` over the compiled output
-(62 tests). Coverage: agent registration/lookup/validation; task
+(94 tests). Coverage: agent registration/lookup/validation; task
 creation/(in)valid transitions/retry; handoff validation; permission
 denial/approval and every scope (agent, project, tool, environment, explicit
 deny); approval lifecycle including request/await/approve/reject/expiry/resume;
 orchestrator routing/blocking/failure/approval-gated/permission-denied;
 persistence save/load/update/isolation and survival across reinitialization;
-audit events including approval and permission decisions, resumed and rejected
-tasks; provider/adapter contracts. Every test is deterministic and offline —
-**no real AI API calls**.
+audit events including approval, permission, and model-execution decisions;
+Anthropic adapter config/validation, request/response mapping, and every
+failure class (auth, rate-limit, timeout, network, server, bad-request,
+malformed-response) via a stub transport; secret redaction; the provider
+registry; the audit decorator; and a check that `core/` and `contracts/` carry
+no Anthropic dependency. Every test is deterministic and offline — **no real AI
+API calls**.
 
 ## 14. Extension guidelines
 
 See [extending.md](extending.md). Add capability behind its contract, grant
 least privilege, add deterministic tests, keep `core` free of adapter imports.
 
-## 15. Deliberately out of scope through Phase 2A
+## 15. Security & configuration notes (model provider)
 
-Real AI providers and general/autonomous agents, network I/O, asynchronous
-workers or queues, multi-process persistence and file locking, an async
-`Repository` revision, real authentication, retries/backoff, external logging
-or telemetry infrastructure, and any real project integration.
+- Credentials come only from the environment (or an explicit config object),
+  never from source. `.env` is git-ignored; `.env.example` holds placeholders
+  only.
+- The API key is never logged, never put in an error message (defence-in-depth
+  redaction on top of never interpolating it), and never written to the audit
+  log or persistence.
+- Deny-by-default permissions, project isolation, and audit logging are
+  unchanged; a model call still happens inside an executor that the orchestrator
+  has already permission-checked.
+
+## 16. Deliberately out of scope through Phase 2B
+
+General/autonomous agents and planning, unrestricted model/tool loops,
+additional real providers (OpenAI/Google), a live end-to-end integration test,
+network I/O outside the Anthropic adapter, asynchronous workers or queues,
+multi-process persistence and file locking, an async `Repository` revision, real
+authentication, retries/backoff at the orchestrator level, external logging or
+telemetry infrastructure, and any real project integration.

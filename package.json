@@ -18,6 +18,7 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
     "@eslint/js": "^9.39.5",
     "@types/node": "^24.0.0",
     "eslint": "^9.39.5",
@@ -25,5 +26,13 @@
     "prettier": "^3.9.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.69.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.30.0 <1"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
   }
 }

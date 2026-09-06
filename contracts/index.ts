@@ -261,6 +261,10 @@ export const AUDIT_EVENT_TYPES = [
   "task_resumed",
   "task_completed",
   "task_failed",
+  "model_provider_requested",
+  "model_execution_started",
+  "model_execution_completed",
+  "model_execution_failed",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -366,6 +370,73 @@ export class ValidationError extends WorkforceError {}
 export class StateTransitionError extends WorkforceError {}
 export class PermissionDeniedError extends WorkforceError {}
 export class NotFoundError extends WorkforceError {}
+
+/* ------------------------------------------------------------------ */
+/* Provider errors                                                    */
+/*                                                                    */
+/* Provider-neutral: the "provider" here is any external model or tool */
+/* vendor. Concrete adapters (e.g. Anthropic) map their SDK/API        */
+/* failures onto these classes. Instances must never carry secrets.    */
+/* ------------------------------------------------------------------ */
+
+export interface ProviderErrorOptions {
+  /** HTTP-ish status code, when the failure had one. */
+  status?: number;
+  /** Whether retrying the same request could plausibly succeed. */
+  retryable?: boolean;
+  /** Underlying error, for diagnostics. Never a credential. */
+  cause?: unknown;
+}
+
+/** Base class for failures originating from an external provider. */
+export class ProviderError extends WorkforceError {
+  readonly provider: string;
+  readonly status: number | undefined;
+  readonly retryable: boolean;
+
+  constructor(
+    provider: string,
+    message: string,
+    options: ProviderErrorOptions = {},
+  ) {
+    super(
+      message,
+      options.cause !== undefined ? { cause: options.cause } : undefined,
+    );
+    this.name = new.target.name;
+    this.provider = provider;
+    this.status = options.status;
+    this.retryable = options.retryable ?? false;
+  }
+}
+
+/**
+ * Invalid or missing provider configuration (no API key, bad model id, ...).
+ * A `ValidationError` so existing configuration-error handling catches it.
+ * Never contains the offending secret value.
+ */
+export class ProviderConfigError extends ValidationError {
+  readonly provider: string;
+
+  constructor(provider: string, message: string) {
+    super(`[${provider}] ${message}`);
+    this.name = "ProviderConfigError";
+    this.provider = provider;
+  }
+}
+
+/** Authentication / authorization failure (bad or missing credentials). */
+export class ProviderAuthError extends ProviderError {}
+/** The provider rejected the request for exceeding a rate limit. */
+export class ProviderRateLimitError extends ProviderError {}
+/** The request did not complete within the configured timeout. */
+export class ProviderTimeoutError extends ProviderError {}
+/** The provider could not be reached or returned a server-side error. */
+export class ProviderUnavailableError extends ProviderError {}
+/** The provider rejected the request as malformed (client-side, 4xx). */
+export class ProviderRequestError extends ProviderError {}
+/** The provider returned a response the adapter could not interpret. */
+export class ProviderResponseError extends ProviderError {}
 
 /* ------------------------------------------------------------------ */
 /* Pure validators                                                    */

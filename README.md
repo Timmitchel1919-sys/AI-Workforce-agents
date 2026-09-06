@@ -8,20 +8,24 @@ permissions, human approval records, project-isolated context, a structured
 audit log, and **durable persistence behind an interface** — all behind
 **provider- and project-agnostic contracts**.
 
-> **Status: Phase 2A complete.** No real AI providers, no autonomous/general
-> agents, no network calls. Money Mind will be the first real integration in a
-> later phase; its source is never copied here.
+> **Status: Phase 2B complete.** First real model provider (Anthropic) behind
+> the provider-neutral contract. No autonomous/general agents, no unrestricted
+> model loops. Money Mind will be the first real project integration in a later
+> phase; its source is never copied here.
 
 ## Stack
 
 - **TypeScript** (strict) on **Node.js ≥ 20**, ESM (`NodeNext`)
-- Tests: built-in `node:test` + `node:assert/strict` (62 deterministic, offline)
+- Tests: built-in `node:test` + `node:assert/strict` (94 deterministic, offline)
 - Build: `tsc` only
 - Persistence: `Repository<T>` interface; JSON-file store as the first
   implementation ([ADR-0002](docs/adr/0002-local-json-file-persistence.md))
+- Model providers: provider-neutral `ModelProvider` contract; Anthropic adapter
+  with the SDK as an **optional peer dependency**
+  ([ADR-0004](docs/adr/0004-model-provider-layer-anthropic.md))
 - Lint/format: ESLint 9 + Prettier 3, **dev-only**
   ([ADR-0003](docs/adr/0003-code-quality-tooling.md))
-- **Zero runtime dependencies**
+- **Zero runtime dependencies in core**
 
 ## Layout
 
@@ -83,6 +87,52 @@ const audit = new AuditLog(undefined, store.auditEvents);
 
 Pass nothing to get the in-memory default. `.workforce/` is git-ignored.
 
+## Model providers
+
+The core depends only on the `ModelProvider` contract. Concrete providers are
+adapters, resolved by id through `ModelProviderRegistry` and wrapped for audit.
+
+```ts
+import {
+  AuditLog,
+  AuditedModelProvider,
+  ModelProviderRegistry,
+} from "./core/index.js";
+import { anthropicFactory } from "./adapters/index.js";
+
+const audit = new AuditLog();
+const providers = new ModelProviderRegistry();
+providers.register("anthropic", anthropicFactory()); // reads ANTHROPIC_* from env
+
+const model = new AuditedModelProvider(providers.resolve("anthropic"), audit);
+const res = await model.generate({
+  messages: [
+    { role: "system", content: "Be brief." },
+    { role: "user", content: "Say hi." },
+  ],
+  metadata: { taskId: "task_1" }, // optional correlation for audit events
+});
+```
+
+Install the SDK where you use the Anthropic adapter (it is an optional peer
+dependency): `npm install @anthropic-ai/sdk`.
+
+### Environment variables
+
+Copy [`.env.example`](.env.example) to `.env` (git-ignored) and fill in:
+
+| Variable                | Required | Default                    |
+| ----------------------- | -------- | -------------------------- |
+| `ANTHROPIC_API_KEY`     | yes      | —                          |
+| `ANTHROPIC_MODEL`       | no       | `claude-3-5-sonnet-latest` |
+| `ANTHROPIC_TIMEOUT_MS`  | no       | `60000`                    |
+| `ANTHROPIC_MAX_TOKENS`  | no       | `1024`                     |
+| `ANTHROPIC_MAX_RETRIES` | no       | `2`                        |
+
+The key is never logged, never included in an error message, and never written
+to the audit log or persistence. See
+[ADR-0004](docs/adr/0004-model-provider-layer-anthropic.md).
+
 ## Extending
 
 Read [docs/extending.md](docs/extending.md). Never let `core/` import an adapter
@@ -98,5 +148,7 @@ deterministic tests; never commit a secret.
   auto-approves.
 - Project context does not cross project boundaries.
 - No secrets in the repo or in persistence. Providers read credentials from the
-  environment at call time.
+  environment at call time; the Anthropic adapter redacts the key from every
+  error message and never logs it.
+- `.env` is git-ignored; `.env.example` contains placeholders only.
 - CI runs without any secret or AI credential.

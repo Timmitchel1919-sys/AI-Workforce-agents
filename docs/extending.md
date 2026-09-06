@@ -21,15 +21,41 @@ testable, isolated, and provider-agnostic.
 6. **Keep it a modular monolith.** No microservices, no message brokers, no new
    runtime dependency unless it is clearly load-bearing and reviewed.
 
-## Adding a model provider (e.g. OpenAI, Anthropic, Google)
+## Adding a model provider (e.g. OpenAI, Google)
 
-1. Create `adapters/models/<vendor>-model-provider.ts`.
-2. `implements ModelProvider` — a `readonly id` and `generate(request)`.
-3. Read the API key from the environment at call time. **Never** hard-code a
-   key, commit a key, or add a key to a fixture.
-4. Map `ModelRequest.messages` to the vendor format and map the response back to
-   `ModelResponse` (`content`, `model`, optional `usage`).
-5. Add a test that uses a stubbed transport — not the real endpoint.
+The Anthropic adapter (`adapters/models/anthropic-model-provider.ts`) is the
+reference. Follow its shape:
+
+1. Create `adapters/models/<vendor>-model-provider.ts` — the **only** module
+   allowed to import that vendor's SDK.
+2. `implements ModelProvider` — `readonly id` and `generate(request)`.
+3. **Config:** a `load<Vendor>Config(input?, env?)` that resolves the API key
+   (required) and options from an explicit object → env vars → defaults, and
+   throws `ProviderConfigError` (secret-free message) on missing/invalid values.
+   Never hard-code a key, commit a key, or put one in a fixture. Expose a
+   `describe()` that returns config **without the key**.
+4. **Transport seam:** define a local `<Vendor>Transport` interface for just the
+   call you make. The real transport should **lazily `import()`** the SDK (clear
+   `ProviderConfigError` if absent). Type your adapter against local interfaces,
+   not SDK types, so `tsc` does not require the SDK. Add the SDK as an
+   **optional `peerDependency`** (+ `devDependencies` for CI).
+5. **Mapping:** `ModelRequest.messages` → vendor format; vendor reply →
+   `ModelResponse` (`content`, `model`, optional `usage`). Raise
+   `ProviderResponseError` for a reply you cannot interpret.
+6. **Errors:** a `map<Vendor>Error(error, apiKey)` that returns the
+   provider-neutral classes from `contracts/` (`ProviderAuthError`,
+   `ProviderRateLimitError`, `ProviderTimeoutError`,
+   `ProviderUnavailableError`, `ProviderRequestError`, else `ProviderError`),
+   with `status` / `retryable` set and every message passed through
+   `redactSecrets(msg, [apiKey])`.
+7. **Register:** export a `<vendor>Factory(config, options)` and register it on
+   `ModelProviderRegistry` from the wiring layer — do **not** import the adapter
+   from `core/`.
+8. **Audit:** wrap the provider in `AuditedModelProvider` at wiring time. Leave
+   `logContent` off unless retaining prompt/response text is intended and safe.
+9. **Tests:** stub the transport. Cover config/validation, request+response
+   mapping, every failure class, and secret redaction. Never call the real
+   endpoint.
 
 ## Adding a tool provider
 
