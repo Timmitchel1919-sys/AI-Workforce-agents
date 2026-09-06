@@ -1,9 +1,76 @@
-export const TASK_STATUSES = ["created", "queued", "running", "blocked", "awaiting_approval", "completed", "failed", "cancelled"] as const;
-export type TaskStatus = (typeof TASK_STATUSES)[number];
-export type PermissionAction = "read" | "write" | "execute" | "deploy" | "external_communication" | "secret_access";
-export type Environment = "local" | "test" | "staging" | "production";
-export type Priority = "low" | "normal" | "high" | "critical";
+/**
+ * AI Workforce — Core Contracts
+ *
+ * Shared type contracts and pure validators for the Workforce foundation.
+ * This module has NO dependency on any model provider, tool vendor, project
+ * repository, or infrastructure. Everything provider- or project-specific
+ * enters the system through the interfaces declared here and is implemented
+ * under `adapters/`.
+ */
 
+/* ------------------------------------------------------------------ */
+/* Shared primitives                                                  */
+/* ------------------------------------------------------------------ */
+
+export type Priority = "low" | "normal" | "high" | "critical";
+export type Environment = "local" | "test" | "staging" | "production";
+
+/* ------------------------------------------------------------------ */
+/* Permissions                                                        */
+/* ------------------------------------------------------------------ */
+
+export type PermissionAction =
+  | "read"
+  | "write"
+  | "execute"
+  | "deploy"
+  | "external_communication"
+  | "secret_access";
+
+export type PermissionEffect = "allow" | "deny";
+
+/**
+ * A single deny-by-default permission rule. Any scope field left `undefined`
+ * acts as a wildcard for that dimension.
+ */
+export interface PermissionGrant {
+  effect: PermissionEffect;
+  action: PermissionAction;
+  agentId?: string;
+  projectId?: string;
+  toolId?: string;
+  environment?: Environment;
+  reason?: string;
+}
+
+export interface PermissionRequest {
+  action: PermissionAction;
+  agentId: string;
+  projectId: string;
+  toolId?: string;
+  environment: Environment;
+}
+
+export interface PermissionDecision {
+  allowed: boolean;
+  reason: string;
+  matched?: PermissionGrant;
+}
+
+/* ------------------------------------------------------------------ */
+/* Agents                                                             */
+/* ------------------------------------------------------------------ */
+
+export interface ModelPolicy {
+  provider?: string;
+  model?: string;
+  maxOutputTokens?: number;
+}
+
+/**
+ * Declarative description of an agent. An agent owns no behavior here — it is
+ * metadata the registry validates and the orchestrator routes against.
+ */
 export interface Agent {
   id: string;
   name: string;
@@ -11,10 +78,28 @@ export interface Agent {
   capabilities: readonly string[];
   allowedTools: readonly string[];
   allowedProjects: readonly string[];
-  permissions: readonly PermissionGrant[];
   supportedTaskTypes: readonly string[];
-  modelPolicy?: { provider?: string; model?: string };
+  permissions: readonly PermissionGrant[];
+  modelPolicy?: ModelPolicy;
+  metadata?: Record<string, unknown>;
 }
+
+/* ------------------------------------------------------------------ */
+/* Tasks                                                              */
+/* ------------------------------------------------------------------ */
+
+export const TASK_STATUSES = [
+  "created",
+  "queued",
+  "running",
+  "blocked",
+  "awaiting_approval",
+  "completed",
+  "failed",
+  "cancelled",
+] as const;
+
+export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export interface Task {
   id: string;
@@ -32,11 +117,27 @@ export interface Task {
   metadata: Record<string, unknown>;
 }
 
+export interface TaskDraft {
+  type: string;
+  description: string;
+  projectId: string;
+  input?: unknown;
+  priority?: Priority;
+  metadata?: Record<string, unknown>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Handoffs                                                           */
+/* ------------------------------------------------------------------ */
+
+export type HandoffStatus = "proposed" | "accepted" | "rejected";
+
 export interface Handoff {
   id: string;
+  taskId: string;
   sourceAgentId: string;
   destinationAgentId: string;
-  taskId: string;
+  status: HandoffStatus;
   context: Record<string, unknown>;
   completedWork: string;
   remainingWork: string;
@@ -44,47 +145,93 @@ export interface Handoff {
   artifacts: readonly string[];
   risks: readonly string[];
   createdAt: string;
+  resolvedAt?: string;
+  resolution?: string;
 }
 
-export interface PermissionGrant {
-  agentId?: string;
-  projectId?: string;
-  toolId?: string;
-  action: PermissionAction;
-  environment?: Environment;
-  effect: "allow" | "deny";
+export interface HandoffDraft {
+  taskId: string;
+  sourceAgentId: string;
+  destinationAgentId: string;
+  context?: Record<string, unknown>;
+  completedWork: string;
+  remainingWork: string;
+  acceptanceCriteria: readonly string[];
+  artifacts?: readonly string[];
+  risks?: readonly string[];
 }
 
-export interface PermissionRequest {
-  agentId: string;
-  projectId: string;
-  toolId?: string;
-  action: PermissionAction;
-  environment: Environment;
-}
+/* ------------------------------------------------------------------ */
+/* Approvals                                                          */
+/* ------------------------------------------------------------------ */
 
 export type ApprovalStatus = "requested" | "approved" | "rejected" | "expired";
+
 export interface Approval {
   id: string;
-  requestedBy: string;
   action: string;
+  requestedBy: string;
   reason: string;
   status: ApprovalStatus;
   requestedAt: string;
-  decidedAt?: string;
   decidedBy?: string;
+  decidedAt?: string;
   expiresAt?: string;
   decisionMetadata: Record<string, unknown>;
 }
 
-export interface ScopedContext {
+export interface ApprovalRequestDraft {
+  action: string;
+  requestedBy: string;
+  reason: string;
+  expiresAt?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Context                                                            */
+/* ------------------------------------------------------------------ */
+
+export interface TaskContext {
+  scope: "task";
   taskId: string;
   projectId: string;
-  agentId?: string;
   values: Record<string, unknown>;
 }
 
-export type AuditEventType = "task_created" | "task_assigned" | "agent_executed" | "handoff_created" | "permission_granted" | "permission_denied" | "approval_requested" | "approval_decided" | "task_completed" | "task_failed";
+export interface ProjectContext {
+  scope: "project";
+  projectId: string;
+  values: Record<string, unknown>;
+}
+
+export interface AgentContext {
+  scope: "agent";
+  agentId: string;
+  projectId: string;
+  values: Record<string, unknown>;
+}
+
+export type Context = TaskContext | ProjectContext | AgentContext;
+
+/* ------------------------------------------------------------------ */
+/* Audit                                                              */
+/* ------------------------------------------------------------------ */
+
+export const AUDIT_EVENT_TYPES = [
+  "task_created",
+  "task_assigned",
+  "agent_executed",
+  "handoff_created",
+  "permission_decision",
+  "approval_requested",
+  "approval_decided",
+  "task_completed",
+  "task_failed",
+] as const;
+
+export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
+
 export interface AuditEvent {
   id: string;
   type: AuditEventType;
@@ -95,34 +242,189 @@ export interface AuditEvent {
   data: Record<string, unknown>;
 }
 
+/** Pluggable destination for audit events. Local, in-process for Phase 1. */
+export interface AuditSink {
+  write(event: AuditEvent): void;
+}
+
+/* ------------------------------------------------------------------ */
+/* Model provider interface                                           */
+/* ------------------------------------------------------------------ */
+
+export interface ModelMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface ModelRequest {
+  messages: readonly ModelMessage[];
+  model?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ModelResponse {
+  content: string;
+  model: string;
+  usage?: { inputTokens?: number; outputTokens?: number };
+}
+
+/** Provider-neutral text generation. Concrete providers live under adapters/. */
 export interface ModelProvider {
-  id: string;
+  readonly id: string;
   generate(request: ModelRequest): Promise<ModelResponse>;
 }
-export interface ModelRequest { messages: readonly { role: "system" | "user" | "assistant"; content: string }[]; model?: string; metadata?: Record<string, unknown>; }
-export interface ModelResponse { content: string; model: string; usage?: { inputTokens?: number; outputTokens?: number }; }
-export interface ToolProvider { id: string; execute(request: ToolRequest): Promise<ToolResponse>; }
-export interface ToolRequest { tool: string; input: unknown; context: ScopedContext; }
-export interface ToolResponse { output: unknown; metadata?: Record<string, unknown>; }
-export interface ProjectAdapter { projectId: string; describe(): Promise<{ name: string; capabilities: readonly string[] }>; execute(operation: string, input: unknown): Promise<unknown>; }
 
-export function assertNonBlank(value: string, field: string): void {
-  if (!value.trim()) throw new Error(`${field} is required`);
+/* ------------------------------------------------------------------ */
+/* Tool provider interface                                            */
+/* ------------------------------------------------------------------ */
+
+export interface ToolRequest {
+  tool: string;
+  input: unknown;
+  context: TaskContext;
+}
+
+export interface ToolResponse {
+  output: unknown;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Provider-neutral external tool access. A concrete provider must expose only
+ * explicitly named, individually reviewed tools — never unrestricted shell,
+ * filesystem, or credential access.
+ */
+export interface ToolProvider {
+  readonly id: string;
+  readonly tools: readonly string[];
+  execute(request: ToolRequest): Promise<ToolResponse>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Project adapter interface                                          */
+/* ------------------------------------------------------------------ */
+
+export interface ProjectCapability {
+  operation: string;
+  description: string;
+  action: PermissionAction;
+}
+
+/**
+ * Controlled access to a single real project (AIMS, Money Mind, Mastery,
+ * Tripod, ...). Project internals are never copied into this repository; an
+ * adapter exposes a fixed, declared set of operations.
+ */
+export interface ProjectAdapter {
+  readonly projectId: string;
+  describe(): Promise<{ name: string; capabilities: readonly ProjectCapability[] }>;
+  execute(operation: string, input: unknown): Promise<unknown>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Errors                                                             */
+/* ------------------------------------------------------------------ */
+
+export class WorkforceError extends Error {}
+export class ValidationError extends WorkforceError {}
+export class StateTransitionError extends WorkforceError {}
+export class PermissionDeniedError extends WorkforceError {}
+export class NotFoundError extends WorkforceError {}
+
+/* ------------------------------------------------------------------ */
+/* Pure validators                                                    */
+/* ------------------------------------------------------------------ */
+
+export function requireText(value: unknown, field: string): string {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new ValidationError(`${field} is required`);
+  }
+  return value;
+}
+
+export function requireArray(value: unknown, field: string): readonly unknown[] {
+  if (!Array.isArray(value)) {
+    throw new ValidationError(`${field} must be an array`);
+  }
+  return value;
+}
+
+const PERMISSION_ACTIONS: readonly PermissionAction[] = [
+  "read",
+  "write",
+  "execute",
+  "deploy",
+  "external_communication",
+  "secret_access",
+];
+
+export function validatePermissionGrant(
+  grant: PermissionGrant,
+  field = "permission",
+): void {
+  if (grant.effect !== "allow" && grant.effect !== "deny") {
+    throw new ValidationError(`${field}.effect must be "allow" or "deny"`);
+  }
+  if (!PERMISSION_ACTIONS.includes(grant.action)) {
+    throw new ValidationError(`${field}.action is not a known permission action`);
+  }
 }
 
 export function validateAgent(agent: Agent): void {
-  assertNonBlank(agent.id, "agent.id"); assertNonBlank(agent.name, "agent.name");
-  if (!agent.capabilities.length) throw new Error("agent.capabilities must not be empty");
+  requireText(agent.id, "agent.id");
+  requireText(agent.name, "agent.name");
+  requireText(agent.description, "agent.description");
+  requireArray(agent.capabilities, "agent.capabilities");
+  requireArray(agent.allowedTools, "agent.allowedTools");
+  requireArray(agent.allowedProjects, "agent.allowedProjects");
+  requireArray(agent.supportedTaskTypes, "agent.supportedTaskTypes");
+  requireArray(agent.permissions, "agent.permissions");
+
+  if (agent.capabilities.length === 0) {
+    throw new ValidationError("agent.capabilities must not be empty");
+  }
+
+  agent.permissions.forEach((grant, index) =>
+    validatePermissionGrant(grant, `agent.permissions[${index}]`),
+  );
+
+  if (agent.modelPolicy) {
+    const { provider, model } = agent.modelPolicy;
+    if (provider !== undefined && typeof provider !== "string") {
+      throw new ValidationError("agent.modelPolicy.provider must be a string");
+    }
+    if (model !== undefined && typeof model !== "string") {
+      throw new ValidationError("agent.modelPolicy.model must be a string");
+    }
+  }
 }
 
-export function validateTaskInput(input: Pick<Task, "type" | "description" | "projectId">): void {
-  assertNonBlank(input.type, "task.type"); assertNonBlank(input.description, "task.description"); assertNonBlank(input.projectId, "task.projectId");
+export function validateTaskDraft(draft: TaskDraft): void {
+  requireText(draft.type, "task.type");
+  requireText(draft.description, "task.description");
+  requireText(draft.projectId, "task.projectId");
 }
 
-export function validateHandoff(handoff: Handoff): void {
-  assertNonBlank(handoff.sourceAgentId, "handoff.sourceAgentId");
-  assertNonBlank(handoff.destinationAgentId, "handoff.destinationAgentId");
-  assertNonBlank(handoff.taskId, "handoff.taskId");
-  if (handoff.sourceAgentId === handoff.destinationAgentId) throw new Error("handoff agents must differ");
-  if (!handoff.acceptanceCriteria.length) throw new Error("handoff.acceptanceCriteria must not be empty");
+export function validateHandoffDraft(draft: HandoffDraft): void {
+  requireText(draft.taskId, "handoff.taskId");
+  requireText(draft.sourceAgentId, "handoff.sourceAgentId");
+  requireText(draft.destinationAgentId, "handoff.destinationAgentId");
+  requireText(draft.completedWork, "handoff.completedWork");
+  requireText(draft.remainingWork, "handoff.remainingWork");
+  requireArray(draft.acceptanceCriteria, "handoff.acceptanceCriteria");
+
+  if (draft.sourceAgentId === draft.destinationAgentId) {
+    throw new ValidationError(
+      "handoff source and destination agents must differ",
+    );
+  }
+  if (draft.acceptanceCriteria.length === 0) {
+    throw new ValidationError("handoff.acceptanceCriteria must not be empty");
+  }
+}
+
+export function validateApprovalRequest(draft: ApprovalRequestDraft): void {
+  requireText(draft.action, "approval.action");
+  requireText(draft.requestedBy, "approval.requestedBy");
+  requireText(draft.reason, "approval.reason");
 }
