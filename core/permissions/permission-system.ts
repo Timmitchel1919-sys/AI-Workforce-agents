@@ -72,7 +72,8 @@ export class PermissionSystem {
   ): boolean {
     return (
       (grant.agentId === undefined || grant.agentId === request.agentId) &&
-      (grant.projectId === undefined || grant.projectId === request.projectId) &&
+      (grant.projectId === undefined ||
+        grant.projectId === request.projectId) &&
       (grant.toolId === undefined || grant.toolId === request.toolId) &&
       (grant.environment === undefined ||
         grant.environment === request.environment)

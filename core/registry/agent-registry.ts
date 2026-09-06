@@ -1,23 +1,28 @@
 import {
   type Agent,
+  type Repository,
   NotFoundError,
   ValidationError,
   validateAgent,
 } from "../../contracts/index.js";
+import { InMemoryRepository } from "../persistence/in-memory-repository.js";
 
 /**
- * In-memory store of declarative agent definitions.
+ * Store of declarative agent definitions.
  *
- * The registry validates every definition on registration, stores an immutable
- * copy, and answers routing questions (by capability, by eligibility for a
+ * The registry validates every definition on registration, persists an
+ * immutable copy through the injected {@link Repository} (in-memory by
+ * default), and answers routing questions (by capability, by eligibility for a
  * task type on a project).
  */
 export class AgentRegistry {
-  private readonly agents = new Map<string, Agent>();
+  constructor(
+    private readonly repo: Repository<Agent> = new InMemoryRepository<Agent>(),
+  ) {}
 
   register(agent: Agent): Agent {
     validateAgent(agent);
-    if (this.agents.has(agent.id)) {
+    if (this.repo.findById(agent.id)) {
       throw new ValidationError(`agent already registered: ${agent.id}`);
     }
 
@@ -31,28 +36,28 @@ export class AgentRegistry {
       modelPolicy: agent.modelPolicy ? { ...agent.modelPolicy } : undefined,
       metadata: agent.metadata ? { ...agent.metadata } : undefined,
     };
+    this.repo.upsert(stored);
     Object.freeze(stored);
-    this.agents.set(stored.id, stored);
     return stored;
   }
 
   has(id: string): boolean {
-    return this.agents.has(id);
+    return this.repo.findById(id) !== undefined;
   }
 
   get(id: string): Agent | undefined {
-    return this.agents.get(id);
+    return this.repo.findById(id);
   }
 
   require(id: string): Agent {
-    const agent = this.agents.get(id);
+    const agent = this.repo.findById(id);
     if (!agent) throw new NotFoundError(`unknown agent: ${id}`);
     return agent;
   }
 
   /** Deterministic ordering by id. */
   list(): Agent[] {
-    return [...this.agents.values()].sort((a, b) => a.id.localeCompare(b.id));
+    return this.repo.list().sort((a, b) => a.id.localeCompare(b.id));
   }
 
   byCapability(capability: string): Agent[] {

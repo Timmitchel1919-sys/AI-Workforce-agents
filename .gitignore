@@ -4,3 +4,7 @@ dist/
 .env.*
 !.env.example
 coverage/
+
+# Local persistence data written by JsonFilePersistence at runtime
+.workforce/
+*.workforce.json

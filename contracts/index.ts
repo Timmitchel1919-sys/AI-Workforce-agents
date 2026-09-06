@@ -57,6 +57,16 @@ export interface PermissionDecision {
   matched?: PermissionGrant;
 }
 
+/**
+ * A capability a task needs before an agent may act on it. The orchestrator
+ * fills in agent / project / environment and asserts each entry against the
+ * {@link PermissionSystem} at the execution boundary.
+ */
+export interface RequiredPermission {
+  action: PermissionAction;
+  toolId?: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* Agents                                                             */
 /* ------------------------------------------------------------------ */
@@ -112,6 +122,10 @@ export interface Task {
   input: unknown;
   output?: unknown;
   errors: string[];
+  /** Capabilities the execution boundary must clear before dispatch. */
+  requiredPermissions: readonly RequiredPermission[];
+  /** Set while the task sits in `awaiting_approval`. */
+  approvalId?: string;
   createdAt: string;
   updatedAt: string;
   metadata: Record<string, unknown>;
@@ -123,6 +137,7 @@ export interface TaskDraft {
   projectId: string;
   input?: unknown;
   priority?: Priority;
+  requiredPermissions?: readonly RequiredPermission[];
   metadata?: Record<string, unknown>;
 }
 
@@ -188,6 +203,23 @@ export interface ApprovalRequestDraft {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Deterministic decision on whether a task needs human approval before it can
+ * be dispatched. Implementations must not auto-approve — they only decide
+ * whether an approval request is required.
+ */
+export interface ApprovalRequirement {
+  required: boolean;
+  action?: string;
+  reason?: string;
+  /** Optional ISO timestamp after which the approval request should expire. */
+  expiresAt?: string;
+}
+
+export interface ApprovalPolicy {
+  evaluate(task: Task): ApprovalRequirement;
+}
+
 /* ------------------------------------------------------------------ */
 /* Context                                                            */
 /* ------------------------------------------------------------------ */
@@ -226,6 +258,7 @@ export const AUDIT_EVENT_TYPES = [
   "permission_decision",
   "approval_requested",
   "approval_decided",
+  "task_resumed",
   "task_completed",
   "task_failed",
 ] as const;
@@ -317,7 +350,10 @@ export interface ProjectCapability {
  */
 export interface ProjectAdapter {
   readonly projectId: string;
-  describe(): Promise<{ name: string; capabilities: readonly ProjectCapability[] }>;
+  describe(): Promise<{
+    name: string;
+    capabilities: readonly ProjectCapability[];
+  }>;
   execute(operation: string, input: unknown): Promise<unknown>;
 }
 
@@ -342,7 +378,10 @@ export function requireText(value: unknown, field: string): string {
   return value;
 }
 
-export function requireArray(value: unknown, field: string): readonly unknown[] {
+export function requireArray(
+  value: unknown,
+  field: string,
+): readonly unknown[] {
   if (!Array.isArray(value)) {
     throw new ValidationError(`${field} must be an array`);
   }
@@ -366,7 +405,9 @@ export function validatePermissionGrant(
     throw new ValidationError(`${field}.effect must be "allow" or "deny"`);
   }
   if (!PERMISSION_ACTIONS.includes(grant.action)) {
-    throw new ValidationError(`${field}.action is not a known permission action`);
+    throw new ValidationError(
+      `${field}.action is not a known permission action`,
+    );
   }
 }
 
@@ -428,3 +469,9 @@ export function validateApprovalRequest(draft: ApprovalRequestDraft): void {
   requireText(draft.requestedBy, "approval.requestedBy");
   requireText(draft.reason, "approval.reason");
 }
+
+/* ------------------------------------------------------------------ */
+/* Re-exports                                                         */
+/* ------------------------------------------------------------------ */
+
+export type { Entity, Repository, PersistenceProvider } from "./persistence.js";

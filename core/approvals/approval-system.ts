@@ -1,10 +1,12 @@
 import {
   type Approval,
   type ApprovalRequestDraft,
+  type Repository,
   NotFoundError,
   StateTransitionError,
   validateApprovalRequest,
 } from "../../contracts/index.js";
+import { InMemoryRepository } from "../persistence/in-memory-repository.js";
 import { createId, now } from "../shared.js";
 
 /**
@@ -15,10 +17,14 @@ import { createId, now } from "../shared.js";
  *             └▶ expired
  *
  * This system only records decisions; it never grants tool or project access
- * by itself. A UI or API layer can later drive `decide` / `expire`.
+ * by itself and never auto-approves. A UI or API layer drives `decide` /
+ * `expire`. State is held in the injected {@link Repository} (in-memory by
+ * default).
  */
 export class ApprovalSystem {
-  private readonly approvals = new Map<string, Approval>();
+  constructor(
+    private readonly repo: Repository<Approval> = new InMemoryRepository<Approval>(),
+  ) {}
 
   request(draft: ApprovalRequestDraft): Approval {
     validateApprovalRequest(draft);
@@ -32,22 +38,22 @@ export class ApprovalSystem {
       expiresAt: draft.expiresAt,
       decisionMetadata: { ...(draft.metadata ?? {}) },
     };
-    this.approvals.set(approval.id, approval);
+    this.repo.upsert(approval);
     return approval;
   }
 
   get(id: string): Approval | undefined {
-    return this.approvals.get(id);
+    return this.repo.findById(id);
   }
 
   require(id: string): Approval {
-    const approval = this.approvals.get(id);
+    const approval = this.repo.findById(id);
     if (!approval) throw new NotFoundError(`unknown approval: ${id}`);
     return approval;
   }
 
   list(): Approval[] {
-    return [...this.approvals.values()];
+    return this.repo.list();
   }
 
   pending(): Approval[] {
@@ -68,14 +74,14 @@ export class ApprovalSystem {
       decidedAt: now(),
       decisionMetadata: { ...approval.decisionMetadata, ...metadata },
     };
-    this.approvals.set(id, next);
+    this.repo.upsert(next);
     return next;
   }
 
   expire(id: string): Approval {
     const approval = this.mustBePending(id);
     const next: Approval = { ...approval, status: "expired", decidedAt: now() };
-    this.approvals.set(id, next);
+    this.repo.upsert(next);
     return next;
   }
 

@@ -55,12 +55,12 @@ it produces an auditable record that a UI/API layer can later drive.
 
 ### Option A — Modular monolith with explicit contracts (chosen)
 
-| Dimension | Assessment |
-| --- | --- |
-| Complexity | Low initially; boundaries allow later extraction |
-| Cost | Low — no infrastructure, no dependencies |
-| Scalability | Adequate; module seams enable future split |
-| Team familiarity | High for TypeScript/Node |
+| Dimension        | Assessment                                       |
+| ---------------- | ------------------------------------------------ |
+| Complexity       | Low initially; boundaries allow later extraction |
+| Cost             | Low — no infrastructure, no dependencies         |
+| Scalability      | Adequate; module seams enable future split       |
+| Team familiarity | High for TypeScript/Node                         |
 
 **Pros:** deterministic tests, trivial deployment, clear contracts, nothing to
 audit in the dependency tree.
@@ -69,12 +69,12 @@ extraction work.
 
 ### Option B — Microservices with provider-specific implementations
 
-| Dimension | Assessment |
-| --- | --- |
-| Complexity | High — distributed coordination up front |
-| Cost | Higher operational cost from day one |
-| Scalability | More than current needs require |
-| Team familiarity | Lower |
+| Dimension        | Assessment                               |
+| ---------------- | ---------------------------------------- |
+| Complexity       | High — distributed coordination up front |
+| Cost             | Higher operational cost from day one     |
+| Scalability      | More than current needs require          |
+| Team familiarity | Lower                                    |
 
 **Pros:** independent deployment boundaries.
 **Cons:** distributed-systems overhead and provider lock-in arrive before there

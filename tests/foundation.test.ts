@@ -301,7 +301,12 @@ test("permissions: an explicit, precisely scoped grant allows", () => {
 test("permissions: explicit deny beats explicit allow", () => {
   const system = new PermissionSystem([
     { effect: "allow", action: "deploy", projectId: "p" },
-    { effect: "deny", action: "deploy", projectId: "p", environment: "production" },
+    {
+      effect: "deny",
+      action: "deploy",
+      projectId: "p",
+      environment: "production",
+    },
   ]);
   const decision = system.evaluate({
     agentId: "a",
@@ -375,7 +380,10 @@ test("approval system: expire and expireStale", () => {
     expiresAt: "2999-01-01T00:00:00.000Z",
   });
   const expired = approvals.expireStale("2020-01-01T00:00:00.000Z");
-  assert.deepEqual(expired.map((x) => x.id), [b.id]);
+  assert.deepEqual(
+    expired.map((x) => x.id),
+    [b.id],
+  );
   assert.equal(approvals.get(c.id)?.status, "requested");
 });
 
@@ -388,10 +396,7 @@ test("context system: task context is isolated by project", () => {
   context.setTaskContext("t1", "aims", { secret: "isolated" });
 
   assert.equal(context.getTaskContext("t1", "money-mind"), undefined);
-  assert.equal(
-    context.getTaskContext("t1", "aims")?.values.secret,
-    "isolated",
-  );
+  assert.equal(context.getTaskContext("t1", "aims")?.values.secret, "isolated");
 });
 
 test("context system: rebinding a task to another project throws", () => {
@@ -529,9 +534,11 @@ test("project adapter: BaseProjectAdapter exposes only declared operations", asy
 /* Orchestrator                                                       */
 /* ------------------------------------------------------------------ */
 
-function buildOrchestrator(executor = {
-  execute: async (agent: Agent) => ({ selected: agent.id }),
-}) {
+function buildOrchestrator(
+  executor = {
+    execute: async (agent: Agent) => ({ selected: agent.id }),
+  },
+) {
   const registry = new AgentRegistry();
   const tasks = new TaskSystem();
   const handoffs = new HandoffSystem();
@@ -600,14 +607,13 @@ test("orchestrator: handoff requires registered agents and an existing task", as
     /must be registered/,
   );
   assert.throws(
-    () =>
-      orchestrator.requestHandoff(
-        handoffDraft({ taskId: "missing" }),
-      ),
+    () => orchestrator.requestHandoff(handoffDraft({ taskId: "missing" })),
     /task does not exist/,
   );
 
-  const handoff = orchestrator.requestHandoff(handoffDraft({ taskId: task.id }));
+  const handoff = orchestrator.requestHandoff(
+    handoffDraft({ taskId: task.id }),
+  );
   assert.equal(handoff.status, "accepted");
   assert.equal(audit.list().at(-1)?.type, "handoff_created");
 });

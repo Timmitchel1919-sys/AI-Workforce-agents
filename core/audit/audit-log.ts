@@ -2,6 +2,7 @@ import {
   type AuditEvent,
   type AuditEventType,
   type AuditSink,
+  type Repository,
 } from "../../contracts/index.js";
 import { createId, now } from "../shared.js";
 
@@ -25,14 +26,23 @@ export type AuditEventFields = Omit<AuditEvent, "id" | "type" | "timestamp">;
 
 /**
  * Structured audit log. Writes go to a pluggable {@link AuditSink} (local and
- * in-memory for Phase 1) and are also retained here for querying.
+ * in-memory by default), are retained here for querying, and — when a
+ * {@link Repository} is supplied — are persisted durably as well.
  */
 export class AuditLog {
   private readonly sink: AuditSink;
+  private readonly repo: Repository<AuditEvent> | undefined;
   private readonly events: AuditEvent[] = [];
 
-  constructor(sink: AuditSink = new InMemoryAuditSink()) {
+  constructor(
+    sink: AuditSink = new InMemoryAuditSink(),
+    repository?: Repository<AuditEvent>,
+  ) {
     this.sink = sink;
+    this.repo = repository;
+    if (repository) {
+      for (const event of repository.list()) this.events.push(event);
+    }
   }
 
   record(type: AuditEventType, fields: AuditEventFields): AuditEvent {
@@ -47,6 +57,7 @@ export class AuditLog {
     };
     this.events.push(event);
     this.sink.write(event);
+    this.repo?.upsert(event);
     return event;
   }
 

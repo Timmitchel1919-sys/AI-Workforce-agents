@@ -1,4 +1,6 @@
 import {
+  type RequiredPermission,
+  type Repository,
   type Task,
   type TaskDraft,
   type TaskStatus,
@@ -6,6 +8,7 @@ import {
   StateTransitionError,
   validateTaskDraft,
 } from "../../contracts/index.js";
+import { InMemoryRepository } from "../persistence/in-memory-repository.js";
 import { createId, now } from "../shared.js";
 
 /**
@@ -32,17 +35,23 @@ const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
 
 export interface TransitionPatch {
   assignedAgentId?: string;
+  approvalId?: string;
   output?: unknown;
   metadata?: Record<string, unknown>;
   error?: string;
 }
 
 export class TaskSystem {
-  private readonly tasks = new Map<string, Task>();
+  constructor(
+    private readonly repo: Repository<Task> = new InMemoryRepository<Task>(),
+  ) {}
 
   create(draft: TaskDraft): Task {
     validateTaskDraft(draft);
     const timestamp = now();
+    const requiredPermissions: RequiredPermission[] = (
+      draft.requiredPermissions ?? []
+    ).map((entry) => ({ ...entry }));
     const task: Task = {
       id: createId("task"),
       type: draft.type,
@@ -52,26 +61,27 @@ export class TaskSystem {
       status: "created",
       input: draft.input ?? null,
       errors: [],
+      requiredPermissions,
       createdAt: timestamp,
       updatedAt: timestamp,
       metadata: { ...(draft.metadata ?? {}) },
     };
-    this.tasks.set(task.id, task);
+    this.repo.upsert(task);
     return task;
   }
 
   get(id: string): Task | undefined {
-    return this.tasks.get(id);
+    return this.repo.findById(id);
   }
 
   require(id: string): Task {
-    const task = this.tasks.get(id);
+    const task = this.repo.findById(id);
     if (!task) throw new NotFoundError(`unknown task: ${id}`);
     return task;
   }
 
   list(): Task[] {
-    return [...this.tasks.values()];
+    return this.repo.list();
   }
 
   canTransition(from: TaskStatus, to: TaskStatus): boolean {
@@ -90,13 +100,14 @@ export class TaskSystem {
       status: to,
       updatedAt: now(),
       assignedAgentId: patch.assignedAgentId ?? task.assignedAgentId,
+      approvalId: "approvalId" in patch ? patch.approvalId : task.approvalId,
       output: "output" in patch ? patch.output : task.output,
       metadata: patch.metadata
         ? { ...task.metadata, ...patch.metadata }
         : task.metadata,
       errors: patch.error ? [...task.errors, patch.error] : task.errors,
     };
-    this.tasks.set(id, next);
+    this.repo.upsert(next);
     return next;
   }
 

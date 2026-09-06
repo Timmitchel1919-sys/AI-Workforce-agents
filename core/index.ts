@@ -2,6 +2,7 @@
 
 export * from "../contracts/index.js";
 export * from "./shared.js";
+export * from "./persistence/in-memory-repository.js";
 export * from "./registry/agent-registry.js";
 export * from "./tasks/task-system.js";
 export * from "./handoffs/handoff-system.js";

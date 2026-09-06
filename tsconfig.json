@@ -9,5 +9,10 @@
     "rootDir": ".",
     "skipLibCheck": true
   },
-  "include": ["core/**/*.ts", "contracts/**/*.ts", "adapters/**/*.ts", "tests/**/*.ts"]
+  "include": [
+    "core/**/*.ts",
+    "contracts/**/*.ts",
+    "adapters/**/*.ts",
+    "tests/**/*.ts"
+  ]
 }

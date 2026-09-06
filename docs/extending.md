@@ -56,6 +56,39 @@ Implement `AuditSink.write(event)` and pass it to `new AuditLog(sink)`. Keep the
 default `InMemoryAuditSink` working for tests. External log shipping is a later
 decision.
 
+## Adding a persistence backend
+
+1. Implement `Repository<T>` from
+   [`contracts/persistence.ts`](../contracts/persistence.ts) —
+   `upsert` / `findById` / `list` / `delete` / `clear`, synchronous, storing a
+   defensive copy on write and returning one on read.
+2. Bundle one repository per collection into a `PersistenceProvider` (tasks,
+   agents, approvals, handoffs, audit events).
+3. Anything touching `node:fs`, a network, or a database driver is an
+   **adapter** (`adapters/persistence/…`). Only the pure in-memory default
+   lives in `core/`.
+4. Never persist a secret. Persisted entities carry no credentials; keep it
+   that way.
+5. Add tests that prove state survives a fresh instance over the same store
+   (see `tests/persistence.test.ts`).
+6. A networked store that must be async needs a new interface revision — write
+   an ADR first (see [ADR-0002](adr/0002-local-json-file-persistence.md)).
+
+## Adding an approval policy
+
+Implement `ApprovalPolicy.evaluate(task): ApprovalRequirement` and pass it in
+`OrchestratorOptions.approvalPolicy`. It must be deterministic and **must not
+auto-approve** — it only decides whether a human decision is required. The
+human decision arrives separately via `orchestrator.recordApprovalDecision(...)`
+followed by `orchestrator.resume(...)`.
+
+## Declaring the permissions a task needs
+
+Set `requiredPermissions` on the `TaskDraft` (`{ action, toolId? }` entries).
+The orchestrator asserts each against the injected `PermissionSystem` before
+dispatch and fails the task on denial. A task with `requiredPermissions` and no
+`PermissionSystem` configured fails safe.
+
 ## Changing the task or handoff state machine
 
 Edit the transition table in
@@ -66,10 +99,12 @@ a representative invalid one.
 
 ## Checklist before committing
 
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes (all deterministic, offline)
-- [ ] No secret, API key, token, or credential in code, tests, or fixtures
+- [ ] `npm run check` passes (typecheck + lint + format:check + test)
+- [ ] All tests deterministic and offline — no real AI API calls
+- [ ] No secret, API key, token, or credential in code, tests, fixtures, or
+      persistence
 - [ ] `core/` still has zero imports from `adapters/`
-- [ ] New external capability sits behind a contract
+- [ ] New external capability (provider, tool, project, persistence) sits behind
+      a contract
 - [ ] New actions are deny-by-default with least-privilege grants
 - [ ] Docs updated (this file, `architecture.md`, and an ADR for a structural change)
