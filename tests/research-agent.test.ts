@@ -15,23 +15,27 @@ import {
   PermissionSystem,
   RoutingAgentExecutor,
   TaskSystem,
+  ToolExecutionEngine,
+  ToolRegistry,
   ValidationError,
   validateResearchResult,
   validateResearchTask,
+  type AgentLimits,
+  type Environment,
   type ModelProvider,
   type ModelRequest,
   type ResearchResult,
   type Task,
 } from "../core/index.js";
-import {
-  InMemoryToolProvider,
-  StaticResearchToolProvider,
-} from "../adapters/index.js";
+import { makeInMemoryTool, mockResearchTools } from "../adapters/index.js";
 import {
   computeConfidence,
   makeResearchAgentDefinition,
   researchAgentGrants,
   researchApprovalPolicy,
+  researchFetchToolDefinition,
+  researchSearchToolDefinition,
+  researchToolDefinitions,
   ResearchAgent,
   RESEARCH_AGENT_ID,
 } from "../agents/research/index.js";
@@ -57,6 +61,8 @@ const SYNTH_JSON = JSON.stringify({
   limitations: ["Only two sources were available."],
   recommendations: ["Widen the search next iteration."],
 });
+
+type Handler = (input: unknown) => unknown;
 
 function scriptedModel(
   responses: string[],
@@ -84,44 +90,88 @@ function throwingModel(message: string): ModelProvider {
   };
 }
 
-function researchTools(
-  over: Partial<{
-    search: (input: unknown) => unknown;
-    fetch: (input: unknown) => unknown;
-  }> = {},
-) {
-  const calls: Array<{ tool: string; input: unknown }> = [];
-  const search =
-    over.search ??
-    (() => ({
-      results: [
-        {
-          title: "Reference A",
-          reference: "https://example.org/a",
-          snippet: "about alpha",
-          sourceType: "web_page",
-        },
-      ],
-    }));
-  const fetch =
-    over.fetch ??
-    (() => ({
+const defaultSearch: Handler = () => ({
+  results: [
+    {
       title: "Reference A",
-      content: "Alpha content, verified and on topic.",
+      reference: "https://example.org/a",
+      snippet: "about alpha",
       sourceType: "web_page",
-      reputation: 0.7,
-    }));
-  const provider = new InMemoryToolProvider("research-tools", {
-    "research.search": (input) => {
+    },
+  ],
+});
+const defaultFetch: Handler = () => ({
+  title: "Reference A",
+  content: "Alpha content, verified and on topic.",
+  sourceType: "web_page",
+  reputation: 0.7,
+});
+
+interface EngineOptions {
+  search?: Handler;
+  fetch?: Handler;
+  permissions?: PermissionSystem;
+  approvals?: ApprovalSystem;
+  audit?: AuditLog;
+  clock?: () => number;
+}
+
+function researchEngine(options: EngineOptions = {}) {
+  const audit = options.audit ?? new AuditLog();
+  const permissions =
+    options.permissions ?? new PermissionSystem(researchAgentGrants());
+  const approvals = options.approvals ?? new ApprovalSystem();
+  const calls: Array<{ tool: string; input: unknown }> = [];
+  const search = options.search ?? defaultSearch;
+  const fetch = options.fetch ?? defaultFetch;
+
+  const registry = new ToolRegistry();
+  registry.register(
+    makeInMemoryTool(researchSearchToolDefinition, (input) => {
       calls.push({ tool: "research.search", input });
       return search(input);
-    },
-    "research.fetch": (input) => {
+    }),
+  );
+  registry.register(
+    makeInMemoryTool(researchFetchToolDefinition, (input) => {
       calls.push({ tool: "research.fetch", input });
       return fetch(input);
-    },
+    }),
+  );
+
+  const engine = new ToolExecutionEngine({
+    registry,
+    permissions,
+    approvals,
+    audit,
+    clock: options.clock,
   });
-  return { provider, calls };
+  return { engine, audit, permissions, approvals, registry, toolCalls: calls };
+}
+
+interface AgentOptions extends EngineOptions {
+  model?: ModelProvider;
+  limits?: Partial<AgentLimits>;
+  context?: ContextSystem;
+  environment?: Environment;
+}
+
+function standaloneAgent(options: AgentOptions = {}) {
+  const context = options.context ?? new ContextSystem();
+  const wiring = researchEngine(options);
+  const agent = new ResearchAgent({
+    model:
+      "model" in options
+        ? options.model
+        : scriptedModel([PLAN_JSON, SYNTH_JSON]),
+    toolEngine: wiring.engine,
+    context,
+    audit: wiring.audit,
+    limits: options.limits,
+    clock: options.clock,
+    environment: options.environment,
+  });
+  return { agent, context, ...wiring };
 }
 
 function draft(over: Record<string, unknown> = {}) {
@@ -152,23 +202,6 @@ function fakeTask(over: Partial<Task> = {}): Task {
     metadata: {},
     ...over,
   };
-}
-
-function standaloneAgent(
-  over: Partial<ConstructorParameters<typeof ResearchAgent>[0]> = {},
-) {
-  const audit = new AuditLog();
-  const context = new ContextSystem();
-  const { provider, calls } = researchTools();
-  const agent = new ResearchAgent({
-    model: scriptedModel([PLAN_JSON, SYNTH_JSON]),
-    tools: provider,
-    permissions: new PermissionSystem(researchAgentGrants()),
-    context,
-    audit,
-    ...over,
-  });
-  return { agent, audit, context, toolCalls: calls };
 }
 
 const AGENT_DEF = makeResearchAgentDefinition({ allowedProjects: ["proj-x"] });
@@ -328,11 +361,11 @@ test("model: the research agent has no direct Anthropic dependency", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* 6. ToolProvider interaction                                        */
+/* 6. Tool interaction — via the ToolExecutionEngine                  */
 /* ------------------------------------------------------------------ */
 
-test("tools: search then fetch are invoked through ToolProvider", async () => {
-  const { agent, toolCalls } = standaloneAgent();
+test("tools: search then fetch run through the ToolExecutionEngine", async () => {
+  const { agent, toolCalls, audit } = standaloneAgent();
   await agent.execute(AGENT_DEF, fakeTask());
 
   const tools = toolCalls.map((c) => c.tool);
@@ -340,21 +373,24 @@ test("tools: search then fetch are invoked through ToolProvider", async () => {
   assert.ok(tools.includes("research.fetch"));
   const firstSearch = toolCalls.find((c) => c.tool === "research.search");
   assert.equal((firstSearch?.input as { query?: string }).query, "alpha topic");
+
+  // the engine recorded its own lifecycle events
+  const phases = audit
+    .list()
+    .filter((e) => e.type === "tool_execution")
+    .map((e) => (e.data as { phase: string }).phase);
+  assert.ok(phases.includes("requested"));
+  assert.ok(phases.includes("authorized"));
+  assert.ok(phases.includes("completed"));
 });
 
 /* ------------------------------------------------------------------ */
-/* 7. Permission enforcement                                          */
+/* 7. Permission enforcement (in the engine)                          */
 /* ------------------------------------------------------------------ */
 
 test("permissions: a denied tool stops the run before the tool executes", async () => {
-  const { provider, calls } = researchTools();
-  const audit = new AuditLog();
-  const agent = new ResearchAgent({
-    model: scriptedModel([PLAN_JSON, SYNTH_JSON]),
-    tools: provider,
+  const { agent, audit, toolCalls } = standaloneAgent({
     permissions: new PermissionSystem([]), // deny-by-default
-    context: new ContextSystem(),
-    audit,
   });
 
   await assert.rejects(
@@ -365,14 +401,14 @@ test("permissions: a denied tool stops the run before the tool executes", async 
       return true;
     },
   );
-  assert.equal(calls.length, 0, "no tool ran");
+  assert.equal(toolCalls.length, 0, "no tool handler ran");
 
   const decision = audit
     .list()
     .find(
       (e) =>
-        e.type === "agent_activity" &&
-        (e.data as { kind?: string }).kind === "tool_decision",
+        e.type === "permission_decision" &&
+        (e.data as { via?: string }).via === "tool-execution-engine",
     );
   assert.equal((decision?.data as { allowed?: boolean }).allowed, false);
 });
@@ -412,7 +448,7 @@ test("context: only the task's project context is visible", async () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* 9-11. Limits and timeout                                           */
+/* 9-11. Limits and timeout (agent-level, preserved)                  */
 /* ------------------------------------------------------------------ */
 
 test("limits: exceeding max tool calls fails with limit_exceeded", async () => {
@@ -442,7 +478,9 @@ test("limits: exceeding max model calls fails with limit_exceeded", async () => 
 
 test("limits: a slow tool trips the wall-clock timeout deterministically", async () => {
   let clockValue = 0;
-  const { provider } = researchTools({
+  const { agent } = standaloneAgent({
+    limits: { timeoutMs: 100 },
+    clock: () => clockValue,
     search: () => {
       clockValue += 5_000; // jump past the deadline
       return {
@@ -456,15 +494,6 @@ test("limits: a slow tool trips the wall-clock timeout deterministically", async
         ],
       };
     },
-  });
-  const agent = new ResearchAgent({
-    model: scriptedModel([PLAN_JSON, SYNTH_JSON]),
-    tools: provider,
-    permissions: new PermissionSystem(researchAgentGrants()),
-    context: new ContextSystem(),
-    audit: new AuditLog(),
-    limits: { timeoutMs: 100 },
-    clock: () => clockValue,
   });
 
   await assert.rejects(
@@ -481,17 +510,10 @@ test("limits: a slow tool trips the wall-clock timeout deterministically", async
 /* ------------------------------------------------------------------ */
 
 test("errors: a search-tool failure is a structured tool_failure", async () => {
-  const { provider } = researchTools({
+  const { agent } = standaloneAgent({
     search: () => {
       throw new Error("search backend unavailable");
     },
-  });
-  const agent = new ResearchAgent({
-    model: scriptedModel([PLAN_JSON, SYNTH_JSON]),
-    tools: provider,
-    permissions: new PermissionSystem(researchAgentGrants()),
-    context: new ContextSystem(),
-    audit: new AuditLog(),
   });
   await assert.rejects(
     agent.execute(AGENT_DEF, fakeTask()),
@@ -508,11 +530,9 @@ test("errors: a search-tool failure is a structured tool_failure", async () => {
 
 test("errors: a fetch failure degrades to an unverified source, not a hard failure", async () => {
   const { agent } = standaloneAgent({
-    ...standaloneAgentToolOverride({
-      fetch: () => {
-        throw new Error("fetch timeout");
-      },
-    }),
+    fetch: () => {
+      throw new Error("fetch timeout");
+    },
   });
   const output = (await agent.execute(AGENT_DEF, fakeTask())) as ResearchResult;
   assert.ok(output.sources.every((s) => !s.verified));
@@ -521,14 +541,7 @@ test("errors: a fetch failure degrades to an unverified source, not a hard failu
 });
 
 test("errors: a throwing model is a structured model_failure", async () => {
-  const { provider } = researchTools();
-  const agent = new ResearchAgent({
-    model: throwingModel("model exploded"),
-    tools: provider,
-    permissions: new PermissionSystem(researchAgentGrants()),
-    context: new ContextSystem(),
-    audit: new AuditLog(),
-  });
+  const { agent } = standaloneAgent({ model: throwingModel("model exploded") });
   await assert.rejects(
     agent.execute(AGENT_DEF, fakeTask()),
     (error: unknown) => {
@@ -622,7 +635,7 @@ test("confidence: derived from evidence, not model wording", () => {
 /* 16. Audit events                                                   */
 /* ------------------------------------------------------------------ */
 
-test("audit: the workflow emits the expected agent_activity trail", async () => {
+test("audit: the workflow emits the expected agent_activity + tool_execution trail", async () => {
   const { agent, audit } = standaloneAgent();
   await agent.execute(AGENT_DEF, fakeTask());
 
@@ -637,8 +650,8 @@ test("audit: the workflow emits the expected agent_activity trail", async () => 
     "context_loaded",
     "model_call",
     "plan_ready",
-    "tool_decision",
     "tool_requested",
+    "tool_result",
     "source_collected",
     "synthesis",
     "confidence_scored",
@@ -649,12 +662,11 @@ test("audit: the workflow emits the expected agent_activity trail", async () => 
   }
   assert.equal(kinds[0], "task_received");
   assert.equal(kinds.at(-1), "completed");
+  assert.ok(audit.list().some((e) => e.type === "tool_execution"));
 });
 
 test("audit: a failed run records a structured failure event", async () => {
-  const { agent, audit } = standaloneAgent({
-    model: throwingModel("boom"),
-  });
+  const { agent, audit } = standaloneAgent({ model: throwingModel("boom") });
   await assert.rejects(agent.execute(AGENT_DEF, fakeTask()));
   const failed = audit
     .list()
@@ -675,31 +687,29 @@ function wireOrchestrator(
     makeResearchAgentDefinition({ allowedProjects: ["proj-x"] }),
   );
   const tasks = new TaskSystem();
-  const audit = new AuditLog();
   const permissions = new PermissionSystem(grants);
   const context = new ContextSystem();
-  const { provider } = researchTools();
+  const wiring = researchEngine({ permissions });
   const router = new RoutingAgentExecutor();
   router.register(
     RESEARCH_AGENT_ID,
     new ResearchAgent({
       model: scriptedModel([PLAN_JSON, SYNTH_JSON]),
-      tools: provider,
-      permissions,
+      toolEngine: wiring.engine,
       context,
-      audit,
+      audit: wiring.audit,
     }),
   );
   const orchestrator = new Orchestrator(
     registry,
     tasks,
     new HandoffSystem(),
-    audit,
+    wiring.audit,
     router,
     new ApprovalSystem(),
     { permissions, environment: "local", approvalPolicy },
   );
-  return { orchestrator, audit };
+  return { orchestrator, audit: wiring.audit };
 }
 
 test("orchestrator: routes a research task to the research agent and completes", async () => {
@@ -719,7 +729,7 @@ test("orchestrator: routes a research task to the research agent and completes",
   assert.doesNotThrow(() => validateResearchResult(task.output));
   assert.equal((task.output as ResearchResult).agentId, RESEARCH_AGENT_ID);
   assert.ok(audit.list().some((e) => e.type === "task_completed"));
-  assert.ok(audit.list().some((e) => e.type === "agent_activity"));
+  assert.ok(audit.list().some((e) => e.type === "tool_execution"));
 });
 
 test("orchestrator: read-only research needs no approval", () => {
@@ -773,10 +783,10 @@ test("orchestrator: risky research policy classifies each action", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* 18. Reference tool provider (offline, deterministic)              */
+/* 18. Mock research tools (offline) drive a full run                */
 /* ------------------------------------------------------------------ */
 
-test("static tool provider: drives a full research run offline", async () => {
+test("mock research tools: drive a full research run offline through the engine", async () => {
   const corpus = [
     {
       reference: "https://example.org/alpha",
@@ -796,12 +806,21 @@ test("static tool provider: drives a full research run offline", async () => {
       keywords: ["beta", "topic"],
     },
   ];
+  const audit = new AuditLog();
+  const registry = new ToolRegistry();
+  const tools = mockResearchTools(corpus, researchToolDefinitions);
+  registry.register(tools.search);
+  registry.register(tools.fetch);
+  const engine = new ToolExecutionEngine({
+    registry,
+    permissions: new PermissionSystem(researchAgentGrants()),
+    audit,
+  });
   const agent = new ResearchAgent({
     model: scriptedModel([PLAN_JSON, SYNTH_JSON]),
-    tools: new StaticResearchToolProvider(corpus),
-    permissions: new PermissionSystem(researchAgentGrants()),
+    toolEngine: engine,
     context: new ContextSystem(),
-    audit: new AuditLog(),
+    audit,
   });
   const output = (await agent.execute(AGENT_DEF, fakeTask())) as ResearchResult;
   assert.doesNotThrow(() => validateResearchResult(output));
@@ -812,14 +831,6 @@ test("static tool provider: drives a full research run offline", async () => {
 /* ------------------------------------------------------------------ */
 /* helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-function standaloneAgentToolOverride(over: {
-  search?: (input: unknown) => unknown;
-  fetch?: (input: unknown) => unknown;
-}) {
-  const { provider } = researchTools(over);
-  return { tools: provider };
-}
 
 function walkTs(dir: string): string[] {
   const out: string[] = [];

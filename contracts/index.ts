@@ -13,7 +13,9 @@
 /* ------------------------------------------------------------------ */
 
 export type Priority = "low" | "normal" | "high" | "critical";
-export type Environment = "local" | "test" | "staging" | "production";
+
+export const ENVIRONMENTS = ["local", "test", "staging", "production"] as const;
+export type Environment = (typeof ENVIRONMENTS)[number];
 
 /* ------------------------------------------------------------------ */
 /* Permissions                                                        */
@@ -266,6 +268,8 @@ export const AUDIT_EVENT_TYPES = [
   "model_execution_completed",
   "model_execution_failed",
   "agent_activity",
+  "tool_registered",
+  "tool_execution",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -537,7 +541,7 @@ export function requireArray(
   return value;
 }
 
-const PERMISSION_ACTIONS: readonly PermissionAction[] = [
+export const PERMISSION_ACTIONS: readonly PermissionAction[] = [
   "read",
   "write",
   "execute",
@@ -626,3 +630,4 @@ export function validateApprovalRequest(draft: ApprovalRequestDraft): void {
 export type { Entity, Repository, PersistenceProvider } from "./persistence.js";
 
 export * from "./research.js";
+export * from "./tools.js";

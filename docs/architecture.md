@@ -10,7 +10,8 @@ boundary, human approval gates, project-isolated context, a structured audit
 log, and durable persistence behind an interface — all behind **provider- and
 project-agnostic contracts**.
 
-As of Phase 2B there is a real model-provider adapter (Anthropic), but still no
+As of Phase 4 there is a real model-provider adapter (Anthropic), a first
+General Agent (Research), and a secure Tool & Execution Framework — but still no
 autonomous planning engine and no real project integration. Every external
 capability (a model provider, an external tool, a real project such as Money
 Mind, a database) enters only through an interface in
@@ -41,6 +42,7 @@ contracts/
   index.ts                  Types + pure validators + agent execution boundary. No runtime deps.
   persistence.ts            Repository<T> + PersistenceProvider interfaces.
   research.ts                ResearchTask / ResearchResult + validators.
+  tools.ts                  Tool contract, ToolExecutionRequest/Result, limits, policy + validators.
 core/
   shared.ts                 Deterministic id + time helpers.
   persistence/in-memory-repository   InMemoryRepository / InMemoryPersistence (pure, default).
@@ -55,23 +57,27 @@ core/
   providers/audited-model-provider   AuditedModelProvider — audit decorator around any ModelProvider.
   agents/general-agent      GeneralAgent base + AgentRun (limits, audit, structured failure).
   agents/routing-agent-executor  RoutingAgentExecutor — dispatch by agent.id.
+  tools/tool-policy         Pure deny-by-default eligibility + approval predicates.
+  tools/tool-registry       ToolRegistry — validate, freeze, controlled update, eligibility.
+  tools/tool-execution-engine  ToolExecutionEngine — the one secure tool pipeline.
   orchestrator/orchestrator  Orchestrator — validate → permit → gate → dispatch → record.
   index.ts                  Barrel export for the whole core.
 adapters/
   models/model-provider     ModelProvider contract + EchoModelProvider double.
   models/anthropic-model-provider  AnthropicModelProvider + config + transport seam + error mapping.
-  tools/tool-provider       ToolProvider contract + InMemoryToolProvider double.
+  tools/tool-provider       ToolProvider contract + InMemoryToolProvider double (low-level shape).
   tools/static-research-tools  StaticResearchToolProvider — offline research.search / research.fetch.
+  tools/mock-tools          makeInMemoryTool + mockResearchTools — deterministic Tool fakes.
   projects/project-adapter  ProjectAdapter contract + BaseProjectAdapter helper.
   persistence/json-file-persistence  JsonFileRepository / JsonFilePersistence (durable, node:fs).
   index.ts                  Barrel export for adapters.
 agents/
-  research/research-agent   ResearchAgent (extends GeneralAgent) + confidence model.
-  research/research-agent-definition  Registry metadata, grants, approval policy.
+  research/research-agent   ResearchAgent (extends GeneralAgent) — calls tools via the engine.
+  research/research-agent-definition  Registry metadata, grants, approval policy, tool definitions.
   research/index.ts         Barrel export for the research agent.
 tests/
   foundation | persistence | approval-execution | permission-enforcement
-  anthropic-provider | model-provider-layer | research-agent   (122 tests total)
+  anthropic-provider | model-provider-layer | research-agent | tool-framework   (160 tests total)
 docs/                       This documentation + ADRs.
 .env.example                Placeholder environment configuration (never a real .env).
 .github/workflows/ci.yml    Continuous integration.
@@ -175,7 +181,8 @@ a `Repository<AuditEvent>` is supplied — persists it. Event types:
 `task_completed`, `task_failed`, `model_provider_requested`,
 `model_execution_started`, `model_execution_completed`,
 `model_execution_failed`, `agent_activity` (General Agent phase events, with a
-`data.kind` discriminator).
+`data.kind` discriminator), `tool_registered`, `tool_execution` (tool pipeline
+phase events, with a `data.phase` discriminator).
 
 ### Persistence
 
@@ -349,6 +356,36 @@ declares a state-changing/outbound requirement. Full detail in
 [agents/research-agent.md](agents/research-agent.md); rationale in
 [ADR-0005](adr/0005-general-agent-pattern.md).
 
+## 9b. Tool & Execution Framework
+
+One secure pipeline every agent uses to run a tool — an agent never invokes a
+tool, `ToolProvider`, the permission system, or a credential directly.
+
+- **`Tool` contract** (`contracts/tools.ts`) — a `ToolDefinition` carries its
+  own policy: `requiredPermission`, `approvalPolicy`, `allowedAgents` /
+  `allowedProjects` / `allowedEnvironments` (deny-by-default; `"*"` = any),
+  `timeoutMs`, `limits` (calls per task/agent, per-call duration, input/output
+  bytes), optional input/output schema validators. `Tool = ToolDefinition &
+{ execute(input, ctx) }`; the handler's `ToolExecutionContext` has no
+  permission system, no credentials, no shell, no filesystem.
+- **`ToolRegistry`** — validates on registration, **freezes** the definition,
+  allows change only via `update(id, changes)` (re-validates), answers
+  eligibility, and `describe(id)` exposes metadata without the handler. Emits
+  `tool_registered`.
+- **`ToolExecutionEngine`** — `execute(request)` runs a fixed, deterministic
+  sequence: validate request → resolve tool → agent/project/environment
+  eligibility → input-size + per-task/agent call limits →
+  `PermissionSystem.evaluate` (+ `permission_decision` audit) → approval policy
+  (park with `approval_required`, `resume(requestId)` after a human decision) →
+  run handler with timeout → output-size + output-schema → `ToolExecutionResult`
+  (`success` | `failure` | `timeout` | `denied` | `approval_required`). Every
+  step is a `tool_execution` audit event with a `data.phase`. Tool output is
+  never written to the audit log.
+
+The tool-level approval gate is **orthogonal** to the orchestrator's task-level
+`ApprovalPolicy` — both apply. Full detail in [tools.md](tools.md); rationale in
+[ADR-0006](adr/0006-tool-execution-framework.md).
+
 ## 10. Persistence architecture
 
 - **Interface:** `contracts/persistence.ts` — `Repository<T>` and
@@ -381,19 +418,22 @@ stays zero. `tsc --noEmit` remains the type-correctness gate. See
 ## 13. Testing
 
 `npm test` compiles with `tsc` and runs `node --test` over the compiled output
-(94 tests). Coverage: agent registration/lookup/validation; task
-creation/(in)valid transitions/retry; handoff validation; permission
-denial/approval and every scope (agent, project, tool, environment, explicit
-deny); approval lifecycle including request/await/approve/reject/expiry/resume;
-orchestrator routing/blocking/failure/approval-gated/permission-denied;
-persistence save/load/update/isolation and survival across reinitialization;
-audit events including approval, permission, and model-execution decisions;
-Anthropic adapter config/validation, request/response mapping, and every
-failure class (auth, rate-limit, timeout, network, server, bad-request,
-malformed-response) via a stub transport; secret redaction; the provider
-registry; the audit decorator; and a check that `core/` and `contracts/` carry
-no Anthropic dependency. Every test is deterministic and offline — **no real AI
-API calls**.
+(**160 tests**). Coverage: the Phase 1–3 surface (registry, task lifecycle,
+handoffs, permissions + every scope, approval lifecycle + resume, orchestrator
+routing, persistence + survival across reinit, audit, the Anthropic adapter and
+its failure classes, the model provider registry + audit decorator, the
+Research Agent workflow / limits / context isolation / failure modes); plus the
+**Tool & Execution Framework**: registry registration/duplication/validation/
+immutability/`update`/eligibility/`describe`; request validation and the
+unauthorized-agent/project/environment cases; permission allow/deny/explicit-
+deny; approval required/awaiting/approved/rejected/expired and
+environment-scoped policy; execution success/tool-failure/timeout/
+malformed-result/input-schema and every limit (calls per task, calls per agent,
+input size, output size, engine ceiling); security invariants (a denied or
+unapproved tool's handler never runs, project isolation, no output payloads in
+the audit log); and the migrated Research Agent driving tools through the
+engine. Every test is deterministic and offline — **no real AI API calls, no
+real external services**.
 
 ## 14. Extension guidelines
 
@@ -412,14 +452,15 @@ least privilege, add deterministic tests, keep `core` free of adapter imports.
   unchanged; a model call still happens inside an executor that the orchestrator
   has already permission-checked.
 
-## 16. Deliberately out of scope through Phase 3
+## 16. Deliberately out of scope through Phase 4
 
 Autonomous planning and recursive agent loops, the other nine General Agents
 (Project Manager, Developer, Data Analyst, QA, Security, Finance, Business,
-Design, Documentation), a real web-search / fetch tool provider, additional
-real model providers (OpenAI/Google), a live end-to-end integration test,
-network I/O outside the Anthropic adapter, source deduplication and retry inside
-the Research Agent, asynchronous workers or queues, multi-process persistence
-and file locking, an async `Repository` revision, real authentication,
+Design, Documentation), real production tools (web search/fetch, repository
+writes, deployment), additional real model providers (OpenAI/Google), a live
+end-to-end integration test, network I/O outside the Anthropic adapter, source
+deduplication and retry inside the Research Agent, per-session tool budgets
+across tasks, asynchronous workers or queues, multi-process persistence and
+file locking, an async `Repository` revision, real authentication,
 retries/backoff at the orchestrator level, external logging or telemetry
 infrastructure, and any real project integration.

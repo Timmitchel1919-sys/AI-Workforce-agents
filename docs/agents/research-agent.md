@@ -18,10 +18,10 @@ GeneralAgent.execute()                                   ResearchAgent (extends 
   │
   ▼ ResearchAgent.run()
     load project + task context  (ContextSystem, this project only)
-      → plan sub-questions + queries        ── ModelProvider ──▶ (Anthropic adapter, or any)
-      → for each query: research.search     ── ToolProvider ───▶ (search/fetch provider)
-          for each hit: research.fetch → evaluate → ResearchSource
-      → synthesize findings                 ── ModelProvider ──▶
+      → plan sub-questions + queries        ── ModelProvider ────────▶ (Anthropic adapter, or any)
+      → for each query: ToolExecutionRequest ── ToolExecutionEngine ──▶ research.search
+          for each hit:  ToolExecutionRequest ── ToolExecutionEngine ──▶ research.fetch → evaluate → ResearchSource
+      → synthesize findings                 ── ModelProvider ────────▶
       → deterministic post-processing (drop bogus citations, downgrade
         unsupported facts, compute confidence)
       → build ResearchResult → validateResearchResult
@@ -73,26 +73,31 @@ closed with an `AgentExecutionError` instead.
 
 ## 4. Tools & permissions
 
-Two tools, invoked through the existing `ToolProvider` contract
-(`execute({ tool, input, context })`):
+The agent uses **two tools, always through the `ToolExecutionEngine`**
+([docs/tools.md](../tools.md)) — it never invokes a tool, a `ToolProvider`, or
+the permission system directly. `callTool` in `research-agent.ts` builds a
+`ToolExecutionRequest` and maps a non-`success` `ToolExecutionResult` back onto
+a structured `AgentExecutionError`.
 
-| Tool              | Action asserted | Input           | Output (tolerated shapes)                                                        |
-| ----------------- | --------------- | --------------- | -------------------------------------------------------------------------------- |
-| `research.search` | `execute`       | `{ query }`     | `{ results: [{ title, reference\|url, snippet, sourceType? }] }` or a bare array |
-| `research.fetch`  | `read`          | `{ reference }` | `{ title?, content\|text, sourceType?, reputation? }`                            |
+| Tool              | `requiredPermission` | Input           | Output (tolerated shapes)                                                        |
+| ----------------- | -------------------- | --------------- | -------------------------------------------------------------------------------- |
+| `research.search` | `execute`            | `{ query }`     | `{ results: [{ title, reference\|url, snippet, sourceType? }] }` or a bare array |
+| `research.fetch`  | `read`               | `{ reference }` | `{ title?, content\|text, sourceType?, reputation? }`                            |
 
-Every tool call is permission-checked **before** it runs:
-`permissions.evaluate({ action, toolId, agentId, projectId, environment })`.
-A denial produces `AgentExecutionError("permission_denied")` and a
-`agent_activity` `tool_decision` event with `allowed: false` — the tool never
-executes. `researchAgentGrants()` is least-privilege: **allow** `execute
-research.search` and `read research.fetch` only; **deny** `write`, `deploy`,
-`secret_access`, `external_communication`. No shell, no filesystem writes, no
-deployment, no outbound communication.
+Both tool definitions (`researchSearchToolDefinition` /
+`researchFetchToolDefinition`) are `allowedAgents: ["research-agent"]`, no
+`approvalPolicy` (read-only). The engine permission-checks every call against
+`researchAgentGrants()` (**allow** `execute research.search` + `read
+research.fetch`; **deny** `write` / `deploy` / `secret_access` /
+`external_communication`) and records a `permission_decision` + `tool_execution`
+audit trail. A denial → the tool never runs and the agent fails
+`permission_denied`. Engine per-task/agent call limits apply on top of the
+agent's `maxToolCalls`. No shell, no filesystem writes, no deployment, no
+outbound communication.
 
-`StaticResearchToolProvider` (in `adapters/tools/`) is an offline reference
-implementation over a fixed corpus — a deployment supplies a vetted provider
-behind the same contract.
+Handlers come from `mockResearchTools(corpus, researchToolDefinitions)` (offline
+reference / test double); a deployment registers a vetted search/fetch handler
+under the same tool ids.
 
 ## 5. Source evaluation
 
@@ -183,12 +188,13 @@ The agent emits `agent_activity` events (one audit type, `data.kind`
 discriminator) — scalable to future agents without growing the enum:
 
 `task_received`, `started`, `context_loaded`, `model_call`, `model_result`,
-`plan_ready`, `tool_decision`, `tool_requested`, `tool_result`,
-`source_collected`, `synthesis`, `confidence_scored`, `result_validated`,
-`completed`, `failed`.
+`plan_ready`, `tool_requested`, `tool_result`, `source_collected`, `synthesis`,
+`confidence_scored`, `result_validated`, `completed`, `failed`.
 
-Model calls are **also** audited as `model_execution_*` when the injected
-`ModelProvider` is wrapped in `AuditedModelProvider`. No API keys, headers, or
+The `ToolExecutionEngine` **also** emits `tool_execution` (phase events) and
+`permission_decision` for every tool call, and model calls are audited as
+`model_execution_*` when the injected `ModelProvider` is wrapped in
+`AuditedModelProvider`. No API keys, headers, or
 credentials are ever recorded. Prompt/source **content is not logged** unless
 `ResearchAgentConfig.logContent` (and `AuditedModelProvider.logContent`) are set
 — then only truncated previews.
@@ -214,13 +220,17 @@ import {
   PermissionSystem,
   RoutingAgentExecutor,
   TaskSystem,
+  ToolExecutionEngine,
+  ToolRegistry,
 } from "./core/index.js";
+import { mockResearchTools } from "./adapters/index.js";
 import {
   ResearchAgent,
   RESEARCH_AGENT_ID,
   makeResearchAgentDefinition,
   researchAgentGrants,
   researchApprovalPolicy,
+  researchToolDefinitions,
 } from "./agents/research/index.js";
 
 const registry = new AgentRegistry();
@@ -230,10 +240,22 @@ const audit = new AuditLog();
 const permissions = new PermissionSystem(researchAgentGrants());
 const context = new ContextSystem();
 
+// tools go through one engine
+const toolRegistry = new ToolRegistry(audit);
+const tools = mockResearchTools(corpus, researchToolDefinitions); // or vetted handlers
+toolRegistry.register(tools.search);
+toolRegistry.register(tools.fetch);
+const toolEngine = new ToolExecutionEngine({
+  registry: toolRegistry,
+  permissions,
+  approvals: new ApprovalSystem(),
+  audit,
+});
+
 const router = new RoutingAgentExecutor();
 router.register(
   RESEARCH_AGENT_ID,
-  new ResearchAgent({ model, tools, permissions, context, audit }),
+  new ResearchAgent({ model, toolEngine, context, audit }),
 );
 
 const orchestrator = new Orchestrator(
@@ -275,12 +297,19 @@ data)` at each phase.
    tools it needs; deny `write`/`deploy`/`secret_access`/`external_communication`
    unless the agent genuinely needs them), `supportedTaskTypes`, `capabilities`,
    and `metadata` (`role`, `successCriteria`, `errorBehavior`, `limits`).
-4. **Permissions** — `<agent>Grants(agentId)`; assert every tool call in `run`.
-5. **Approval** — if any action is state-changing/outbound, add an
-   `ApprovalPolicy` (like `researchApprovalPolicy`) that gates only those.
-6. **Model & tools** — depend only on `ModelProvider` / `ToolProvider`. Never
-   import a vendor SDK or a concrete adapter.
-7. **Wire** — `registry.register(...)`, `router.register(id, new <Agent>(...))`.
+4. **Permissions & tools** — `<agent>Grants(agentId)` for the `PermissionSystem`;
+   a `ToolDefinition` per tool (`allowedAgents: ["<agent-id>"]`,
+   `requiredPermission`, `approvalPolicy` for anything state-changing).
+   In `run`, build a `ToolExecutionRequest` and call `engine.execute(...)` —
+   never invoke a tool or the permission system directly.
+5. **Approval** — a tool-level `approvalPolicy` gates the tool; a task-level
+   `ApprovalPolicy` (like `researchApprovalPolicy`) gates the whole task. Add
+   whichever fits; don't weaken the defaults.
+6. **Model & tools** — depend only on `ModelProvider` and `ToolExecutionEngine`.
+   Never import a vendor SDK or a concrete adapter.
+7. **Wire** — register tool definitions + handlers on a `ToolRegistry`, build a
+   `ToolExecutionEngine`, `registry.register(...)`,
+   `router.register(id, new <Agent>({ ..., toolEngine }))`.
 8. **Tests** — deterministic and offline: registration, task/result validation,
    model + tool interaction (stubs), permission enforcement, context isolation,
    every limit, tool/model failure, invalid result, happy path, audit trail,

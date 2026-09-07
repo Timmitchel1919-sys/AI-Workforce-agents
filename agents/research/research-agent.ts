@@ -19,13 +19,13 @@
  */
 import {
   type Agent,
+  type AgentFailureReason,
   type AgentLimits,
   type Environment,
   type ModelMessage,
   type ModelProvider,
   type PermissionAction,
   type PermissionGuard,
-  type PermissionRequest,
   type ResearchConfidence,
   type ResearchEvidence,
   type ResearchFinding,
@@ -34,8 +34,6 @@ import {
   type ResearchTask,
   type SourceType,
   type Task,
-  type TaskContext,
-  type ToolProvider,
   AgentExecutionError,
   DEFAULT_AGENT_LIMITS,
   ProviderUnavailableError,
@@ -45,7 +43,7 @@ import {
 import { AuditLog } from "../../core/audit/audit-log.js";
 import { AgentRun, GeneralAgent } from "../../core/agents/general-agent.js";
 import { ContextSystem } from "../../core/context/context-system.js";
-import { PermissionSystem } from "../../core/permissions/permission-system.js";
+import { ToolExecutionEngine } from "../../core/tools/tool-execution-engine.js";
 import {
   RESEARCH_AGENT_ID,
   RESEARCH_AGENT_LIMITS,
@@ -60,8 +58,13 @@ import {
 export interface ResearchAgentConfig {
   /** Provider-neutral model. When absent, the agent fails `model_unavailable`. */
   model?: ModelProvider;
-  tools: ToolProvider;
-  permissions: PermissionSystem;
+  /**
+   * The one secure path to tools. The agent creates a `ToolExecutionRequest`
+   * and hands it to the engine — it never invokes a tool, a `ToolProvider`, or
+   * the permission system directly. Permissions, approval, and per-task/agent
+   * limits are enforced inside the engine.
+   */
+  toolEngine: ToolExecutionEngine;
   context: ContextSystem;
   audit: AuditLog;
   environment?: Environment;
@@ -71,6 +74,9 @@ export interface ResearchAgentConfig {
   logContent?: boolean;
   /** Max sources fetched + read per run. Default 5. */
   maxSources?: number;
+  /** Override the tool ids (defaults: research.search / research.fetch). */
+  searchToolId?: string;
+  fetchToolId?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -132,12 +138,13 @@ export class ResearchAgent extends GeneralAgent<ResearchTask, ResearchResult> {
   protected readonly limits: AgentLimits;
 
   private readonly model: ModelProvider | undefined;
-  private readonly tools: ToolProvider;
-  private readonly permissions: PermissionSystem;
+  private readonly toolEngine: ToolExecutionEngine;
   private readonly context: ContextSystem;
   private readonly environment: Environment;
   private readonly logContent: boolean;
   private readonly maxSources: number;
+  private readonly searchToolId: string;
+  private readonly fetchToolId: string;
 
   constructor(config: ResearchAgentConfig) {
     super({ audit: config.audit, clock: config.clock });
@@ -147,12 +154,13 @@ export class ResearchAgent extends GeneralAgent<ResearchTask, ResearchResult> {
       ...(config.limits ?? {}),
     };
     this.model = config.model;
-    this.tools = config.tools;
-    this.permissions = config.permissions;
+    this.toolEngine = config.toolEngine;
     this.context = config.context;
     this.environment = config.environment ?? "local";
     this.logContent = config.logContent ?? false;
     this.maxSources = config.maxSources ?? 5;
+    this.searchToolId = config.searchToolId ?? RESEARCH_TOOL_SEARCH;
+    this.fetchToolId = config.fetchToolId ?? RESEARCH_TOOL_FETCH;
   }
 
   protected validateInput(raw: unknown): ResearchTask {
@@ -219,12 +227,9 @@ export class ResearchAgent extends GeneralAgent<ResearchTask, ResearchResult> {
       run.checkDeadline();
       if (sources.length >= this.maxSources) break;
 
-      this.assertTool(task, run, "execute", RESEARCH_TOOL_SEARCH);
-      run.activity("tool_requested", { tool: RESEARCH_TOOL_SEARCH, query });
-      run.countToolCall(RESEARCH_TOOL_SEARCH);
-      const hits = await this.search(task, query);
+      const hits = await this.search(task, run, query);
       run.activity("tool_result", {
-        tool: RESEARCH_TOOL_SEARCH,
+        tool: this.searchToolId,
         hitCount: hits.length,
       });
 
@@ -232,13 +237,7 @@ export class ResearchAgent extends GeneralAgent<ResearchTask, ResearchResult> {
         run.checkDeadline();
         if (sources.length >= this.maxSources) break;
 
-        this.assertTool(task, run, "read", RESEARCH_TOOL_FETCH);
-        run.activity("tool_requested", {
-          tool: RESEARCH_TOOL_FETCH,
-          reference: hit.reference,
-        });
-        run.countToolCall(RESEARCH_TOOL_FETCH);
-        const fetched = await this.fetch(task, hit.reference);
+        const fetched = await this.fetch(task, run, hit.reference);
 
         const id = `src_${sources.length + 1}`;
         const source = this.buildSource(id, hit, fetched, rank, hits.length);
@@ -537,86 +536,116 @@ export class ResearchAgent extends GeneralAgent<ResearchTask, ResearchResult> {
     }
   }
 
-  private assertTool(
+  /**
+   * The only path to a tool. Builds a `ToolExecutionRequest`, hands it to the
+   * `ToolExecutionEngine` (which enforces permissions, approval, eligibility,
+   * and per-task/agent limits), and maps the `ToolExecutionResult` back onto a
+   * structured `AgentExecutionError` on anything other than success.
+   */
+  private async callTool(
     task: Task,
     run: AgentRun,
+    toolId: string,
     action: PermissionAction,
-    tool: string,
-  ): void {
-    const request: PermissionRequest = {
-      action,
-      toolId: tool,
-      agentId: this.agentId,
-      projectId: task.projectId,
-      environment: this.environment,
-    };
-    const decision = this.permissions.evaluate(request);
-    run.activity("tool_decision", {
-      tool,
-      action,
-      allowed: decision.allowed,
-      reason: decision.reason,
-    });
-    if (!decision.allowed) {
-      throw this.fail(
-        "permission_denied",
-        `denied ${action} on ${tool}: ${decision.reason}`,
-        { tool, action },
-      );
-    }
-  }
-
-  private async invokeTool(
-    task: Task,
-    tool: string,
     input: unknown,
   ): Promise<unknown> {
-    if (!this.tools.tools.includes(tool)) {
-      throw this.fail("tool_unavailable", `tool "${tool}" is not provided`, {
-        tool,
-      });
-    }
-    const context: TaskContext = {
-      scope: "task",
+    run.checkDeadline();
+    run.countToolCall(toolId);
+    run.activity("tool_requested", { tool: toolId, action });
+
+    const request = this.toolEngine.createRequest({
       taskId: task.id,
+      agentId: this.agentId,
       projectId: task.projectId,
-      values: {},
-    };
-    try {
-      const response = await this.tools.execute({ tool, input, context });
-      return response.output;
-    } catch (error) {
+      toolId,
+      action,
+      input,
+      environment: this.environment,
+      metadata: { agentRole: this.role },
+    });
+    const result = await this.toolEngine.execute(request);
+    run.activity("tool_result", {
+      tool: toolId,
+      status: result.status,
+      durationMs: result.durationMs,
+    });
+
+    if (result.status === "success") return result.output;
+
+    const reason = result.error?.reason;
+    const detail = result.error?.message ?? reason ?? "unknown";
+    if (result.status === "denied") {
       throw this.fail(
-        "tool_failure",
-        `tool "${tool}" failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        { tool },
-        error,
+        "permission_denied",
+        `tool "${toolId}" denied: ${detail}`,
+        { tool: toolId, reason },
       );
     }
+    if (result.status === "timeout") {
+      throw this.fail("timeout", `tool "${toolId}" timed out`, {
+        tool: toolId,
+      });
+    }
+    if (result.status === "approval_required") {
+      throw this.fail(
+        "permission_denied",
+        `tool "${toolId}" requires approval, which the research pipeline ` +
+          `cannot obtain mid-run`,
+        { tool: toolId, approvalId: result.approvalId },
+      );
+    }
+    const mapped: AgentFailureReason =
+      reason === "unknown_tool"
+        ? "tool_unavailable"
+        : reason === "call_limit_exceeded" ||
+            reason === "input_too_large" ||
+            reason === "output_too_large"
+          ? "limit_exceeded"
+          : "tool_failure";
+    throw this.fail(mapped, `tool "${toolId}" failed: ${detail}`, {
+      tool: toolId,
+      reason,
+    });
   }
 
-  private async search(task: Task, query: string): Promise<SearchHit[]> {
-    const output = await this.invokeTool(task, RESEARCH_TOOL_SEARCH, { query });
+  private async search(
+    task: Task,
+    run: AgentRun,
+    query: string,
+  ): Promise<SearchHit[]> {
+    const output = await this.callTool(
+      task,
+      run,
+      this.searchToolId,
+      "execute",
+      {
+        query,
+      },
+    );
     return normalizeSearchHits(output);
   }
 
   /**
    * A single failed fetch is recoverable — it yields an unverified source that
-   * is marked and down-weighted, not a hard failure. A missing fetch *tool*
-   * still fails hard.
+   * is marked and down-weighted. A missing tool or a permission denial still
+   * fails the run hard.
    */
-  private async fetch(task: Task, reference: string): Promise<FetchedSource> {
+  private async fetch(
+    task: Task,
+    run: AgentRun,
+    reference: string,
+  ): Promise<FetchedSource> {
     try {
-      const output = await this.invokeTool(task, RESEARCH_TOOL_FETCH, {
+      const output = await this.callTool(task, run, this.fetchToolId, "read", {
         reference,
       });
       return normalizeFetched(reference, output);
     } catch (error) {
       if (
         error instanceof AgentExecutionError &&
-        error.reason === "tool_unavailable"
+        (error.reason === "tool_unavailable" ||
+          error.reason === "permission_denied" ||
+          error.reason === "limit_exceeded")
       ) {
         throw error;
       }

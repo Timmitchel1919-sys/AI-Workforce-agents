@@ -10,12 +10,56 @@ import {
   type ModelPolicy,
   type PermissionAction,
   type PermissionGrant,
+  type ToolDefinition,
   DEFAULT_AGENT_LIMITS,
+  DEFAULT_TOOL_LIMITS,
+  ENVIRONMENTS,
 } from "../../contracts/index.js";
 
 export const RESEARCH_AGENT_ID = "research-agent";
 export const RESEARCH_TOOL_SEARCH = "research.search";
 export const RESEARCH_TOOL_FETCH = "research.fetch";
+
+/**
+ * Canonical policy metadata for the two research tools. The handlers live in
+ * adapters (`mockResearchTools`, or a vetted provider); the security policy —
+ * who / where / how often / which permission — lives here with the agent
+ * domain. Both are read-only: no `approvalPolicy`.
+ */
+export const researchSearchToolDefinition: ToolDefinition = {
+  id: RESEARCH_TOOL_SEARCH,
+  name: "Research Search",
+  description: "Search approved sources for a query and return ranked hits.",
+  version: "1.0.0",
+  capabilities: ["search", "web_research"],
+  requiredPermission: { action: "execute" },
+  allowedAgents: [RESEARCH_AGENT_ID],
+  allowedProjects: ["*"],
+  allowedEnvironments: [...ENVIRONMENTS],
+  timeoutMs: 15_000,
+  limits: { ...DEFAULT_TOOL_LIMITS, maxCallsPerTask: 12 },
+  metadata: { readOnly: true },
+};
+
+export const researchFetchToolDefinition: ToolDefinition = {
+  id: RESEARCH_TOOL_FETCH,
+  name: "Research Fetch",
+  description: "Retrieve the content of a single approved source by reference.",
+  version: "1.0.0",
+  capabilities: ["fetch", "source_extraction"],
+  requiredPermission: { action: "read" },
+  allowedAgents: [RESEARCH_AGENT_ID],
+  allowedProjects: ["*"],
+  allowedEnvironments: [...ENVIRONMENTS],
+  timeoutMs: 15_000,
+  limits: { ...DEFAULT_TOOL_LIMITS, maxCallsPerTask: 24 },
+  metadata: { readOnly: true },
+};
+
+export const researchToolDefinitions = {
+  search: researchSearchToolDefinition,
+  fetch: researchFetchToolDefinition,
+} as const;
 
 export const RESEARCH_AGENT_LIMITS: AgentLimits = {
   ...DEFAULT_AGENT_LIMITS,

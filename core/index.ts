@@ -14,4 +14,7 @@ export * from "./providers/model-provider-registry.js";
 export * from "./providers/audited-model-provider.js";
 export * from "./agents/general-agent.js";
 export * from "./agents/routing-agent-executor.js";
+export * from "./tools/tool-policy.js";
+export * from "./tools/tool-registry.js";
+export * from "./tools/tool-execution-engine.js";
 export * from "./orchestrator/orchestrator.js";

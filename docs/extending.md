@@ -57,13 +57,32 @@ reference. Follow its shape:
    mapping, every failure class, and secret redaction. Never call the real
    endpoint.
 
-## Adding a tool provider
+## Adding a tool
 
-1. Create `adapters/tools/<name>-tool-provider.ts` implementing `ToolProvider`.
-2. Expose an explicit `tools` list. `execute` must reject any tool not on it.
-3. Gate side-effecting tools through `PermissionSystem.assert(...)` at the call
-   site, and route human-gated actions through `ApprovalSystem`.
-4. Never expose raw shell, arbitrary filesystem, or credential retrieval.
+Tools go through the **Tool & Execution Framework** — see
+[docs/tools.md](tools.md) §13. In short:
+
+1. Write a `ToolDefinition`: id/name/version/capabilities, `requiredPermission`
+   (the single `PermissionAction` a caller must hold), `allowedAgents` (list the
+   exact agent ids — `["*"]` only if truly universal), `allowedProjects`,
+   `allowedEnvironments`, `timeoutMs`, `limits` (start from `DEFAULT_TOOL_LIMITS`),
+   and optional `inputSchema` / `outputSchema` validators.
+2. For a state-changing / outbound tool set `approvalPolicy`
+   (`{ always: true }` or `{ environments: ["production"] }` or
+   `{ actions: [...] }`) and a non-`read` `requiredPermission`.
+3. Pair it with a handler via `makeInMemoryTool(def, handler)` (or your own
+   `Tool`). The handler receives only `(input, ToolExecutionContext)` — no
+   permission system, no credentials, no shell, no filesystem. It calls a
+   provider it was given and returns data.
+4. `registry.register(tool)`. The definition is validated and frozen; change it
+   only via `registry.update(id, changes)`.
+5. Never implement unrestricted shell, deployment, arbitrary filesystem writes,
+   or credential access.
+6. Add framework tests (deterministic, offline): eligibility, permission
+   allow/deny, approval (if gated), success, failure, timeout, and every limit.
+
+The low-level `ToolProvider` (`adapters/tools/tool-provider.ts`) remains as the
+vendor-adapter shape a handler may wrap; new work targets `Tool` + the registry.
 
 ## Adding a General Agent (Project Manager, Developer, QA, ...)
 
@@ -91,8 +110,11 @@ recipe; in short:
    `PermissionSystem` (in addition to the orchestrator's pre-dispatch gate).
 5. **Approval** — if any action is state-changing/outbound, add an
    `ApprovalPolicy` that gates **only** those tasks; don't weaken the default.
-6. **Model & tools** — depend only on `ModelProvider` / `ToolProvider`. Never
-   import a vendor SDK or a concrete adapter from an agent.
+6. **Model & tools** — depend only on `ModelProvider` and the
+   `ToolExecutionEngine`. Build a `ToolExecutionRequest` and call
+   `engine.execute(...)`; never invoke a tool, `ToolProvider`, or the
+   permission system directly. Never import a vendor SDK or a concrete adapter
+   from an agent.
 7. **Wire** — `registry.register(make<Agent>Definition(...))` and
    `router.register("<agent-id>", new <Agent>(...))`.
 8. **Tests** — deterministic, offline, stubbed model + tools: registration,
@@ -164,8 +186,10 @@ a representative invalid one.
 - [ ] All tests deterministic and offline — no real AI API calls
 - [ ] No secret, API key, token, or credential in code, tests, fixtures, or
       persistence
-- [ ] `core/` still has zero imports from `adapters/`
+- [ ] `core/` still has zero imports from `adapters/` or `agents/`
 - [ ] New external capability (provider, tool, project, persistence) sits behind
       a contract
+- [ ] Tools run through the `ToolExecutionEngine` — no agent invokes a tool,
+      `ToolProvider`, or the permission system directly
 - [ ] New actions are deny-by-default with least-privilege grants
 - [ ] Docs updated (this file, `architecture.md`, and an ADR for a structural change)
