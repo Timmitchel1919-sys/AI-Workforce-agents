@@ -270,6 +270,7 @@ export const AUDIT_EVENT_TYPES = [
   "agent_activity",
   "tool_registered",
   "tool_execution",
+  "workflow_event",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -631,3 +632,7 @@ export type { Entity, Repository, PersistenceProvider } from "./persistence.js";
 
 export * from "./research.js";
 export * from "./tools.js";
+export * from "./workflow.js";
+export * from "./project-manager.js";
+export * from "./developer.js";
+export * from "./qa.js";

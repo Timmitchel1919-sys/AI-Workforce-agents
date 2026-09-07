@@ -84,11 +84,13 @@ Tools go through the **Tool & Execution Framework** — see
 The low-level `ToolProvider` (`adapters/tools/tool-provider.ts`) remains as the
 vendor-adapter shape a handler may wrap; new work targets `Tool` + the registry.
 
-## Adding a General Agent (Project Manager, Developer, QA, ...)
+## Adding a General Agent (Data Analyst, Security, Finance, ...)
 
-The Research Agent is the reference. See
-[docs/agents/research-agent.md](agents/research-agent.md) §12 for the full
-recipe; in short:
+The Research Agent (tool-using) and the Project Manager / Developer / QA
+agents (`agents/project-manager/`, `agents/developer/`, `agents/qa/` —
+reasoning-only, no tools yet) are the references. See
+[docs/agents/research-agent.md](agents/research-agent.md) §12 and
+[docs/workflows.md](workflows.md) §17 for the full recipe; in short:
 
 1. **Contracts** — `contracts/<agent>.ts`: structured task + result types and
    `validate<Agent>Task` / `validate<Agent>Result`. Re-export from
@@ -121,6 +123,31 @@ recipe; in short:
    task/result validation, model + tool interaction, permission enforcement,
    project context isolation, every limit + timeout, tool failure, model
    failure, invalid result, happy path, audit trail, orchestrator routing.
+
+## Adding a multi-agent workflow
+
+See [docs/workflows.md](workflows.md) for the full model. In short:
+
+1. Author a `WorkflowDraft`: `name`, `description`, `projectId`,
+   `participatingAgents` (every agent id any task may use), `tasks`
+   (`WorkflowTaskSpecDraft[]` — each with an `id`, `type`, either `agentId` or
+   `capability`, `dependsOn`, `acceptanceCriteria`, and optionally a
+   structured `input` for that task's own agent contract).
+2. Never rely on a Project-Manager-recommended assignment directly — build the
+   draft by hand, or call `engine.planFromObjective(...)`, which runs the PM
+   once and re-validates every recommendation through the same `assignAgent`
+   path as a hand-authored draft.
+3. `engine.submit(draft)` validates (rejects unknown deps, cycles, and a graph
+   over `limits.maxTasks` — nothing runs on an invalid graph) and schedules it
+   through the `Orchestrator`. If a task needs approval, `run()` returns with
+   the workflow `awaiting_approval`; call `engine.resume(workflowId)` after a
+   human decision.
+4. Set `limits` and `retryPolicy` deliberately — defaults are conservative
+   (`DEFAULT_WORKFLOW_LIMITS`, `DEFAULT_RETRY_POLICY`); never make a security
+   or validation failure reason retryable.
+5. Add tests: a valid graph, an invalid one (unknown dep / cycle / over
+   `maxTasks`), an assignment failure, a retry (successful and exhausted), an
+   approval pause + resume, and at least one limit.
 
 ## Adding a project adapter (AIMS, Money Mind, Mastery, Tripod)
 
@@ -191,5 +218,8 @@ a representative invalid one.
       a contract
 - [ ] Tools run through the `ToolExecutionEngine` — no agent invokes a tool,
       `ToolProvider`, or the permission system directly
+- [ ] A workflow task graph rejects unknown dependencies and cycles before any
+      task runs; a recommended agent assignment is always re-validated, never
+      trusted
 - [ ] New actions are deny-by-default with least-privilege grants
 - [ ] Docs updated (this file, `architecture.md`, and an ADR for a structural change)

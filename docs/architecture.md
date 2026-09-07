@@ -10,9 +10,11 @@ boundary, human approval gates, project-isolated context, a structured audit
 log, and durable persistence behind an interface — all behind **provider- and
 project-agnostic contracts**.
 
-As of Phase 4 there is a real model-provider adapter (Anthropic), a first
-General Agent (Research), and a secure Tool & Execution Framework — but still no
-autonomous planning engine and no real project integration. Every external
+As of Phase 5 there is a real model-provider adapter (Anthropic), four General
+Agents (Research, Project Manager, Developer, QA), a secure Tool & Execution
+Framework, and a controlled multi-agent **Workflow** layer that coordinates
+them through a validated task-dependency graph — but still no unrestricted
+autonomous planning and no real project integration. Every external
 capability (a model provider, an external tool, a real project such as Money
 Mind, a database) enters only through an interface in
 [`contracts/`](../contracts/index.ts) with an implementation under
@@ -61,6 +63,9 @@ core/
   tools/tool-registry       ToolRegistry — validate, freeze, controlled update, eligibility.
   tools/tool-execution-engine  ToolExecutionEngine — the one secure tool pipeline.
   orchestrator/orchestrator  Orchestrator — validate → permit → gate → dispatch → record.
+  workflows/workflow-graph   Pure: cycle-free readiness, agent assignment validation, retry policy.
+  workflows/workflow-system  WorkflowSystem — deterministic workflow lifecycle (mirrors TaskSystem).
+  workflows/workflow-engine  WorkflowEngine — schedules a task graph through the Orchestrator.
   index.ts                  Barrel export for the whole core.
 adapters/
   models/model-provider     ModelProvider contract + EchoModelProvider double.
@@ -72,12 +77,15 @@ adapters/
   persistence/json-file-persistence  JsonFileRepository / JsonFilePersistence (durable, node:fs).
   index.ts                  Barrel export for adapters.
 agents/
-  research/research-agent   ResearchAgent (extends GeneralAgent) — calls tools via the engine.
-  research/research-agent-definition  Registry metadata, grants, approval policy, tool definitions.
-  research/index.ts         Barrel export for the research agent.
+  shared/text-utils          extractJsonObject / toStringArray / truncate / dedupe — shared by PM/Dev/QA.
+  research/                  ResearchAgent (extends GeneralAgent) — calls tools via the engine.
+  project-manager/           ProjectManagerAgent — decompose an objective, or summarize a workflow.
+  developer/                 DeveloperAgent — implementation plan + proposed changes only.
+  qa/                        QaAgent — pass/fail/blocked verdict; cannot self-approve without evidence.
 tests/
   foundation | persistence | approval-execution | permission-enforcement
-  anthropic-provider | model-provider-layer | research-agent | tool-framework   (160 tests total)
+  anthropic-provider | model-provider-layer | research-agent | tool-framework
+  workflow-engine | workflow-agents | workflow-demo                        (206 tests total)
 docs/                       This documentation + ADRs.
 .env.example                Placeholder environment configuration (never a real .env).
 .github/workflows/ci.yml    Continuous integration.
@@ -87,8 +95,12 @@ Dependency direction is one-way: `adapters → contracts`, `core → contracts`,
 and `agents → core → contracts` (`agents` also uses `contracts` directly).
 `core` never imports from `adapters` or `agents`. The orchestrator, every core
 system's `Repository`, the `AgentExecutor`, the `ApprovalPolicy`, the
-`PermissionSystem`, and each General Agent's `ModelProvider` / `ToolProvider` /
-`PermissionSystem` / `ContextSystem` are all supplied by constructor injection.
+`PermissionSystem`, each General Agent's `ModelProvider` / `ToolProvider` /
+`PermissionSystem` / `ContextSystem`, and the `WorkflowEngine`'s `Orchestrator`
+are all supplied by constructor injection. `WorkflowEngine` depends only on
+`core` types (`AgentRegistry`, `WorkflowSystem`, `Orchestrator`, `HandoffSystem`,
+`AuditLog`, `PermissionSystem`, optionally `ToolRegistry`) — it never imports a
+concrete agent.
 
 ## 4. Core components
 
@@ -182,7 +194,8 @@ a `Repository<AuditEvent>` is supplied — persists it. Event types:
 `model_execution_started`, `model_execution_completed`,
 `model_execution_failed`, `agent_activity` (General Agent phase events, with a
 `data.kind` discriminator), `tool_registered`, `tool_execution` (tool pipeline
-phase events, with a `data.phase` discriminator).
+phase events, with a `data.phase` discriminator), `workflow_event` (workflow
+lifecycle events, with a `data.kind` discriminator — see §9c).
 
 ### Persistence
 
@@ -386,6 +399,51 @@ The tool-level approval gate is **orthogonal** to the orchestrator's task-level
 `ApprovalPolicy` — both apply. Full detail in [tools.md](tools.md); rationale in
 [ADR-0006](adr/0006-tool-execution-framework.md).
 
+## 9c. Multi-agent workflow orchestration
+
+A `Workflow` (`contracts/workflow.ts`) is a declarative task graph — nodes
+(`WorkflowTaskSpec`) with `dependsOn` edges, scoped to one project — that the
+`WorkflowEngine` (`core/workflows/`) schedules **through the existing
+`Orchestrator`**, task by task, so every Phase 2A–4 control (permissions,
+approval, tool execution) applies unchanged.
+
+- **Graph validation** — `findCycle` (pure, contract-level) rejects unknown
+  dependencies, self-dependencies, and any cycle _before_ a `Workflow` is even
+  created; `WorkflowSystem.create` also rejects a graph over `limits.maxTasks`.
+  Nothing runs on an invalid graph.
+- **Scheduling** — `computeReadySpecs` picks specs whose dependencies have all
+  completed; `assignAgent` independently re-validates every assignment
+  (registered, a declared participant, eligible, holds the capability, tool
+  access authorized) — a Project-Manager-recommended agent is never trusted
+  blindly, same as a hand-authored one.
+- **Handoffs** — cross-agent dependency edges get a real, validated
+  `HandoffSystem` propose→accept pair, not free text.
+- **Failure & retry** — `extractFailureReason` reads the `[agentId:reason]`
+  convention every `AgentExecutionError` already carries; `shouldRetry` caps
+  retries per task and never retries a permission/validation failure;
+  `failureBehavior: "abort" | "continue"` controls whether one failure stops
+  the whole workflow or only its dependents.
+- **Approval** — a gated task parks its record `awaiting_approval`; if nothing
+  else is actionable the whole workflow pauses there until
+  `engine.resume(workflowId)` is called after a human decision — the same
+  unbypassable gate as a standalone task.
+- **Limits** — `maxTasks`, `maxAgentExecutions`, `maxRetries`, `maxHandoffs`,
+  `maxToolCalls` (aggregated from each General Agent's own reported counters),
+  `maxDurationMs` (injectable clock), and `maxDelegationDepth` (bounding
+  `planFromObjective`, so nothing can recursively re-plan itself).
+- **Project Manager, Developer, QA** — three more `GeneralAgent`s, the same
+  pattern as Research (§9a): Project Manager only _proposes_ a decomposition
+  (`ProjectManagerDecision`) or a final summary and holds no tool access;
+  Developer only _proposes_ changes (`DeveloperResult`), with no filesystem or
+  shell dependency to call; QA's `"pass"` verdict is structurally rejected by
+  `validateQAResult` unless every finding is satisfied — it cannot approve its
+  own work without evidence, even if its own logic were bypassed.
+
+One new audit type, `workflow_event` (`data.kind` discriminator) — same
+pattern as `agent_activity`/`tool_execution`, not a literal type per lifecycle
+transition. Full detail in [workflows.md](workflows.md); rationale in
+[ADR-0007](adr/0007-multi-agent-workflow-orchestration.md).
+
 ## 10. Persistence architecture
 
 - **Interface:** `contracts/persistence.ts` — `Repository<T>` and
@@ -418,22 +476,28 @@ stays zero. `tsc --noEmit` remains the type-correctness gate. See
 ## 13. Testing
 
 `npm test` compiles with `tsc` and runs `node --test` over the compiled output
-(**160 tests**). Coverage: the Phase 1–3 surface (registry, task lifecycle,
+(**206 tests**). Coverage: the Phase 1–4 surface (registry, task lifecycle,
 handoffs, permissions + every scope, approval lifecycle + resume, orchestrator
 routing, persistence + survival across reinit, audit, the Anthropic adapter and
 its failure classes, the model provider registry + audit decorator, the
-Research Agent workflow / limits / context isolation / failure modes); plus the
-**Tool & Execution Framework**: registry registration/duplication/validation/
-immutability/`update`/eligibility/`describe`; request validation and the
-unauthorized-agent/project/environment cases; permission allow/deny/explicit-
-deny; approval required/awaiting/approved/rejected/expired and
-environment-scoped policy; execution success/tool-failure/timeout/
-malformed-result/input-schema and every limit (calls per task, calls per agent,
-input size, output size, engine ceiling); security invariants (a denied or
-unapproved tool's handler never runs, project isolation, no output payloads in
-the audit log); and the migrated Research Agent driving tools through the
-engine. Every test is deterministic and offline — **no real AI API calls, no
-real external services**.
+Research Agent workflow / limits / context isolation / failure modes, and the
+Tool & Execution Framework's registry/request/permission/approval/execution/
+limit/security matrix); plus **multi-agent workflow orchestration**: workflow
+creation/validation/circular-dependency-rejection; task ordering and
+completion propagation; agent assignment (valid, unregistered, capability
+mismatch, project mismatch, non-participant, unauthorized tool); permission
+denial before the handler runs; retry (succeeds after a retryable failure,
+exhausts its limit, never retries a non-retryable reason);
+`"abort"` vs `"continue"` failure behaviour; approval pause / dependent
+never-dispatched / approve+resume / reject / bypass-attempt; every execution
+limit (`maxTasks`, `maxAgentExecutions`, `maxHandoffs`, `maxToolCalls`,
+`maxDurationMs`, `maxDelegationDepth`); the Project Manager (decompose,
+summarize, invalid decomposition), Developer (structured plan, invalid
+result, no fs/shell access), and QA (pass/fail/blocked, and the self-approval
+guard under two different inconsistent-model scenarios) agents; handoff
+creation/rejection; and one full deterministic Project Manager → Research →
+Developer → QA → Project Manager demonstration. Every test is deterministic
+and offline — **no real AI API calls, no real external services**.
 
 ## 14. Extension guidelines
 
@@ -452,15 +516,19 @@ least privilege, add deterministic tests, keep `core` free of adapter imports.
   unchanged; a model call still happens inside an executor that the orchestrator
   has already permission-checked.
 
-## 16. Deliberately out of scope through Phase 4
+## 16. Deliberately out of scope through Phase 5
 
-Autonomous planning and recursive agent loops, the other nine General Agents
-(Project Manager, Developer, Data Analyst, QA, Security, Finance, Business,
-Design, Documentation), real production tools (web search/fetch, repository
-writes, deployment), additional real model providers (OpenAI/Google), a live
-end-to-end integration test, network I/O outside the Anthropic adapter, source
-deduplication and retry inside the Research Agent, per-session tool budgets
-across tasks, asynchronous workers or queues, multi-process persistence and
-file locking, an async `Repository` revision, real authentication,
-retries/backoff at the orchestrator level, external logging or telemetry
-infrastructure, and any real project integration.
+Unrestricted autonomous planning or agent-triggered recursion; the remaining
+six General Agents (Data Analyst, Security, Finance, Business, Design,
+Documentation); a real "apply this change" capability for the Developer Agent;
+dynamic wiring of one workflow task's live output into a successor's input;
+an automatic "Project Manager re-plans after a mid-workflow failure" loop;
+real production tools (web search/fetch, repository writes, deployment);
+additional real model providers (OpenAI/Google); a live end-to-end
+integration test; network I/O outside the Anthropic adapter; source
+deduplication and retry inside the Research Agent; per-session tool budgets
+across tasks; persisted/resumable in-flight scheduling across a process
+restart mid-loop; asynchronous workers or queues; multi-process persistence
+and file locking; an async `Repository` revision; real authentication;
+retries/backoff at the orchestrator level; external logging or telemetry
+infrastructure; and any real project integration.

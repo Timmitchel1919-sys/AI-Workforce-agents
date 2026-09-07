@@ -8,43 +8,47 @@ permissions, human approval records, project-isolated context, a structured
 audit log, and **durable persistence behind an interface** — all behind
 **provider- and project-agnostic contracts**.
 
-> **Status: Phase 4 complete.** A secure, standardised **Tool & Execution
-> Framework** — one `ToolExecutionEngine` every agent must use to run a tool
-> (validate → eligibility → limits → permissions → approval → execute →
-> validate result → audit). The Research Agent is migrated onto it and no longer
-> has its own tool-execution logic. No autonomous planning, no other agents yet.
-> Money Mind will be the first real project integration in a later phase; its
-> source is never copied here.
+> **Status: Phase 5 complete.** Controlled **multi-agent workflow
+> orchestration** — a `WorkflowEngine` schedules a validated, cycle-free task
+> graph through the existing `Orchestrator`, so every permission/approval/tool
+> control still applies to each step. Three more General Agents (Project
+> Manager, Developer, QA) join Research, all through the identical pattern.
+> Still no unrestricted autonomous planning. Money Mind will be the first real
+> project integration in a later phase; its source is never copied here.
 
 ## Stack
 
 - **TypeScript** (strict) on **Node.js ≥ 20**, ESM (`NodeNext`)
-- Tests: built-in `node:test` + `node:assert/strict` (160 deterministic, offline)
+- Tests: built-in `node:test` + `node:assert/strict` (206 deterministic, offline)
 - Build: `tsc` only
 - Persistence: `Repository<T>` interface; JSON-file store as the first
   implementation ([ADR-0002](docs/adr/0002-local-json-file-persistence.md))
 - Model providers: provider-neutral `ModelProvider` contract; Anthropic adapter
   with the SDK as an **optional peer dependency**
   ([ADR-0004](docs/adr/0004-model-provider-layer-anthropic.md))
-- General Agents: `GeneralAgent` base + `RoutingAgentExecutor`; the Research
-  Agent as the first ([ADR-0005](docs/adr/0005-general-agent-pattern.md))
+- General Agents: `GeneralAgent` base + `RoutingAgentExecutor`; Research,
+  Project Manager, Developer, QA
+  ([ADR-0005](docs/adr/0005-general-agent-pattern.md))
 - Tools: first-class `Tool` contract + `ToolRegistry` + `ToolExecutionEngine`
   ([ADR-0006](docs/adr/0006-tool-execution-framework.md))
+- Workflows: a validated task-dependency graph scheduled through the
+  `Orchestrator`, with retries, handoffs, approval pauses, and limits
+  ([ADR-0007](docs/adr/0007-multi-agent-workflow-orchestration.md))
 - Lint/format: ESLint 9 + Prettier 3, **dev-only**
   ([ADR-0003](docs/adr/0003-code-quality-tooling.md))
 - **Zero runtime dependencies in core**
 
 ## Layout
 
-| Path                                             | Purpose                                                                                                                                                                 |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`contracts/`](contracts/)                       | Shared types, pure validators, agent execution boundary, `Repository` / persistence + research + **tool** contracts.                                                    |
-| [`core/`](core/)                                 | Registry, tasks, handoffs, permissions, approvals, context, audit, model registry, **General Agent framework**, **Tool Execution Engine**, orchestrator.                |
-| [`adapters/`](adapters/)                         | Provider/project contracts + offline reference implementations (Echo/Anthropic model, tool provider + `Tool` fakes, JSON persistence).                                  |
-| [`agents/`](agents/)                             | Concrete General Agents. **`agents/research/`** — the Research Agent.                                                                                                   |
-| [`tests/`](tests/)                               | Deterministic, offline tests (160): foundation, persistence, approval, permissions, model provider, research agent, tool framework.                                     |
-| [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Tools](docs/tools.md), [Research Agent](docs/agents/research-agent.md), [extension guide](docs/extending.md), [ADRs](docs/adr/). |
-| [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                |
+| Path                                             | Purpose                                                                                                                                                                                                 |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`contracts/`](contracts/)                       | Shared types, pure validators, agent execution boundary, `Repository` / persistence + research + tool + **workflow / project-manager / developer / qa** contracts.                                      |
+| [`core/`](core/)                                 | Registry, tasks, handoffs, permissions, approvals, context, audit, model registry, General Agent framework, Tool Execution Engine, **Workflow Engine**, orchestrator.                                   |
+| [`adapters/`](adapters/)                         | Provider/project contracts + offline reference implementations (Echo/Anthropic model, tool provider + `Tool` fakes, JSON persistence).                                                                  |
+| [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                           |
+| [`tests/`](tests/)                               | Deterministic, offline tests (206): foundation, persistence, approval, permissions, model provider, research agent, tool framework, workflow engine/agents, and a full demonstration workflow.          |
+| [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [extension guide](docs/extending.md), [ADRs](docs/adr/). |
+| [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                |
 
 ## Commands
 
@@ -61,21 +65,25 @@ npm run build       # emit dist/
 
 ## Core components at a glance
 
-| Component                                            | Responsibility                                                                                                      |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `AgentRegistry`                                      | Validate and store declarative agents; look up by capability / eligibility.                                         |
-| `TaskSystem`                                         | Own the deterministic task lifecycle; reject illegal transitions.                                                   |
-| `HandoffSystem`                                      | Propose / accept / reject validated agent-to-agent handoffs.                                                        |
-| `Orchestrator`                                       | Validate → enforce permissions → gate on approval → dispatch → record. `resume` after a decision. No autonomy.      |
-| `PermissionSystem`                                   | Deny-by-default evaluation scoped by agent/project/tool/action/environment; enforced at dispatch.                   |
-| `ApprovalSystem`                                     | Record human approvals: `requested → approved \| rejected \| expired`. Never auto-approves.                         |
-| `ContextSystem`                                      | Task / project / agent context, isolated per project.                                                               |
-| `AuditLog`                                           | Structured events to a pluggable sink; queryable; optionally persisted.                                             |
-| `Repository<T>` / `PersistenceProvider`              | The only persistence types the core knows. In-memory default, JSON-file durable adapter.                            |
-| `ModelProvider` / `ToolProvider` / `ProjectAdapter`  | Vendor- and project-neutral seams.                                                                                  |
-| `GeneralAgent` / `AgentRun` / `RoutingAgentExecutor` | Reusable agent framework: linear pipeline, hard limits, structured failure, `agent_activity` audit, dispatch by id. |
-| `Tool` / `ToolRegistry` / `ToolExecutionEngine`      | The one secure tool pipeline: validate → eligibility → limits → permission → approval → execute → validate → audit. |
-| `ResearchAgent`                                      | First General Agent: bounded source-grounded research → validated `ResearchResult` with evidence-based confidence.  |
+| Component                                            | Responsibility                                                                                                                   |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `AgentRegistry`                                      | Validate and store declarative agents; look up by capability / eligibility.                                                      |
+| `TaskSystem`                                         | Own the deterministic task lifecycle; reject illegal transitions.                                                                |
+| `HandoffSystem`                                      | Propose / accept / reject validated agent-to-agent handoffs.                                                                     |
+| `Orchestrator`                                       | Validate → enforce permissions → gate on approval → dispatch → record. `resume` after a decision. No autonomy.                   |
+| `PermissionSystem`                                   | Deny-by-default evaluation scoped by agent/project/tool/action/environment; enforced at dispatch.                                |
+| `ApprovalSystem`                                     | Record human approvals: `requested → approved \| rejected \| expired`. Never auto-approves.                                      |
+| `ContextSystem`                                      | Task / project / agent context, isolated per project.                                                                            |
+| `AuditLog`                                           | Structured events to a pluggable sink; queryable; optionally persisted.                                                          |
+| `Repository<T>` / `PersistenceProvider`              | The only persistence types the core knows. In-memory default, JSON-file durable adapter.                                         |
+| `ModelProvider` / `ToolProvider` / `ProjectAdapter`  | Vendor- and project-neutral seams.                                                                                               |
+| `GeneralAgent` / `AgentRun` / `RoutingAgentExecutor` | Reusable agent framework: linear pipeline, hard limits, structured failure, `agent_activity` audit, dispatch by id.              |
+| `Tool` / `ToolRegistry` / `ToolExecutionEngine`      | The one secure tool pipeline: validate → eligibility → limits → permission → approval → execute → validate → audit.              |
+| `WorkflowSystem` / `WorkflowEngine`                  | A validated, cycle-free task-dependency graph, scheduled through the `Orchestrator`; retries, handoffs, approval pauses, limits. |
+| `ResearchAgent`                                      | Bounded source-grounded research → validated `ResearchResult` with evidence-based confidence.                                    |
+| `ProjectManagerAgent`                                | Decomposes an objective into a dependency-ordered plan, or summarizes a completed workflow. Never dispatches a task itself.      |
+| `DeveloperAgent`                                     | Implementation plan + _proposed_ changes only — no filesystem, shell, or repository access.                                      |
+| `QaAgent`                                            | Pass / fail / blocked verdict with evidence; a `"pass"` without satisfied findings is structurally rejected.                     |
 
 ## Persistence
 
@@ -278,6 +286,58 @@ decision) → execute with timeout → output-size + output-schema → audit. Fu
 detail: [docs/tools.md](docs/tools.md),
 [ADR-0006](docs/adr/0006-tool-execution-framework.md).
 
+## Workflows
+
+Several agents collaborate on one task through a validated, cycle-free
+dependency graph — every step still goes through the `Orchestrator`, so
+permissions, approval, and tool execution are unchanged.
+
+```ts
+import {
+  AgentRegistry,
+  ApprovalSystem,
+  AuditLog,
+  ContextSystem,
+  HandoffSystem,
+  Orchestrator,
+  PermissionSystem,
+  RoutingAgentExecutor,
+  TaskSystem,
+  ToolExecutionEngine,
+  ToolRegistry,
+  WorkflowEngine,
+  WorkflowSystem,
+} from "./core/index.js";
+// ...register agents, wire the Orchestrator (as above), then:
+
+const engine = new WorkflowEngine({
+  registry,
+  workflows: new WorkflowSystem(),
+  orchestrator,
+  handoffs,
+  audit,
+  permissions,
+});
+
+const workflow = await engine.planFromObjective({
+  name: "Add API rate limiting",
+  description: "Research, plan, and verify rate limiting for the widgets API",
+  projectId: "widgets-service",
+  participatingAgents: ["research-agent", "developer-agent", "qa-agent"],
+  objective: "Add rate limiting to the widgets API",
+  availableAgents: ["research-agent", "developer-agent", "qa-agent"],
+});
+// Project Manager decomposes -> Research -> Developer -> QA, each re-validated,
+// handoffs proposed+accepted across agent boundaries, workflow.status === "completed"
+```
+
+A gated task pauses the whole workflow (`awaiting_approval`) until
+`engine.resume(workflow.id)` is called after a human decision. Limits
+(`maxTasks`, `maxAgentExecutions`, `maxRetries`, `maxHandoffs`, `maxToolCalls`,
+`maxDurationMs`, `maxDelegationDepth`) and a retry policy are configurable per
+workflow. Full detail: [docs/workflows.md](docs/workflows.md),
+[ADR-0007](docs/adr/0007-multi-agent-workflow-orchestration.md).
+
 ## Extending
 
 Read [docs/extending.md](docs/extending.md). Never let `core/` import an adapter
@@ -306,5 +366,10 @@ deterministic tests; never commit a secret.
   `tool_execution` audit trail. A denied or unapproved tool's handler never
   runs. Tool output is never written to the audit log. No unrestricted shell,
   filesystem, deployment, or credential-access tools.
+- A workflow's task graph is rejected outright — no task runs — if it has an
+  unknown dependency or a cycle. Every agent assignment (hand-authored or
+  Project-Manager-recommended) is independently re-validated; a recommendation
+  is never trusted blindly. A gated task pauses the whole workflow until a
+  human decision arrives; `resume` on a workflow that isn't waiting throws.
 - `.env` is git-ignored; `.env.example` contains placeholders only.
 - CI runs without any secret or AI credential.
