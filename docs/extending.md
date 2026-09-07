@@ -65,6 +65,41 @@ reference. Follow its shape:
    site, and route human-gated actions through `ApprovalSystem`.
 4. Never expose raw shell, arbitrary filesystem, or credential retrieval.
 
+## Adding a General Agent (Project Manager, Developer, QA, ...)
+
+The Research Agent is the reference. See
+[docs/agents/research-agent.md](agents/research-agent.md) §12 for the full
+recipe; in short:
+
+1. **Contracts** — `contracts/<agent>.ts`: structured task + result types and
+   `validate<Agent>Task` / `validate<Agent>Result`. Re-export from
+   `contracts/index.ts`. Never return an unstructured string as the primary
+   result.
+2. **Executor** — `agents/<agent>/<agent>.ts`:
+   `class <Agent> extends GeneralAgent<TInput, TOutput>`. Implement
+   `validateInput`, `validateOutput`, and a **linear, non-recursive** `run`.
+   Before each metered step call `run.countToolCall` / `run.countModelCall` /
+   `run.nextIteration` / `run.checkDeadline`; emit `run.activity(kind, data)` at
+   each phase.
+3. **Definition** — `make<Agent>Definition({ allowedProjects, modelPolicy })`
+   returning an `Agent` with least-privilege `permissions`
+   (`<agent>Grants(agentId)`: allow only the tools it needs; deny `write` /
+   `deploy` / `secret_access` / `external_communication` unless genuinely
+   required), `supportedTaskTypes`, `capabilities`, and `metadata`
+   (`role`, `successCriteria`, `errorBehavior`, `limits`).
+4. **Permissions** — assert every tool call inside `run` against the injected
+   `PermissionSystem` (in addition to the orchestrator's pre-dispatch gate).
+5. **Approval** — if any action is state-changing/outbound, add an
+   `ApprovalPolicy` that gates **only** those tasks; don't weaken the default.
+6. **Model & tools** — depend only on `ModelProvider` / `ToolProvider`. Never
+   import a vendor SDK or a concrete adapter from an agent.
+7. **Wire** — `registry.register(make<Agent>Definition(...))` and
+   `router.register("<agent-id>", new <Agent>(...))`.
+8. **Tests** — deterministic, offline, stubbed model + tools: registration,
+   task/result validation, model + tool interaction, permission enforcement,
+   project context isolation, every limit + timeout, tool failure, model
+   failure, invalid result, happy path, audit trail, orchestrator routing.
+
 ## Adding a project adapter (AIMS, Money Mind, Mastery, Tripod)
 
 1. Create `adapters/projects/<project>-adapter.ts` extending `BaseProjectAdapter`.

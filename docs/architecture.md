@@ -38,8 +38,9 @@ foundational architecture decision.
 
 ```
 contracts/
-  index.ts                  Types + pure validators. No runtime dependencies.
+  index.ts                  Types + pure validators + agent execution boundary. No runtime deps.
   persistence.ts            Repository<T> + PersistenceProvider interfaces.
+  research.ts                ResearchTask / ResearchResult + validators.
 core/
   shared.ts                 Deterministic id + time helpers.
   persistence/in-memory-repository   InMemoryRepository / InMemoryPersistence (pure, default).
@@ -52,31 +53,36 @@ core/
   audit/audit-log           AuditLog + AuditSink — structured audit events, optionally persisted.
   providers/model-provider-registry  ModelProviderRegistry — resolve providers by id (provider-neutral).
   providers/audited-model-provider   AuditedModelProvider — audit decorator around any ModelProvider.
+  agents/general-agent      GeneralAgent base + AgentRun (limits, audit, structured failure).
+  agents/routing-agent-executor  RoutingAgentExecutor — dispatch by agent.id.
   orchestrator/orchestrator  Orchestrator — validate → permit → gate → dispatch → record.
   index.ts                  Barrel export for the whole core.
 adapters/
   models/model-provider     ModelProvider contract + EchoModelProvider double.
   models/anthropic-model-provider  AnthropicModelProvider + config + transport seam + error mapping.
   tools/tool-provider       ToolProvider contract + InMemoryToolProvider double.
+  tools/static-research-tools  StaticResearchToolProvider — offline research.search / research.fetch.
   projects/project-adapter  ProjectAdapter contract + BaseProjectAdapter helper.
   persistence/json-file-persistence  JsonFileRepository / JsonFilePersistence (durable, node:fs).
   index.ts                  Barrel export for adapters.
+agents/
+  research/research-agent   ResearchAgent (extends GeneralAgent) + confidence model.
+  research/research-agent-definition  Registry metadata, grants, approval policy.
+  research/index.ts         Barrel export for the research agent.
 tests/
-  foundation.test.ts        Every Phase 1 component.
-  persistence.test.ts       Repository save/load/update/isolation, survives reinit.
-  approval-execution.test.ts  Approval gate, resume, reject, expiry, persistence.
-  permission-enforcement.test.ts  Allowed/denied dispatch, every permission scope.
-  anthropic-provider.test.ts  Config, request/response mapping, every failure class, redaction.
-  model-provider-layer.test.ts  Registry, audit decorator, provider independence, core isolation.
+  foundation | persistence | approval-execution | permission-enforcement
+  anthropic-provider | model-provider-layer | research-agent   (122 tests total)
 docs/                       This documentation + ADRs.
 .env.example                Placeholder environment configuration (never a real .env).
 .github/workflows/ci.yml    Continuous integration.
 ```
 
-Dependency direction is one-way: `adapters → contracts` and `core → contracts`.
-`core` never imports from `adapters`. The orchestrator, every core system's
-`Repository`, the `AgentExecutor`, the `ApprovalPolicy`, and the
-`PermissionSystem` are all supplied by constructor injection.
+Dependency direction is one-way: `adapters → contracts`, `core → contracts`,
+and `agents → core → contracts` (`agents` also uses `contracts` directly).
+`core` never imports from `adapters` or `agents`. The orchestrator, every core
+system's `Repository`, the `AgentExecutor`, the `ApprovalPolicy`, the
+`PermissionSystem`, and each General Agent's `ModelProvider` / `ToolProvider` /
+`PermissionSystem` / `ContextSystem` are all supplied by constructor injection.
 
 ## 4. Core components
 
@@ -168,7 +174,8 @@ a `Repository<AuditEvent>` is supplied — persists it. Event types:
 `permission_decision`, `approval_requested`, `approval_decided`, `task_resumed`,
 `task_completed`, `task_failed`, `model_provider_requested`,
 `model_execution_started`, `model_execution_completed`,
-`model_execution_failed`.
+`model_execution_failed`, `agent_activity` (General Agent phase events, with a
+`data.kind` discriminator).
 
 ### Persistence
 
@@ -302,6 +309,46 @@ never records keys or headers. Prompt/response **content is not logged unless
 `projectId`, a `describe()` derived from declared operations, and an `execute()`
 that rejects any undeclared operation. Project source is never copied here.
 
+## 9a. General Agents
+
+A General Agent is a declarative `Agent` (registered) plus an `AgentExecutor`
+the orchestrator dispatches to. `AgentExecutor` and `PermissionGuard` are
+contracts; `RoutingAgentExecutor` (core) fans the orchestrator's single
+executor out to per-agent executors by `agent.id`, so many agents coexist with
+no orchestrator change.
+
+`GeneralAgent<TInput, TOutput>` (core) owns the invariant parts:
+
+- a **linear, non-recursive** pipeline — `validateInput → run → validateOutput`
+- hard `AgentLimits` — `maxIterations` / `maxToolCalls` / `maxModelCalls` /
+  `timeoutMs` (injectable clock; deterministic timeout)
+- one structured failure — `AgentExecutionError` with a machine `reason`
+  (`invalid_task`, `model_unavailable`, `model_failure`, `tool_unavailable`,
+  `tool_failure`, `permission_denied`, `timeout`, `limit_exceeded`,
+  `invalid_result`, `internal_error`); agents fail closed, never returning a
+  partial or unstructured result
+- `agent_activity` audit events at each phase (`AgentRun.activity(kind, data)`)
+
+Subclasses implement only the domain steps and call
+`AgentRun.countToolCall` / `.countModelCall` / `.nextIteration` /
+`.checkDeadline` before each metered step. A General Agent depends only on
+`ModelProvider`, `ToolProvider`, `PermissionSystem`, `ContextSystem`,
+`AuditLog` — never a vendor SDK or a concrete adapter (a test enforces this for
+`agents/`).
+
+**Research Agent** (`agents/research/`) is the first: it validates a
+`ResearchTask`, loads context for its project only, plans (model call),
+searches + fetches + evaluates sources (permission-checked tool calls),
+synthesizes (model call), then deterministically post-processes (drop
+uncollected citations, downgrade unsupported facts, compute confidence) and
+returns a validated `ResearchResult`. Source `reliability` and `confidence` are
+computed from evidence, not model wording. `researchAgentGrants()` is
+least-privilege (allow the two read-only tools, deny write/deploy/secrets/
+comms). `researchApprovalPolicy` gates a research task only when it also
+declares a state-changing/outbound requirement. Full detail in
+[agents/research-agent.md](agents/research-agent.md); rationale in
+[ADR-0005](adr/0005-general-agent-pattern.md).
+
 ## 10. Persistence architecture
 
 - **Interface:** `contracts/persistence.ts` — `Repository<T>` and
@@ -365,11 +412,14 @@ least privilege, add deterministic tests, keep `core` free of adapter imports.
   unchanged; a model call still happens inside an executor that the orchestrator
   has already permission-checked.
 
-## 16. Deliberately out of scope through Phase 2B
+## 16. Deliberately out of scope through Phase 3
 
-General/autonomous agents and planning, unrestricted model/tool loops,
-additional real providers (OpenAI/Google), a live end-to-end integration test,
-network I/O outside the Anthropic adapter, asynchronous workers or queues,
-multi-process persistence and file locking, an async `Repository` revision, real
-authentication, retries/backoff at the orchestrator level, external logging or
-telemetry infrastructure, and any real project integration.
+Autonomous planning and recursive agent loops, the other nine General Agents
+(Project Manager, Developer, Data Analyst, QA, Security, Finance, Business,
+Design, Documentation), a real web-search / fetch tool provider, additional
+real model providers (OpenAI/Google), a live end-to-end integration test,
+network I/O outside the Anthropic adapter, source deduplication and retry inside
+the Research Agent, asynchronous workers or queues, multi-process persistence
+and file locking, an async `Repository` revision, real authentication,
+retries/backoff at the orchestrator level, external logging or telemetry
+infrastructure, and any real project integration.

@@ -12,4 +12,6 @@ export * from "./context/context-system.js";
 export * from "./audit/audit-log.js";
 export * from "./providers/model-provider-registry.js";
 export * from "./providers/audited-model-provider.js";
+export * from "./agents/general-agent.js";
+export * from "./agents/routing-agent-executor.js";
 export * from "./orchestrator/orchestrator.js";

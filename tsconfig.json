@@ -13,6 +13,7 @@
     "core/**/*.ts",
     "contracts/**/*.ts",
     "adapters/**/*.ts",
+    "agents/**/*.ts",
     "tests/**/*.ts"
   ]
 }

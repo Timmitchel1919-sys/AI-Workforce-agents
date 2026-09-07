@@ -265,6 +265,7 @@ export const AUDIT_EVENT_TYPES = [
   "model_execution_started",
   "model_execution_completed",
   "model_execution_failed",
+  "agent_activity",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -362,6 +363,55 @@ export interface ProjectAdapter {
 }
 
 /* ------------------------------------------------------------------ */
+/* Agent execution boundary                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Guard handed to an executor so tool-level calls can be permission-checked at
+ * the moment of use, in addition to the pre-dispatch checks the orchestrator
+ * performs. Bound to one agent + task + environment.
+ */
+export interface PermissionGuard {
+  assert(action: PermissionAction, toolId?: string): void;
+}
+
+/**
+ * A pluggable unit of work the orchestrator dispatches a task to. A General
+ * Agent is an `AgentExecutor` plus a declarative {@link Agent} definition.
+ */
+export interface AgentExecutor {
+  execute(agent: Agent, task: Task, guard?: PermissionGuard): Promise<unknown>;
+}
+
+/** Hard ceilings a General Agent enforces on a single execution. */
+export interface AgentLimits {
+  maxIterations: number;
+  maxToolCalls: number;
+  maxModelCalls: number;
+  timeoutMs: number;
+}
+
+export const DEFAULT_AGENT_LIMITS: AgentLimits = {
+  maxIterations: 3,
+  maxToolCalls: 8,
+  maxModelCalls: 4,
+  timeoutMs: 60_000,
+};
+
+export type AgentFailureReason =
+  | "invalid_task"
+  | "missing_context"
+  | "model_unavailable"
+  | "tool_unavailable"
+  | "permission_denied"
+  | "tool_failure"
+  | "model_failure"
+  | "timeout"
+  | "limit_exceeded"
+  | "invalid_result"
+  | "internal_error";
+
+/* ------------------------------------------------------------------ */
 /* Errors                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -370,6 +420,34 @@ export class ValidationError extends WorkforceError {}
 export class StateTransitionError extends WorkforceError {}
 export class PermissionDeniedError extends WorkforceError {}
 export class NotFoundError extends WorkforceError {}
+
+/**
+ * Structured failure from a General Agent execution. Carries a machine-readable
+ * `reason` and diagnostic `details` (never secrets). Agents fail closed with
+ * this rather than returning a partial or unstructured result.
+ */
+export class AgentExecutionError extends WorkforceError {
+  readonly agentId: string;
+  readonly reason: AgentFailureReason;
+  readonly details: Record<string, unknown>;
+
+  constructor(
+    agentId: string,
+    reason: AgentFailureReason,
+    message: string,
+    details: Record<string, unknown> = {},
+    cause?: unknown,
+  ) {
+    super(
+      `[${agentId}:${reason}] ${message}`,
+      cause !== undefined ? { cause } : undefined,
+    );
+    this.name = "AgentExecutionError";
+    this.agentId = agentId;
+    this.reason = reason;
+    this.details = details;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Provider errors                                                    */
@@ -546,3 +624,5 @@ export function validateApprovalRequest(draft: ApprovalRequestDraft): void {
 /* ------------------------------------------------------------------ */
 
 export type { Entity, Repository, PersistenceProvider } from "./persistence.js";
+
+export * from "./research.js";

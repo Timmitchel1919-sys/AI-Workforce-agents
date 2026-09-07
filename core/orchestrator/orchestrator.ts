@@ -1,11 +1,13 @@
 import {
   type Agent,
+  type AgentExecutor,
   type Approval,
   type ApprovalPolicy,
   type Environment,
   type Handoff,
   type HandoffDraft,
   type PermissionAction,
+  type PermissionGuard,
   type RequiredPermission,
   type Task,
   type TaskDraft,
@@ -21,20 +23,6 @@ import { HandoffSystem } from "../handoffs/handoff-system.js";
 import { PermissionSystem } from "../permissions/permission-system.js";
 import { AgentRegistry } from "../registry/agent-registry.js";
 import { TaskSystem } from "../tasks/task-system.js";
-
-/**
- * Guard handed to an executor so tool-level calls can be permission-checked at
- * the moment of use, in addition to the pre-dispatch checks the orchestrator
- * performs. Bound to one agent + task + environment.
- */
-export interface PermissionGuard {
-  assert(action: PermissionAction, toolId?: string): void;
-}
-
-/** Pluggable unit of work. Phase 2A still ships only test doubles for this. */
-export interface AgentExecutor {
-  execute(agent: Agent, task: Task, guard?: PermissionGuard): Promise<unknown>;
-}
 
 export type AgentSelector = (candidates: readonly Agent[], task: Task) => Agent;
 
