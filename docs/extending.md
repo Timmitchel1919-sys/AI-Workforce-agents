@@ -149,16 +149,47 @@ See [docs/workflows.md](workflows.md) for the full model. In short:
    `maxTasks`), an assignment failure, a retry (successful and exhausted), an
    approval pause + resume, and at least one limit.
 
-## Adding a project adapter (AIMS, Money Mind, Mastery, Tripod)
+## Adding a project adapter (AIMS, Mastery, Tripod Product)
 
-1. Create `adapters/projects/<project>-adapter.ts` extending `BaseProjectAdapter`.
-2. Set a stable `projectId` and a `displayName`.
-3. Declare each supported operation in `operations`: a `ProjectCapability`
-   (`operation`, `description`, `action`) plus a `handler`.
-4. The handler calls the project's **own API or CLI**. Do not copy the
-   project's source into this repository.
-5. Keep project data flowing only through `ContextSystem` scoped to that
-   project's id.
+Money Mind (`adapters/projects/money-mind/`) is the reference — see
+[docs/projects/money-mind.md](projects/money-mind.md) and
+[ADR-0008](adr/0008-money-mind-project-adapter.md) for the full recipe. In
+short:
+
+1. Create `adapters/projects/<project>/<project>-project-adapter.ts` extending
+   `BaseProjectAdapter`. Set a stable `projectId` and a `displayName`.
+2. Declare each supported operation in `operations`: a `ProjectCapability`
+   (`operation`, `description`, `action`) plus a `handler`. Start read-only —
+   do not add a write/commit/push/deploy capability without a separate,
+   explicit security review.
+3. Define a narrow `<Project>RepoPort` interface (the only thing the adapter
+   depends on beyond `contracts/`) and two implementations: an in-memory
+   fixture with **synthetic, hand-written** content (never copied from the
+   real project) for every test and demonstration, and a real backend (the
+   only module allowed to import `node:fs` / `node:child_process` / a vendor
+   SDK for that project) used only at wiring time, never in a test. Never
+   copy the project's source, `node_modules`, build output, or secrets into
+   this repository.
+4. If any operation reads a file or executes a command: validate a path
+   through a `resolveSafeRelativePath`-style traversal/denylist check (see
+   `adapters/projects/money-mind/money-mind-path-policy.ts`) before it
+   reaches the backend, and gate command execution behind a **closed enum**
+   of script names — validated first, then re-confirmed against the target's
+   own manifest (`hasScript`) before anything is spawned. Never accept a raw
+   command string.
+5. Expose each capability as a `Tool` (`money-mind-tools.ts` is the
+   reference), scoped to that one project (`allowedProjects: ["<project>"]`,
+   never `"*"`) and to the specific agent ids its profile grants it to.
+   Agents call the tool through the `ToolExecutionEngine`, never the adapter
+   directly.
+6. Declare a project profile (`<project>-profile.ts`): per-agent capability
+   grants and the `PermissionGrant[]` they imply, plus explicit `deny` grants
+   for write/deploy/external_communication/secret_access. Extend the relevant
+   `make<Agent>AgentDefinition` options with additive `extraAllowedTools` /
+   `extraGrants` (already supported by Research, Project Manager, Developer,
+   and QA) rather than modifying its default grants.
+7. Keep project data flowing only through `ContextSystem` scoped to that
+   project's id — no new isolation mechanism is needed.
 
 ## Adding an audit sink
 
@@ -221,5 +252,9 @@ a representative invalid one.
 - [ ] A workflow task graph rejects unknown dependencies and cycles before any
       task runs; a recommended agent assignment is always re-validated, never
       trusted
+- [ ] A project adapter's real backend never ships as test fixture content —
+      fixtures are hand-written and synthetic, never copied from the real
+      project; file access is traversal/denylist-checked and command
+      execution is a closed, existence-checked enum, never a raw string
 - [ ] New actions are deny-by-default with least-privilege grants
 - [ ] Docs updated (this file, `architecture.md`, and an ADR for a structural change)

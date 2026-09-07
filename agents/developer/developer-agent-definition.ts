@@ -37,18 +37,29 @@ const RISKY_ACTIONS: readonly PermissionAction[] = [
  */
 export function developerGrants(
   agentId: string = DEVELOPER_AGENT_ID,
+  extra: readonly PermissionGrant[] = [],
 ): PermissionGrant[] {
-  return RISKY_ACTIONS.map((action) => ({
-    effect: "deny",
-    action,
-    agentId,
-    reason: `developer agent proposes changes only (${action} denied)`,
-  }));
+  return [
+    ...extra,
+    ...RISKY_ACTIONS.map((action): PermissionGrant => ({
+      effect: "deny",
+      action,
+      agentId,
+      reason: `developer agent proposes changes only (${action} denied)`,
+    })),
+  ];
 }
 
 export interface DeveloperAgentDefinitionOptions {
   allowedProjects: readonly string[];
   modelPolicy?: ModelPolicy;
+  /**
+   * Additional read-only tool ids this agent may use beyond code planning —
+   * e.g. a project adapter's inspect/read-file/test tools. Empty by default;
+   * additive only, never grants write/shell/filesystem access.
+   */
+  extraAllowedTools?: readonly string[];
+  extraGrants?: readonly PermissionGrant[];
 }
 
 export function makeDeveloperAgentDefinition(
@@ -60,8 +71,7 @@ export function makeDeveloperAgentDefinition(
     description:
       "Produces an implementation plan and a set of proposed, described code " +
       "changes with rationale and risk level. Never writes to a repository, " +
-      "runs a shell command, or touches the filesystem — it has no such " +
-      "capability to grant.",
+      "runs a shell command, or touches the filesystem directly itself.",
     capabilities: [
       "code_analysis",
       "implementation_planning",
@@ -69,10 +79,10 @@ export function makeDeveloperAgentDefinition(
       "code_review",
       "debugging_analysis",
     ],
-    allowedTools: [],
+    allowedTools: [...(options.extraAllowedTools ?? [])],
     allowedProjects: [...options.allowedProjects],
     supportedTaskTypes: [DEVELOPER_TASK_TYPE],
-    permissions: developerGrants(),
+    permissions: developerGrants(DEVELOPER_AGENT_ID, options.extraGrants ?? []),
     modelPolicy: options.modelPolicy,
     metadata: {
       role: "developer",

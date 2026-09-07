@@ -10,13 +10,15 @@ boundary, human approval gates, project-isolated context, a structured audit
 log, and durable persistence behind an interface — all behind **provider- and
 project-agnostic contracts**.
 
-As of Phase 5 there is a real model-provider adapter (Anthropic), four General
+As of Phase 6 there is a real model-provider adapter (Anthropic), four General
 Agents (Research, Project Manager, Developer, QA), a secure Tool & Execution
-Framework, and a controlled multi-agent **Workflow** layer that coordinates
-them through a validated task-dependency graph — but still no unrestricted
-autonomous planning and no real project integration. Every external
-capability (a model provider, an external tool, a real project such as Money
-Mind, a database) enters only through an interface in
+Framework, a controlled multi-agent **Workflow** layer that coordinates them
+through a validated task-dependency graph, and the first real project
+integration — a read-mostly **Project Adapter** reaching the independent
+Money Mind repository — but still no unrestricted autonomous planning and no
+write/deploy capability against any real project. Every external capability
+(a model provider, an external tool, a real project such as Money Mind, a
+database) enters only through an interface in
 [`contracts/`](../contracts/index.ts) with an implementation under
 [`adapters/`](../adapters/). The core imports no vendor SDK.
 
@@ -45,6 +47,11 @@ contracts/
   persistence.ts            Repository<T> + PersistenceProvider interfaces.
   research.ts                ResearchTask / ResearchResult + validators.
   tools.ts                  Tool contract, ToolExecutionRequest/Result, limits, policy + validators.
+  workflow.ts                Workflow / task-graph contracts + cycle detection + validators.
+  project-manager.ts         ProjectManagerTask / ProjectManagerDecision + validators.
+  developer.ts                DeveloperTask / DeveloperResult + validators.
+  qa.ts                      QATask / QAResult + validators (structural "no self-approval" guarantee).
+  money-mind.ts               Money Mind capability enum, per-operation I/O shapes + validators.
 core/
   shared.ts                 Deterministic id + time helpers.
   persistence/in-memory-repository   InMemoryRepository / InMemoryPersistence (pure, default).
@@ -74,6 +81,7 @@ adapters/
   tools/static-research-tools  StaticResearchToolProvider — offline research.search / research.fetch.
   tools/mock-tools          makeInMemoryTool + mockResearchTools — deterministic Tool fakes.
   projects/project-adapter  ProjectAdapter contract + BaseProjectAdapter helper.
+  projects/money-mind/      MoneyMindProjectAdapter — the first real ProjectAdapter (read-mostly).
   persistence/json-file-persistence  JsonFileRepository / JsonFilePersistence (durable, node:fs).
   index.ts                  Barrel export for adapters.
 agents/
@@ -85,7 +93,8 @@ agents/
 tests/
   foundation | persistence | approval-execution | permission-enforcement
   anthropic-provider | model-provider-layer | research-agent | tool-framework
-  workflow-engine | workflow-agents | workflow-demo                        (206 tests total)
+  workflow-engine | workflow-agents | workflow-demo
+  money-mind-adapter | money-mind-agents | money-mind-demo | money-mind-fs-repo  (254 tests total)
 docs/                       This documentation + ADRs.
 .env.example                Placeholder environment configuration (never a real .env).
 .github/workflows/ci.yml    Continuous integration.
@@ -194,8 +203,11 @@ a `Repository<AuditEvent>` is supplied — persists it. Event types:
 `model_execution_started`, `model_execution_completed`,
 `model_execution_failed`, `agent_activity` (General Agent phase events, with a
 `data.kind` discriminator), `tool_registered`, `tool_execution` (tool pipeline
-phase events, with a `data.phase` discriminator), `workflow_event` (workflow
-lifecycle events, with a `data.kind` discriminator — see §9c).
+phase events, with a `data.phase` discriminator — covers every Money Mind
+operation, since each is invoked as a `Tool`), `workflow_event` (workflow
+lifecycle events, with a `data.kind` discriminator — see §9c),
+`project_adapter_event` (`data.kind: "adapter_initialized"`, emitted once by
+the wiring layer right after constructing a `ProjectAdapter`).
 
 ### Persistence
 
@@ -328,6 +340,34 @@ never records keys or headers. Prompt/response **content is not logged unless
 **declared** capability list. `BaseProjectAdapter` enforces a stable
 `projectId`, a `describe()` derived from declared operations, and an `execute()`
 that rejects any undeclared operation. Project source is never copied here.
+
+**Money Mind** (`adapters/projects/money-mind/`) is the first real
+implementation — a read-mostly integration with the independent Money Mind
+repository. Full detail in [projects/money-mind.md](projects/money-mind.md);
+rationale in [ADR-0008](adr/0008-money-mind-project-adapter.md). In short:
+
+- `MoneyMindProjectAdapter` declares eight capabilities (`READ_PROJECT`,
+  `READ_STATUS`, `READ_TEST_RESULTS`, `READ_CONFIGURATION`, `READ_FILE`,
+  `RUN_TESTS`, `INSPECT_STRUCTURE`, `READ_DOCUMENTATION`) — all read-only
+  except `RUN_TESTS`, which runs one allowlisted, existing npm script and
+  never touches tracked source. Six further capabilities
+  (create/modify/branch/commit/PR/deploy) are named but have **no code path**
+  this phase.
+- It depends only on a narrow `MoneyMindRepoPort` (`exists` / `readTextFile` /
+  `listDirectory` / `hasScript` / `runScript`), implemented by
+  `InMemoryMoneyMindRepo` (synthetic fixture — every test, the demonstration
+  workflow) and `NodeMoneyMindRepo` (real `node:fs` + `child_process`; the
+  only module allowed to touch either for Money Mind; never used in a test).
+- Every capability is exposed as a `Tool` (`money-mind-tools.ts`), scoped to
+  `allowedProjects: ["money-mind"]` and to specific agent ids per a
+  declarative profile (`money-mind-profile.ts`) — agents never call the
+  adapter directly.
+- File access goes through `resolveSafeRelativePath` (traversal + absolute +
+  sensitive-filename rejection, string-level, re-checked at the OS level by
+  `NodeMoneyMindRepo`). Command execution is a closed `MoneyMindScript` enum,
+  re-confirmed against the target's own `package.json` before anything is
+  spawned, and — on Windows — invoked via `cmd.exe` as the executable with a
+  plain argv array, never `shell: true` plus string concatenation.
 
 ## 9a. General Agents
 
@@ -476,28 +516,49 @@ stays zero. `tsc --noEmit` remains the type-correctness gate. See
 ## 13. Testing
 
 `npm test` compiles with `tsc` and runs `node --test` over the compiled output
-(**206 tests**). Coverage: the Phase 1–4 surface (registry, task lifecycle,
+(**254 tests**). Coverage: the Phase 1–5 surface (registry, task lifecycle,
 handoffs, permissions + every scope, approval lifecycle + resume, orchestrator
 routing, persistence + survival across reinit, audit, the Anthropic adapter and
 its failure classes, the model provider registry + audit decorator, the
-Research Agent workflow / limits / context isolation / failure modes, and the
+Research Agent workflow / limits / context isolation / failure modes, the
 Tool & Execution Framework's registry/request/permission/approval/execution/
-limit/security matrix); plus **multi-agent workflow orchestration**: workflow
-creation/validation/circular-dependency-rejection; task ordering and
-completion propagation; agent assignment (valid, unregistered, capability
-mismatch, project mismatch, non-participant, unauthorized tool); permission
-denial before the handler runs; retry (succeeds after a retryable failure,
-exhausts its limit, never retries a non-retryable reason);
-`"abort"` vs `"continue"` failure behaviour; approval pause / dependent
-never-dispatched / approve+resume / reject / bypass-attempt; every execution
-limit (`maxTasks`, `maxAgentExecutions`, `maxHandoffs`, `maxToolCalls`,
-`maxDurationMs`, `maxDelegationDepth`); the Project Manager (decompose,
-summarize, invalid decomposition), Developer (structured plan, invalid
-result, no fs/shell access), and QA (pass/fail/blocked, and the self-approval
-guard under two different inconsistent-model scenarios) agents; handoff
-creation/rejection; and one full deterministic Project Manager → Research →
-Developer → QA → Project Manager demonstration. Every test is deterministic
-and offline — **no real AI API calls, no real external services**.
+limit/security matrix, and multi-agent workflow orchestration — creation/
+validation/circular-dependency-rejection, task ordering, agent assignment,
+retry, failure behaviour, approval, every execution limit, the Project
+Manager/Developer/QA agents, handoffs, and one full deterministic
+demonstration); plus **the Money Mind project adapter**:
+
+- **Unit** (`money-mind-adapter.test.ts`, all against the in-memory fixture):
+  adapter identity + every declared capability; access control (authorized/
+  unauthorized project, agent, capability); file-path security (allowed path,
+  not-found, traversal, absolute-outside, sensitive-filename, end-to-end
+  denial via the tool engine); the command allowlist (allowed + existing,
+  allowed-but-undefined, unknown/unlisted, shell-injection-shaped strings,
+  every allowlisted name is alphabetic-only, end-to-end through the engine);
+  permissions (read allowed, write/deploy denied, deny-by-default for an
+  ungranted agent); approval (`RUN_TESTS` always gated, reads never are,
+  rejected approval spawns nothing, approved approval actually runs);
+  context isolation; and the audit trail (success, denial, failure, a
+  rejected command traced distinctly).
+- **Integration** (`money-mind-agents.test.ts`): the real, unmodified
+  `ResearchAgent` pipeline reaching Money Mind through
+  `money-mind.read-docs` / `money-mind.read-file` and producing a validated,
+  source-grounded `ResearchResult` (plus a denied-without-grant case); the
+  Project Manager, Developer, and QA agents' granted tool eligibility proven
+  directly against the `ToolExecutionEngine`.
+- **Demonstration** (`money-mind-demo.test.ts`): one full, deterministic run
+  of Project Manager → Research (via Money Mind) → QA → Project Manager →
+  Completed, answering "what is complete, what tests exist, and what should
+  be worked on next" — confirmed never to have called `runScript`.
+- **Real filesystem backend** (`money-mind-fs-repo.test.ts`, isolated from
+  the rest — see §22 of the Phase 6 brief): `NodeMoneyMindRepo` against a
+  throwaway temp directory (never a real Money Mind checkout) — real file
+  reads, real directory listing, real traversal/sensitive-path rejection at
+  the OS level, real `npm run <script>` execution and exit code, and a
+  missing-repository-path failing safely rather than crashing.
+
+Every test is deterministic and offline — **no real AI API calls, no real
+external services, no real Money Mind repository**.
 
 ## 14. Extension guidelines
 
@@ -516,14 +577,13 @@ least privilege, add deterministic tests, keep `core` free of adapter imports.
   unchanged; a model call still happens inside an executor that the orchestrator
   has already permission-checked.
 
-## 16. Deliberately out of scope through Phase 5
+## 16. Deliberately out of scope through Phase 6
 
 Unrestricted autonomous planning or agent-triggered recursion; the remaining
 six General Agents (Data Analyst, Security, Finance, Business, Design,
 Documentation); a real "apply this change" capability for the Developer Agent;
 dynamic wiring of one workflow task's live output into a successor's input;
 an automatic "Project Manager re-plans after a mid-workflow failure" loop;
-real production tools (web search/fetch, repository writes, deployment);
 additional real model providers (OpenAI/Google); a live end-to-end
 integration test; network I/O outside the Anthropic adapter; source
 deduplication and retry inside the Research Agent; per-session tool budgets
@@ -531,4 +591,10 @@ across tasks; persisted/resumable in-flight scheduling across a process
 restart mid-loop; asynchronous workers or queues; multi-process persistence
 and file locking; an async `Repository` revision; real authentication;
 retries/backoff at the orchestrator level; external logging or telemetry
-infrastructure; and any real project integration.
+infrastructure; **any write, commit, branch, pull-request, or deploy
+capability against Money Mind** (documented in
+[projects/money-mind.md](projects/money-mind.md) §15, no code path exists);
+and project adapters for AIMS, Mastery, or Tripod Product (Money Mind is the
+only real project integration this phase — see
+[extending.md](extending.md) §"Adding a project adapter" for the now-proven
+recipe).

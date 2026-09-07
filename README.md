@@ -8,18 +8,21 @@ permissions, human approval records, project-isolated context, a structured
 audit log, and **durable persistence behind an interface** — all behind
 **provider- and project-agnostic contracts**.
 
-> **Status: Phase 5 complete.** Controlled **multi-agent workflow
-> orchestration** — a `WorkflowEngine` schedules a validated, cycle-free task
-> graph through the existing `Orchestrator`, so every permission/approval/tool
-> control still applies to each step. Three more General Agents (Project
-> Manager, Developer, QA) join Research, all through the identical pattern.
-> Still no unrestricted autonomous planning. Money Mind will be the first real
-> project integration in a later phase; its source is never copied here.
+> **Status: Phase 6 complete.** The first real **Project Adapter** — a
+> read-mostly integration with the independent **Money Mind** repository,
+> reached only through a declared capability boundary and the same secure
+> `Tool` pipeline every other tool goes through. No Money Mind source is
+> copied here, and no write/commit/push/deploy capability exists yet. Phase 5
+> added controlled **multi-agent workflow orchestration** — a `WorkflowEngine`
+> schedules a validated, cycle-free task graph through the existing
+> `Orchestrator`, so every permission/approval/tool control still applies to
+> each step — and three more General Agents (Project Manager, Developer, QA)
+> alongside Research. Still no unrestricted autonomous planning.
 
 ## Stack
 
 - **TypeScript** (strict) on **Node.js ≥ 20**, ESM (`NodeNext`)
-- Tests: built-in `node:test` + `node:assert/strict` (206 deterministic, offline)
+- Tests: built-in `node:test` + `node:assert/strict` (254 deterministic, offline)
 - Build: `tsc` only
 - Persistence: `Repository<T>` interface; JSON-file store as the first
   implementation ([ADR-0002](docs/adr/0002-local-json-file-persistence.md))
@@ -34,21 +37,24 @@ audit log, and **durable persistence behind an interface** — all behind
 - Workflows: a validated task-dependency graph scheduled through the
   `Orchestrator`, with retries, handoffs, approval pauses, and limits
   ([ADR-0007](docs/adr/0007-multi-agent-workflow-orchestration.md))
+- Project adapters: `ProjectAdapter` contract + the first real implementation,
+  `MoneyMindProjectAdapter` — read-mostly, capability-declared, tool-gated
+  ([ADR-0008](docs/adr/0008-money-mind-project-adapter.md))
 - Lint/format: ESLint 9 + Prettier 3, **dev-only**
   ([ADR-0003](docs/adr/0003-code-quality-tooling.md))
 - **Zero runtime dependencies in core**
 
 ## Layout
 
-| Path                                             | Purpose                                                                                                                                                                                                 |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`contracts/`](contracts/)                       | Shared types, pure validators, agent execution boundary, `Repository` / persistence + research + tool + **workflow / project-manager / developer / qa** contracts.                                      |
-| [`core/`](core/)                                 | Registry, tasks, handoffs, permissions, approvals, context, audit, model registry, General Agent framework, Tool Execution Engine, **Workflow Engine**, orchestrator.                                   |
-| [`adapters/`](adapters/)                         | Provider/project contracts + offline reference implementations (Echo/Anthropic model, tool provider + `Tool` fakes, JSON persistence).                                                                  |
-| [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                           |
-| [`tests/`](tests/)                               | Deterministic, offline tests (206): foundation, persistence, approval, permissions, model provider, research agent, tool framework, workflow engine/agents, and a full demonstration workflow.          |
-| [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [extension guide](docs/extending.md), [ADRs](docs/adr/). |
-| [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                |
+| Path                                             | Purpose                                                                                                                                                                                                                                            |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`contracts/`](contracts/)                       | Shared types, pure validators, agent execution boundary, `Repository` / persistence + research + tool + workflow / project-manager / developer / qa + **money-mind** contracts.                                                                    |
+| [`core/`](core/)                                 | Registry, tasks, handoffs, permissions, approvals, context, audit, model registry, General Agent framework, Tool Execution Engine, Workflow Engine, orchestrator.                                                                                  |
+| [`adapters/`](adapters/)                         | Provider/project contracts + offline reference implementations (Echo/Anthropic model, tool provider + `Tool` fakes, JSON persistence, **`projects/money-mind/`**).                                                                                 |
+| [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                                                                      |
+| [`tests/`](tests/)                               | Deterministic, offline tests (254): foundation, persistence, approval, permissions, model provider, research agent, tool framework, workflow engine/agents, a full demonstration workflow, and **money-mind adapter/agents/demo/fs-repo**.         |
+| [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [Money Mind](docs/projects/money-mind.md), [extension guide](docs/extending.md), [ADRs](docs/adr/). |
+| [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                                                           |
 
 ## Commands
 
@@ -84,6 +90,7 @@ npm run build       # emit dist/
 | `ProjectManagerAgent`                                | Decomposes an objective into a dependency-ordered plan, or summarizes a completed workflow. Never dispatches a task itself.      |
 | `DeveloperAgent`                                     | Implementation plan + _proposed_ changes only — no filesystem, shell, or repository access.                                      |
 | `QaAgent`                                            | Pass / fail / blocked verdict with evidence; a `"pass"` without satisfied findings is structurally rejected.                     |
+| `MoneyMindProjectAdapter`                            | The first real `ProjectAdapter`: eight declared, mostly read-only capabilities against an independent Money Mind checkout.       |
 
 ## Persistence
 
@@ -338,6 +345,35 @@ A gated task pauses the whole workflow (`awaiting_approval`) until
 workflow. Full detail: [docs/workflows.md](docs/workflows.md),
 [ADR-0007](docs/adr/0007-multi-agent-workflow-orchestration.md).
 
+## Money Mind
+
+The first real `ProjectAdapter` — read-mostly, capability-declared, reached
+only through the same secure `Tool` pipeline as any other tool:
+
+```ts
+import {
+  MoneyMindProjectAdapter,
+  InMemoryMoneyMindRepo,
+  makeMoneyMindTools,
+} from "./adapters/index.js";
+// production wiring instead uses NodeMoneyMindRepo({ repoPath }), where
+// repoPath comes from loadMoneyMindConfig() / MONEY_MIND_REPO_PATH
+
+const adapter = new MoneyMindProjectAdapter({
+  repo: new InMemoryMoneyMindRepo(),
+});
+const tools = makeMoneyMindTools(adapter); // 8 Tools — register with a ToolRegistry
+// Research: money-mind.read-docs (search) + money-mind.read-file (fetch)
+// Developer / QA: money-mind.inspect / .read-file / .read-config / .test
+// Project Manager: money-mind.status / .read-project
+```
+
+Every capability but `RUN_TESTS` (`money-mind.test`, always approval-gated,
+one allowlisted npm script, never a raw command) is read-only. No
+write/commit/push/deploy capability exists. Full detail:
+[docs/projects/money-mind.md](docs/projects/money-mind.md),
+[ADR-0008](docs/adr/0008-money-mind-project-adapter.md).
+
 ## Extending
 
 Read [docs/extending.md](docs/extending.md). Never let `core/` import an adapter
@@ -373,3 +409,10 @@ deterministic tests; never commit a secret.
   human decision arrives; `resume` on a workflow that isn't waiting throws.
 - `.env` is git-ignored; `.env.example` contains placeholders only.
 - CI runs without any secret or AI credential.
+- Money Mind access is scoped to `allowedProjects: ["money-mind"]` on every
+  tool (never `"*"`); file reads reject traversal, absolute paths, and
+  sensitive filenames (`.env*`, `.git`, credentials, keys); `RUN_TESTS`
+  accepts only a closed enum of npm script names, re-confirmed against the
+  target's own `package.json` before anything is spawned, and is always
+  approval-gated. No Money Mind source is copied into this repository —
+  every test uses a synthetic, hand-written fixture.

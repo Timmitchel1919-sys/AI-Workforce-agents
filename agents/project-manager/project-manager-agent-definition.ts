@@ -36,18 +36,28 @@ const RISKY_ACTIONS: readonly PermissionAction[] = [
  */
 export function projectManagerGrants(
   agentId: string = PROJECT_MANAGER_AGENT_ID,
+  extra: readonly PermissionGrant[] = [],
 ): PermissionGrant[] {
-  return RISKY_ACTIONS.map((action) => ({
-    effect: "deny",
-    action,
-    agentId,
-    reason: `project manager does not act directly (${action} denied)`,
-  }));
+  return [
+    ...extra,
+    ...RISKY_ACTIONS.map((action): PermissionGrant => ({
+      effect: "deny",
+      action,
+      agentId,
+      reason: `project manager does not act directly (${action} denied)`,
+    })),
+  ];
 }
 
 export interface ProjectManagerAgentDefinitionOptions {
   allowedProjects: readonly string[];
   modelPolicy?: ModelPolicy;
+  /**
+   * Additional read-only tool ids this agent may use beyond its own planning
+   * — e.g. a project adapter's status tool. Empty by default; additive only.
+   */
+  extraAllowedTools?: readonly string[];
+  extraGrants?: readonly PermissionGrant[];
 }
 
 export function makeProjectManagerAgentDefinition(
@@ -66,10 +76,13 @@ export function makeProjectManagerAgentDefinition(
       "workflow_planning",
       "workflow_summary",
     ],
-    allowedTools: [],
+    allowedTools: [...(options.extraAllowedTools ?? [])],
     allowedProjects: [...options.allowedProjects],
     supportedTaskTypes: [PROJECT_MANAGER_PLAN_TASK_TYPE],
-    permissions: projectManagerGrants(),
+    permissions: projectManagerGrants(
+      PROJECT_MANAGER_AGENT_ID,
+      options.extraGrants ?? [],
+    ),
     modelPolicy: options.modelPolicy,
     metadata: {
       role: "project-manager",

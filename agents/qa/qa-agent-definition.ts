@@ -29,18 +29,31 @@ const RISKY_ACTIONS: readonly PermissionAction[] = [
   "secret_access",
 ];
 
-export function qaGrants(agentId: string = QA_AGENT_ID): PermissionGrant[] {
-  return RISKY_ACTIONS.map((action) => ({
-    effect: "deny",
-    action,
-    agentId,
-    reason: `qa agent only evaluates and reports (${action} denied)`,
-  }));
+export function qaGrants(
+  agentId: string = QA_AGENT_ID,
+  extra: readonly PermissionGrant[] = [],
+): PermissionGrant[] {
+  return [
+    ...extra,
+    ...RISKY_ACTIONS.map((action): PermissionGrant => ({
+      effect: "deny",
+      action,
+      agentId,
+      reason: `qa agent only evaluates and reports (${action} denied)`,
+    })),
+  ];
 }
 
 export interface QaAgentDefinitionOptions {
   allowedProjects: readonly string[];
   modelPolicy?: ModelPolicy;
+  /**
+   * Additional read-only tool ids this agent may use beyond evaluating a
+   * given artifact — e.g. a project adapter's inspect/read-file/test tools.
+   * Empty by default; additive only.
+   */
+  extraAllowedTools?: readonly string[];
+  extraGrants?: readonly PermissionGrant[];
 }
 
 export function makeQaAgentDefinition(
@@ -60,10 +73,10 @@ export function makeQaAgentDefinition(
       "acceptance_testing",
       "defect_analysis",
     ],
-    allowedTools: [],
+    allowedTools: [...(options.extraAllowedTools ?? [])],
     allowedProjects: [...options.allowedProjects],
     supportedTaskTypes: [QA_TASK_TYPE],
-    permissions: qaGrants(),
+    permissions: qaGrants(QA_AGENT_ID, options.extraGrants ?? []),
     modelPolicy: options.modelPolicy,
     metadata: {
       role: "qa",

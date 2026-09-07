@@ -83,6 +83,7 @@ const RISKY_ACTIONS: readonly PermissionAction[] = [
  */
 export function researchAgentGrants(
   agentId: string = RESEARCH_AGENT_ID,
+  extra: readonly PermissionGrant[] = [],
 ): PermissionGrant[] {
   return [
     {
@@ -99,6 +100,7 @@ export function researchAgentGrants(
       toolId: RESEARCH_TOOL_FETCH,
       reason: "read an approved research source",
     },
+    ...extra,
     ...RISKY_ACTIONS.map((action): PermissionGrant => ({
       effect: "deny",
       action,
@@ -113,6 +115,15 @@ export interface ResearchAgentDefinitionOptions {
   allowedProjects: readonly string[];
   /** Optional provider/model hint for the wiring layer. */
   modelPolicy?: ModelPolicy;
+  /**
+   * Additional tool ids this agent may use beyond the two core research
+   * tools — e.g. a project adapter's read-only tools (see
+   * `adapters/projects/money-mind/money-mind-tools.ts`). Empty by default;
+   * additive only, never replaces `allowedTools`/`permissions`.
+   */
+  extraAllowedTools?: readonly string[];
+  /** Grants paired with `extraAllowedTools` (still subject to the same deny-list below). */
+  extraGrants?: readonly PermissionGrant[];
 }
 
 export function makeResearchAgentDefinition(
@@ -131,10 +142,17 @@ export function makeResearchAgentDefinition(
       "summarization",
       "evidence_synthesis",
     ],
-    allowedTools: [RESEARCH_TOOL_SEARCH, RESEARCH_TOOL_FETCH],
+    allowedTools: [
+      RESEARCH_TOOL_SEARCH,
+      RESEARCH_TOOL_FETCH,
+      ...(options.extraAllowedTools ?? []),
+    ],
     allowedProjects: [...options.allowedProjects],
     supportedTaskTypes: ["research"],
-    permissions: researchAgentGrants(),
+    permissions: researchAgentGrants(
+      RESEARCH_AGENT_ID,
+      options.extraGrants ?? [],
+    ),
     modelPolicy: options.modelPolicy,
     metadata: {
       role: "researcher",
