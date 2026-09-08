@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { PageContainer, PageHeader } from "../components/layout";
-import { useDocumentTitle } from "../hooks";
+import { PageFrame } from "../components/layout";
 
 /**
- * Route placeholder — proves route + layout + title wiring. The real page
- * arrives in a later UI phase; UI-2 only established the primitives it uses.
+ * Route placeholder — proves route + shell + page-frame wiring. The real page
+ * arrives in a later UI phase; UI-2 built the primitives, UI-3 the shell.
+ * The document title is set by `ControlCenterLayout` from route metadata.
  */
 export function PlaceholderPage({
   title,
@@ -15,14 +15,12 @@ export function PlaceholderPage({
   description?: string;
   children?: ReactNode;
 }) {
-  useDocumentTitle(title);
   return (
-    <PageContainer>
-      <PageHeader
-        title={title}
-        description={description ?? "This view arrives in a later UI phase."}
-      />
+    <PageFrame
+      title={title}
+      description={description ?? "This view arrives in a later UI phase."}
+    >
       {children}
-    </PageContainer>
+    </PageFrame>
   );
 }

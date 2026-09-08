@@ -1,31 +1,27 @@
-import { NavLink } from "react-router-dom";
-import { NAV_ROUTES } from "../app/routes";
-import { useAuth } from "../auth/useAuth";
-import { can } from "../auth/permissions";
-import { cn } from "../lib/utils";
+import { useShell } from "./shellContext";
+import { SidebarNavigation } from "./SidebarNavigation";
+import { APP_DESCRIPTOR, APP_NAME } from "../app/routes";
+import { Drawer } from "../components/ui";
 
-/** Compact bottom bar for narrow viewports. Full styling comes in UI-2. */
+/**
+ * Mobile navigation — a focus-trapping drawer (UI-2 `Drawer`, native
+ * `<dialog>`). Same route config as the desktop sidebar. Closes on Escape, on
+ * backdrop click, and after a navigation; focus returns to the trigger.
+ */
 export function MobileNavigation() {
-  const { role } = useAuth();
-  const items = NAV_ROUTES.filter((route) => can(role, route.permission)).slice(
-    0,
-    5,
-  );
+  const { mobileNavOpen, closeMobileNav } = useShell();
 
   return (
-    <nav className="mobile-nav" aria-label="Primary (compact)">
-      {items.map(({ path, label, icon: Icon }) => (
-        <NavLink
-          key={path}
-          to={path}
-          className={({ isActive }) =>
-            cn("mobile-nav__link", isActive && "mobile-nav__link--active")
-          }
-        >
-          <Icon className="mobile-nav__icon" aria-hidden="true" />
-          <span className="mobile-nav__label">{label}</span>
-        </NavLink>
-      ))}
-    </nav>
+    <div className="mobile-nav-drawer">
+      <Drawer
+        open={mobileNavOpen}
+        onClose={closeMobileNav}
+        title={`${APP_NAME} · ${APP_DESCRIPTOR}`}
+      >
+        <nav aria-label="Primary (mobile)" className="mobile-nav__body">
+          <SidebarNavigation onNavigate={closeMobileNav} />
+        </nav>
+      </Drawer>
+    </div>
   );
 }

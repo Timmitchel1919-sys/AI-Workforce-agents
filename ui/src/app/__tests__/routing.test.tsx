@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { AppRoutes } from "../AppRoutes";
 import { renderWithProviders } from "../../test/renderWithProviders";
 
@@ -25,9 +25,14 @@ describe("routing", () => {
     });
   }
 
-  it("renders a detail route with its id", () => {
+  it("renders a detail route with a route-derived breadcrumb", () => {
     renderWithProviders(<AppRoutes />, { route: "/agents/agent-42" });
-    expect(screen.getByText(/agent-42/)).toBeInTheDocument();
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(crumbs).toHaveTextContent("Agents");
+    expect(crumbs).toHaveTextContent("Agent agent-42");
+    expect(
+      within(crumbs).getByRole("link", { name: "Agents" }),
+    ).toHaveAttribute("href", "/agents");
   });
 
   it("renders the index redirect to /overview", () => {

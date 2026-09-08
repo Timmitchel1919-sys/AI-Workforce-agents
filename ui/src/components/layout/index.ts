@@ -8,3 +8,4 @@ export {
   Inline,
   Grid,
 } from "./Layout";
+export { PageFrame } from "./PageFrame";

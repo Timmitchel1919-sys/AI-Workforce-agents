@@ -32,6 +32,7 @@ function useDialogElement(open: boolean, onClose: () => void) {
     const el = ref.current;
     if (!el) return;
     if (open && !el.open) {
+      el.hidden = false;
       // jsdom (tests) may not implement showModal — fall back to the attribute.
       try {
         el.showModal();
@@ -45,6 +46,9 @@ function useDialogElement(open: boolean, onClose: () => void) {
       } catch {
         el.removeAttribute("open");
       }
+      // Keep it out of the a11y tree / not visible while closed (jsdom lacks
+      // the UA `dialog:not([open]){display:none}` rule).
+      el.hidden = true;
     }
   }, [open]);
 
@@ -55,6 +59,17 @@ function useDialogElement(open: boolean, onClose: () => void) {
     el.addEventListener("close", handleClose);
     return () => el.removeEventListener("close", handleClose);
   }, [onClose]);
+
+  // Explicit Escape handling — native modal dialogs do this for free, but the
+  // attribute fallback (and non-modal cases) do not.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   const onBackdropClick = useCallback(
     (event: ReactMouseEvent<HTMLDialogElement>) => {
@@ -82,6 +97,7 @@ export function Dialog({
       ref={ref}
       className={cn("ui-dialog", size === "lg" && "ui-dialog--lg")}
       aria-labelledby={titleId}
+      hidden={!open}
       onClick={onBackdropClick}
       onCancel={onClose}
     >
@@ -114,6 +130,7 @@ export function Drawer({
       ref={ref}
       className="ui-drawer"
       aria-labelledby={titleId}
+      hidden={!open}
       onClick={onBackdropClick}
       onCancel={onClose}
     >
@@ -210,6 +227,7 @@ export interface DropdownItem {
 export function Dropdown({
   trigger,
   items,
+  header,
   label = "Actions",
 }: {
   trigger: (props: {
@@ -218,6 +236,8 @@ export function Dropdown({
     "aria-haspopup": "menu";
   }) => ReactNode;
   items: ReadonlyArray<DropdownItem | "separator">;
+  /** Optional non-interactive block at the top of the menu. */
+  header?: ReactNode;
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -238,6 +258,7 @@ export function Dropdown({
       })}
       {open ? (
         <div className="ui-dropdown" role="menu" aria-label={label}>
+          {header ? <div role="none">{header}</div> : null}
           {items.map((item, index) =>
             item === "separator" ? (
               <div

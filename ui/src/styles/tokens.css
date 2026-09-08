@@ -175,6 +175,7 @@
   --z-dialog: 700;
   --z-toast: 900;
   --sidebar-width: 232px;
+  --sidebar-collapsed-width: 56px;
   --topbar-height: 52px;
   --page-max-width: 1440px;
 }
