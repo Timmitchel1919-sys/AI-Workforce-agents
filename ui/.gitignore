@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local env — never commit
+.env
+.env.*
+!.env.example
+
+# Vite
+.vite/

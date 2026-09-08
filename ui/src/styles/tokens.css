@@ -1,0 +1,48 @@
+/*
+ * Design tokens — provisional. UI-2 replaces these values with the real design
+ * system. Everything else references the custom properties, never raw values.
+ */
+:root {
+  color-scheme: light dark;
+
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-pill: 999px;
+
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-border: #d9dde3;
+  --color-text: #1b1f24;
+  --color-text-muted: #5b6470;
+  --color-accent: #2f6feb;
+  --color-ok: #1a7f37;
+  --color-warn: #9a6700;
+  --color-danger: #b3261e;
+  --color-unknown: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0d1117;
+    --color-surface: #161b22;
+    --color-border: #2a2f37;
+    --color-text: #e6edf3;
+    --color-text-muted: #9aa4b2;
+    --color-accent: #4c8dff;
+    --color-ok: #2ea043;
+    --color-warn: #d29922;
+    --color-danger: #f85149;
+    --color-unknown: #8b949e;
+  }
+}

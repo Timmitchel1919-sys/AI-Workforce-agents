@@ -22,8 +22,16 @@ audit log, and **durable persistence behind an interface** — all behind
 > Earlier phases: the Control Plane backend (roles, per-command audit +
 > correlation ids, typed errors), the operations dashboard, the Money Mind
 > **Project Adapter**, multi-agent **workflow orchestration**, four General
-> Agents. **No frontend yet** (Phase 7C); no real-time push; no unrestricted
-> autonomous planning.
+> Agents.
+>
+> **UI-1 (foundation) complete:** a separate React + TypeScript + Vite app in
+> [`ui/`](ui/) — routing for all nine views + 404, a central typed API client
+> (`Authorization: Bearer`, `x-correlation-id`, normalized errors), the Firebase
+> **Auth** boundary (`loading / authenticated / unauthenticated / error`), and
+> TanStack Query wired at the root. The UI talks to the `api/` HTTP surface only;
+> it never touches Firestore, the Admin SDK, `core/`, or `control/`. Placeholder
+> pages only — no visual design (UI-2), no feature dashboards (later). No
+> real-time push; no unrestricted autonomous planning.
 
 ## Stack
 
@@ -73,7 +81,8 @@ audit log, and **durable persistence behind an interface** — all behind
 | [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                                                                                                                                      |
 | [`control/`](control/)                           | Control & Operations Layer: `services/` (query + command), operational stores, redaction, health, view derivation, `dashboard/` (pure render + self-contained HTML).                                                                                                                                               |
 | [`api/`](api/)                                   | Composition root: `createControlPlaneApi` (dependency-free Node `http` handler over the two services) + `FirebaseRepositoryProvider` (hydrate-once Firestore-backed repositories).                                                                                                                                 |
-| [`tests/`](tests/)                               | Deterministic, offline tests (329): the above + **control-plane** / **control-plane-backend** / **control-dashboard**, and **cached-repository** / **firebase-adapters** / **http-api** (Firebase seam fakes + a loopback `http.Server`).                                                                          |
+| [`ui/`](ui/)                                     | **AI Workforce Control Center** — a separate React + TypeScript + Vite app. Consumes the `api/` HTTP surface only; never Firestore/Admin/core. Own `package.json`, `tsconfig`, lint/test. UI-1 = foundation (routing, API client, auth boundary, placeholder pages).                                               |
+| [`tests/`](tests/)                               | Deterministic, offline tests (329): the above + **control-plane** / **control-plane-backend** / **control-dashboard**, and **cached-repository** / **firebase-adapters** / **http-api** (Firebase seam fakes + a loopback `http.Server`). The `ui/` app has its own 36 Vitest tests.                               |
 | [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Control Plane](docs/control-plane.md), [Firebase](docs/firebase.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [Money Mind](docs/projects/money-mind.md), [extending](docs/extending.md), [ADRs](docs/adr/). |
 | `firebase.json` · `.firebaserc` · `*.rules`      | Firestore/Storage config; rules **deny all** direct client access (Admin SDK only).                                                                                                                                                                                                                                |
 | [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                                                                                                                           |
