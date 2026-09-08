@@ -40,6 +40,7 @@ th{background:#14171c}
 .tile__value{font-size:1.6rem;font-weight:600}
 .tile__label{color:#8b949e;font-size:12px}
 .badge{display:inline-block;padding:.05rem .45rem;border-radius:999px;font-size:11px;background:#30363d;margin-left:.25rem}
+.badge--unknown{background:#484f58}
 .badge--healthy,.badge--completed,.badge--available,.badge--executed,.badge--pass,.badge--allowed{background:#1a7f37}
 .badge--failed,.badge--unavailable,.badge--denied,.badge--rejected,.badge--high-risk{background:#a40e26}
 .badge--degraded,.badge--blocked,.badge--awaiting-approval,.badge--paused,.badge--waiting,.badge--medium-risk{background:#9a6700}

@@ -3,7 +3,8 @@
  *
  * A `HealthProbe` returns the status of one component. The Control Plane never
  * *claims* an external provider is healthy: unless a probe has actually checked
- * it, its status is reported as `degraded` with an explicit "not checked" note.
+ * it, its status is reported as `unknown` with an explicit "not checked" note.
+ * `unknown` is not a failure — it means unmeasured.
  */
 import {
   type HealthComponent,
@@ -24,13 +25,21 @@ export function unverifiedComponent(
 ): HealthProbe {
   return {
     name,
-    check: () => ({ status: "degraded", detail }),
+    check: () => ({ status: "unknown", detail }),
   };
 }
 
+/**
+ * Overall = the worst component. Precedence:
+ *   unavailable > degraded > unknown > healthy
+ * An unmeasured component drags the overall status down to `unknown`, but not
+ * to `degraded` — the system is not known to be impaired, only not fully
+ * observed.
+ */
 function worst(statuses: readonly HealthStatus[]): HealthStatus {
   if (statuses.includes("unavailable")) return "unavailable";
   if (statuses.includes("degraded")) return "degraded";
+  if (statuses.includes("unknown")) return "unknown";
   return "healthy";
 }
 

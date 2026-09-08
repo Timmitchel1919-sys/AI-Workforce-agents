@@ -93,19 +93,21 @@ agents/
   developer/                 DeveloperAgent — implementation plan + proposed changes only.
   qa/                        QaAgent — pass/fail/blocked verdict; cannot self-approve without evidence.
 control/
-  context.ts                 ControlPlaneContext — the injected bundle of core services + stores.
-  stores.ts                  AgentOperationalStore (enabled/disabled), WorkflowControlStore (paused).
+  context.ts                 ControlPlaneContext — the injected bundle of core services + stores + optional ports.
+  ports.ts                   OperatorDirectory / ControlEventPublisher / ControlRepository<T> — unimplemented seams for Phase 7B.
+  errors.ts / correlation.ts Control error taxonomy over WorkforceError + classifyErrorKind; correlation-id helpers.
+  stores.ts                  AgentOperationalStore (enabled/disabled), WorkflowControlStore (paused) — behind an injected Repository<T>.
   redaction.ts / risk.ts     Secret redaction; deterministic approval risk classification.
-  health.ts / derive.ts      Measurable system health; pure core-state → view-model derivation.
+  health.ts / derive.ts      Measurable system health (healthy/degraded/unavailable/unknown); pure core-state → view-model derivation.
   services/workforce-query-service    WorkforceQueryService — the read side (view-gated, project-scoped).
-  services/workforce-command-service  WorkforceCommandService — validate → authorize → state → core → audit.
+  services/workforce-command-service  WorkforceCommandService — validate → authorize → state → core → audit; every command carries a correlation id.
   dashboard/render + build-html        Pure HTML rendering + one self-contained document. No deps.
 tests/
   foundation | persistence | approval-execution | permission-enforcement
   anthropic-provider | model-provider-layer | research-agent | tool-framework
   workflow-engine | workflow-agents | workflow-demo
   money-mind-adapter | money-mind-agents | money-mind-demo | money-mind-fs-repo
-  control-plane | control-dashboard  (288 tests total)
+  control-plane | control-plane-backend | control-dashboard  (306 tests total)
 docs/                       This documentation + ADRs.
 .env.example                Placeholder environment configuration (never a real .env).
 .github/workflows/ci.yml    Continuous integration.
@@ -222,7 +224,8 @@ lifecycle events, with a `data.kind` discriminator — see §9c),
 `project_adapter_event` (`data.kind: "adapter_initialized"`, emitted once by
 the wiring layer right after constructing a `ProjectAdapter`), and
 `control_command` (every operator command — `data.command` / `data.outcome` /
-`data.actor` — including denied and rejected ones; see §9d).
+`data.errorKind` / `data.correlationId` / `data.actor` — including denied and
+rejected ones; see §9d).
 
 ### Persistence
 
@@ -509,18 +512,23 @@ orchestrator. `UI → control services → core → contracts`.
   `getAgent`, `getTasks` / `getTask` (filters + opaque-cursor pagination),
   `getWorkflows` / `getWorkflow` (progress = `completed/total` real task
   records), `getApprovals` (with deterministic risk classification),
-  `getAuditEvents` (filters + pagination + redaction), `getProjects` /
-  `getProject` (via `ProjectRegistry`), `getTools` / `getTool` (policy metadata
-  only — never credentials), `getHealth` (only measurable components; anything
-  unchecked reports `degraded`), `getDashboardSnapshot`. Every method is
-  `view`-gated and project-scoped to the operator.
+  `getAuditEvents` (filters incl. `actor` / `correlationId` + pagination +
+  redaction), `getProjects` / `getProject` (via `ProjectRegistry`), `getTools` /
+  `getTool` (policy metadata only — never credentials), `getSystemHealth` (only
+  measurable components; anything unchecked reports `unknown`, not `degraded`),
+  `getDashboardSnapshot`. Every method is `view`-gated and project-scoped to the
+  operator.
 - **`WorkforceCommandService`** (write) — `approve` / `reject` / `cancelTask` /
   `retryTask` / `pauseWorkflow` / `resumeWorkflow` / `cancelWorkflow` /
   `disableAgent` / `enableAgent`. Fixed pipeline: **validate input → validate
   authorization → validate current state → execute through the core service →
   emit a `control_command` audit event (always, including denied/rejected) →
-  return a `ControlCommandResult`.** The UI never mutates state directly;
-  approvals go through `ApprovalSystem` / `Orchestrator.recordApprovalDecision`.
+  return a `ControlCommandResult`.** Every call carries a correlation id (given
+  or minted) written to the audit event and returned on the result; every
+  non-`executed` result carries an `errorKind` (`invalid_request` / `forbidden`
+  / `not_found` / `invalid_state` / `approval_failure` / …). The UI never mutates
+  state directly; approvals go through `ApprovalSystem` /
+  `Orchestrator.recordApprovalDecision`.
 - **Operator roles** — `viewer` (view), `operator` (+ approve/reject/cancel/
   retry/pause/resume), `admin` (+ enable/disable agent). Deny-by-default; no
   RBAC engine.
@@ -533,8 +541,15 @@ orchestrator. `UI → control services → core → contracts`.
   transitively.
 - **Dashboard** — a dependency-free pure render + `buildDashboardHtml` (one
   self-contained document; nine views; no framework, no shipped server, no
-  fake data). Full detail in [control-plane.md](control-plane.md); rationale in
-  [ADR-0009](adr/0009-workforce-control-plane.md).
+  fake data).
+- **Ports (Phase 7A, unimplemented)** — `control/ports.ts` declares
+  `OperatorDirectory` (credential → `OperatorPrincipal`), `ControlEventPublisher`
+  (real-time fan-out; a successful command publishes a `command_result` event),
+  and `ControlRepository<T>` (= `Repository<T>`, the Firestore seam). No Firebase
+  code, project, or config exists. Full detail in
+  [control-plane.md](control-plane.md); rationale in
+  [ADR-0009](adr/0009-workforce-control-plane.md) and
+  [ADR-0010](adr/0010-control-plane-backend.md).
 
 ## 10. Persistence architecture
 
@@ -568,7 +583,7 @@ stays zero. `tsc --noEmit` remains the type-correctness gate. See
 ## 13. Testing
 
 `npm test` compiles with `tsc` and runs `node --test` over the compiled output
-(**288 tests**). Coverage: the Phase 1–5 surface (registry, task lifecycle,
+(**306 tests**). Coverage: the Phase 1–5 surface (registry, task lifecycle,
 handoffs, permissions + every scope, approval lifecycle + resume, orchestrator
 routing, persistence + survival across reinit, audit, the Anthropic adapter and
 its failure classes, the model provider registry + audit decorator, the
@@ -625,8 +640,19 @@ including denied/rejected; secrets in task metadata never reach a view or the
 audit log); and the dashboard render (empty states, XSS escaping, real-count
 rendering, self-contained document, error banner).
 
+Plus **the Phase 7A backend hardening** (`control-plane-backend.test.ts`):
+correlation ids (minted vs. supplied, threaded into the audit event, queryable);
+the `errorKind` model (`invalid_request` / `forbidden` / `not_found` /
+`invalid_state` / `approval_failure`, and `classifyErrorKind` over the
+`WorkforceError` hierarchy); `UNKNOWN` health (an unmeasured component is
+`unknown`, a real `degraded` probe still outranks it); `createdAfter` /
+`createdBefore` and audit `actor` filters; the `ControlEventPublisher` port (one
+`command_result` per successful command; a throwing publisher never breaks the
+command); and the security regressions (deny-by-default, project isolation,
+secret redaction through a correlation-tagged command).
+
 Every test is deterministic and offline — **no real AI API calls, no real
-external services, no real Money Mind repository, no HTTP server**.
+external services, no real Money Mind repository, no HTTP server, no Firebase**.
 
 ## 14. Extension guidelines
 

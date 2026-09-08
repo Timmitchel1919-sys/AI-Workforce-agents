@@ -424,10 +424,11 @@ test("query: audit events filter + paginate + redact", async () => {
 
 test("query: health never claims an unchecked provider is healthy", () => {
   const h = harness();
-  const health = h.query.getHealth(VIEWER);
+  const health = h.query.getSystemHealth(VIEWER);
   const provider = health.components.find((c) => c.name === "model-provider");
   assert.ok(provider);
-  assert.equal(provider!.status, "degraded");
+  // An unmeasured component is `unknown` — not `healthy`, and not `degraded`.
+  assert.equal(provider!.status, "unknown");
   assert.match(provider!.detail, /unknown|not checked/i);
 });
 

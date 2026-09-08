@@ -349,6 +349,7 @@ export function deriveAuditEventView(event: AuditEvent): AuditEventView {
     projectId: event.projectId ?? nested("projectId"),
     workflowId: nested("workflowId"),
     toolId: nested("toolId"),
+    correlationId: nested("correlationId"),
     outcome: deriveOutcome(event),
     data: redact(data),
   };

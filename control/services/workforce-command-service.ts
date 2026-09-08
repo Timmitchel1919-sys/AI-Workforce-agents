@@ -10,17 +10,24 @@
  *   5. create audit event         (`control_command`, ALWAYS — including denied)
  *   6. return a structured result
  *
- * The UI never mutates state directly; it calls these methods.
+ * The UI never mutates state directly; it calls these methods. Every call
+ * carries a correlation id (supplied by the caller or minted here) that is
+ * written to the audit event and returned on the result, so a control request
+ * can be traced through the command, the core operation, and the audit log.
  */
 import {
   type AgentCommandInput,
   type ApprovalCommandInput,
+  type CommandOptions,
   type ControlCommand,
   type ControlCommandOutcome,
   type ControlCommandResult,
+  type ControlErrorKind,
   type OperatorPrincipal,
   type RejectCommandInput,
+  type Task,
   type TaskCommandInput,
+  type Workflow,
   type WorkflowCommandInput,
   DEFAULT_RETRY_POLICY,
   operatorCan,
@@ -30,7 +37,13 @@ import {
 } from "../../contracts/index.js";
 import { extractFailureReason, now } from "../../core/index.js";
 import { type ControlPlaneContext } from "../context.js";
+import { resolveCorrelationId } from "../correlation.js";
 import { redact } from "../redaction.js";
+
+/** Carries the per-request correlation id through a command's helpers. */
+interface CommandRun {
+  readonly correlationId: string;
+}
 
 const TERMINAL_TASK_STATUSES = new Set(["completed", "cancelled"]);
 const TERMINAL_WORKFLOW_STATUSES = new Set([
@@ -53,17 +66,21 @@ export class WorkforceCommandService {
   async approve(
     principal: OperatorPrincipal,
     input: ApprovalCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
-    return this.decideApproval(principal, "approve", input.approvalId, {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    return this.decideApproval(principal, "approve", input?.approvalId, run, {
       decision: "approved",
-      note: input.note,
+      note: input?.note,
     });
   }
 
   async reject(
     principal: OperatorPrincipal,
     input: RejectCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
     try {
       requireId(input?.reason, "reject.reason");
     } catch (error) {
@@ -72,11 +89,12 @@ export class WorkforceCommandService {
         "reject",
         "rejected",
         input?.approvalId,
-        error instanceof Error ? error.message : String(error),
+        message(error),
         {},
+        run,
       );
     }
-    return this.decideApproval(principal, "reject", input.approvalId, {
+    return this.decideApproval(principal, "reject", input.approvalId, run, {
       decision: "rejected",
       note: input.reason,
     });
@@ -85,7 +103,8 @@ export class WorkforceCommandService {
   private async decideApproval(
     principal: OperatorPrincipal,
     command: "approve" | "reject",
-    approvalIdRaw: string,
+    approvalIdRaw: string | undefined,
+    run: CommandRun,
     opts: { decision: "approved" | "rejected"; note?: string },
   ): Promise<ControlCommandResult> {
     let approvalId: string;
@@ -97,8 +116,9 @@ export class WorkforceCommandService {
         command,
         "rejected",
         undefined,
-        error instanceof Error ? error.message : String(error),
+        message(error),
         {},
+        run,
       );
     }
 
@@ -111,6 +131,7 @@ export class WorkforceCommandService {
         approvalId,
         `role "${principal.role}" may not ${command}`,
         {},
+        run,
       );
     }
 
@@ -123,6 +144,8 @@ export class WorkforceCommandService {
         approvalId,
         "unknown approval",
         {},
+        run,
+        "not_found",
       );
     }
     if (approval.status !== "requested") {
@@ -133,6 +156,8 @@ export class WorkforceCommandService {
         approvalId,
         `approval is already ${approval.status}`,
         {},
+        run,
+        "invalid_state",
       );
     }
 
@@ -148,33 +173,51 @@ export class WorkforceCommandService {
         approvalId,
         `operator may not act on project "${projectId}"`,
         { projectId },
+        run,
       );
     }
 
-    // 4. execute through core
+    // 4. execute the decision through core. A failure here is a real
+    //    approval-subsystem fault — surfaced as `approval_failure`, never a
+    //    leaked stack trace.
     const enacted: Record<string, unknown> = {};
-    if (taskId && this.ctx.orchestrator) {
-      this.ctx.orchestrator.recordApprovalDecision(
-        approvalId,
-        opts.decision,
-        principal.id,
-        { via: "control-plane", note: opts.note },
-      );
-      if (opts.decision === "approved") {
-        try {
-          const task = await this.ctx.orchestrator.resume(taskId);
-          enacted.taskResumed = true;
-          enacted.taskStatus = task.status;
-        } catch (error) {
-          enacted.taskResumeError =
-            error instanceof Error ? error.message : String(error);
-        }
+    try {
+      if (taskId && this.ctx.orchestrator) {
+        this.ctx.orchestrator.recordApprovalDecision(
+          approvalId,
+          opts.decision,
+          principal.id,
+          { via: "control-plane", note: opts.note },
+        );
+      } else {
+        this.ctx.approvals.decide(approvalId, opts.decision, principal.id, {
+          via: "control-plane",
+          note: opts.note,
+        });
       }
-    } else {
-      this.ctx.approvals.decide(approvalId, opts.decision, principal.id, {
-        via: "control-plane",
-        note: opts.note,
-      });
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        approvalId,
+        `could not record the decision: ${message(error)}`,
+        { projectId },
+        run,
+        "approval_failure",
+      );
+    }
+
+    // Enacting the follow-up (task / workflow resume) is best effort — the
+    // decision is already recorded.
+    if (taskId && this.ctx.orchestrator && opts.decision === "approved") {
+      try {
+        const task = await this.ctx.orchestrator.resume(taskId);
+        enacted.taskResumed = true;
+        enacted.taskStatus = task.status;
+      } catch (error) {
+        enacted.taskResumeError = message(error);
+      }
     }
 
     // best-effort workflow continuation
@@ -194,8 +237,7 @@ export class WorkforceCommandService {
           enacted.workflowResumed = true;
           enacted.workflowStatus = resumed.status;
         } catch (error) {
-          enacted.workflowResumeError =
-            error instanceof Error ? error.message : String(error);
+          enacted.workflowResumeError = message(error);
         }
       }
     }
@@ -207,6 +249,7 @@ export class WorkforceCommandService {
       approvalId,
       `approval ${opts.decision}`,
       { decision: opts.decision, taskId, workflowId, ...enacted },
+      run,
     );
   }
 
@@ -217,8 +260,15 @@ export class WorkforceCommandService {
   async cancelTask(
     principal: OperatorPrincipal,
     input: TaskCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
-    const check = this.resolveTask(principal, "cancel_task", input?.taskId);
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    const check = this.resolveTask(
+      principal,
+      "cancel_task",
+      input?.taskId,
+      run,
+    );
     if (!check.ok) return check.result;
     const task = check.task;
 
@@ -230,6 +280,8 @@ export class WorkforceCommandService {
         task.id,
         `task is already ${task.status}`,
         { projectId: task.projectId },
+        run,
+        "invalid_state",
       );
     }
     if (!this.ctx.tasks.canTransition(task.status, "cancelled")) {
@@ -240,6 +292,8 @@ export class WorkforceCommandService {
         task.id,
         `cannot cancel a task in status ${task.status}`,
         { projectId: task.projectId },
+        run,
+        "invalid_state",
       );
     }
 
@@ -256,14 +310,17 @@ export class WorkforceCommandService {
       task.id,
       "task cancelled",
       { projectId: task.projectId, status: next.status },
+      run,
     );
   }
 
   async retryTask(
     principal: OperatorPrincipal,
     input: TaskCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
-    const check = this.resolveTask(principal, "retry_task", input?.taskId);
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    const check = this.resolveTask(principal, "retry_task", input?.taskId, run);
     if (!check.ok) return check.result;
     const task = check.task;
 
@@ -275,6 +332,8 @@ export class WorkforceCommandService {
         task.id,
         `only a failed task may be retried (status: ${task.status})`,
         { projectId: task.projectId },
+        run,
+        "invalid_state",
       );
     }
     if (typeof task.metadata.workflowId === "string") {
@@ -285,6 +344,8 @@ export class WorkforceCommandService {
         task.id,
         "this task belongs to a workflow — retry it via the workflow, not directly",
         { projectId: task.projectId, workflowId: task.metadata.workflowId },
+        run,
+        "invalid_state",
       );
     }
 
@@ -298,6 +359,8 @@ export class WorkforceCommandService {
         task.id,
         `failure reason "${reason}" is not retryable`,
         { projectId: task.projectId, reason },
+        run,
+        "invalid_state",
       );
     }
 
@@ -313,6 +376,8 @@ export class WorkforceCommandService {
         task.id,
         `retry limit reached (${already}/${this.maxRetries})`,
         { projectId: task.projectId },
+        run,
+        "invalid_state",
       );
     }
 
@@ -329,6 +394,7 @@ export class WorkforceCommandService {
       task.id,
       `task re-queued (attempt ${already + 1})`,
       { projectId: task.projectId, status: next.status, attempt: already + 1 },
+      run,
     );
   }
 
@@ -339,11 +405,14 @@ export class WorkforceCommandService {
   async pauseWorkflow(
     principal: OperatorPrincipal,
     input: WorkflowCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
     const check = this.resolveWorkflow(
       principal,
       "pause_workflow",
       input?.workflowId,
+      run,
     );
     if (!check.ok) return check.result;
     const workflow = check.workflow;
@@ -356,6 +425,8 @@ export class WorkforceCommandService {
         workflow.id,
         `workflow is already ${workflow.status}`,
         { projectId: workflow.projectId },
+        run,
+        "invalid_state",
       );
     }
     if (this.ctx.workflowControl.isPaused(workflow.id)) {
@@ -366,6 +437,8 @@ export class WorkforceCommandService {
         workflow.id,
         "workflow is already paused",
         { projectId: workflow.projectId },
+        run,
+        "invalid_state",
       );
     }
 
@@ -377,17 +450,21 @@ export class WorkforceCommandService {
       workflow.id,
       "workflow paused — no further task dispatch until resumed",
       { projectId: workflow.projectId, reason: input.reason },
+      run,
     );
   }
 
   async resumeWorkflow(
     principal: OperatorPrincipal,
     input: WorkflowCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
     const check = this.resolveWorkflow(
       principal,
       "resume_workflow",
       input?.workflowId,
+      run,
     );
     if (!check.ok) return check.result;
     const workflow = check.workflow;
@@ -400,6 +477,8 @@ export class WorkforceCommandService {
         workflow.id,
         `workflow is already ${workflow.status}`,
         { projectId: workflow.projectId },
+        run,
+        "invalid_state",
       );
     }
 
@@ -415,8 +494,7 @@ export class WorkforceCommandService {
         enacted.engineResumed = true;
         enacted.workflowStatus = next.status;
       } catch (error) {
-        enacted.engineResumeError =
-          error instanceof Error ? error.message : String(error);
+        enacted.engineResumeError = message(error);
       }
     }
 
@@ -428,6 +506,8 @@ export class WorkforceCommandService {
         workflow.id,
         `nothing to resume (status: ${workflow.status}, not paused)`,
         { projectId: workflow.projectId },
+        run,
+        "invalid_state",
       );
     }
 
@@ -438,17 +518,21 @@ export class WorkforceCommandService {
       workflow.id,
       "workflow resumed",
       { projectId: workflow.projectId, ...enacted },
+      run,
     );
   }
 
   async cancelWorkflow(
     principal: OperatorPrincipal,
     input: WorkflowCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
     const check = this.resolveWorkflow(
       principal,
       "cancel_workflow",
       input?.workflowId,
+      run,
     );
     if (!check.ok) return check.result;
     const workflow = check.workflow;
@@ -461,6 +545,8 @@ export class WorkforceCommandService {
         workflow.id,
         `workflow is already ${workflow.status}`,
         { projectId: workflow.projectId },
+        run,
+        "invalid_state",
       );
     }
     if (!this.ctx.workflows.canTransition(workflow.status, "cancelled")) {
@@ -471,6 +557,8 @@ export class WorkforceCommandService {
         workflow.id,
         `cannot cancel a workflow in status ${workflow.status}`,
         { projectId: workflow.projectId },
+        run,
+        "invalid_state",
       );
     }
 
@@ -487,6 +575,7 @@ export class WorkforceCommandService {
       workflow.id,
       "workflow cancelled",
       { projectId: workflow.projectId, status: next.status },
+      run,
     );
   }
 
@@ -497,15 +586,19 @@ export class WorkforceCommandService {
   async disableAgent(
     principal: OperatorPrincipal,
     input: AgentCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
-    return this.setAgentEnabled(principal, "disable_agent", input, false);
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    return this.setAgentEnabled(principal, "disable_agent", input, false, run);
   }
 
   async enableAgent(
     principal: OperatorPrincipal,
     input: AgentCommandInput,
+    options?: CommandOptions,
   ): Promise<ControlCommandResult> {
-    return this.setAgentEnabled(principal, "enable_agent", input, true);
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    return this.setAgentEnabled(principal, "enable_agent", input, true, run);
   }
 
   private async setAgentEnabled(
@@ -513,6 +606,7 @@ export class WorkforceCommandService {
     command: "disable_agent" | "enable_agent",
     input: AgentCommandInput,
     enabled: boolean,
+    run: CommandRun,
   ): Promise<ControlCommandResult> {
     let agentId: string;
     try {
@@ -523,8 +617,9 @@ export class WorkforceCommandService {
         command,
         "rejected",
         undefined,
-        error instanceof Error ? error.message : String(error),
+        message(error),
         {},
+        run,
       );
     }
 
@@ -536,6 +631,7 @@ export class WorkforceCommandService {
         agentId,
         `role "${principal.role}" may not ${command.replace("_", " ")}`,
         {},
+        run,
       );
     }
 
@@ -547,6 +643,8 @@ export class WorkforceCommandService {
         agentId,
         "unknown agent",
         {},
+        run,
+        "not_found",
       );
     }
 
@@ -559,6 +657,8 @@ export class WorkforceCommandService {
         agentId,
         `agent is already ${enabled ? "enabled" : "disabled"}`,
         {},
+        run,
+        "invalid_state",
       );
     }
 
@@ -581,6 +681,7 @@ export class WorkforceCommandService {
         ? "agent enabled — may receive new tasks again"
         : "agent disabled — will not receive new tasks; running work is left to finish",
       { reason: input.reason },
+      run,
     );
   }
 
@@ -592,9 +693,8 @@ export class WorkforceCommandService {
     principal: OperatorPrincipal,
     command: ControlCommand,
     taskIdRaw: string | undefined,
-  ):
-    | { ok: true; task: import("../../contracts/index.js").Task }
-    | { ok: false; result: ControlCommandResult } {
+    run: CommandRun,
+  ): { ok: true; task: Task } | { ok: false; result: ControlCommandResult } {
     let taskId: string;
     try {
       taskId = requireId(taskIdRaw, `${command}.taskId`);
@@ -606,8 +706,9 @@ export class WorkforceCommandService {
           command,
           "rejected",
           undefined,
-          error instanceof Error ? error.message : String(error),
+          message(error),
           {},
+          run,
         ),
       };
     }
@@ -622,6 +723,7 @@ export class WorkforceCommandService {
           taskId,
           `role "${principal.role}" may not ${command.replace("_", " ")}`,
           {},
+          run,
         ),
       };
     }
@@ -636,6 +738,8 @@ export class WorkforceCommandService {
           taskId,
           "unknown task",
           {},
+          run,
+          "not_found",
         ),
       };
     }
@@ -649,6 +753,7 @@ export class WorkforceCommandService {
           taskId,
           `operator may not act on project "${task.projectId}"`,
           { projectId: task.projectId },
+          run,
         ),
       };
     }
@@ -659,8 +764,9 @@ export class WorkforceCommandService {
     principal: OperatorPrincipal,
     command: ControlCommand,
     workflowIdRaw: string | undefined,
+    run: CommandRun,
   ):
-    | { ok: true; workflow: import("../../contracts/index.js").Workflow }
+    | { ok: true; workflow: Workflow }
     | { ok: false; result: ControlCommandResult } {
     let workflowId: string;
     try {
@@ -673,8 +779,9 @@ export class WorkforceCommandService {
           command,
           "rejected",
           undefined,
-          error instanceof Error ? error.message : String(error),
+          message(error),
           {},
+          run,
         ),
       };
     }
@@ -693,6 +800,7 @@ export class WorkforceCommandService {
           workflowId,
           `role "${principal.role}" may not ${command.replace("_", " ")}`,
           {},
+          run,
         ),
       };
     }
@@ -707,6 +815,8 @@ export class WorkforceCommandService {
           workflowId,
           "unknown workflow",
           {},
+          run,
+          "not_found",
         ),
       };
     }
@@ -720,13 +830,18 @@ export class WorkforceCommandService {
           workflowId,
           `operator may not act on project "${workflow.projectId}"`,
           { projectId: workflow.projectId },
+          run,
         ),
       };
     }
     return { ok: true, workflow };
   }
 
-  /** Record a `control_command` audit event and return the structured result. */
+  /**
+   * Record a `control_command` audit event and return the structured result.
+   * `errorKind` refines a non-`executed` outcome; when omitted it defaults to
+   * `forbidden` for a denial and `invalid_request` for a rejection.
+   */
   private audited(
     principal: OperatorPrincipal,
     command: ControlCommand,
@@ -734,6 +849,8 @@ export class WorkforceCommandService {
     resourceId: string | undefined,
     reason: string,
     details: Record<string, unknown>,
+    run: CommandRun,
+    errorKind?: ControlErrorKind,
   ): ControlCommandResult {
     // Validate the principal shape even on the failure paths.
     try {
@@ -741,6 +858,11 @@ export class WorkforceCommandService {
     } catch {
       /* fall through — the event still records what was attempted */
     }
+    const kind: ControlErrorKind | undefined =
+      outcome === "executed"
+        ? undefined
+        : (errorKind ??
+          (outcome === "denied" ? "forbidden" : "invalid_request"));
     const projectId =
       typeof details.projectId === "string" ? details.projectId : undefined;
     const event = this.ctx.audit.record("control_command", {
@@ -750,6 +872,8 @@ export class WorkforceCommandService {
       data: {
         command,
         outcome,
+        errorKind: kind,
+        correlationId: run.correlationId,
         actor: principal?.id ?? "unknown",
         actorRole: principal?.role ?? "unknown",
         resourceId,
@@ -757,15 +881,33 @@ export class WorkforceCommandService {
         ...redact(details),
       },
     });
-    return {
+    const result: ControlCommandResult = {
       command,
       outcome,
       ok: outcome === "executed",
+      errorKind: kind,
       reason,
       resourceId,
+      correlationId: run.correlationId,
       details: redact(details),
       auditEventId: event.id,
       timestamp: now(),
     };
+    this.publish(result);
+    return result;
   }
+
+  /** Best-effort real-time fan-out. A throwing publisher never breaks a command. */
+  private publish(result: ControlCommandResult): void {
+    if (!this.ctx.events) return;
+    try {
+      this.ctx.events.publish({ kind: "command_result", result });
+    } catch {
+      /* the command already succeeded/failed on its own terms */
+    }
+  }
+}
+
+function message(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

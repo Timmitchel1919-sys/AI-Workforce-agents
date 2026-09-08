@@ -8,23 +8,28 @@ permissions, human approval records, project-isolated context, a structured
 audit log, and **durable persistence behind an interface** — all behind
 **provider- and project-agnostic contracts**.
 
-> **Status: Phase 7 complete.** A **Workforce Control & Operations Layer** —
+> **Status: Phase 7A complete.** A **Control Plane backend** —
 > `WorkforceQueryService` (read) and `WorkforceCommandService` (write) above
-> core, a three-tier operator role model, per-command audit, and a
-> dependency-free operations dashboard. An operator can see agents / tasks /
-> workflows / approvals / projects / tools / audit / health and act
+> core, a three-tier operator role model, per-command audit with **correlation
+> ids**, a typed **error-kind** model, tri-valued+`unknown` system health, and
+> **named ports** (`OperatorDirectory`, `ControlEventPublisher`,
+> `ControlRepository<T>`) so a future HTTP API, Firebase adapter, and real-time
+> channel attach without touching `control/`. An operator can see agents / tasks
+> / workflows / approvals / projects / tools / audit / health and act
 > (approve · reject · retry · cancel · pause/resume workflow · enable/disable
 > agent) — every command validated, authorized, state-checked, run through a
 > core service, and audited. The UI never bypasses permission, approval, or
 > audit. Earlier phases: the Money Mind **Project Adapter** (read-mostly,
 > capability-declared, tool-gated), multi-agent **workflow orchestration**, and
-> four General Agents (Research, Project Manager, Developer, QA). Still no
-> unrestricted autonomous planning, no real-time push, no shipped web server.
+> four General Agents (Research, Project Manager, Developer, QA). Phase 7 also
+> shipped a dependency-free operations dashboard. **No Firebase, no HTTP server,
+> no frontend yet** (Phases 7B / 7C); no real-time push; no unrestricted
+> autonomous planning.
 
 ## Stack
 
 - **TypeScript** (strict) on **Node.js ≥ 20**, ESM (`NodeNext`)
-- Tests: built-in `node:test` + `node:assert/strict` (288 deterministic, offline)
+- Tests: built-in `node:test` + `node:assert/strict` (306 deterministic, offline)
 - Build: `tsc` only
 - Persistence: `Repository<T>` interface; JSON-file store as the first
   implementation ([ADR-0002](docs/adr/0002-local-json-file-persistence.md))
@@ -44,8 +49,11 @@ audit log, and **durable persistence behind an interface** — all behind
   capability-declared, tool-gated
   ([ADR-0008](docs/adr/0008-money-mind-project-adapter.md))
 - Control plane: `WorkforceQueryService` + `WorkforceCommandService` above core,
-  operator roles, per-command audit, dependency-free dashboard
-  ([ADR-0009](docs/adr/0009-workforce-control-plane.md))
+  operator roles, per-command audit + correlation ids, typed error kinds,
+  unimplemented ports for a later HTTP API / Firebase / real-time adapter,
+  dependency-free dashboard
+  ([ADR-0009](docs/adr/0009-workforce-control-plane.md),
+  [ADR-0010](docs/adr/0010-control-plane-backend.md))
 - Lint/format: ESLint 9 + Prettier 3, **dev-only**
   ([ADR-0003](docs/adr/0003-code-quality-tooling.md))
 - **Zero runtime dependencies in core**
@@ -59,7 +67,7 @@ audit log, and **durable persistence behind an interface** — all behind
 | [`adapters/`](adapters/)                         | Provider/project contracts + offline reference implementations (Echo/Anthropic model, tool provider + `Tool` fakes, JSON persistence, **`projects/money-mind/`**).                                                                                                                         |
 | [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                                                                                                              |
 | [`control/`](control/)                           | Control & Operations Layer: `services/` (query + command), operational stores, redaction, health, view derivation, `dashboard/` (pure render + self-contained HTML).                                                                                                                       |
-| [`tests/`](tests/)                               | Deterministic, offline tests (288): the above + **control-plane** (queries, commands, security, state, audit) and **control-dashboard** (render, escaping, empty/error states).                                                                                                            |
+| [`tests/`](tests/)                               | Deterministic, offline tests (306): the above + **control-plane** (queries, commands, security, state, audit), **control-plane-backend** (correlation ids, error kinds, `unknown` health, event port), and **control-dashboard** (render, escaping, empty/error states).                   |
 | [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Control Plane](docs/control-plane.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [Money Mind](docs/projects/money-mind.md), [extension guide](docs/extending.md), [ADRs](docs/adr/). |
 | [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                                                                                                   |
 
@@ -427,18 +435,35 @@ const html = buildDashboardHtml(snapshot, {
   commandEndpoint: "/api/control/command",
 });
 
-const result = await command.approve(principal, { approvalId });
-// { command, outcome: "executed" | "denied" | "rejected", ok, reason, auditEventId, ... }
+const result = await command.approve(
+  principal,
+  { approvalId },
+  { correlationId: "req-123" }, // optional; minted if omitted
+);
+// {
+//   command, outcome: "executed" | "denied" | "rejected", ok,
+//   errorKind?: "invalid_request" | "forbidden" | "not_found" | "invalid_state"
+//             | "approval_failure" | ...,
+//   reason, correlationId, auditEventId, timestamp, details
+// }
 ```
 
 Roles: `viewer` (view), `operator` (+ approve/reject/cancel/retry/pause/resume),
 `admin` (+ enable/disable agent). Every command — including denied and rejected
-— emits a `control_command` audit event. The dashboard is one dependency-free
-HTML document (nine views: Overview, Agents, Workflows, Tasks, Approvals,
-Projects, Tools, Audit, Health); no server is shipped —
+— emits a `control_command` audit event carrying the correlation id; every
+non-`executed` result carries an `errorKind`. System health is
+`healthy | degraded | unavailable | unknown` (an unmeasured component is
+`unknown`, never silently `healthy`).
+
+`control/ports.ts` declares — unimplemented — `OperatorDirectory` (auth),
+`ControlEventPublisher` (real-time), and `ControlRepository<T>` (persistence) so
+a future HTTP API, Firebase adapter, and event channel attach without changing
+`control/`. **No Firebase, HTTP server, or frontend is built** (Phases 7B / 7C).
+The Phase 7 dashboard is one dependency-free HTML document (nine views);
 [`control/dashboard/README.md`](control/dashboard/README.md) shows the seam.
 Full detail: [docs/control-plane.md](docs/control-plane.md),
-[ADR-0009](docs/adr/0009-workforce-control-plane.md).
+[ADR-0009](docs/adr/0009-workforce-control-plane.md),
+[ADR-0010](docs/adr/0010-control-plane-backend.md).
 
 ## Extending
 

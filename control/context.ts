@@ -16,6 +16,7 @@ import {
   WorkflowSystem,
 } from "../core/index.js";
 import { type HealthProbe } from "./health.js";
+import { type ControlEventPublisher } from "./ports.js";
 import { AgentOperationalStore, WorkflowControlStore } from "./stores.js";
 
 export interface ControlPlaneContext {
@@ -35,8 +36,13 @@ export interface ControlPlaneContext {
    */
   orchestrator?: Pick<Orchestrator, "recordApprovalDecision" | "resume">;
   workflowEngine?: Pick<WorkflowEngine, "resume">;
-  /** Health probes. Anything not listed is reported as `degraded` / unverified. */
+  /** Health probes. Anything not listed is reported as `unknown` (unmeasured). */
   healthProbes?: readonly HealthProbe[];
+  /**
+   * Optional real-time fan-out. When present, a successful command publishes a
+   * `command_result` event. A publisher that throws never breaks the command.
+   */
+  events?: ControlEventPublisher;
   clock?: () => number;
   /** Max task retries an operator may trigger from the Control Plane. Default 3. */
   maxOperatorRetries?: number;

@@ -59,7 +59,7 @@ export class WorkforceQueryService {
     const byStatus = (status: string) =>
       tasks.filter((t) => t.status === status).length;
 
-    const health = this.getHealth(principal);
+    const health = this.getSystemHealth(principal);
 
     return {
       status: health.status,
@@ -89,7 +89,12 @@ export class WorkforceQueryService {
     };
   }
 
+  /** @deprecated since Phase 7A — use {@link getSystemHealth}. */
   getHealth(principal: OperatorPrincipal): SystemHealth {
+    return this.getSystemHealth(principal);
+  }
+
+  getSystemHealth(principal: OperatorPrincipal): SystemHealth {
     this.authorizeView(principal);
     const clock = this.ctx.clock ?? Date.now;
     const probes = [
@@ -203,6 +208,10 @@ export class WorkforceQueryService {
     }
     if (query.since) tasks = tasks.filter((t) => t.updatedAt >= query.since!);
     if (query.until) tasks = tasks.filter((t) => t.updatedAt <= query.until!);
+    if (query.createdAfter)
+      tasks = tasks.filter((t) => t.createdAt >= query.createdAfter!);
+    if (query.createdBefore)
+      tasks = tasks.filter((t) => t.createdAt <= query.createdBefore!);
 
     tasks = [...tasks].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 
@@ -321,6 +330,9 @@ export class WorkforceQueryService {
     if (query.workflowId)
       views = views.filter((v) => v.workflowId === query.workflowId);
     if (query.toolId) views = views.filter((v) => v.toolId === query.toolId);
+    if (query.actor) views = views.filter((v) => v.actor === query.actor);
+    if (query.correlationId)
+      views = views.filter((v) => v.correlationId === query.correlationId);
     if (query.outcome) views = views.filter((v) => v.outcome === query.outcome);
     if (query.since) views = views.filter((v) => v.timestamp >= query.since!);
     if (query.until) views = views.filter((v) => v.timestamp <= query.until!);
@@ -348,7 +360,7 @@ export class WorkforceQueryService {
         generatedAt: now(),
         operator: { id: principal.id, role: principal.role },
         status: this.getWorkforceStatus(principal),
-        health: this.getHealth(principal),
+        health: this.getSystemHealth(principal),
         agents: this.getAgents(principal),
         workflows: this.getWorkflows(principal),
         tasks: this.getTasks(principal, { limit: 50 }).items,
@@ -362,7 +374,7 @@ export class WorkforceQueryService {
         generatedAt: now(),
         operator: { id: principal.id, role: principal.role },
         status: this.getWorkforceStatus(principal),
-        health: this.getHealth(principal),
+        health: this.getSystemHealth(principal),
         agents: [],
         workflows: [],
         tasks: [],

@@ -144,14 +144,45 @@ export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
  */
 export type ControlCommandOutcome = "executed" | "denied" | "rejected";
 
+/**
+ * A refinement of a non-`executed` outcome, aligned with the `WorkforceError`
+ * hierarchy so a future HTTP layer can map each to a status code:
+ *   invalid_request  → 400   unauthorized → 401   forbidden → 403
+ *   not_found        → 404   invalid_state → 409
+ *   approval_failure → 422   command_failure → 500
+ */
+export const CONTROL_ERROR_KINDS = [
+  "invalid_request",
+  "unauthorized",
+  "forbidden",
+  "not_found",
+  "invalid_state",
+  "approval_failure",
+  "command_failure",
+] as const;
+export type ControlErrorKind = (typeof CONTROL_ERROR_KINDS)[number];
+
+/**
+ * Per-request options carried alongside every command. `correlationId` ties a
+ * control request to the command, the core operation it triggers, and the audit
+ * event it produces. Generated when absent.
+ */
+export interface CommandOptions {
+  correlationId?: string;
+}
+
 export interface ControlCommandResult {
   command: ControlCommand;
   outcome: ControlCommandOutcome;
   ok: boolean;
+  /** Present on every non-`executed` outcome. */
+  errorKind?: ControlErrorKind;
   /** Human-readable explanation — safe to show an operator. Never a secret. */
   reason: string;
   /** The primary resource the command targeted (task / workflow / agent / approval id). */
   resourceId?: string;
+  /** Traces this result back through the audit event and the core operation. */
+  correlationId: string;
   /** Extra structured detail (redacted). */
   details: Record<string, unknown>;
   /** Id of the `control_command` audit event this command produced. */
@@ -175,7 +206,13 @@ export const AGENT_OPERATIONAL_STATUSES = [
 export type AgentOperationalStatus =
   (typeof AGENT_OPERATIONAL_STATUSES)[number];
 
-export const HEALTH_STATUSES = ["healthy", "degraded", "unavailable"] as const;
+export const HEALTH_STATUSES = [
+  "healthy",
+  "degraded",
+  "unavailable",
+  /** The component has not been measured in this build — not a failure. */
+  "unknown",
+] as const;
 export type HealthStatus = (typeof HEALTH_STATUSES)[number];
 
 export const PROJECT_OPERATIONAL_STATUSES = [
@@ -304,6 +341,10 @@ export interface TaskQuery {
   since?: string;
   /** ISO timestamp — tasks updated at or before this. */
   until?: string;
+  /** ISO timestamp — tasks created at or after this. */
+  createdAfter?: string;
+  /** ISO timestamp — tasks created at or before this. */
+  createdBefore?: string;
   /** Only tasks in a failure state (`failed`, or `blocked`). */
   failedOnly?: boolean;
   limit?: number;
@@ -414,6 +455,8 @@ export interface AuditEventView {
   projectId?: string;
   workflowId?: string;
   toolId?: string;
+  /** Correlation id, when the originating operation carried one. */
+  correlationId?: string;
   /** e.g. `completed` / `failed` / `denied` / `executed` — best effort. */
   outcome?: string;
   /** Redacted, bounded. */
@@ -427,6 +470,8 @@ export interface AuditEventQuery {
   taskId?: string;
   workflowId?: string;
   toolId?: string;
+  actor?: string;
+  correlationId?: string;
   outcome?: string;
   since?: string;
   until?: string;

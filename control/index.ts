@@ -6,6 +6,9 @@
  * credential; it reads through core services and acts through them.
  */
 export * from "./context.js";
+export * from "./ports.js";
+export * from "./errors.js";
+export * from "./correlation.js";
 export * from "./stores.js";
 export * from "./redaction.js";
 export * from "./risk.js";
