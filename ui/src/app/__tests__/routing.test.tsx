@@ -39,9 +39,7 @@ describe("routing", () => {
 
   it("unknown route → 404", () => {
     renderWithProviders(<AppRoutes />, { route: "/no-such-page" });
-    expect(
-      screen.getByRole("heading", { name: /page not found/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/page not found/i)).toBeInTheDocument();
   });
 
   it("redirects to /login when unauthenticated", () => {

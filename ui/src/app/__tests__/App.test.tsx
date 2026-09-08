@@ -6,21 +6,27 @@ import { AppRoutes } from "../AppRoutes";
 import { makeQueryClient } from "../providers/queryClient";
 import { AuthContext } from "../../auth/authContext";
 import { ApiContext } from "../providers/apiContext";
+import { ThemeProvider } from "../../theme";
+import { ToastProvider } from "../../components/ui";
 import { makeStubApiClient, makeStubAuth } from "../../test/stubs";
 
 describe("App composition", () => {
   it("mounts the route tree inside the app providers without crashing", () => {
     const queryClient = makeQueryClient();
     render(
-      <QueryClientProvider client={queryClient}>
-        <AuthContext.Provider value={makeStubAuth()}>
-          <ApiContext.Provider value={makeStubApiClient()}>
-            <MemoryRouter initialEntries={["/overview"]}>
-              <AppRoutes />
-            </MemoryRouter>
-          </ApiContext.Provider>
-        </AuthContext.Provider>
-      </QueryClientProvider>,
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthContext.Provider value={makeStubAuth()}>
+            <ApiContext.Provider value={makeStubApiClient()}>
+              <ToastProvider>
+                <MemoryRouter initialEntries={["/overview"]}>
+                  <AppRoutes />
+                </MemoryRouter>
+              </ToastProvider>
+            </ApiContext.Provider>
+          </AuthContext.Provider>
+        </QueryClientProvider>
+      </ThemeProvider>,
     );
 
     expect(

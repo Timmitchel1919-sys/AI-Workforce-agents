@@ -5,16 +5,16 @@
  */
 import {
   Bot,
-  CheckSquare,
-  FolderGit2,
+  ShieldCheck,
+  FolderKanban,
   LayoutDashboard,
-  ListTodo,
+  ListChecks,
   BookOpen,
   ScrollText,
   Settings,
   Workflow,
   type LucideIcon,
-} from "lucide-react";
+} from "../components/ui/icons";
 import type { UiCapability } from "../auth/permissions";
 
 export interface NavRoute {
@@ -52,7 +52,7 @@ export const NAV_ROUTES: readonly NavRoute[] = [
   {
     path: "/tasks",
     label: "Tasks",
-    icon: ListTodo,
+    icon: ListChecks,
     permission: "view",
     title: "Tasks",
   },
@@ -66,14 +66,14 @@ export const NAV_ROUTES: readonly NavRoute[] = [
   {
     path: "/projects",
     label: "Projects",
-    icon: FolderGit2,
+    icon: FolderKanban,
     permission: "view",
     title: "Projects",
   },
   {
     path: "/approvals",
     label: "Approvals",
-    icon: CheckSquare,
+    icon: ShieldCheck,
     permission: "view",
     title: "Approvals",
   },

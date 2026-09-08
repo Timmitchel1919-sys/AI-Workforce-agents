@@ -1,296 +1,159 @@
 /*
- * Minimal layout + primitives for UI-1. Deliberately plain — the visual design
- * system lands in UI-2. Just enough structure to prove the shell renders.
+ * Base element styles + accessibility baseline. Component styles live in
+ * `components.css`; tokens in `tokens.css`.
  */
+
 body {
-  font-family: var(--font-sans);
-  background: var(--color-bg);
-  color: var(--color-text);
+  font: var(--text-body);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
-.full-page-center {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  padding: var(--space-8);
+::selection {
+  background: var(--color-accent-subtle);
 }
 
-.app-shell {
-  display: grid;
-  grid-template-columns: 232px 1fr;
-  min-height: 100%;
+a {
+  color: var(--color-accent);
 }
-.app-shell__main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.app-shell__content {
-  flex: 1;
-  padding: var(--space-6);
-  overflow: auto;
+a:hover {
+  color: var(--color-accent-hover);
 }
 
-.sidebar {
-  border-right: 1px solid var(--color-border);
-  background: var(--color-surface);
-  padding: var(--space-4);
+/* One consistent, visible focus ring for every interactive element. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
-.sidebar__brand {
-  font-weight: 700;
-  padding: var(--space-2) var(--space-3) var(--space-4);
-}
-.sidebar__list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.sidebar__link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-1);
-  color: var(--color-text-muted);
-}
-.sidebar__link--active {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-weight: 600;
-}
-.sidebar__icon,
-.mobile-nav__icon {
-  width: 18px;
-  height: 18px;
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-6);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-.topbar__account {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-.topbar__email {
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-}
-
-.mobile-nav {
-  display: none;
-}
-@media (max-width: 720px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-  .sidebar {
-    display: none;
-  }
-  .mobile-nav {
-    display: flex;
-    position: sticky;
-    bottom: 0;
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
-  }
-  .mobile-nav__link {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: var(--space-2);
-    font-size: 0.7rem;
-    color: var(--color-text-muted);
-  }
-  .mobile-nav__link--active {
-    color: var(--color-text);
+/* Respect the OS "reduce motion" setting everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
+/* Subtle scrollbars (progressive; ignored where unsupported). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
 }
-.page-header__title {
-  font-size: 1.25rem;
-}
-.page-header__description {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-}
-
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2);
-  padding: var(--space-4);
-}
-.card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 600;
-  margin-bottom: var(--space-3);
-}
-
-.health-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.health-list__row {
-  display: grid;
-  grid-template-columns: auto 160px 1fr;
-  align-items: center;
-  gap: var(--space-3);
-  font-size: 0.875rem;
-}
-.health-list__detail {
-  color: var(--color-text-muted);
-}
-
-.status-dot {
+*::-webkit-scrollbar {
   width: 10px;
   height: 10px;
-  border-radius: var(--radius-pill);
-  background: var(--color-unknown);
-  display: inline-block;
 }
-.status-dot--healthy,
-.status-dot--ok {
-  background: var(--color-ok);
-}
-.status-dot--degraded {
-  background: var(--color-warn);
-}
-.status-dot--unavailable {
-  background: var(--color-danger);
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 
-.badge {
-  display: inline-block;
-  padding: 0 var(--space-2);
-  font-size: 0.75rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
+/* ---- Typography utilities --------------------------------------------- */
+.text-display {
+  font: var(--text-display);
+}
+.text-h1 {
+  font: var(--text-h1);
+}
+.text-h2 {
+  font: var(--text-h2);
+}
+.text-h3 {
+  font: var(--text-h3);
+}
+.text-h4 {
+  font: var(--text-h4);
+}
+.text-body {
+  font: var(--text-body);
+}
+.text-body-sm {
+  font: var(--text-body-sm);
+}
+.text-caption {
+  font: var(--text-caption);
   color: var(--color-text-muted);
 }
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface);
-  color: var(--color-text);
+.text-label {
+  font: var(--text-label);
+  color: var(--color-text-secondary);
 }
-.btn--primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
+.text-overline {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
-.btn--ghost {
-  border-color: transparent;
+.text-data {
+  font: var(--text-data);
 }
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.text-muted {
+  color: var(--color-text-muted);
 }
-.btn__icon {
-  width: 16px;
-  height: 16px;
+.text-secondary {
+  color: var(--color-text-secondary);
 }
 
-.link {
-  color: var(--color-accent);
-  text-decoration: underline;
+/* ---- Small helpers -------------------------------------------------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.spinner__icon,
-.spin {
-  animation: spin 0.9s linear infinite;
+.u-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
-
-.state-message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-  color: var(--color-text-muted);
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
-.state-message__icon {
-  width: 28px;
-  height: 28px;
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
 }
-.state-message__title {
-  color: var(--color-text);
-  font-weight: 600;
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
 }
-
-.login-card {
-  width: min(360px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2);
-  padding: var(--space-8);
+@keyframes drawer-in-right {
+  from {
+    transform: translateX(100%);
+  }
 }
-.login-card__title {
-  font-size: 1.1rem;
-}
-.login-card__subtitle {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-  margin-top: calc(var(--space-2) * -1);
-}
-.login-card__error {
-  color: var(--color-danger);
-  font-size: 0.875rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.field__label {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-.field__input {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-bg);
-}
-.field__error {
-  color: var(--color-danger);
-  font-size: 0.8rem;
-}
-
-.page--centered {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }

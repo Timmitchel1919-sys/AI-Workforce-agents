@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthContext } from "../auth/authContext";
 import { ApiContext } from "../app/providers/apiContext";
+import { ThemeProvider } from "../theme";
+import { ToastProvider } from "../components/ui";
 import type { AuthSession } from "../auth/auth.types";
 import type { ApiClient } from "../api";
 import { makeStubApiClient, makeStubAuth } from "./stubs";
@@ -32,15 +34,19 @@ export function renderWithProviders(
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <AuthContext.Provider value={auth}>
-          <ApiContext.Provider value={apiClient}>
-            <MemoryRouter initialEntries={[options.route ?? "/overview"]}>
-              {children}
-            </MemoryRouter>
-          </ApiContext.Provider>
-        </AuthContext.Provider>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthContext.Provider value={auth}>
+            <ApiContext.Provider value={apiClient}>
+              <ToastProvider>
+                <MemoryRouter initialEntries={[options.route ?? "/overview"]}>
+                  {children}
+                </MemoryRouter>
+              </ToastProvider>
+            </ApiContext.Provider>
+          </AuthContext.Provider>
+        </QueryClientProvider>
+      </ThemeProvider>
     );
   }
 

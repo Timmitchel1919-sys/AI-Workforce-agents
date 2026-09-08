@@ -1,18 +1,24 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { DEFAULT_ROUTE } from "../../app/routes";
 import { useDocumentTitle } from "../../hooks";
+import { PageContainer } from "../../components/layout";
+import { Button, EmptyState, Inbox } from "../../components/ui";
 
 export function NotFoundPage() {
   useDocumentTitle("Not found");
+  const navigate = useNavigate();
   return (
-    <section className="page page--centered">
-      <h1 className="page-header__title">Page not found</h1>
-      <p>That route does not exist in the Control Center.</p>
-      <p>
-        <Link to={DEFAULT_ROUTE} className="link">
-          Go to Overview
-        </Link>
-      </p>
-    </section>
+    <PageContainer>
+      <EmptyState
+        icon={Inbox}
+        title="Page not found"
+        detail="That route does not exist in the Control Center."
+        action={
+          <Button variant="primary" onClick={() => navigate(DEFAULT_ROUTE)}>
+            Go to Overview
+          </Button>
+        }
+      />
+    </PageContainer>
   );
 }

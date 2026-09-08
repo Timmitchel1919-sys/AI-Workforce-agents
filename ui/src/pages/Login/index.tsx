@@ -6,8 +6,17 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { DEFAULT_ROUTE } from "../../app/routes";
 import { useDocumentTitle } from "../../hooks";
-import { Spinner } from "../../components/ui";
 import { messageOf } from "../../lib/utils";
+import {
+  Alert,
+  Button,
+  Card,
+  CardBody,
+  Field,
+  Input,
+  Spinner,
+} from "../../components/ui";
+import { Stack } from "../../components/layout";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email address."),
@@ -52,50 +61,51 @@ export function LoginPage() {
 
   return (
     <div className="full-page-center">
-      <form className="login-card" onSubmit={onSubmit} noValidate>
-        <h1 className="login-card__title">AI Workforce Control Center</h1>
-        <p className="login-card__subtitle">Operator sign-in</p>
+      <Card elevated style={{ width: "min(360px, 100%)" }}>
+        <CardBody>
+          <form onSubmit={onSubmit} noValidate>
+            <Stack gap="lg">
+              <div>
+                <h1 className="text-h2">AI Workforce Control Center</h1>
+                <p className="text-caption">Operator sign-in</p>
+              </div>
 
-        <label className="field">
-          <span className="field__label">Email</span>
-          <input
-            type="email"
-            autoComplete="username"
-            className="field__input"
-            {...register("email")}
-          />
-          {errors.email ? (
-            <span className="field__error">{errors.email.message}</span>
-          ) : null}
-        </label>
+              <Field label="Email" error={errors.email?.message}>
+                <Input
+                  type="email"
+                  autoComplete="username"
+                  invalid={Boolean(errors.email)}
+                  {...register("email")}
+                />
+              </Field>
 
-        <label className="field">
-          <span className="field__label">Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            className="field__input"
-            {...register("password")}
-          />
-          {errors.password ? (
-            <span className="field__error">{errors.password.message}</span>
-          ) : null}
-        </label>
+              <Field label="Password" error={errors.password?.message}>
+                <Input
+                  type="password"
+                  autoComplete="current-password"
+                  invalid={Boolean(errors.password)}
+                  {...register("password")}
+                />
+              </Field>
 
-        {submitError ? (
-          <p className="login-card__error" role="alert">
-            {submitError}
-          </p>
-        ) : null}
+              {submitError ? (
+                <Alert tone="danger" title="Sign-in failed">
+                  {submitError}
+                </Alert>
+              ) : null}
 
-        <button
-          type="submit"
-          className="btn btn--primary"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                loading={isSubmitting}
+              >
+                Sign in
+              </Button>
+            </Stack>
+          </form>
+        </CardBody>
+      </Card>
     </div>
   );
 }

@@ -1,0 +1,51 @@
+/**
+ * The single icon vocabulary for the Control Center. Import icons from here, not
+ * from `lucide-react` directly, so meaning stays consistent and the set stays
+ * auditable. One library only.
+ */
+export {
+  // navigation / domain
+  LayoutDashboard,
+  Bot,
+  ListChecks,
+  Workflow,
+  FolderKanban,
+  ShieldCheck,
+  ScrollText,
+  BookOpen,
+  Settings,
+  Wrench,
+  Activity,
+  // actions
+  Search,
+  Bell,
+  Check,
+  X,
+  Copy,
+  Plus,
+  RefreshCw,
+  Play,
+  Pause,
+  Ban,
+  Power,
+  ChevronRight,
+  ChevronLeft,
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  ExternalLink,
+  MoreHorizontal,
+  LogOut,
+  Sun,
+  Moon,
+  MonitorSmartphone,
+  // feedback / status
+  Loader2,
+  Info,
+  AlertTriangle,
+  AlertCircle,
+  CircleCheck,
+  ShieldAlert,
+  Inbox,
+  type LucideIcon,
+} from "lucide-react";

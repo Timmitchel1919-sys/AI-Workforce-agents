@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { PageHeader } from "../components/ui";
+import { PageContainer, PageHeader } from "../components/layout";
 import { useDocumentTitle } from "../hooks";
 
 /**
- * UI-1 route placeholder. Proves the route + layout + title wiring works; the
- * real page arrives in a later UI phase.
+ * Route placeholder — proves route + layout + title wiring. The real page
+ * arrives in a later UI phase; UI-2 only established the primitives it uses.
  */
 export function PlaceholderPage({
   title,
@@ -17,12 +17,12 @@ export function PlaceholderPage({
 }) {
   useDocumentTitle(title);
   return (
-    <section className="page">
+    <PageContainer>
       <PageHeader
         title={title}
         description={description ?? "This view arrives in a later UI phase."}
       />
       {children}
-    </section>
+    </PageContainer>
   );
 }

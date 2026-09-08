@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import { LOGIN_ROUTE } from "../app/routes";
-import { Spinner } from "../components/ui";
-import { StateMessage } from "../components/feedback";
+import { Button, ErrorState, Spinner } from "../components/ui";
 
 /**
  * Auth gate for the whole authenticated app. The dashboard is NEVER rendered
@@ -25,18 +24,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (status === "error") {
     return (
       <div className="full-page-center">
-        <StateMessage
-          tone="error"
+        <ErrorState
           title="Sign-in is unavailable"
           detail={error ?? "The authentication service could not be reached."}
           action={
-            <button
-              type="button"
-              className="btn"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </button>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
           }
         />
       </div>
