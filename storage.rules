@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// AI Workforce — Firebase Storage security rules.
+//
+// Same posture as Firestore: the Control Plane (Admin SDK, server-side) is the
+// only client. The UI never reads Storage directly — it receives time-limited
+// signed URLs from the Control Plane API. Deny all direct client access.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -17,7 +17,12 @@
  *         ▼
  *        CORE  →  Security  →  Audit / State
  */
-import { requireText, ValidationError } from "./index.js";
+import {
+  requireText,
+  ValidationError,
+  type Entity,
+  type Repository,
+} from "./index.js";
 
 /* ------------------------------------------------------------------ */
 /* Operator authorization                                             */
@@ -514,6 +519,42 @@ export interface DashboardSnapshot {
   recentAudit: readonly AuditEventView[];
   /** Set when the snapshot could not be fully built. */
   error?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Infrastructure ports (adapters plug in here — never the reverse)   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The persistence port. The control-plane stores accept an injected
+ * `Repository<T>`; a Firestore-backed implementation (bridged to sync by
+ * `CachedRepository`) is the Phase 7B adapter. See ADR-0011.
+ */
+export type ControlRepository<T extends Entity> = Repository<T>;
+
+/**
+ * Resolves an opaque credential (session cookie, bearer token, Firebase ID
+ * token) to an `OperatorPrincipal`, or `null` when it cannot be trusted. The
+ * auth adapter implements this; the control services still trust only the
+ * resolved principal and enforce authorization from it.
+ */
+export interface OperatorDirectory {
+  resolve(credential: string): Promise<OperatorPrincipal | null>;
+}
+
+/** A control-plane change worth pushing to connected clients. */
+export type ControlPlaneEvent =
+  | { kind: "command_result"; result: ControlCommandResult }
+  | { kind: "audit_appended"; event: AuditEventView }
+  | { kind: "snapshot_invalidated"; reason: string; correlationId?: string };
+
+/**
+ * Fan-out seam for real-time updates. A no-op by default; a Phase 7B adapter
+ * bridges it to Firestore / SSE / WebSocket. `publish` must never throw into a
+ * command — implementations swallow their own failures.
+ */
+export interface ControlEventPublisher {
+  publish(event: ControlPlaneEvent): void;
 }
 
 /* ------------------------------------------------------------------ */

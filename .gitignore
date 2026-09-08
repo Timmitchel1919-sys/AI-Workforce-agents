@@ -8,3 +8,11 @@ coverage/
 # Local persistence data written by JsonFilePersistence at runtime
 .workforce/
 *.workforce.json
+
+# Firebase — never commit service-account keys or local emulator artefacts
+*service-account*.json
+serviceAccountKey*.json
+firebase-debug*.log
+firestore-debug*.log
+ui-debug*.log
+.firebase/

@@ -630,7 +630,13 @@ export function validateApprovalRequest(draft: ApprovalRequestDraft): void {
 /* Re-exports                                                         */
 /* ------------------------------------------------------------------ */
 
-export type { Entity, Repository, PersistenceProvider } from "./persistence.js";
+export type {
+  Entity,
+  Repository,
+  AsyncRepository,
+  PersistenceProvider,
+} from "./persistence.js";
+export * from "./storage.js";
 
 export * from "./research.js";
 export * from "./tools.js";

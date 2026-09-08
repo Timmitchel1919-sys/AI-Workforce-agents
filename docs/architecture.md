@@ -85,6 +85,9 @@ adapters/
   projects/project-adapter  ProjectAdapter contract + BaseProjectAdapter helper.
   projects/money-mind/      MoneyMindProjectAdapter — the first real ProjectAdapter (read-mostly).
   persistence/json-file-persistence  JsonFileRepository / JsonFilePersistence (durable, node:fs).
+  firebase/                 Firestore repo (AsyncRepository), Firebase Auth OperatorDirectory,
+                            Firestore event publisher, Firebase Storage ObjectStore.
+                            Only firebase-admin consumer; optional peer dep, lazy-loaded.
   index.ts                  Barrel export for adapters.
 agents/
   shared/text-utils          extractJsonObject / toStringArray / truncate / dedupe — shared by PM/Dev/QA.
@@ -94,7 +97,7 @@ agents/
   qa/                        QaAgent — pass/fail/blocked verdict; cannot self-approve without evidence.
 control/
   context.ts                 ControlPlaneContext — the injected bundle of core services + stores + optional ports.
-  ports.ts                   OperatorDirectory / ControlEventPublisher / ControlRepository<T> — unimplemented seams for Phase 7B.
+  ports.ts                   Re-exports the contract ports + ProviderHealthProbe / ToolHealthProbe markers.
   errors.ts / correlation.ts Control error taxonomy over WorkforceError + classifyErrorKind; correlation-id helpers.
   stores.ts                  AgentOperationalStore (enabled/disabled), WorkflowControlStore (paused) — behind an injected Repository<T>.
   redaction.ts / risk.ts     Secret redaction; deterministic approval risk classification.
@@ -102,22 +105,30 @@ control/
   services/workforce-query-service    WorkforceQueryService — the read side (view-gated, project-scoped).
   services/workforce-command-service  WorkforceCommandService — validate → authorize → state → core → audit; every command carries a correlation id.
   dashboard/render + build-html        Pure HTML rendering + one self-contained document. No deps.
+api/
+  http-api.ts                createControlPlaneApi — dependency-free Node http handler over the
+                             two services: Bearer auth, correlation id, errorKind → status.
+  firebase-repositories.ts   FirebaseRepositoryProvider — hydrate-once CachedRepository per collection.
 tests/
   foundation | persistence | approval-execution | permission-enforcement
   anthropic-provider | model-provider-layer | research-agent | tool-framework
   workflow-engine | workflow-agents | workflow-demo
   money-mind-adapter | money-mind-agents | money-mind-demo | money-mind-fs-repo
-  control-plane | control-plane-backend | control-dashboard  (306 tests total)
+  control-plane | control-plane-backend | control-dashboard
+  cached-repository | firebase-adapters | http-api  (329 tests total)
+firebase.json / .firebaserc / firestore.rules / storage.rules / firestore.indexes.json
 docs/                       This documentation + ADRs.
 .env.example                Placeholder environment configuration (never a real .env).
 .github/workflows/ci.yml    Continuous integration.
 ```
 
 Dependency direction is one-way: `adapters → contracts`, `core → contracts`,
-`agents → core → contracts`, and `control → core → contracts` (the dashboard is
-`control/dashboard/` — `UI → control services → core`; the UI never reaches a
-database, filesystem, shell, or credential).
-`core` never imports from `adapters` or `agents`. The orchestrator, every core
+`agents → core → contracts`, `control → core → contracts`, and
+`api → control + core + adapters/firebase → contracts` (`api/` is the
+composition root — the only layer that wires a vendor SDK into the stack). The
+dashboard is `control/dashboard/` — `UI → control services → core`; the UI never
+reaches a database, filesystem, shell, or credential.
+`core` never imports from `adapters`, `agents`, `control`, or `api`. The orchestrator, every core
 system's `Repository`, the `AgentExecutor`, the `ApprovalPolicy`, the
 `PermissionSystem`, each General Agent's `ModelProvider` / `ToolProvider` /
 `PermissionSystem` / `ContextSystem`, and the `WorkflowEngine`'s `Orchestrator`
@@ -542,14 +553,16 @@ orchestrator. `UI → control services → core → contracts`.
 - **Dashboard** — a dependency-free pure render + `buildDashboardHtml` (one
   self-contained document; nine views; no framework, no shipped server, no
   fake data).
-- **Ports (Phase 7A, unimplemented)** — `control/ports.ts` declares
-  `OperatorDirectory` (credential → `OperatorPrincipal`), `ControlEventPublisher`
-  (real-time fan-out; a successful command publishes a `command_result` event),
-  and `ControlRepository<T>` (= `Repository<T>`, the Firestore seam). No Firebase
-  code, project, or config exists. Full detail in
-  [control-plane.md](control-plane.md); rationale in
-  [ADR-0009](adr/0009-workforce-control-plane.md) and
-  [ADR-0010](adr/0010-control-plane-backend.md).
+- **Ports** — `contracts/control.ts` declares `OperatorDirectory` (credential →
+  `OperatorPrincipal`), `ControlEventPublisher` (real-time fan-out; a successful
+  command publishes a `command_result` event), and `ControlRepository<T>`
+  (= `Repository<T>`); `contracts/storage.ts` declares `ObjectStore`. Phase 7B
+  implements all four as Firebase adapters (`adapters/firebase/`) behind an
+  optional, lazy-loaded `firebase-admin`. Full detail in
+  [control-plane.md](control-plane.md) and [firebase.md](firebase.md); rationale
+  in [ADR-0009](adr/0009-workforce-control-plane.md),
+  [ADR-0010](adr/0010-control-plane-backend.md), and
+  [ADR-0011](adr/0011-firebase-infrastructure.md).
 
 ## 10. Persistence architecture
 
@@ -557,10 +570,16 @@ orchestrator. `UI → control services → core → contracts`.
   `PersistenceProvider` (one repository per collection: tasks, agents,
   approvals, handoffs, audit events).
 - **Default:** `InMemoryRepository` — `Map`-backed, copy-on-read/write, pure.
-- **Durable:** `JsonFilePersistence(dir)` — a directory of atomically-written
-  JSON files; a new instance on the same directory resumes state.
+- **Durable (local):** `JsonFilePersistence(dir)` — a directory of
+  atomically-written JSON files; a new instance on the same directory resumes
+  state.
+- **Durable (cloud):** `AsyncRepository<T>` (async sibling of `Repository<T>`) +
+  `FirestoreRepository<T>`, bridged to the sync contract by `CachedRepository`
+  (hydrate once, serve reads from memory, write through on a queue). Core code
+  is identical; only the injected repository changes. See
+  [ADR-0011](adr/0011-firebase-infrastructure.md).
 - **Injection:** each core system takes its `Repository` in its constructor.
-  Wiring picks in-memory or durable; core code is identical either way.
+  Wiring picks in-memory, JSON-file, or Firestore-backed; core code is identical.
 - **Not persisted:** `ContextSystem` (in-memory by design), and anything
   secret — persisted entities carry no credentials.
 - **Limits:** single-process, single-writer, whole-file rewrite per mutation.
@@ -583,7 +602,7 @@ stays zero. `tsc --noEmit` remains the type-correctness gate. See
 ## 13. Testing
 
 `npm test` compiles with `tsc` and runs `node --test` over the compiled output
-(**306 tests**). Coverage: the Phase 1–5 surface (registry, task lifecycle,
+(**329 tests**). Coverage: the Phase 1–5 surface (registry, task lifecycle,
 handoffs, permissions + every scope, approval lifecycle + resume, orchestrator
 routing, persistence + survival across reinit, audit, the Anthropic adapter and
 its failure classes, the model provider registry + audit decorator, the
@@ -651,8 +670,25 @@ the `errorKind` model (`invalid_request` / `forbidden` / `not_found` /
 command); and the security regressions (deny-by-default, project isolation,
 secret redaction through a correlation-tagged command).
 
+Plus **the Phase 7B Firebase infrastructure** (`cached-repository.test.ts`,
+`firebase-adapters.test.ts`, `http-api.test.ts`): `CachedRepository` (hydrate
+gate, local reads, immediate-visible + in-order write-through, defensive copy, a
+backing-write failure reported not thrown, `flush`); the Firebase adapters
+against in-memory seam fakes (`FirestoreRepository` round-trip + undefined
+stripping; `FirebaseOperatorDirectory` valid claims → principal, bad role /
+missing / malformed projects / bad token → `null`; `FirestoreEventPublisher`
+writes a record and swallows a failing write; `FirebaseObjectStore`
+put/head/get/list/signedUrl/delete + missing-key handling; `loadFirebaseConfig`
+env resolution + missing-project error); and the HTTP API driven through a real
+`http.Server` (health needs no auth, everything else 401 without a valid Bearer
+token, correlation id echoed, query-string filters reach the service, a thrown
+`PermissionDeniedError` → 403 with a message and no stack, `POST
+/api/commands/*` dispatches with principal + body + correlation id and maps
+`errorKind` → status, unknown command / bad JSON / unknown route).
+
 Every test is deterministic and offline — **no real AI API calls, no real
-external services, no real Money Mind repository, no HTTP server, no Firebase**.
+external services, no real Money Mind repository, no Firebase / emulator** (the
+HTTP-API test binds a loopback `http.Server` on an ephemeral port).
 
 ## 14. Extension guidelines
 

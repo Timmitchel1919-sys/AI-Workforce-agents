@@ -28,6 +28,27 @@ export interface Repository<T extends Entity> {
   clear(): void;
 }
 
+/**
+ * The asynchronous sibling of {@link Repository}, for durable stores that can
+ * only be reached over the network (Firestore, a SQL database, an HTTP API).
+ *
+ * The synchronous core lifecycle code never consumes this directly. A networked
+ * store is bridged to `Repository<T>` by a hydrate-once, write-through cache
+ * (`core/persistence/cached-repository.ts`) so the deterministic core is never
+ * made async. Introduced by ADR-0011; the sync `Repository<T>` remains the
+ * contract every core system is built on.
+ */
+export interface AsyncRepository<T extends Entity> {
+  upsert(entity: T): Promise<void>;
+  findById(id: string): Promise<T | undefined>;
+  /** All entities. Order is implementation-defined. */
+  list(): Promise<T[]>;
+  /** Remove an entity. Resolves `true` if it existed. */
+  delete(id: string): Promise<boolean>;
+  /** Remove every entity. */
+  clear(): Promise<void>;
+}
+
 export interface PersistenceProvider {
   readonly tasks: Repository<Task>;
   readonly agents: Repository<Agent>;

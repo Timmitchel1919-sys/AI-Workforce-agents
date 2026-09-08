@@ -8,3 +8,4 @@ export * from "./tools/mock-tools.js";
 export * from "./projects/project-adapter.js";
 export * from "./projects/money-mind/index.js";
 export * from "./persistence/json-file-persistence.js";
+export * from "./firebase/index.js";

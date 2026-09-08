@@ -8,31 +8,32 @@ permissions, human approval records, project-isolated context, a structured
 audit log, and **durable persistence behind an interface** — all behind
 **provider- and project-agnostic contracts**.
 
-> **Status: Phase 7A complete.** A **Control Plane backend** —
-> `WorkforceQueryService` (read) and `WorkforceCommandService` (write) above
-> core, a three-tier operator role model, per-command audit with **correlation
-> ids**, a typed **error-kind** model, tri-valued+`unknown` system health, and
-> **named ports** (`OperatorDirectory`, `ControlEventPublisher`,
-> `ControlRepository<T>`) so a future HTTP API, Firebase adapter, and real-time
-> channel attach without touching `control/`. An operator can see agents / tasks
-> / workflows / approvals / projects / tools / audit / health and act
-> (approve · reject · retry · cancel · pause/resume workflow · enable/disable
-> agent) — every command validated, authorized, state-checked, run through a
-> core service, and audited. The UI never bypasses permission, approval, or
-> audit. Earlier phases: the Money Mind **Project Adapter** (read-mostly,
-> capability-declared, tool-gated), multi-agent **workflow orchestration**, and
-> four General Agents (Research, Project Manager, Developer, QA). Phase 7 also
-> shipped a dependency-free operations dashboard. **No Firebase, no HTTP server,
-> no frontend yet** (Phases 7B / 7C); no real-time push; no unrestricted
+> **Status: Phase 7B complete.** **Firebase infrastructure** wired in as an
+> adapter: `AsyncRepository<T>` + `FirestoreRepository` bridged to the
+> synchronous core by `CachedRepository` (hydrate once, write through);
+> `FirebaseOperatorDirectory` (verify ID token → `OperatorPrincipal`);
+> `FirestoreEventPublisher`; `FirebaseObjectStore`; plus a dependency-free
+> **HTTP API** (`api/`) over the two Control Plane services — Bearer auth,
+> correlation-id passthrough, `errorKind` → status codes, never a stack trace.
+> `firebase-admin` is an **optional, lazily-loaded peer dependency**; nothing in
+> `core/` or `control/` imports it, and `npm test` stays fully offline (adapters
+> tested against in-memory seam fakes). `firestore.rules` / `storage.rules` deny
+> **all** direct client access — every UI read/write goes through the API.
+> Earlier phases: the Control Plane backend (roles, per-command audit +
+> correlation ids, typed errors), the operations dashboard, the Money Mind
+> **Project Adapter**, multi-agent **workflow orchestration**, four General
+> Agents. **No frontend yet** (Phase 7C); no real-time push; no unrestricted
 > autonomous planning.
 
 ## Stack
 
 - **TypeScript** (strict) on **Node.js ≥ 20**, ESM (`NodeNext`)
-- Tests: built-in `node:test` + `node:assert/strict` (306 deterministic, offline)
+- Tests: built-in `node:test` + `node:assert/strict` (329 deterministic, offline)
 - Build: `tsc` only
-- Persistence: `Repository<T>` interface; JSON-file store as the first
-  implementation ([ADR-0002](docs/adr/0002-local-json-file-persistence.md))
+- Persistence: `Repository<T>` interface with a JSON-file store; `AsyncRepository<T>`
+  plus `FirestoreRepository`, bridged to sync by `CachedRepository`
+  ([ADR-0002](docs/adr/0002-local-json-file-persistence.md),
+  [ADR-0011](docs/adr/0011-firebase-infrastructure.md))
 - Model providers: provider-neutral `ModelProvider` contract; Anthropic adapter
   with the SDK as an **optional peer dependency**
   ([ADR-0004](docs/adr/0004-model-provider-layer-anthropic.md))
@@ -50,26 +51,32 @@ audit log, and **durable persistence behind an interface** — all behind
   ([ADR-0008](docs/adr/0008-money-mind-project-adapter.md))
 - Control plane: `WorkforceQueryService` + `WorkforceCommandService` above core,
   operator roles, per-command audit + correlation ids, typed error kinds,
-  unimplemented ports for a later HTTP API / Firebase / real-time adapter,
   dependency-free dashboard
   ([ADR-0009](docs/adr/0009-workforce-control-plane.md),
   [ADR-0010](docs/adr/0010-control-plane-backend.md))
+- Firebase infrastructure: `adapters/firebase/` implements `AsyncRepository` /
+  `OperatorDirectory` / `ControlEventPublisher` / `ObjectStore` behind an
+  **optional, lazily-loaded `firebase-admin`**; `api/` is a dependency-free HTTP
+  surface over the two services ([ADR-0011](docs/adr/0011-firebase-infrastructure.md),
+  [docs/firebase.md](docs/firebase.md))
 - Lint/format: ESLint 9 + Prettier 3, **dev-only**
   ([ADR-0003](docs/adr/0003-code-quality-tooling.md))
 - **Zero runtime dependencies in core**
 
 ## Layout
 
-| Path                                             | Purpose                                                                                                                                                                                                                                                                                    |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`contracts/`](contracts/)                       | Shared types, pure validators, agent execution boundary, `Repository` / persistence + research + tool + workflow / project-manager / developer / qa + **money-mind** contracts.                                                                                                            |
-| [`core/`](core/)                                 | Registry (agents + projects), tasks, handoffs, permissions, approvals, context, audit, model registry, General Agent framework, Tool Execution Engine, Workflow Engine, orchestrator.                                                                                                      |
-| [`adapters/`](adapters/)                         | Provider/project contracts + offline reference implementations (Echo/Anthropic model, tool provider + `Tool` fakes, JSON persistence, **`projects/money-mind/`**).                                                                                                                         |
-| [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                                                                                                              |
-| [`control/`](control/)                           | Control & Operations Layer: `services/` (query + command), operational stores, redaction, health, view derivation, `dashboard/` (pure render + self-contained HTML).                                                                                                                       |
-| [`tests/`](tests/)                               | Deterministic, offline tests (306): the above + **control-plane** (queries, commands, security, state, audit), **control-plane-backend** (correlation ids, error kinds, `unknown` health, event port), and **control-dashboard** (render, escaping, empty/error states).                   |
-| [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Control Plane](docs/control-plane.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [Money Mind](docs/projects/money-mind.md), [extension guide](docs/extending.md), [ADRs](docs/adr/). |
-| [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                                                                                                   |
+| Path                                             | Purpose                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`contracts/`](contracts/)                       | Shared types, pure validators, agent execution boundary, `Repository` / persistence + research + tool + workflow / project-manager / developer / qa + **money-mind** contracts.                                                                                                                                    |
+| [`core/`](core/)                                 | Registry (agents + projects), tasks, handoffs, permissions, approvals, context, audit, model registry, General Agent framework, Tool Execution Engine, Workflow Engine, orchestrator.                                                                                                                              |
+| [`adapters/`](adapters/)                         | Provider/project contracts + reference implementations: Echo/Anthropic model, tool fakes, JSON persistence, **`projects/money-mind/`**, and **`firebase/`** (Firestore repo, Auth operator directory, event publisher, object store).                                                                              |
+| [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                                                                                                                                      |
+| [`control/`](control/)                           | Control & Operations Layer: `services/` (query + command), operational stores, redaction, health, view derivation, `dashboard/` (pure render + self-contained HTML).                                                                                                                                               |
+| [`api/`](api/)                                   | Composition root: `createControlPlaneApi` (dependency-free Node `http` handler over the two services) + `FirebaseRepositoryProvider` (hydrate-once Firestore-backed repositories).                                                                                                                                 |
+| [`tests/`](tests/)                               | Deterministic, offline tests (329): the above + **control-plane** / **control-plane-backend** / **control-dashboard**, and **cached-repository** / **firebase-adapters** / **http-api** (Firebase seam fakes + a loopback `http.Server`).                                                                          |
+| [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Control Plane](docs/control-plane.md), [Firebase](docs/firebase.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [Money Mind](docs/projects/money-mind.md), [extending](docs/extending.md), [ADRs](docs/adr/). |
+| `firebase.json` · `.firebaserc` · `*.rules`      | Firestore/Storage config; rules **deny all** direct client access (Admin SDK only).                                                                                                                                                                                                                                |
+| [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                                                                                                                           |
 
 ## Commands
 
@@ -455,15 +462,49 @@ non-`executed` result carries an `errorKind`. System health is
 `healthy | degraded | unavailable | unknown` (an unmeasured component is
 `unknown`, never silently `healthy`).
 
-`control/ports.ts` declares — unimplemented — `OperatorDirectory` (auth),
-`ControlEventPublisher` (real-time), and `ControlRepository<T>` (persistence) so
-a future HTTP API, Firebase adapter, and event channel attach without changing
-`control/`. **No Firebase, HTTP server, or frontend is built** (Phases 7B / 7C).
-The Phase 7 dashboard is one dependency-free HTML document (nine views);
-[`control/dashboard/README.md`](control/dashboard/README.md) shows the seam.
-Full detail: [docs/control-plane.md](docs/control-plane.md),
+The contract ports (`OperatorDirectory`, `ControlEventPublisher`,
+`ControlRepository<T>`, `ObjectStore`) are implemented as Firebase adapters in
+Phase 7B — see below. The Phase 7 dashboard is one dependency-free HTML document
+(nine views); [`control/dashboard/README.md`](control/dashboard/README.md) shows
+its seam. Full detail: [docs/control-plane.md](docs/control-plane.md),
 [ADR-0009](docs/adr/0009-workforce-control-plane.md),
 [ADR-0010](docs/adr/0010-control-plane-backend.md).
+
+## Firebase infrastructure
+
+Firebase is an **infrastructure adapter behind provider-neutral ports** — never
+a dependency of `core/` or `control/`.
+
+```
+UI → api/ (HTTP) → control/ services → core/ → contracts/ ports
+                                              └→ adapters/firebase/ → Firestore · Auth · Storage
+```
+
+- `adapters/firebase/` implements `AsyncRepository<T>` (`FirestoreRepository`),
+  `OperatorDirectory` (`FirebaseOperatorDirectory` — verify ID token →
+  `role`/`allowedProjects` claims → `OperatorPrincipal`), `ControlEventPublisher`
+  (`FirestoreEventPublisher`), and `ObjectStore` (`FirebaseObjectStore` — signed
+  URLs only). It is the **only** `firebase-admin` consumer; the SDK is an
+  optional peer dependency, loaded with a dynamic `import()`.
+- `CachedRepository` (`core/persistence/`) bridges the async Firestore repo to
+  the synchronous `Repository<T>` every core system uses: hydrate once, serve
+  reads from memory, write through on a queue. Drops into the existing
+  constructors unchanged.
+- `api/createControlPlaneApi({ query, command, operatorDirectory })` is a
+  dependency-free Node `http` handler: `Authorization: Bearer <Firebase ID
+token>` on every route but `/api/health`, `x-correlation-id` in and out,
+  `errorKind` / `WorkforceError` → status codes, `{ "error": { "message" } }`
+  bodies (never a stack trace).
+- `firestore.rules` / `storage.rules` **deny all** direct client access — the
+  Admin SDK bypasses rules, so the Control Plane keeps full access while no
+  browser can touch Firestore/Storage. Every UI operation goes through the API.
+- `npm test` stays fully offline: the adapters are unit-tested against
+  hand-written in-memory seam fakes; `firebase-admin` is never imported by a
+  test. Local end-to-end runs use the Firebase emulator (`firebase.json`).
+
+Wiring example and env vars: [docs/firebase.md](docs/firebase.md),
+[ADR-0011](docs/adr/0011-firebase-infrastructure.md). **No frontend yet**
+(Phase 7C).
 
 ## Extending
 
@@ -487,6 +528,11 @@ deterministic tests; never commit a secret.
   project authorization on every query and command (the UI is not a security
   boundary), and audits every command. It never touches a database, filesystem,
   shell, or credential.
+- Firebase is adapter-only: `firebase-admin` is a lazily-loaded optional peer
+  dependency imported by `adapters/firebase/` alone; `firestore.rules` /
+  `storage.rules` deny all direct client access; service-account keys come from
+  a gitignored `.env` path and are never committed; the HTTP API sends no stack
+  traces and hands the UI signed URLs, never storage credentials.
 - General Agents get least-privilege grants (the Research Agent: two read-only
   tools; `write` / `deploy` / `secret_access` / `external_communication`
   denied), run bounded (no recursion, hard iteration/tool/model/time limits),
