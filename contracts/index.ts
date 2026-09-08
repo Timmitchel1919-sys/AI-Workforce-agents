@@ -272,6 +272,7 @@ export const AUDIT_EVENT_TYPES = [
   "tool_execution",
   "workflow_event",
   "project_adapter_event",
+  "control_command",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -638,3 +639,4 @@ export * from "./project-manager.js";
 export * from "./developer.js";
 export * from "./qa.js";
 export * from "./money-mind.js";
+export * from "./control.js";

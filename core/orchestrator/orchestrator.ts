@@ -35,11 +35,20 @@ export const approveNothing: ApprovalPolicy = {
   evaluate: () => ({ required: false }),
 };
 
+/**
+ * Optional operational gate: an agent an operator has disabled (via the
+ * Control Plane) cannot receive new tasks. Defaults to "everyone enabled".
+ */
+export interface AgentGate {
+  isEnabled(agentId: string): boolean;
+}
+
 export interface OrchestratorOptions {
   selectAgent?: AgentSelector;
   approvalPolicy?: ApprovalPolicy;
   permissions?: PermissionSystem;
   environment?: Environment;
+  agentGate?: AgentGate;
 }
 
 export type ResumeOutcome = "approved" | "rejected" | "expired";
@@ -58,6 +67,7 @@ export class Orchestrator {
   private readonly approvalPolicy: ApprovalPolicy;
   private readonly permissions: PermissionSystem | undefined;
   private readonly environment: Environment;
+  private readonly agentGate: AgentGate | undefined;
 
   constructor(
     private readonly registry: AgentRegistry,
@@ -72,6 +82,7 @@ export class Orchestrator {
     this.approvalPolicy = options.approvalPolicy ?? approveNothing;
     this.permissions = options.permissions;
     this.environment = options.environment ?? "local";
+    this.agentGate = options.agentGate;
   }
 
   async submit(draft: TaskDraft): Promise<Task> {
@@ -98,6 +109,20 @@ export class Orchestrator {
     }
 
     const agent = this.selectAgent(candidates, task);
+
+    if (this.agentGate && !this.agentGate.isEnabled(agent.id)) {
+      task = this.tasks.transition(task.id, "blocked", {
+        metadata: { blockedReason: "agent_disabled", blockedAgentId: agent.id },
+      });
+      this.audit.record("task_assigned", {
+        taskId: task.id,
+        agentId: agent.id,
+        projectId: task.projectId,
+        data: { assigned: false, reason: "agent_disabled" },
+      });
+      return task;
+    }
+
     task = this.tasks.assign(task.id, agent.id);
     this.audit.record("task_assigned", {
       taskId: task.id,

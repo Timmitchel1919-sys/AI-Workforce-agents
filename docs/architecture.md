@@ -52,10 +52,12 @@ contracts/
   developer.ts                DeveloperTask / DeveloperResult + validators.
   qa.ts                      QATask / QAResult + validators (structural "no self-approval" guarantee).
   money-mind.ts               Money Mind capability enum, per-operation I/O shapes + validators.
+  control.ts                  Control-plane contracts: operator roles/capabilities, command results, view models.
 core/
   shared.ts                 Deterministic id + time helpers.
   persistence/in-memory-repository   InMemoryRepository / InMemoryPersistence (pure, default).
   registry/agent-registry   AgentRegistry — declarative agent store & lookup.
+  registry/project-registry  ProjectRegistry — resolve a ProjectAdapter by id (provider-neutral).
   tasks/task-system         TaskSystem — deterministic task lifecycle.
   handoffs/handoff-system   HandoffSystem — propose / accept / reject handoffs.
   permissions/permission-system  PermissionSystem — deny-by-default evaluation.
@@ -90,18 +92,29 @@ agents/
   project-manager/           ProjectManagerAgent — decompose an objective, or summarize a workflow.
   developer/                 DeveloperAgent — implementation plan + proposed changes only.
   qa/                        QaAgent — pass/fail/blocked verdict; cannot self-approve without evidence.
+control/
+  context.ts                 ControlPlaneContext — the injected bundle of core services + stores.
+  stores.ts                  AgentOperationalStore (enabled/disabled), WorkflowControlStore (paused).
+  redaction.ts / risk.ts     Secret redaction; deterministic approval risk classification.
+  health.ts / derive.ts      Measurable system health; pure core-state → view-model derivation.
+  services/workforce-query-service    WorkforceQueryService — the read side (view-gated, project-scoped).
+  services/workforce-command-service  WorkforceCommandService — validate → authorize → state → core → audit.
+  dashboard/render + build-html        Pure HTML rendering + one self-contained document. No deps.
 tests/
   foundation | persistence | approval-execution | permission-enforcement
   anthropic-provider | model-provider-layer | research-agent | tool-framework
   workflow-engine | workflow-agents | workflow-demo
-  money-mind-adapter | money-mind-agents | money-mind-demo | money-mind-fs-repo  (254 tests total)
+  money-mind-adapter | money-mind-agents | money-mind-demo | money-mind-fs-repo
+  control-plane | control-dashboard  (288 tests total)
 docs/                       This documentation + ADRs.
 .env.example                Placeholder environment configuration (never a real .env).
 .github/workflows/ci.yml    Continuous integration.
 ```
 
 Dependency direction is one-way: `adapters → contracts`, `core → contracts`,
-and `agents → core → contracts` (`agents` also uses `contracts` directly).
+`agents → core → contracts`, and `control → core → contracts` (the dashboard is
+`control/dashboard/` — `UI → control services → core`; the UI never reaches a
+database, filesystem, shell, or credential).
 `core` never imports from `adapters` or `agents`. The orchestrator, every core
 system's `Repository`, the `AgentExecutor`, the `ApprovalPolicy`, the
 `PermissionSystem`, each General Agent's `ModelProvider` / `ToolProvider` /
@@ -207,7 +220,9 @@ phase events, with a `data.phase` discriminator — covers every Money Mind
 operation, since each is invoked as a `Tool`), `workflow_event` (workflow
 lifecycle events, with a `data.kind` discriminator — see §9c),
 `project_adapter_event` (`data.kind: "adapter_initialized"`, emitted once by
-the wiring layer right after constructing a `ProjectAdapter`).
+the wiring layer right after constructing a `ProjectAdapter`), and
+`control_command` (every operator command — `data.command` / `data.outcome` /
+`data.actor` — including denied and rejected ones; see §9d).
 
 ### Persistence
 
@@ -484,6 +499,43 @@ pattern as `agent_activity`/`tool_execution`, not a literal type per lifecycle
 transition. Full detail in [workflows.md](workflows.md); rationale in
 [ADR-0007](adr/0007-multi-agent-workflow-orchestration.md).
 
+## 9d. Control & Operations Layer
+
+An application layer **above** core (`control/`) that gives a human operator
+visibility and controlled intervention — without becoming a second
+orchestrator. `UI → control services → core → contracts`.
+
+- **`WorkforceQueryService`** (read) — `getWorkforceStatus`, `getAgents` /
+  `getAgent`, `getTasks` / `getTask` (filters + opaque-cursor pagination),
+  `getWorkflows` / `getWorkflow` (progress = `completed/total` real task
+  records), `getApprovals` (with deterministic risk classification),
+  `getAuditEvents` (filters + pagination + redaction), `getProjects` /
+  `getProject` (via `ProjectRegistry`), `getTools` / `getTool` (policy metadata
+  only — never credentials), `getHealth` (only measurable components; anything
+  unchecked reports `degraded`), `getDashboardSnapshot`. Every method is
+  `view`-gated and project-scoped to the operator.
+- **`WorkforceCommandService`** (write) — `approve` / `reject` / `cancelTask` /
+  `retryTask` / `pauseWorkflow` / `resumeWorkflow` / `cancelWorkflow` /
+  `disableAgent` / `enableAgent`. Fixed pipeline: **validate input → validate
+  authorization → validate current state → execute through the core service →
+  emit a `control_command` audit event (always, including denied/rejected) →
+  return a `ControlCommandResult`.** The UI never mutates state directly;
+  approvals go through `ApprovalSystem` / `Orchestrator.recordApprovalDecision`.
+- **Operator roles** — `viewer` (view), `operator` (+ approve/reject/cancel/
+  retry/pause/resume), `admin` (+ enable/disable agent). Deny-by-default; no
+  RBAC engine.
+- **Two small state models** — `AgentOperationalStore` (enabled/disabled) and
+  `WorkflowControlStore` (paused). Core definitions are never mutated.
+- **One core hook** — `OrchestratorOptions.agentGate?: { isEnabled(agentId) }`
+  (default off). When the wiring passes the `AgentOperationalStore`, a disabled
+  agent's task is `blocked` (`reason: "agent_disabled"`) before dispatch — the
+  same path as "no eligible agent". Tool + workflow participation are gated
+  transitively.
+- **Dashboard** — a dependency-free pure render + `buildDashboardHtml` (one
+  self-contained document; nine views; no framework, no shipped server, no
+  fake data). Full detail in [control-plane.md](control-plane.md); rationale in
+  [ADR-0009](adr/0009-workforce-control-plane.md).
+
 ## 10. Persistence architecture
 
 - **Interface:** `contracts/persistence.ts` — `Repository<T>` and
@@ -516,7 +568,7 @@ stays zero. `tsc --noEmit` remains the type-correctness gate. See
 ## 13. Testing
 
 `npm test` compiles with `tsc` and runs `node --test` over the compiled output
-(**254 tests**). Coverage: the Phase 1–5 surface (registry, task lifecycle,
+(**288 tests**). Coverage: the Phase 1–5 surface (registry, task lifecycle,
 handoffs, permissions + every scope, approval lifecycle + resume, orchestrator
 routing, persistence + survival across reinit, audit, the Anthropic adapter and
 its failure classes, the model provider registry + audit decorator, the
@@ -557,8 +609,24 @@ demonstration); plus **the Money Mind project adapter**:
   the OS level, real `npm run <script>` execution and exit code, and a
   missing-repository-path failing safely rather than crashing.
 
+Plus **the Control & Operations Layer** (`control-plane.test.ts`,
+`control-dashboard.test.ts`): every query (status / agents + status derivation /
+tasks + filter + pagination + redaction / workflow progress from real records /
+approvals + risk / projects via the registry + a failing adapter / tools
+without credentials / audit + filter + pagination / health never claiming an
+unchecked provider healthy / dashboard snapshot); every command (approve enacts
+a task resume, reject, retry — retryable / non-retryable / workflow-task /
+completed / cap, cancel task, pause + resume + cancel workflow, disable agent
+blocks new dispatch + enable restores it); security (viewer cannot approve or
+disable, operator cannot do admin-only, project-scoped operator blocked,
+unknown role denied); state validation (double-approve, unknown/blank ids,
+terminal-workflow pause/resume); audit (every command emits `control_command`
+including denied/rejected; secrets in task metadata never reach a view or the
+audit log); and the dashboard render (empty states, XSS escaping, real-count
+rendering, self-contained document, error banner).
+
 Every test is deterministic and offline — **no real AI API calls, no real
-external services, no real Money Mind repository**.
+external services, no real Money Mind repository, no HTTP server**.
 
 ## 14. Extension guidelines
 
@@ -577,11 +645,17 @@ least privilege, add deterministic tests, keep `core` free of adapter imports.
   unchanged; a model call still happens inside an executor that the orchestrator
   has already permission-checked.
 
-## 16. Deliberately out of scope through Phase 6
+## 16. Deliberately out of scope through Phase 7
 
-Unrestricted autonomous planning or agent-triggered recursion; the remaining
-six General Agents (Data Analyst, Security, Finance, Business, Design,
-Documentation); a real "apply this change" capability for the Developer Agent;
+Real-time / push updates to the operations console (request/response only — an
+event bus is a later, explicit subscription-boundary design); a shipped HTTP
+server or bundled SPA for the dashboard (a dependency-free render + document
+builder is provided, wiring is documented); a richer RBAC / per-operator
+permission engine; forced interruption of a running task or workflow (pause is
+a guard, not a kill); unrestricted autonomous planning or agent-triggered
+recursion; the remaining six General Agents (Data Analyst, Security, Finance,
+Business, Design, Documentation); a real "apply this change" capability for the
+Developer Agent;
 dynamic wiring of one workflow task's live output into a successor's input;
 an automatic "Project Manager re-plans after a mid-workflow failure" loop;
 additional real model providers (OpenAI/Google); a live end-to-end

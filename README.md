@@ -8,21 +8,23 @@ permissions, human approval records, project-isolated context, a structured
 audit log, and **durable persistence behind an interface** — all behind
 **provider- and project-agnostic contracts**.
 
-> **Status: Phase 6 complete.** The first real **Project Adapter** — a
-> read-mostly integration with the independent **Money Mind** repository,
-> reached only through a declared capability boundary and the same secure
-> `Tool` pipeline every other tool goes through. No Money Mind source is
-> copied here, and no write/commit/push/deploy capability exists yet. Phase 5
-> added controlled **multi-agent workflow orchestration** — a `WorkflowEngine`
-> schedules a validated, cycle-free task graph through the existing
-> `Orchestrator`, so every permission/approval/tool control still applies to
-> each step — and three more General Agents (Project Manager, Developer, QA)
-> alongside Research. Still no unrestricted autonomous planning.
+> **Status: Phase 7 complete.** A **Workforce Control & Operations Layer** —
+> `WorkforceQueryService` (read) and `WorkforceCommandService` (write) above
+> core, a three-tier operator role model, per-command audit, and a
+> dependency-free operations dashboard. An operator can see agents / tasks /
+> workflows / approvals / projects / tools / audit / health and act
+> (approve · reject · retry · cancel · pause/resume workflow · enable/disable
+> agent) — every command validated, authorized, state-checked, run through a
+> core service, and audited. The UI never bypasses permission, approval, or
+> audit. Earlier phases: the Money Mind **Project Adapter** (read-mostly,
+> capability-declared, tool-gated), multi-agent **workflow orchestration**, and
+> four General Agents (Research, Project Manager, Developer, QA). Still no
+> unrestricted autonomous planning, no real-time push, no shipped web server.
 
 ## Stack
 
 - **TypeScript** (strict) on **Node.js ≥ 20**, ESM (`NodeNext`)
-- Tests: built-in `node:test` + `node:assert/strict` (254 deterministic, offline)
+- Tests: built-in `node:test` + `node:assert/strict` (288 deterministic, offline)
 - Build: `tsc` only
 - Persistence: `Repository<T>` interface; JSON-file store as the first
   implementation ([ADR-0002](docs/adr/0002-local-json-file-persistence.md))
@@ -37,24 +39,29 @@ audit log, and **durable persistence behind an interface** — all behind
 - Workflows: a validated task-dependency graph scheduled through the
   `Orchestrator`, with retries, handoffs, approval pauses, and limits
   ([ADR-0007](docs/adr/0007-multi-agent-workflow-orchestration.md))
-- Project adapters: `ProjectAdapter` contract + the first real implementation,
-  `MoneyMindProjectAdapter` — read-mostly, capability-declared, tool-gated
+- Project adapters: `ProjectAdapter` contract + `ProjectRegistry` + the first
+  real implementation, `MoneyMindProjectAdapter` — read-mostly,
+  capability-declared, tool-gated
   ([ADR-0008](docs/adr/0008-money-mind-project-adapter.md))
+- Control plane: `WorkforceQueryService` + `WorkforceCommandService` above core,
+  operator roles, per-command audit, dependency-free dashboard
+  ([ADR-0009](docs/adr/0009-workforce-control-plane.md))
 - Lint/format: ESLint 9 + Prettier 3, **dev-only**
   ([ADR-0003](docs/adr/0003-code-quality-tooling.md))
 - **Zero runtime dependencies in core**
 
 ## Layout
 
-| Path                                             | Purpose                                                                                                                                                                                                                                            |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`contracts/`](contracts/)                       | Shared types, pure validators, agent execution boundary, `Repository` / persistence + research + tool + workflow / project-manager / developer / qa + **money-mind** contracts.                                                                    |
-| [`core/`](core/)                                 | Registry, tasks, handoffs, permissions, approvals, context, audit, model registry, General Agent framework, Tool Execution Engine, Workflow Engine, orchestrator.                                                                                  |
-| [`adapters/`](adapters/)                         | Provider/project contracts + offline reference implementations (Echo/Anthropic model, tool provider + `Tool` fakes, JSON persistence, **`projects/money-mind/`**).                                                                                 |
-| [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                                                                      |
-| [`tests/`](tests/)                               | Deterministic, offline tests (254): foundation, persistence, approval, permissions, model provider, research agent, tool framework, workflow engine/agents, a full demonstration workflow, and **money-mind adapter/agents/demo/fs-repo**.         |
-| [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [Money Mind](docs/projects/money-mind.md), [extension guide](docs/extending.md), [ADRs](docs/adr/). |
-| [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                                                           |
+| Path                                             | Purpose                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`contracts/`](contracts/)                       | Shared types, pure validators, agent execution boundary, `Repository` / persistence + research + tool + workflow / project-manager / developer / qa + **money-mind** contracts.                                                                                                            |
+| [`core/`](core/)                                 | Registry (agents + projects), tasks, handoffs, permissions, approvals, context, audit, model registry, General Agent framework, Tool Execution Engine, Workflow Engine, orchestrator.                                                                                                      |
+| [`adapters/`](adapters/)                         | Provider/project contracts + offline reference implementations (Echo/Anthropic model, tool provider + `Tool` fakes, JSON persistence, **`projects/money-mind/`**).                                                                                                                         |
+| [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                                                                                                              |
+| [`control/`](control/)                           | Control & Operations Layer: `services/` (query + command), operational stores, redaction, health, view derivation, `dashboard/` (pure render + self-contained HTML).                                                                                                                       |
+| [`tests/`](tests/)                               | Deterministic, offline tests (288): the above + **control-plane** (queries, commands, security, state, audit) and **control-dashboard** (render, escaping, empty/error states).                                                                                                            |
+| [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Control Plane](docs/control-plane.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [Money Mind](docs/projects/money-mind.md), [extension guide](docs/extending.md), [ADRs](docs/adr/). |
+| [`.github/workflows/`](.github/workflows/ci.yml) | CI: typecheck → lint → format → test → build on push/PR.                                                                                                                                                                                                                                   |
 
 ## Commands
 
@@ -374,6 +381,65 @@ write/commit/push/deploy capability exists. Full detail:
 [docs/projects/money-mind.md](docs/projects/money-mind.md),
 [ADR-0008](docs/adr/0008-money-mind-project-adapter.md).
 
+## Control & operations layer
+
+`UI → control services → core → contracts`. The operator gets visibility and
+controlled intervention; the control plane is **not** a second orchestrator and
+never bypasses permission / approval / audit.
+
+```ts
+import {
+  WorkforceQueryService,
+  WorkforceCommandService,
+  AgentOperationalStore,
+  WorkflowControlStore,
+  buildDashboardHtml,
+  type ControlPlaneContext,
+} from "./control/index.js";
+
+const ctx: ControlPlaneContext = {
+  agents,
+  tasks,
+  workflows,
+  approvals,
+  permissions,
+  tools,
+  projects,
+  audit,
+  agentOps: new AgentOperationalStore(),
+  workflowControl: new WorkflowControlStore(),
+  orchestrator,
+  workflowEngine,
+};
+// wire the gate so a disabled agent gets no new tasks:
+//   new Orchestrator(..., { agentGate: ctx.agentOps })
+
+const query = new WorkforceQueryService(ctx);
+const command = new WorkforceCommandService(ctx);
+
+const principal = {
+  id: "sam",
+  role: "operator",
+  allowedProjects: "*",
+} as const;
+const snapshot = await query.getDashboardSnapshot(principal);
+const html = buildDashboardHtml(snapshot, {
+  commandEndpoint: "/api/control/command",
+});
+
+const result = await command.approve(principal, { approvalId });
+// { command, outcome: "executed" | "denied" | "rejected", ok, reason, auditEventId, ... }
+```
+
+Roles: `viewer` (view), `operator` (+ approve/reject/cancel/retry/pause/resume),
+`admin` (+ enable/disable agent). Every command — including denied and rejected
+— emits a `control_command` audit event. The dashboard is one dependency-free
+HTML document (nine views: Overview, Agents, Workflows, Tasks, Approvals,
+Projects, Tools, Audit, Health); no server is shipped —
+[`control/dashboard/README.md`](control/dashboard/README.md) shows the seam.
+Full detail: [docs/control-plane.md](docs/control-plane.md),
+[ADR-0009](docs/adr/0009-workforce-control-plane.md).
+
 ## Extending
 
 Read [docs/extending.md](docs/extending.md). Never let `core/` import an adapter
@@ -392,6 +458,10 @@ deterministic tests; never commit a secret.
 - No secrets in the repo or in persistence. Providers read credentials from the
   environment at call time; the Anthropic adapter redacts the key from every
   error message and never logs it.
+- The control plane redacts every operator-visible field, enforces role +
+  project authorization on every query and command (the UI is not a security
+  boundary), and audits every command. It never touches a database, filesystem,
+  shell, or credential.
 - General Agents get least-privilege grants (the Research Agent: two read-only
   tools; `write` / `deploy` / `secret_access` / `external_communication`
   denied), run bounded (no recursion, hard iteration/tool/model/time limits),
