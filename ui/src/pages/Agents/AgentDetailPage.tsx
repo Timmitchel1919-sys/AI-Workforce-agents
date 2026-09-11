@@ -126,7 +126,10 @@ export function AgentDetailPage() {
             <Section title="Recent executions">
               <Card>
                 <CardBody>
-                  <AgentExecutions agentId={agent.id} />
+                  <AgentExecutions
+                    agentId={agent.id}
+                    currentTaskId={agent.currentTaskId}
+                  />
                 </CardBody>
               </Card>
             </Section>

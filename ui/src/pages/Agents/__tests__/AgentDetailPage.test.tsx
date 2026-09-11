@@ -116,7 +116,7 @@ describe("AgentDetailPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows recent executions from the audit feed", async () => {
+  it("shows recent executions derived from the audit feed (UI-5D)", async () => {
     const audit: AuditEventView[] = [
       {
         id: "e1",
@@ -133,18 +133,19 @@ describe("AgentDetailPage", () => {
     const executions = screen
       .getByRole("heading", { name: "Recent executions" })
       .closest("section") as HTMLElement;
+    // narrow (jsdom default) viewport renders execution cards
+    expect(await within(executions).findByText("t-42")).toBeInTheDocument();
     expect(
-      await within(executions).findByRole("link", { name: "t-42" }),
+      within(executions).getByText("Completed", {
+        selector: ".ui-status-badge",
+      }),
     ).toBeInTheDocument();
-    expect(
-      within(executions).getByRole("link", { name: "Open Audit Log" }),
-    ).toHaveAttribute("href", "/audit");
   });
 
-  it("shows an empty executions state when the agent has no audit events", async () => {
+  it("shows a 'no executions yet' state when the agent has no audit events", async () => {
     renderDetail(makeApi([mkAgent()], []), "/agents/a1");
     await screen.findByRole("heading", { name: "Research Agent" });
-    expect(await screen.findByText("No recent executions")).toBeInTheDocument();
+    expect(await screen.findByText("No executions yet")).toBeInTheDocument();
   });
 
   it("renders a not-found state for an unknown agent id", async () => {

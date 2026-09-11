@@ -15,5 +15,9 @@ export { AgentDetailHeader } from "./AgentDetailHeader";
 export { AgentCapabilities } from "./AgentCapabilities";
 export { AgentHealthCard } from "./AgentHealthCard";
 export { AgentWorkloadCard } from "./AgentWorkloadCard";
-export { AgentExecutions } from "./AgentExecutions";
 export { AgentConfigurationCard } from "./AgentConfigurationCard";
+
+// Activity & execution intelligence (UI-5D)
+export { AgentExecutions } from "./AgentExecutions";
+export { AgentActivitySummary } from "./AgentActivitySummary";
+export { AgentExecutionDrawer } from "./AgentExecutionDrawer";
