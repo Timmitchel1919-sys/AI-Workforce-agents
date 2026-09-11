@@ -202,7 +202,7 @@ describe("AgentDetailPage", () => {
       screen.getByRole("button", { name: /disable agent/i }),
     );
     expect(await screen.findByRole("dialog")).toHaveTextContent(
-      /Disable this agent/i,
+      /Disable Research Agent\?/i,
     );
   });
 });
