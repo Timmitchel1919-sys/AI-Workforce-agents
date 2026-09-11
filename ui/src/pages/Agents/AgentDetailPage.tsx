@@ -13,10 +13,12 @@ import { isApiError } from "../../api";
 import { useAgent } from "../../features/agents";
 import {
   AgentActions,
+  AgentAuditSummary,
   AgentCapabilities,
   AgentConfigurationCard,
   AgentDetailHeader,
   AgentExecutions,
+  AgentGovernanceCard,
   AgentHealthCard,
   AgentWorkloadCard,
 } from "./components";
@@ -133,6 +135,14 @@ export function AgentDetailPage() {
                 </CardBody>
               </Card>
             </Section>
+
+            <Section title="Governance activity">
+              <Card>
+                <CardBody>
+                  <AgentAuditSummary agentId={agent.id} />
+                </CardBody>
+              </Card>
+            </Section>
           </Stack>
 
           <Stack gap="lg" className="agent-detail-grid__aside">
@@ -148,6 +158,14 @@ export function AgentDetailPage() {
               <Card>
                 <CardBody>
                   <AgentWorkloadCard agent={agent} />
+                </CardBody>
+              </Card>
+            </Section>
+
+            <Section title="Governance">
+              <Card>
+                <CardBody>
+                  <AgentGovernanceCard agent={agent} />
                 </CardBody>
               </Card>
             </Section>

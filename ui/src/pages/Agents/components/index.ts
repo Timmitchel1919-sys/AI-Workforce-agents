@@ -21,3 +21,7 @@ export { AgentConfigurationCard } from "./AgentConfigurationCard";
 export { AgentExecutions } from "./AgentExecutions";
 export { AgentActivitySummary } from "./AgentActivitySummary";
 export { AgentExecutionDrawer } from "./AgentExecutionDrawer";
+
+// Governance, permissions & audit integration (UI-5E)
+export { AgentGovernanceCard } from "./AgentGovernanceCard";
+export { AgentAuditSummary } from "./AgentAuditSummary";

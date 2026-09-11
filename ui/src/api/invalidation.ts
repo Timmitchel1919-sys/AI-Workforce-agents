@@ -71,6 +71,10 @@ export function invalidateForCommand(
     case "enable-agent":
       inv(queryKeys.agents.all);
       inv(queryKeys.dashboard.all);
+      // The command itself produces a new `control_command` audit event for
+      // this agent (UI-5E's AgentAuditSummary) — invalidate so it shows up
+      // on next view rather than only after an unrelated refetch.
+      inv(queryKeys.audit.all);
       if (targets.agentId) inv(queryKeys.agents.detail(targets.agentId));
       break;
   }

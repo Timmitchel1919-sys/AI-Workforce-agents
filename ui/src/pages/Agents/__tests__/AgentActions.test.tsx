@@ -65,13 +65,25 @@ async function openDialog(): Promise<HTMLElement> {
 }
 
 describe("AgentActions", () => {
-  it("renders nothing for a role with no control-plane command capability", () => {
-    const { client } = makeApi({});
+  it("shows the governed action disabled (not hidden) for a read-only role, with an explanation", async () => {
+    const { client, post } = makeApi({});
     renderWithProviders(
       <AgentActions agent={toAgentListItem(mkAgent())} onChanged={() => {}} />,
       { apiClient: client, auth: { role: "viewer" } },
     );
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Disable agent" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    // native `disabled` is intentionally NOT set — the button stays
+    // focusable so its keyboard-accessible Tooltip explanation still works.
+    expect(button).not.toBeDisabled();
+
+    await userEvent.click(button);
+    expect(post).not.toHaveBeenCalled();
+
+    await userEvent.hover(button);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "You do not have permission to operate this agent.",
+    );
   });
 
   it("opens a confirmation dialog with real lifecycle copy, then submits and refreshes", async () => {

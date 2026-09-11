@@ -83,6 +83,17 @@ export function availableAgentActions(
   ).map((spec) => spec.action);
 }
 
+/**
+ * The agent's structural next action — which of disable/enable applies to
+ * its *current status*, ignoring the operator's permissions entirely. Used
+ * to render a governed action in a disabled (not hidden) state for a
+ * read-only operator (UI-5E), so they can see what the operation would be
+ * without being able to trigger it.
+ */
+export function structuralAgentAction(agent: AgentListItem): AgentAction {
+  return agent.enabled ? "disable" : "enable";
+}
+
 export function agentActionLabel(action: AgentAction): string {
   return specFor(action).label;
 }

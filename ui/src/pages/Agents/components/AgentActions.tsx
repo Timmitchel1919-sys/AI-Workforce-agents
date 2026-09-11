@@ -5,6 +5,7 @@ import {
   Dialog,
   Field,
   Textarea,
+  Tooltip,
   useToast,
 } from "../../../components/ui";
 import { Ban, Power, type LucideIcon } from "../../../components/ui/icons";
@@ -16,6 +17,7 @@ import {
   agentActionDialogTitle,
   agentActionLabel,
   availableAgentActions,
+  structuralAgentAction,
   type AgentAction,
 } from "../agentActions";
 import type { AgentListItem } from "../agentsView";
@@ -71,9 +73,29 @@ export function AgentActions({
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const actions = availableAgentActions(agent, role);
-  if (actions.length === 0) return null;
-
+  const structural = structuralAgentAction(agent);
   const submitting = status === "pending";
+
+  // Read-only mode (UI-5E): governed operations stay visible but disabled
+  // with an explanation, rather than hidden — the operator can see what
+  // exists without being able to act. This is UX only; a disabled button
+  // has no bearing on what the Control Plane will actually accept.
+  if (actions.length === 0) {
+    const DisabledIcon = ACTION_ICON[structural];
+    return (
+      <Tooltip content="You do not have permission to operate this agent.">
+        <Button
+          variant="outline"
+          size="sm"
+          iconLeft={DisabledIcon}
+          aria-disabled="true"
+          onClick={(e) => e.preventDefault()}
+        >
+          {agentActionLabel(structural)}
+        </Button>
+      </Tooltip>
+    );
+  }
 
   function openDialog(action: AgentAction) {
     setPendingAction(action);

@@ -184,7 +184,8 @@ describe("AgentDetailPage", () => {
   });
 
   it("offers the disable action only to permitted roles", async () => {
-    // viewer: no control capability → no action
+    // viewer: no control capability → the action stays visible but disabled
+    // (read-only mode, UI-5E), never hidden
     const { unmount } = renderDetail(
       makeApi([mkAgent()]),
       "/agents/a1",
@@ -192,8 +193,8 @@ describe("AgentDetailPage", () => {
     );
     await screen.findByRole("heading", { name: "Research Agent" });
     expect(
-      screen.queryByRole("button", { name: /disable agent/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /disable agent/i }),
+    ).toHaveAttribute("aria-disabled", "true");
     unmount();
 
     // admin: disable action present, opens a confirmation dialog
