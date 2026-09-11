@@ -1,0 +1,163 @@
+import { describe, expect, it, vi } from "vitest";
+import { Routes, Route } from "react-router-dom";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderWithProviders } from "../../../test/renderWithProviders";
+import type { ApiClient } from "../../../api";
+import type { AgentView, AuditEventView } from "../../../api/contracts";
+import { AgentDetailPage } from "../AgentDetailPage";
+
+function mkAgent(over: Partial<AgentView> = {}): AgentView {
+  return {
+    agentId: "a1",
+    name: "Research Agent",
+    role: "research",
+    capabilities: ["web_search", "summarize"],
+    status: "available",
+    enabled: true,
+    allowedProjects: ["money-mind"],
+    currentTaskId: "t-42",
+    currentProjectId: "money-mind",
+    lastActivityAt: "2026-09-01T10:00:00.000Z",
+    stats: {
+      taskCount: 12,
+      completed: 10,
+      failed: 2,
+      cancelled: 0,
+      successRate: 0.83,
+    },
+    ...over,
+  };
+}
+
+function makeApi(agents: AgentView[], audit: AuditEventView[] = []): ApiClient {
+  const get = vi.fn(async (path: string) => {
+    if (path.startsWith("/agents/")) {
+      const id = decodeURIComponent(path.slice("/agents/".length));
+      const found = agents.find((a) => a.agentId === id);
+      if (!found) {
+        const { ApiError } = await import("../../../api");
+        throw new ApiError({
+          kind: "not_found",
+          message: "no such agent",
+          status: 404,
+        });
+      }
+      return { data: found, status: 200, correlationId: "t" };
+    }
+    if (path === "/audit") {
+      return {
+        data: { items: audit, total: audit.length, nextCursor: null },
+        status: 200,
+        correlationId: "t",
+      };
+    }
+    return { data: undefined, status: 200, correlationId: "t" };
+  });
+  return {
+    get,
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+  } as unknown as ApiClient;
+}
+
+function renderDetail(client: ApiClient, route: string, authRole = "operator") {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/agents/:agentId" element={<AgentDetailPage />} />
+    </Routes>,
+    { route, apiClient: client, auth: { role: authRole as never } },
+  );
+}
+
+describe("AgentDetailPage", () => {
+  it("renders identity, capabilities, workload and a health boundary", async () => {
+    renderDetail(makeApi([mkAgent()]), "/agents/a1");
+
+    expect(
+      await screen.findByRole("heading", { name: "Research Agent" }),
+    ).toBeInTheDocument();
+
+    const caps = screen.getByRole("heading", { name: "Capabilities" });
+    const capsSection = caps.closest("section") as HTMLElement;
+    expect(within(capsSection).getByText("web_search")).toBeInTheDocument();
+    expect(within(capsSection).getByText("summarize")).toBeInTheDocument();
+
+    // workload from real stats
+    const workload = screen
+      .getByRole("heading", { name: "Current workload" })
+      .closest("section") as HTMLElement;
+    expect(
+      within(workload).getByText("Success rate").closest(".ui-metric"),
+    ).toHaveTextContent("83%");
+    expect(
+      within(workload).getByRole("link", { name: "t-42" }),
+    ).toHaveAttribute("href", "/tasks/t-42");
+
+    // health is an explicit unavailable boundary, not fabricated data
+    const health = screen
+      .getByRole("heading", { name: "Health" })
+      .closest("section") as HTMLElement;
+    expect(
+      within(health).getByText(/not reported by the Control Plane/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows recent activity from the audit feed", async () => {
+    const audit: AuditEventView[] = [
+      {
+        id: "e1",
+        timestamp: "2026-09-01T09:00:00.000Z",
+        type: "task_completed",
+        agentId: "a1",
+        taskId: "t-42",
+        outcome: "completed",
+        data: {},
+      },
+    ];
+    renderDetail(makeApi([mkAgent()], audit), "/agents/a1");
+    await screen.findByRole("heading", { name: "Research Agent" });
+    const activity = screen
+      .getByRole("heading", { name: "Recent activity" })
+      .closest("section") as HTMLElement;
+    expect(
+      await within(activity).findByRole("link", { name: "t-42" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an empty activity state when the agent has no audit events", async () => {
+    renderDetail(makeApi([mkAgent()], []), "/agents/a1");
+    await screen.findByRole("heading", { name: "Research Agent" });
+    expect(await screen.findByText("No recent activity")).toBeInTheDocument();
+  });
+
+  it("renders a not-found state for an unknown agent id", async () => {
+    renderDetail(makeApi([mkAgent()]), "/agents/ghost");
+    expect(await screen.findByText("Agent not found")).toBeInTheDocument();
+  });
+
+  it("offers the disable action only to permitted roles", async () => {
+    // viewer: no control capability → no action
+    const { unmount } = renderDetail(
+      makeApi([mkAgent()]),
+      "/agents/a1",
+      "viewer",
+    );
+    await screen.findByRole("heading", { name: "Research Agent" });
+    expect(
+      screen.queryByRole("button", { name: /disable agent/i }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    // admin: disable action present, opens a confirmation dialog
+    renderDetail(makeApi([mkAgent()]), "/agents/a1", "admin");
+    await screen.findByRole("heading", { name: "Research Agent" });
+    await userEvent.click(
+      screen.getByRole("button", { name: /disable agent/i }),
+    );
+    expect(await screen.findByRole("dialog")).toHaveTextContent(
+      /Disable this agent/i,
+    );
+  });
+});

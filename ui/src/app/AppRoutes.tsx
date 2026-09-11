@@ -5,7 +5,7 @@ import { DetailPlaceholderPage } from "../pages/DetailPlaceholderPage";
 import { LoginPage } from "../pages/Login";
 import { NotFoundPage } from "../pages/NotFound";
 import { OverviewPage } from "../pages/Overview";
-import { AgentsPage } from "../pages/Agents";
+import { AgentsPage, AgentDetailPage } from "../pages/Agents";
 import { TasksPage } from "../pages/Tasks";
 import { WorkflowsPage } from "../pages/Workflows";
 import { ProjectsPage } from "../pages/Projects";
@@ -25,17 +25,7 @@ export function AppRoutes() {
         <Route path="/overview" element={<OverviewPage />} />
 
         <Route path="/agents" element={<AgentsPage />} />
-        <Route
-          path="/agents/:agentId"
-          element={
-            <DetailPlaceholderPage
-              resource="Agent"
-              paramName="agentId"
-              backTo="/agents"
-              backLabel="Agents"
-            />
-          }
-        />
+        <Route path="/agents/:agentId" element={<AgentDetailPage />} />
 
         <Route path="/tasks" element={<TasksPage />} />
         <Route

@@ -1,0 +1,44 @@
+/*
+ * UI-5 — Agents module. Scoped layout helpers only; every value comes from
+ * tokens.css. Structure and primitives are reused from the UI-2 design system.
+ */
+
+.agents-toolbar__search {
+  flex: 1 1 18rem;
+  min-width: 12rem;
+}
+@media (max-width: 768px) {
+  .agents-toolbar__search {
+    flex-basis: 100%;
+  }
+}
+
+.agent-row__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.agent-caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.agent-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+.agent-card__name {
+  font: var(--text-h4);
+}
+
+.agent-activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
