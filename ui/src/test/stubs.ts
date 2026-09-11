@@ -18,21 +18,20 @@ export function makeStubAuth(
   };
 }
 
-/** A stub `ApiClient` whose `get`/`post` are vi.fn's returning empty results. */
+/** A stub `ApiClient` whose methods are vi.fn's returning empty results. */
 export function makeStubApiClient(
   overrides: Partial<ApiClient> = {},
 ): ApiClient {
+  const ok = vi.fn(async () => ({
+    data: undefined as never,
+    status: 200,
+    correlationId: "test",
+  }));
   return {
-    get: vi.fn(async () => ({
-      data: undefined as never,
-      status: 200,
-      correlationId: "test",
-    })),
-    post: vi.fn(async () => ({
-      data: undefined as never,
-      status: 200,
-      correlationId: "test",
-    })),
+    get: ok,
+    post: ok,
+    patch: ok,
+    delete: ok,
     ...overrides,
   };
 }

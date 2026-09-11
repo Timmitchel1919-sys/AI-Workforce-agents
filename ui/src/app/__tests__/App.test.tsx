@@ -42,6 +42,7 @@ describe("App composition", () => {
     const qc = makeQueryClient();
     const defaults = qc.getDefaultOptions();
     expect(defaults.queries?.refetchOnWindowFocus).toBe(false);
-    expect(defaults.queries?.retry).toBe(1);
+    expect(defaults.queries?.gcTime).toBe(5 * 60_000);
+    expect(typeof defaults.queries?.retry).toBe("function");
   });
 });

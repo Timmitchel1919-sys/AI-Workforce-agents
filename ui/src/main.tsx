@@ -5,6 +5,10 @@ import "./styles/tokens.css";
 import "./styles/globals.css";
 import "./styles/components.css";
 import { App } from "./app/App";
+import { assertConfig } from "./lib/config";
+
+// Fail fast on a missing/invalid API base in a production build.
+assertConfig();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
