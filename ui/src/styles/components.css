@@ -150,9 +150,16 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-md) var(--space-md) var(--space-sm);
+  padding: var(--space-md) var(--space-sm) var(--space-sm) var(--space-md);
   min-height: var(--topbar-height);
   border-bottom: 1px solid var(--color-border-subtle);
+}
+.sidebar__brand-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .sidebar__brand-mark {
   width: 22px;
@@ -173,10 +180,37 @@
   font: var(--text-caption);
   color: var(--color-text-muted);
 }
+/* The far-right collapse control that sits beside the logo. */
+.sidebar__brand-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+}
+.sidebar__brand-collapse:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+/* Collapsed: the logo itself becomes the expand control. */
+.sidebar__brand-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  border-radius: var(--radius-md);
+}
+.sidebar__brand-toggle:hover {
+  background: var(--color-surface-hover);
+}
 .sidebar__scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: var(--space-sm);
 }
 .sidebar__section {
@@ -257,22 +291,9 @@
   font: var(--text-caption);
   color: var(--color-text-muted);
 }
-.sidebar__collapse-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  width: 100%;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-md);
-  color: var(--color-text-muted);
-  font: var(--text-caption);
-}
-.sidebar__collapse-btn:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
-}
-
-/* Collapsed: icon-only, centered. */
+/* Collapsed: icon-only, centered. The brand row's separate collapse button
+   is not rendered while collapsed — the logo itself (`.sidebar__brand-toggle`)
+   takes over as the expand control. */
 .sidebar--collapsed .sidebar__brand {
   justify-content: center;
   padding-inline: 0;
@@ -280,12 +301,10 @@
 .sidebar--collapsed .sidebar__brand-text,
 .sidebar--collapsed .sidebar__section-label,
 .sidebar--collapsed .sidebar__link-label,
-.sidebar--collapsed .sidebar__user-text,
-.sidebar--collapsed .sidebar__collapse-btn span {
+.sidebar--collapsed .sidebar__user-text {
   display: none;
 }
-.sidebar--collapsed .sidebar__link,
-.sidebar--collapsed .sidebar__collapse-btn {
+.sidebar--collapsed .sidebar__link {
   justify-content: center;
   gap: 0;
 }

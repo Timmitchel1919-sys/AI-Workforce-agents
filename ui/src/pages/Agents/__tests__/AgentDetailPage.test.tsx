@@ -4,6 +4,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import type { ApiClient } from "../../../api";
+import { ApiError } from "../../../api";
 import type { AgentView, AuditEventView } from "../../../api/contracts";
 import { AgentDetailPage } from "../AgentDetailPage";
 
@@ -30,13 +31,16 @@ function mkAgent(over: Partial<AgentView> = {}): AgentView {
   };
 }
 
-function makeApi(agents: AgentView[], audit: AuditEventView[] = []): ApiClient {
+function makeApi(
+  agents: AgentView[] | ApiError,
+  audit: AuditEventView[] = [],
+): ApiClient {
   const get = vi.fn(async (path: string) => {
     if (path.startsWith("/agents/")) {
+      if (agents instanceof ApiError) throw agents;
       const id = decodeURIComponent(path.slice("/agents/".length));
       const found = agents.find((a) => a.agentId === id);
       if (!found) {
-        const { ApiError } = await import("../../../api");
         throw new ApiError({
           kind: "not_found",
           message: "no such agent",
@@ -72,12 +76,20 @@ function renderDetail(client: ApiClient, route: string, authRole = "operator") {
 }
 
 describe("AgentDetailPage", () => {
-  it("renders identity, capabilities, workload and a health boundary", async () => {
+  it("renders the header, capabilities, workload and a health boundary", async () => {
     renderDetail(makeApi([mkAgent()]), "/agents/a1");
 
     expect(
       await screen.findByRole("heading", { name: "Research Agent" }),
     ).toBeInTheDocument();
+
+    // header: status, id, project link, quick facts
+    expect(screen.getByText("Available")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "money-mind" })).toHaveAttribute(
+      "href",
+      "/projects/money-mind",
+    );
+    expect(screen.getAllByText("Not available").length).toBeGreaterThan(0);
 
     const caps = screen.getByRole("heading", { name: "Capabilities" });
     const capsSection = caps.closest("section") as HTMLElement;
@@ -86,7 +98,7 @@ describe("AgentDetailPage", () => {
 
     // workload from real stats
     const workload = screen
-      .getByRole("heading", { name: "Current workload" })
+      .getByRole("heading", { name: "Workload" })
       .closest("section") as HTMLElement;
     expect(
       within(workload).getByText("Success rate").closest(".ui-metric"),
@@ -100,11 +112,11 @@ describe("AgentDetailPage", () => {
       .getByRole("heading", { name: "Health" })
       .closest("section") as HTMLElement;
     expect(
-      within(health).getByText(/not reported by the Control Plane/i),
+      within(health).getByText("Health data unavailable"),
     ).toBeInTheDocument();
   });
 
-  it("shows recent activity from the audit feed", async () => {
+  it("shows recent executions from the audit feed", async () => {
     const audit: AuditEventView[] = [
       {
         id: "e1",
@@ -118,23 +130,56 @@ describe("AgentDetailPage", () => {
     ];
     renderDetail(makeApi([mkAgent()], audit), "/agents/a1");
     await screen.findByRole("heading", { name: "Research Agent" });
-    const activity = screen
-      .getByRole("heading", { name: "Recent activity" })
+    const executions = screen
+      .getByRole("heading", { name: "Recent executions" })
       .closest("section") as HTMLElement;
     expect(
-      await within(activity).findByRole("link", { name: "t-42" }),
+      await within(executions).findByRole("link", { name: "t-42" }),
     ).toBeInTheDocument();
+    expect(
+      within(executions).getByRole("link", { name: "Open Audit Log" }),
+    ).toHaveAttribute("href", "/audit");
   });
 
-  it("shows an empty activity state when the agent has no audit events", async () => {
+  it("shows an empty executions state when the agent has no audit events", async () => {
     renderDetail(makeApi([mkAgent()], []), "/agents/a1");
     await screen.findByRole("heading", { name: "Research Agent" });
-    expect(await screen.findByText("No recent activity")).toBeInTheDocument();
+    expect(await screen.findByText("No recent executions")).toBeInTheDocument();
   });
 
   it("renders a not-found state for an unknown agent id", async () => {
     renderDetail(makeApi([mkAgent()]), "/agents/ghost");
     expect(await screen.findByText("Agent not found")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The requested agent does not exist or is no longer available.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an access-restricted state on 403, distinct from not-found", async () => {
+    renderDetail(
+      makeApi(new ApiError({ kind: "forbidden", message: "no", status: 403 })),
+      "/agents/a1",
+    );
+    expect(await screen.findByText("Access restricted")).toBeInTheDocument();
+    expect(
+      screen.getByText("You do not have permission to view this agent."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Agent not found")).not.toBeInTheDocument();
+  });
+
+  it("renders a retryable error state for a server failure", async () => {
+    const error = new ApiError({
+      kind: "server_error",
+      message: "boom",
+      status: 500,
+    });
+    renderDetail(makeApi(error), "/agents/a1");
+    expect(
+      await screen.findByText("Unable to load this agent"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
   it("offers the disable action only to permitted roles", async () => {

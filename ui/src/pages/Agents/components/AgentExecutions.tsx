@@ -10,22 +10,41 @@ import { describeStatus } from "../../../lib/status";
 import { useAuditEvents } from "../../../features/audit";
 
 /**
- * Recent execution / activity history for one agent, sourced from the audit
- * feed (`GET /api/audit?agentId=…`). The Control Plane has no dedicated agent
- * execution-history endpoint, so this is a best-effort view of real audit
- * events — never fabricated. Failure and empty are both explicit states.
+ * Recent executions for one agent. The Control Plane has no dedicated
+ * per-agent execution-history endpoint, so this is built from the real audit
+ * feed (`GET /api/audit?agentId=…&limit=10`) — never fabricated rows. "Open
+ * Audit Log" links to the existing `/audit` route rather than inventing a
+ * filtered execution-detail route that does not exist yet.
  */
-export function AgentRecentActivity({ agentId }: { agentId: string }) {
+export function AgentExecutions({ agentId }: { agentId: string }) {
   const query = useAuditEvents({ agentId, limit: 10 });
 
+  return (
+    <Stack gap="sm">
+      <ExecutionsBody agentId={agentId} query={query} />
+      <div className="ui-inline" style={{ justifyContent: "flex-end" }}>
+        <Link to="/audit" className="link">
+          Open Audit Log
+        </Link>
+      </div>
+    </Stack>
+  );
+}
+
+function ExecutionsBody({
+  query,
+}: {
+  agentId: string;
+  query: ReturnType<typeof useAuditEvents>;
+}) {
   if (query.isPending) {
-    return <Spinner label="Loading recent activity" />;
+    return <Spinner label="Loading recent executions" />;
   }
   if (query.isError) {
     return (
       <EmptyState
-        title="Recent activity is unavailable"
-        detail="The activity feed could not be loaded for this agent."
+        title="Recent executions are unavailable"
+        detail="The execution feed could not be loaded for this agent."
       />
     );
   }
@@ -34,7 +53,7 @@ export function AgentRecentActivity({ agentId }: { agentId: string }) {
   if (events.length === 0) {
     return (
       <EmptyState
-        title="No recent activity"
+        title="No recent executions"
         detail="No audit events have been recorded for this agent yet."
       />
     );

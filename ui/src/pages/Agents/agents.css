@@ -1,6 +1,7 @@
 /*
- * UI-5 — Agents module. Scoped layout helpers only; every value comes from
- * tokens.css. Structure and primitives are reused from the UI-2 design system.
+ * UI-5 / UI-5B — Agents module. Scoped layout helpers only; every value
+ * comes from tokens.css. Structure and primitives are reused from the UI-2
+ * design system.
  */
 
 .agents-toolbar__search {
@@ -41,4 +42,34 @@
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+/* Detail masthead quick facts (role, model, provider, project, updated). */
+.agent-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-md) var(--space-lg);
+  margin: 0;
+}
+.agent-detail-facts dt {
+  margin-bottom: 2px;
+}
+.agent-detail-facts dd {
+  margin: 0;
+  font: var(--text-body-sm);
+}
+
+/* Two-column detail workspace: main (overview/capabilities/executions) +
+   supporting column (health/workload/configuration). Single column on
+   narrower viewports — no horizontal overflow. */
+.agent-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+@media (max-width: 1024px) {
+  .agent-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }

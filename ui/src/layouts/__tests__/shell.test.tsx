@@ -60,29 +60,42 @@ describe("Sidebar", () => {
     );
   });
 
-  it("collapses and expands, persisting the preference", async () => {
+  it("collapses via the brand-row button and expands by clicking the logo, persisting the preference", async () => {
     shell(<Sidebar />);
     const nav = screen.getByRole("navigation", { name: "Primary" });
     expect(nav).toHaveAttribute("data-collapsed", "false");
 
-    await userEvent.click(screen.getByRole("button", { name: "Collapse" }));
+    // Expanded: a dedicated collapse control sits at the far right of the logo.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Collapse sidebar" }),
+    );
     expect(nav).toHaveAttribute("data-collapsed", "true");
     expect(localStorage.getItem("ai-workforce.sidebar-state")).toBe(
       "collapsed",
     );
+    // the separate collapse control is gone while collapsed
+    expect(
+      screen.queryByRole("button", { name: "Collapse sidebar" }),
+    ).not.toBeInTheDocument();
     // collapsed links keep an accessible name (icon-only)
     expect(
       within(nav).getByRole("link", { name: "Agents" }),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Expand" }));
+    // Collapsed: the logo itself is the expand control.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Expand sidebar" }),
+    );
     expect(nav).toHaveAttribute("data-collapsed", "false");
+    expect(localStorage.getItem("ai-workforce.sidebar-state")).toBe("expanded");
   });
 
-  it("nav links are keyboard reachable", async () => {
+  it("keyboard focus reaches the brand collapse control, then the nav links", async () => {
     shell(<Sidebar />);
     await userEvent.tab();
-    // first focusable inside the sidebar is the first nav link
+    // the brand-row collapse button is the first focusable element
+    expect(document.activeElement).toHaveAccessibleName("Collapse sidebar");
+    await userEvent.tab();
     expect(document.activeElement?.tagName).toBe("A");
   });
 });

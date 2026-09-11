@@ -4,7 +4,7 @@ import { SidebarNavigation } from "./SidebarNavigation";
 import { APP_DESCRIPTOR, APP_NAME } from "../app/routes";
 import { titleCase } from "../lib/formatters";
 import { cn } from "../lib/utils";
-import { Bot, PanelLeftClose, PanelLeftOpen } from "../components/ui/icons";
+import { Bot, PanelLeftClose } from "../components/ui/icons";
 
 function initials(name: string | null, email: string | null): string {
   const source = name ?? email ?? "?";
@@ -23,11 +23,42 @@ export function Sidebar() {
       data-collapsed={sidebarCollapsed}
     >
       <div className="sidebar__brand">
-        <Bot className="sidebar__brand-mark" aria-hidden="true" />
-        <span className="sidebar__brand-text">
-          <span className="sidebar__brand-name">{APP_NAME}</span>
-          <span className="sidebar__brand-descriptor">{APP_DESCRIPTOR}</span>
-        </span>
+        {sidebarCollapsed ? (
+          // Collapsed: the logo itself is the expand control — the separate
+          // collapse button disappears behind it.
+          <button
+            type="button"
+            className="sidebar__brand-toggle"
+            onClick={toggleSidebar}
+            aria-label="Expand sidebar"
+            aria-pressed={sidebarCollapsed}
+            title="Expand sidebar"
+          >
+            <Bot className="sidebar__brand-mark" aria-hidden="true" />
+          </button>
+        ) : (
+          <>
+            <span className="sidebar__brand-group">
+              <Bot className="sidebar__brand-mark" aria-hidden="true" />
+              <span className="sidebar__brand-text">
+                <span className="sidebar__brand-name">{APP_NAME}</span>
+                <span className="sidebar__brand-descriptor">
+                  {APP_DESCRIPTOR}
+                </span>
+              </span>
+            </span>
+            <button
+              type="button"
+              className="sidebar__brand-collapse"
+              onClick={toggleSidebar}
+              aria-label="Collapse sidebar"
+              aria-pressed={sidebarCollapsed}
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose className="sidebar__icon" aria-hidden="true" />
+            </button>
+          </>
+        )}
       </div>
 
       <div className="sidebar__scroll">
@@ -48,19 +79,6 @@ export function Sidebar() {
             </span>
           </span>
         </div>
-        <button
-          type="button"
-          className="sidebar__collapse-btn"
-          onClick={toggleSidebar}
-          aria-pressed={sidebarCollapsed}
-        >
-          {sidebarCollapsed ? (
-            <PanelLeftOpen className="sidebar__icon" aria-hidden="true" />
-          ) : (
-            <PanelLeftClose className="sidebar__icon" aria-hidden="true" />
-          )}
-          <span>{sidebarCollapsed ? "Expand" : "Collapse"}</span>
-        </button>
       </div>
     </nav>
   );

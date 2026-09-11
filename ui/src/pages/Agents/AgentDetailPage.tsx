@@ -1,26 +1,26 @@
 import { Link, useParams } from "react-router-dom";
 import { PageFrame } from "../../components/layout";
-import { Grid, Section, Stack } from "../../components/layout";
+import { Section, Stack } from "../../components/layout";
 import {
-  Badge,
   Button,
   Card,
   CardBody,
-  CardHeader,
-  Identifier,
-  KeyValue,
-  Metric,
-  MetricGroup,
   Skeleton,
-  StatusBadge,
   ErrorState,
 } from "../../components/ui";
 import { ChevronLeft } from "../../components/ui/icons";
 import { isApiError } from "../../api";
 import { useAgent } from "../../features/agents";
-import { AgentActions } from "./components/AgentActions";
-import { AgentRecentActivity } from "./components/AgentRecentActivity";
-import { formatSuccessRate, toAgentListItem } from "./agentsView";
+import {
+  AgentActions,
+  AgentCapabilities,
+  AgentConfigurationCard,
+  AgentDetailHeader,
+  AgentExecutions,
+  AgentHealthCard,
+  AgentWorkloadCard,
+} from "./components";
+import { toAgentListItem } from "./agentsView";
 import "./agents.css";
 
 const BACK = (
@@ -31,10 +31,12 @@ const BACK = (
 );
 
 /**
- * Agent detail — identity, status, capabilities, workload, health boundary,
- * recent activity, configuration, and the single governed action. Structured
- * for later expansion. All fields come from the `AgentView` contract; nothing
- * is fabricated where the backend is silent.
+ * Agent detail — an observational workspace (UI-5B). Two-column on desktop
+ * (main: overview / capabilities / executions — supporting: health /
+ * workload / configuration), single column on mobile. Every field comes from
+ * the `AgentView` contract; nothing is fabricated where the backend is
+ * silent, and the only action offered (enable/disable) is one the Control
+ * Plane already governs end-to-end.
  */
 export function AgentDetailPage() {
   const { agentId } = useParams();
@@ -70,14 +72,14 @@ export function AgentDetailPage() {
               notFound
                 ? "Agent not found"
                 : forbidden
-                  ? "You don't have access to this agent"
+                  ? "Access restricted"
                   : "Unable to load this agent"
             }
             detail={
               notFound
-                ? `No agent matches the id "${agentId ?? ""}".`
+                ? "The requested agent does not exist or is no longer available."
                 : forbidden
-                  ? "Your operator role is not permitted to view this agent."
+                  ? "You do not have permission to view this agent."
                   : "The Control Center could not retrieve this agent."
             }
             action={
@@ -109,154 +111,53 @@ export function AgentDetailPage() {
     >
       <Stack gap="lg">
         {BACK}
+        <AgentDetailHeader agent={agent} />
 
-        <div className="ui-inline" style={{ gap: "var(--space-sm)" }}>
-          <StatusBadge status={agent.status} />
-          {!agent.enabled ? <Badge tone="warning">Disabled</Badge> : null}
-          <Identifier value={agent.id} />
+        <div className="agent-detail-grid">
+          <Stack gap="lg" className="agent-detail-grid__main">
+            <Section title="Capabilities">
+              <Card>
+                <CardBody>
+                  <AgentCapabilities capabilities={agent.capabilities} />
+                </CardBody>
+              </Card>
+            </Section>
+
+            <Section title="Recent executions">
+              <Card>
+                <CardBody>
+                  <AgentExecutions agentId={agent.id} />
+                </CardBody>
+              </Card>
+            </Section>
+          </Stack>
+
+          <Stack gap="lg" className="agent-detail-grid__aside">
+            <Section title="Health">
+              <Card>
+                <CardBody>
+                  <AgentHealthCard />
+                </CardBody>
+              </Card>
+            </Section>
+
+            <Section title="Workload">
+              <Card>
+                <CardBody>
+                  <AgentWorkloadCard agent={agent} />
+                </CardBody>
+              </Card>
+            </Section>
+
+            <Section title="Configuration">
+              <Card>
+                <CardBody>
+                  <AgentConfigurationCard agent={agent} />
+                </CardBody>
+              </Card>
+            </Section>
+          </Stack>
         </div>
-
-        {agent.disabledReason ? (
-          <p className="text-caption">
-            Disabled reason: {agent.disabledReason}
-          </p>
-        ) : null}
-
-        <Grid min="280px" gap="lg">
-          <Section title="Identity">
-            <Card>
-              <CardBody>
-                <KeyValue
-                  rows={[
-                    { key: "Name", value: agent.name },
-                    { key: "Role", value: agent.role || "—" },
-                    { key: "Agent ID", value: <Identifier value={agent.id} /> },
-                    {
-                      key: "State",
-                      value: agent.enabled ? "Enabled" : "Disabled",
-                    },
-                    {
-                      key: "Current project",
-                      value: agent.currentProjectId ?? "—",
-                    },
-                  ]}
-                />
-              </CardBody>
-            </Card>
-          </Section>
-
-          <Section title="Current workload">
-            <Card>
-              <CardBody>
-                <Stack gap="md">
-                  <MetricGroup>
-                    <Metric label="Tasks" value={agent.taskCount} />
-                    <Metric label="Completed" value={agent.completed} />
-                    <Metric label="Failed" value={agent.failed} />
-                    <Metric
-                      label="Success rate"
-                      value={formatSuccessRate(agent.successRate)}
-                    />
-                  </MetricGroup>
-                  <KeyValue
-                    rows={[
-                      {
-                        key: "Current task",
-                        value: agent.currentTaskId ? (
-                          <Link
-                            to={`/tasks/${encodeURIComponent(
-                              agent.currentTaskId,
-                            )}`}
-                            className="link"
-                          >
-                            {agent.currentTaskId}
-                          </Link>
-                        ) : (
-                          "None"
-                        ),
-                      },
-                      { key: "Cancelled", value: agent.cancelled },
-                    ]}
-                  />
-                </Stack>
-              </CardBody>
-            </Card>
-          </Section>
-
-          <Section title="Capabilities">
-            <Card>
-              <CardBody>
-                {agent.capabilities.length > 0 ? (
-                  <span className="agent-caps">
-                    {agent.capabilities.map((c) => (
-                      <Badge key={c} tone="neutral">
-                        {c}
-                      </Badge>
-                    ))}
-                  </span>
-                ) : (
-                  <p className="text-muted">
-                    No capabilities reported for this agent.
-                  </p>
-                )}
-              </CardBody>
-            </Card>
-          </Section>
-
-          <Section title="Health">
-            <Card>
-              <CardBody>
-                <p className="text-muted">
-                  Health, heartbeat, and availability metrics are not reported
-                  by the Control Plane for agents. This section will populate
-                  when the backend exposes agent health.
-                </p>
-              </CardBody>
-            </Card>
-          </Section>
-
-          <Section title="Configuration">
-            <Card>
-              <CardBody>
-                <KeyValue
-                  rows={[
-                    { key: "Role", value: agent.role || "—" },
-                    {
-                      key: "Allowed projects",
-                      value:
-                        agent.allowedProjects.length > 0
-                          ? agent.allowedProjects.join(", ")
-                          : "—",
-                    },
-                    {
-                      key: "Assignable",
-                      value: agent.enabled ? "Yes" : "No (disabled)",
-                    },
-                  ]}
-                />
-              </CardBody>
-            </Card>
-          </Section>
-        </Grid>
-
-        <Section title="Recent activity">
-          <Card>
-            <CardHeader
-              actions={
-                <Link to="/audit" className="link">
-                  Open Audit Log
-                </Link>
-              }
-            >
-              <span className="text-label">
-                Latest audit events for this agent
-              </span>
-            </CardHeader>
-            <CardBody>
-              <AgentRecentActivity agentId={agent.id} />
-            </CardBody>
-          </Card>
-        </Section>
       </Stack>
     </PageFrame>
   );
