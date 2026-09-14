@@ -10,7 +10,7 @@ boundary, human approval gates, project-isolated context, a structured audit
 log, and durable persistence behind an interface — all behind **provider- and
 project-agnostic contracts**.
 
-As of Phase 6 there is a real model-provider adapter (Anthropic), four General
+As of Phase 7B there is a real model-provider adapter (Anthropic), four General
 Agents (Research, Project Manager, Developer, QA), a secure Tool & Execution
 Framework, a controlled multi-agent **Workflow** layer that coordinates them
 through a validated task-dependency graph, and the first real project
@@ -710,9 +710,8 @@ least privilege, add deterministic tests, keep `core` free of adapter imports.
 ## 16. Deliberately out of scope through Phase 7
 
 Real-time / push updates to the operations console (request/response only — an
-event bus is a later, explicit subscription-boundary design); a shipped HTTP
-server or bundled SPA for the dashboard (a dependency-free render + document
-builder is provided, wiring is documented); a richer RBAC / per-operator
+event bus is a later, explicit subscription-boundary design); production
+deployment/composition of the HTTP API and SPA; a richer RBAC / per-operator
 permission engine; forced interruption of a running task or workflow (pause is
 a guard, not a kill); unrestricted autonomous planning or agent-triggered
 recursion; the remaining six General Agents (Data Analyst, Security, Finance,
@@ -725,8 +724,7 @@ integration test; network I/O outside the Anthropic adapter; source
 deduplication and retry inside the Research Agent; per-session tool budgets
 across tasks; persisted/resumable in-flight scheduling across a process
 restart mid-loop; asynchronous workers or queues; multi-process persistence
-and file locking; an async `Repository` revision; real authentication;
-retries/backoff at the orchestrator level; external logging or telemetry
+and file locking; retries/backoff at the orchestrator level; external logging or telemetry
 infrastructure; **any write, commit, branch, pull-request, or deploy
 capability against Money Mind** (documented in
 [projects/money-mind.md](projects/money-mind.md) §15, no code path exists);

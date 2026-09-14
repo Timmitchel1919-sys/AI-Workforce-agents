@@ -93,45 +93,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(INITIAL);
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    const unsubscribe = onIdTokenChanged(
-      auth,
-      (user) => {
-        if (!user) {
-          setState({ ...INITIAL, status: "unauthenticated" });
-          return;
-        }
-        user
-          .getIdTokenResult()
-          .then((result) => {
-            const { role, allowedProjects } = parseClaims(
-              result.claims as Record<string, unknown>,
-            );
-            setState({
-              status: "authenticated",
-              user: toAuthUser(user),
-              role,
-              allowedProjects,
-              error: null,
+    try {
+      const auth = getFirebaseAuth();
+      return onIdTokenChanged(
+        auth,
+        (user) => {
+          if (!user) {
+            setState({ ...INITIAL, status: "unauthenticated" });
+            return;
+          }
+          user
+            .getIdTokenResult()
+            .then((result) => {
+              const { role, allowedProjects } = parseClaims(
+                result.claims as Record<string, unknown>,
+              );
+              setState({
+                status: "authenticated",
+                user: toAuthUser(user),
+                role,
+                allowedProjects,
+                error: null,
+              });
+            })
+            .catch(() => {
+              setState({
+                ...INITIAL,
+                status: "error",
+                error: "Could not read your operator profile.",
+              });
             });
-          })
-          .catch(() => {
-            setState({
-              ...INITIAL,
-              status: "error",
-              error: "Could not read your operator profile.",
-            });
+        },
+        () => {
+          setState({
+            ...INITIAL,
+            status: "error",
+            error: "Authentication service is unavailable.",
           });
-      },
-      () => {
-        setState({
-          ...INITIAL,
-          status: "error",
-          error: "Authentication service is unavailable.",
-        });
-      },
-    );
-    return unsubscribe;
+        },
+      );
+    } catch {
+      setState({
+        ...INITIAL,
+        status: "error",
+        error: "Authentication is not configured for this environment.",
+      });
+      return undefined;
+    }
   }, []);
 
   const getIdToken = useCallback(async () => {

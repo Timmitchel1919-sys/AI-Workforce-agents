@@ -24,14 +24,13 @@ audit log, and **durable persistence behind an interface** — all behind
 > **Project Adapter**, multi-agent **workflow orchestration**, four General
 > Agents.
 >
-> **UI-1 (foundation) complete:** a separate React + TypeScript + Vite app in
-> [`ui/`](ui/) — routing for all nine views + 404, a central typed API client
-> (`Authorization: Bearer`, `x-correlation-id`, normalized errors), the Firebase
-> **Auth** boundary (`loading / authenticated / unauthenticated / error`), and
-> TanStack Query wired at the root. The UI talks to the `api/` HTTP surface only;
-> it never touches Firestore, the Admin SDK, `core/`, or `control/`. Placeholder
-> pages only — no visual design (UI-2), no feature dashboards (later). No
-> real-time push; no unrestricted autonomous planning.
+> **UI work is complete through UI-5E:** the React + TypeScript + Vite Control
+> Center now includes the design system and application shell, typed API/query
+> integration, the Agents registry and detail experience, governed agent
+> operations, execution intelligence, permissions, and audit summaries. The UI
+> still talks only to the `api/` HTTP surface; it never imports Firestore, the
+> Admin SDK, `core/`, or `control/`. No real-time push or unrestricted autonomous
+> planning has been added.
 
 ## Stack
 
@@ -81,7 +80,7 @@ audit log, and **durable persistence behind an interface** — all behind
 | [`agents/`](agents/)                             | Concrete General Agents: `research/`, `project-manager/`, `developer/`, `qa/`, plus shared text/JSON helpers.                                                                                                                                                                                                      |
 | [`control/`](control/)                           | Control & Operations Layer: `services/` (query + command), operational stores, redaction, health, view derivation, `dashboard/` (pure render + self-contained HTML).                                                                                                                                               |
 | [`api/`](api/)                                   | Composition root: `createControlPlaneApi` (dependency-free Node `http` handler over the two services) + `FirebaseRepositoryProvider` (hydrate-once Firestore-backed repositories).                                                                                                                                 |
-| [`ui/`](ui/)                                     | **AI Workforce Control Center** — a separate React + TypeScript + Vite app. Consumes the `api/` HTTP surface only; never Firestore/Admin/core. Own `package.json`, `tsconfig`, lint/test. UI-1 = foundation (routing, API client, auth boundary, placeholder pages).                                               |
+| [`ui/`](ui/)                                     | **AI Workforce Control Center** — a separate React + TypeScript + Vite app. Consumes the `api/` HTTP surface only; never Firestore/Admin/core. Own `package.json`, `tsconfig`, lint/test. Implemented through UI-5E, with the Agents operations and governance experience complete.                                |
 | [`tests/`](tests/)                               | Deterministic, offline tests (329): the above + **control-plane** / **control-plane-backend** / **control-dashboard**, and **cached-repository** / **firebase-adapters** / **http-api** (Firebase seam fakes + a loopback `http.Server`). The `ui/` app has its own 36 Vitest tests.                               |
 | [`docs/`](docs/)                                 | [Architecture](docs/architecture.md), [Control Plane](docs/control-plane.md), [Firebase](docs/firebase.md), [Tools](docs/tools.md), [Workflows](docs/workflows.md), [Research Agent](docs/agents/research-agent.md), [Money Mind](docs/projects/money-mind.md), [extending](docs/extending.md), [ADRs](docs/adr/). |
 | `firebase.json` · `.firebaserc` · `*.rules`      | Firestore/Storage config; rules **deny all** direct client access (Admin SDK only).                                                                                                                                                                                                                                |
@@ -512,8 +511,8 @@ token>` on every route but `/api/health`, `x-correlation-id` in and out,
   test. Local end-to-end runs use the Firebase emulator (`firebase.json`).
 
 Wiring example and env vars: [docs/firebase.md](docs/firebase.md),
-[ADR-0011](docs/adr/0011-firebase-infrastructure.md). **No frontend yet**
-(Phase 7C).
+[ADR-0011](docs/adr/0011-firebase-infrastructure.md). The separate frontend now
+lives in [`ui/`](ui/) and consumes this HTTP boundary only.
 
 ## Extending
 

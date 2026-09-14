@@ -15,7 +15,11 @@ React UI  →  HTTP API (api/)  →  Query / Command services (control/)  →  C
 - **UI-2 (design foundation)** — semantic design tokens, dark/light architecture,
   the reusable primitive library (`src/components/ui/`), layout primitives
   (`src/components/layout/`), the unified status/risk system, accessibility
-  baseline. **No feature dashboards yet** (later phases).
+  baseline.
+- **UI-3 and UI-4** — responsive application shell plus typed API/query and
+  mutation integration.
+- **UI-5 through UI-5E** — Agents registry/detail, governed actions, execution
+  intelligence, permission visibility, and audit summaries.
 
 ## Commands
 
@@ -76,8 +80,8 @@ Firebase console.
 | `src/components/ui/`     | The design-system primitives + `icons.ts`                                                          |
 | `src/components/layout/` | Structural layout primitives                                                                       |
 | `src/layouts/`           | App shell (`ControlCenterLayout`, `Sidebar`, `Topbar`, `MobileNavigation`)                         |
-| `src/pages/`             | One placeholder per route + `Login` + `NotFound`                                                   |
-| `src/features/`          | Query/mutation hooks (only `system/` so far)                                                       |
+| `src/pages/`             | Feature pages; Agents is implemented through UI-5E, with remaining modules staged incrementally    |
+| `src/features/`          | Typed query/mutation hooks for system, agents, tasks, workflows, approvals, projects, tools, audit |
 | `src/lib/`               | `status.ts`, formatters, dates, `cn` / `cssVars`                                                   |
 | `src/styles/`            | `reset.css`, `tokens.css`, `globals.css`, `components.css`                                         |
 | `src/test/`              | `renderWithProviders`, stubs                                                                       |

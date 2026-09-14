@@ -4,7 +4,7 @@ Firebase is an **infrastructure adapter** behind provider-neutral ports. The
 Workforce core and the Control Plane never import `firebase-admin`.
 
 ```
-        AI WORKFORCE UI  (Phase 7C — not built)
+        AI WORKFORCE UI  (implemented in ui/)
                │  HTTPS + Bearer token
                ▼
         api/  createControlPlaneApi         ← authN, correlation id, status mapping

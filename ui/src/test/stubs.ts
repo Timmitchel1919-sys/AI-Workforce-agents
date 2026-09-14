@@ -18,12 +18,14 @@ export function makeStubAuth(
   };
 }
 
-/** A stub `ApiClient` whose methods are vi.fn's returning empty results. */
+/** A stub `ApiClient` whose methods return a minimal valid liveness payload. */
 export function makeStubApiClient(
   overrides: Partial<ApiClient> = {},
 ): ApiClient {
   const ok = vi.fn(async () => ({
-    data: undefined as never,
+    // React Query rejects `undefined` as successful query data. Feature tests
+    // replace this stub when they need an endpoint-specific response.
+    data: { status: "ok" } as never,
     status: 200,
     correlationId: "test",
   }));
