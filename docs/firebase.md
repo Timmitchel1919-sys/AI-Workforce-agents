@@ -3,6 +3,10 @@
 Firebase is an **infrastructure adapter** behind provider-neutral ports. The
 Workforce core and the Control Plane never import `firebase-admin`.
 
+Firebase Hosting serves the built Control Center from ui/dist with an SPA
+fallback. Hosting does not deploy the Control Plane API: production must still
+provide a real absolute VITE_API_BASE_URL for the separately deployed API.
+
 ```
         AI WORKFORCE UI  (implemented in ui/)
                │  HTTPS + Bearer token
