@@ -40,8 +40,6 @@ const DEFAULT_MAX_FILE_BYTES = 256 * 1024;
 function minimalChildEnv(): NodeJS.ProcessEnv {
   const source = process.env;
   const keep = [
-    "PATH",
-    "Path",
     "SystemRoot",
     "SystemDrive",
     "TEMP",
@@ -52,6 +50,18 @@ function minimalChildEnv(): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const key of keep) {
     if (source[key] !== undefined) env[key] = source[key];
+  }
+  const inheritedPath = source.Path ?? source.PATH ?? "";
+  if (process.platform === "win32") {
+    // npm executes package scripts through cmd.exe on Windows even when npm
+    // itself is launched directly through Node. Ensure the OS command
+    // directory remains resolvable without inheriting the full environment.
+    const system32 = source.SystemRoot
+      ? path.join(source.SystemRoot, "System32")
+      : undefined;
+    env.Path = [system32, inheritedPath].filter(Boolean).join(path.delimiter);
+  } else {
+    env.PATH = inheritedPath;
   }
   return env;
 }
@@ -181,18 +191,20 @@ export class NodeMoneyMindRepo implements MoneyMindRepoPort {
   ): Promise<MoneyMindRunResult> {
     await this.ensureRepoPresent();
     const isWindows = process.platform === "win32";
-    // On Windows, npm ships as `npm.cmd`, which cannot be spawned directly
-    // without a shell. Rather than pass `shell: true` (which Node warns can
-    // leave argv unescaped), spawn `cmd.exe` itself as the executable, with
-    // `npm`/`run`/`script` as separate, ordinary argv elements — no string
-    // concatenation, no shell-syntax reinterpretation. `script` reaching here
-    // has already passed `validateMoneyMindRunTestsInput` against the closed
-    // `MONEY_MIND_ALLOWED_SCRIPTS` enum, so it is provably alphabetic-only
-    // regardless.
-    const command = isWindows ? "cmd.exe" : "npm";
-    const args = isWindows
-      ? ["/d", "/s", "/c", "npm", "run", script]
-      : ["run", script];
+    // On Windows, bypass both `npm.cmd` and `cmd.exe`: invoke npm's JavaScript
+    // entrypoint with the current Node executable. This remains reliable when
+    // the deliberately reduced child PATH omits System32, and it removes shell
+    // parsing from the execution boundary entirely. npm exposes its absolute
+    // entrypoint as `npm_execpath` while this process is run by npm; the
+    // adjacent path is the standard fallback for standalone Node execution.
+    const npmCli =
+      process.env.npm_execpath ??
+      path.join(
+        path.dirname(process.execPath),
+        "node_modules/npm/bin/npm-cli.js",
+      );
+    const command = isWindows ? process.execPath : "npm";
+    const args = isWindows ? [npmCli, "run", script] : ["run", script];
     const started = Date.now();
     return new Promise<MoneyMindRunResult>((resolve) => {
       execFile(

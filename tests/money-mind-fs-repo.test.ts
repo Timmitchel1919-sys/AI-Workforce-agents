@@ -117,7 +117,11 @@ test("fs repo: runScript actually spawns npm and reports a real exit code", asyn
     seed(dir);
     const repo = new NodeMoneyMindRepo({ repoPath: dir });
     const result = await repo.runScript("build", 30_000);
-    assert.equal(result.exitCode, 0);
+    assert.equal(
+      result.exitCode,
+      0,
+      `npm script failed: ${JSON.stringify(result)}`,
+    );
     assert.equal(result.timedOut, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
