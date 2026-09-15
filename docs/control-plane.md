@@ -307,3 +307,42 @@ It is intended to be cached by a future serverless adapter for warm-instance
 reuse. `flush()` is available for controlled graceful shutdown. OpenAI provider
 configuration remains execution-time configuration; `OPENAI_API_KEY` and
 `OPENAI_MODEL` are never read into API responses or persisted state.
+
+## Firebase HTTPS runtime adapter (DEPLOY-1B)
+
+The deployed backend entrypoint is a single Firebase **Cloud Functions for
+Firebase Gen 2** HTTPS function named `controlPlaneApi`. It contains no routes,
+authentication policy, authorization policy, repositories, or Workforce
+composition of its own:
+
+```
+Firebase HTTPS Function (controlPlaneApi, us-central1)
+  -> createProductionControlPlaneRuntime()
+  -> createControlPlaneApi()
+  -> existing Node HTTP handler (/api/*)
+```
+
+`functions/control-plane-function.ts` caches the runtime promise once per warm
+Function instance and forwards Firebase's Express-compatible request and
+response objects without changing the URL, method, headers, or body. Firebase
+may parse JSON before the handler sees it; `api/http-api.ts` detects that
+already-parsed object and does not consume the request stream twice.
+
+The Function is configured with a conservative baseline: Node.js 20,
+`us-central1`, one CPU, `512MiB`, a 60-second timeout, and at most two
+instances. It explicitly binds
+the server-only Firebase Secret Manager secret **`OPENAI_API_KEY`**. The
+existing `OPENAI_MODEL` configuration remains server-side and is read lazily by
+the provider; neither value is returned, audited, or put in a client build.
+
+Build the backend artifact with `npm run functions:build`; deploy only this
+backend in an authorized, ready Firebase project with:
+
+```
+firebase deploy --only functions:controlPlaneApi
+```
+
+Firebase Hosting still has only its SPA rewrite during DEPLOY-1B. A Hosting
+`/api/**` rewrite is deliberately deferred to DEPLOY-1C. For local tests, run
+`npm run functions:test`; these use a controlled runtime factory and never
+call OpenAI or a production Firebase service.

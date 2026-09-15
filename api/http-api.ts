@@ -355,6 +355,21 @@ async function readJsonBody(
   req: IncomingMessage,
   maxBytes: number,
 ): Promise<Record<string, unknown>> {
+  // Firebase HTTPS Functions uses Express and may have parsed the JSON body
+  // before this Node-compatible handler runs. Reuse that parsed value instead
+  // of attempting to consume the stream twice. Plain Node HTTP requests do
+  // not expose `body`, so they keep the existing streamed parsing path.
+  const preParsed = (req as IncomingMessage & { body?: unknown }).body;
+  if (preParsed !== undefined) {
+    if (
+      !preParsed ||
+      typeof preParsed !== "object" ||
+      Array.isArray(preParsed)
+    ) {
+      throw new ValidationError("request body must be a JSON object");
+    }
+    return preParsed as Record<string, unknown>;
+  }
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of req) {

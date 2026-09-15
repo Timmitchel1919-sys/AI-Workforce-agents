@@ -16,6 +16,7 @@
     "agents/**/*.ts",
     "control/**/*.ts",
     "api/**/*.ts",
+    "functions/**/*.ts",
     "tests/**/*.ts"
   ]
 }

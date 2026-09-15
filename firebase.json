@@ -6,6 +6,35 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "functions": {
+    "source": ".",
+    "codebase": "control-plane",
+    "runtime": "nodejs20",
+    "predeploy": ["npm run functions:build"],
+    "ignore": [
+      ".git",
+      ".github",
+      "adapters",
+      "agents",
+      "api",
+      "contracts",
+      "control",
+      "core",
+      "docs",
+      "functions",
+      "tests",
+      "ui",
+      "node_modules",
+      "dist/tests",
+      "firebase-debug*.log",
+      "*.md",
+      "*.ts",
+      "tsconfig.json",
+      "eslint.config.js",
+      ".prettierignore",
+      ".prettierrc.json"
+    ]
+  },
   "hosting": {
     "public": "ui/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],

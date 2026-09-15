@@ -4,12 +4,15 @@
   "description": "AI Workforce foundation: deterministic orchestration, deny-by-default permissions, human approval gates, and provider-agnostic adapters.",
   "private": true,
   "type": "module",
+  "main": "dist/functions/index.js",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "functions:build": "npm run build",
+    "functions:test": "npm run build && node --test dist/tests/firebase-function-adapter.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -23,8 +26,6 @@
     "@types/node": "^24.0.0",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^9.1.2",
-    "firebase-admin": "14.3.0",
-    "openai": "^6.17.0",
     "prettier": "^3.9.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.69.0"
@@ -40,5 +41,10 @@
     "firebase-admin": {
       "optional": true
     }
+  },
+  "dependencies": {
+    "firebase-admin": "^14.3.0",
+    "firebase-functions": "^7.3.2",
+    "openai": "^6.17.0"
   }
 }
