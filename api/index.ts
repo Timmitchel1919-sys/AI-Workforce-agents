@@ -10,3 +10,5 @@
  */
 export * from "./http-api.js";
 export * from "./firebase-repositories.js";
+export * from "./production-workforce-bootstrap.js";
+export * from "./production-workforce-config.js";
