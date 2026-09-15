@@ -1,0 +1,158 @@
+import assert from "node:assert/strict";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
+import test from "node:test";
+
+import { createProductionControlPlaneRuntime } from "../api/index.js";
+import type {
+  FirebaseAuthLike,
+  FirebaseServices,
+  FirestoreCollectionLike,
+  FirestoreDocRefLike,
+  FirestoreLike,
+} from "../adapters/index.js";
+
+class FakeCollection implements FirestoreCollectionLike {
+  private readonly values = new Map<string, Record<string, unknown>>();
+  doc(id: string): FirestoreDocRefLike {
+    return {
+      set: async (value) => void this.values.set(id, structuredClone(value)),
+      get: async () => {
+        const value = this.values.get(id);
+        return {
+          exists: value !== undefined,
+          data: () => value && structuredClone(value),
+        };
+      },
+      delete: async () => void this.values.delete(id),
+    };
+  }
+  async get() {
+    return {
+      docs: [...this.values.entries()].map(([id, value]) => ({
+        id,
+        data: () => structuredClone(value),
+      })),
+    };
+  }
+  async listDocuments() {
+    return [...this.values.keys()].map((id) => this.doc(id));
+  }
+}
+
+class FakeFirestore implements FirestoreLike {
+  private readonly collections = new Map<string, FakeCollection>();
+  collection(path: string): FakeCollection {
+    let collection = this.collections.get(path);
+    if (!collection) {
+      collection = new FakeCollection();
+      this.collections.set(path, collection);
+    }
+    return collection;
+  }
+}
+
+class FakeAuth implements FirebaseAuthLike {
+  async verifyIdToken(token: string) {
+    if (token === "viewer")
+      return { uid: "viewer-1", role: "viewer", allowedProjects: "*" };
+    if (token === "limited")
+      return { uid: "limited-1", role: "viewer", allowedProjects: [] };
+    throw new Error("invalid token");
+  }
+}
+
+function services(): FirebaseServices {
+  return {
+    firestore: new FakeFirestore(),
+    auth: new FakeAuth(),
+    storage: {} as FirebaseServices["storage"],
+    config: {
+      projectId: "ai-workforce-agents",
+      storageBucket: "ai-workforce-agents.appspot.com",
+      emulated: true,
+    },
+  };
+}
+
+async function request(
+  runtime: Awaited<ReturnType<typeof createProductionControlPlaneRuntime>>,
+  path: string,
+  token?: string,
+  init: RequestInit = {},
+) {
+  const server = http.createServer(runtime.handler);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    return await fetch(`http://127.0.0.1:${port}${path}`, {
+      ...init,
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+    });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+test("production composition assembles Firebase-backed state and real executor routing", async () => {
+  const runtime = await createProductionControlPlaneRuntime({
+    services: services(),
+  });
+  assert.equal(runtime.bootstrap.report.operational, true);
+  assert.equal(
+    runtime.bootstrap.agentExecutors.has("control-plane-analysis-agent"),
+    true,
+  );
+  assert.equal(runtime.context.tasks.list().length, 0);
+  assert.equal(
+    runtime.context.agentOps.isEnabled("control-plane-analysis-agent"),
+    true,
+  );
+  await runtime.flush();
+});
+
+test("production composed handler serves dashboard, health, API not-found, and auth safely", async () => {
+  const runtime = await createProductionControlPlaneRuntime({
+    services: services(),
+  });
+  const health = await request(runtime, "/api/health");
+  assert.equal(health.status, 200);
+  assert.equal(
+    health.headers.get("content-type"),
+    "application/json; charset=utf-8",
+  );
+  assert.deepEqual(await health.json(), { status: "ok" });
+
+  const dashboard = await request(runtime, "/api/dashboard", "viewer");
+  assert.equal(dashboard.status, 200);
+  assert.equal(
+    dashboard.headers.get("content-type"),
+    "application/json; charset=utf-8",
+  );
+  const snapshot = (await dashboard.json()) as {
+    status: { counts: { registeredAgents: number } };
+  };
+  assert.equal(snapshot.status.counts.registeredAgents, 1);
+
+  const unknown = await request(runtime, "/api/unknown-route", "viewer");
+  assert.equal(unknown.status, 404);
+  assert.equal(
+    unknown.headers.get("content-type"),
+    "application/json; charset=utf-8",
+  );
+  assert.deepEqual(await unknown.json(), { error: { message: "not found" } });
+
+  const unauthenticated = await request(runtime, "/api/dashboard");
+  assert.equal(unauthenticated.status, 401);
+
+  const unauthorized = await request(
+    runtime,
+    "/api/commands/disable-agent",
+    "viewer",
+    {
+      method: "POST",
+      body: JSON.stringify({ agentId: "control-plane-analysis-agent" }),
+    },
+  );
+  assert.equal(unauthorized.status, 403);
+});

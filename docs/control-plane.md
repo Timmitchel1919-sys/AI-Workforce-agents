@@ -278,3 +278,32 @@ persistence needs no change to `control/`.
 - **No unrestricted execution** — explicit operations only; no shell, no raw
   query, no arbitrary tool invocation, no generic admin method.
 - **No stack traces in DTOs.**
+
+## Production composition root (DEPLOY-1A)
+
+`createProductionControlPlaneRuntime()` in `api/production-control-plane.ts`
+is the sole production composition root. It is runtime-neutral and returns a
+Node HTTP handler; it does not import Firebase Functions or alter Hosting
+routing.
+
+```
+Firebase Admin services
+  -> FirebaseRepositoryProvider / CachedRepository
+  -> Production Workforce Bootstrap
+  -> Orchestrator / WorkflowEngine
+  -> Workforce Query and Command services
+  -> FirebaseOperatorDirectory
+  -> createControlPlaneApi()
+  -> Node HTTP handler
+  -> [DEPLOY-1B: Firebase HTTPS Function adapter]
+```
+
+The root creates all required durable repositories before one hydration pass:
+tasks, workflows, approvals, handoffs, audit events, agent operations, and
+workflow control. Agent definitions, tools, permissions, approvals, and project
+adapters are instead owned by the authoritative production bootstrap.
+
+It is intended to be cached by a future serverless adapter for warm-instance
+reuse. `flush()` is available for controlled graceful shutdown. OpenAI provider
+configuration remains execution-time configuration; `OPENAI_API_KEY` and
+`OPENAI_MODEL` are never read into API responses or persisted state.
