@@ -13,6 +13,7 @@ export function makeStubAuth(
     error: null,
     getIdToken: vi.fn(async () => "stub-id-token"),
     signInWithEmail: vi.fn(async () => {}),
+    signInWithGoogle: vi.fn(async () => {}),
     signOut: vi.fn(async () => {}),
     ...overrides,
   };

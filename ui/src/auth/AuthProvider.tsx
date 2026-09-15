@@ -6,8 +6,10 @@ import {
   type ReactNode,
 } from "react";
 import {
+  GoogleAuthProvider,
   onIdTokenChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
@@ -68,6 +70,14 @@ function friendlySignInError(error: unknown): string {
       return "Too many attempts. Try again later.";
     case "auth/network-request-failed":
       return "Network error while signing in.";
+    case "auth/popup-closed-by-user":
+      return "Google sign-in was cancelled.";
+    case "auth/popup-blocked":
+      return "Your browser blocked the Google sign-in window. Allow pop-ups and try again.";
+    case "auth/operation-not-allowed":
+      return "Google sign-in is not enabled for this Firebase project.";
+    case "auth/account-exists-with-different-credential":
+      return "This email address already uses a different sign-in method.";
     default:
       return "Sign-in failed. Please try again.";
   }
@@ -160,6 +170,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const signInWithGoogle = useCallback(async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithPopup(getFirebaseAuth(), provider);
+    } catch (error) {
+      const message = friendlySignInError(error);
+      setState((prev) => ({ ...prev, error: message }));
+      throw new Error(message);
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     await firebaseSignOut(getFirebaseAuth());
   }, []);
@@ -173,9 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error: state.error,
       getIdToken,
       signInWithEmail,
+      signInWithGoogle,
       signOut,
     }),
-    [state, getIdToken, signInWithEmail, signOut],
+    [state, getIdToken, signInWithEmail, signInWithGoogle, signOut],
   );
 
   return (

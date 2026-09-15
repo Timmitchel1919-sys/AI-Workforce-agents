@@ -1,0 +1,21 @@
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-text-muted);
+  font: var(--text-caption);
+  text-align: center;
+}
+
+.login-divider::before,
+.login-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--color-border);
+  content: "";
+}
+
+.login-provider-note {
+  margin: calc(-1 * var(--space-sm)) 0 0;
+  text-align: center;
+}

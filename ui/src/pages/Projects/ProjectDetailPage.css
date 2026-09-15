@@ -1,0 +1,2 @@
+.project-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-lg); align-items: start; }
+@media (max-width: 900px) { .project-detail-grid { grid-template-columns: 1fr; } }

@@ -27,5 +27,7 @@ export interface AuthSession {
   /** Current Firebase ID token, or `null`. Passed to the API client as a Bearer token. */
   getIdToken: () => Promise<string | null>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  /** Opens Firebase's Google provider flow. A first-time user gets a Firebase identity. */
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }

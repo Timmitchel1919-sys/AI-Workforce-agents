@@ -17,7 +17,12 @@ import {
 import { ChevronLeft } from "../../components/ui/icons";
 import { useAuditEvents } from "../../features/audit";
 import { useTask } from "../../features/tasks";
+import { pairExecutions } from "../Agents/executions";
 import { TaskLifecycleTimeline } from "./components/TaskLifecycleTimeline";
+import { TaskAuditSummary } from "./components/TaskAuditSummary";
+import { TaskGovernancePanel } from "./components/TaskGovernancePanel";
+import { TaskOperations } from "./components/TaskOperations";
+import { TaskRuntimeCard } from "./components/TaskRuntimeCard";
 import { buildTaskTimeline } from "./taskTimeline";
 import "./tasks.css";
 
@@ -37,6 +42,13 @@ export function TaskDetailPage() {
     () => (task ? buildTaskTimeline(task, auditQuery.data?.items ?? []) : []),
     [auditQuery.data, task],
   );
+  const execution = useMemo(() => {
+    if (!task) return null;
+    const currentTaskId = task.status === "running" ? task.taskId : undefined;
+    return (
+      pairExecutions(auditQuery.data?.items ?? [], currentTaskId)[0] ?? null
+    );
+  }, [auditQuery.data, task]);
 
   if (taskQuery.isPending) {
     return (
@@ -202,9 +214,47 @@ export function TaskDetailPage() {
                 </CardBody>
               </Card>
             </Section>
+
+            <Section title="Runtime intelligence">
+              <TaskRuntimeCard
+                task={task}
+                execution={execution}
+                isPending={auditQuery.isPending}
+                isError={auditQuery.isError}
+                error={auditQuery.error}
+                onRetry={() => void auditQuery.refetch()}
+              />
+            </Section>
+
+            <Section title="Governance audit">
+              <TaskAuditSummary
+                taskId={task.taskId}
+                events={auditQuery.data?.items ?? []}
+                isPending={auditQuery.isPending}
+                isError={auditQuery.isError}
+                errorIsForbidden={
+                  isApiError(auditQuery.error) &&
+                  auditQuery.error.category === "forbidden"
+                }
+                onRetry={() => void auditQuery.refetch()}
+              />
+            </Section>
           </Stack>
 
           <Stack gap="lg" className="task-detail-grid__aside">
+            <Section title="Task governance">
+              <Stack gap="md">
+                <TaskGovernancePanel task={task} />
+              </Stack>
+            </Section>
+            <Section title="Operations">
+              <TaskOperations
+                task={task}
+                onChanged={() =>
+                  Promise.all([taskQuery.refetch(), auditQuery.refetch()])
+                }
+              />
+            </Section>
             <Section title="Relationships">
               <Card>
                 <CardBody>

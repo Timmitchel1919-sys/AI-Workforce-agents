@@ -17,6 +17,7 @@ import {
   Spinner,
 } from "../../components/ui";
 import { Stack } from "../../components/layout";
+import "./login.css";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email address."),
@@ -26,9 +27,10 @@ type FormValues = z.infer<typeof schema>;
 
 export function LoginPage() {
   useDocumentTitle("Sign in");
-  const { status, signInWithEmail } = useAuth();
+  const { status, signInWithEmail, signInWithGoogle } = useAuth();
   const location = useLocation();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const {
     register,
@@ -58,6 +60,18 @@ export function LoginPage() {
       setSubmitError(messageOf(error));
     }
   });
+
+  async function handleGoogleSignIn() {
+    setSubmitError(null);
+    setGoogleSubmitting(true);
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setSubmitError(messageOf(error));
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  }
 
   return (
     <div className="full-page-center">
@@ -99,9 +113,29 @@ export function LoginPage() {
                 variant="primary"
                 fullWidth
                 loading={isSubmitting}
+                disabled={googleSubmitting}
               >
                 Sign in
               </Button>
+
+              <div className="login-divider" role="separator">
+                <span>or</span>
+              </div>
+
+              <Button
+                variant="outline"
+                fullWidth
+                loading={googleSubmitting}
+                disabled={isSubmitting}
+                onClick={() => void handleGoogleSignIn()}
+              >
+                Continue with Google
+              </Button>
+
+              <p className="text-caption login-provider-note">
+                First use creates your Google sign-in. Workforce access still
+                requires an administrator-provisioned operator role.
+              </p>
             </Stack>
           </form>
         </CardBody>

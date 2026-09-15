@@ -1,10 +1,12 @@
+import { useRef } from "react";
 import { useAuth } from "../auth/useAuth";
 import { useShell } from "./shellContext";
 import { SidebarNavigation } from "./SidebarNavigation";
 import { APP_DESCRIPTOR, APP_NAME } from "../app/routes";
 import { titleCase } from "../lib/formatters";
 import { cn } from "../lib/utils";
-import { Bot, PanelLeftClose } from "../components/ui/icons";
+import { IconButton } from "../components/ui";
+import { ChevronUp, PanelLeftClose } from "../components/ui/icons";
 
 function initials(name: string | null, email: string | null): string {
   const source = name ?? email ?? "?";
@@ -15,6 +17,11 @@ function initials(name: string | null, email: string | null): string {
 export function Sidebar() {
   const { user, role } = useAuth();
   const { sidebarCollapsed, toggleSidebar } = useShell();
+  const scrollRegionRef = useRef<HTMLDivElement>(null);
+
+  function scrollToTop() {
+    scrollRegionRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   return (
     <nav
@@ -34,12 +41,20 @@ export function Sidebar() {
             aria-pressed={sidebarCollapsed}
             title="Expand sidebar"
           >
-            <Bot className="sidebar__brand-mark" aria-hidden="true" />
+            <img
+              className="sidebar__brand-mark"
+              src="/ai-workforce-logo.png"
+              alt="AI Workforce logo"
+            />
           </button>
         ) : (
           <>
             <span className="sidebar__brand-group">
-              <Bot className="sidebar__brand-mark" aria-hidden="true" />
+              <img
+                className="sidebar__brand-mark"
+                src="/ai-workforce-logo.png"
+                alt="AI Workforce logo"
+              />
               <span className="sidebar__brand-text">
                 <span className="sidebar__brand-name">{APP_NAME}</span>
                 <span className="sidebar__brand-descriptor">
@@ -61,11 +76,18 @@ export function Sidebar() {
         )}
       </div>
 
-      <div className="sidebar__scroll">
+      <div ref={scrollRegionRef} className="sidebar__scroll">
         <SidebarNavigation collapsed={sidebarCollapsed} />
       </div>
 
       <div className="sidebar__footer">
+        <IconButton
+          className="sidebar__scroll-top"
+          icon={ChevronUp}
+          label="Scroll sidebar to top"
+          size="sm"
+          onClick={scrollToTop}
+        />
         <div className="sidebar__user">
           <span className="avatar" aria-hidden="true">
             {initials(user?.displayName ?? null, user?.email ?? null)}

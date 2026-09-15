@@ -82,6 +82,43 @@
   margin: var(--space-2xs) 0 0;
 }
 
+.task-runtime__caption {
+  margin: var(--space-md) 0 0;
+}
+
+.task-governance__permissions {
+  display: grid;
+  gap: var(--space-xs);
+  margin-top: var(--space-lg);
+}
+
+.task-governance__permissions > p {
+  margin: 0;
+}
+
+.task-governance__permission,
+.task-audit-summary__item {
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.task-governance__note,
+.task-approval__reason {
+  margin: var(--space-md) 0 0;
+}
+
+.task-audit-summary {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-audit-summary__link {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-md);
+}
+
 @media (max-width: 900px) {
   .task-detail-grid {
     grid-template-columns: 1fr;

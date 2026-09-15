@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
@@ -64,6 +64,9 @@ describe("Sidebar", () => {
     shell(<Sidebar />);
     const nav = screen.getByRole("navigation", { name: "Primary" });
     expect(nav).toHaveAttribute("data-collapsed", "false");
+    expect(
+      screen.getByRole("img", { name: "AI Workforce logo" }),
+    ).toHaveAttribute("src", "/ai-workforce-logo.png");
 
     // Expanded: a dedicated collapse control sits at the far right of the logo.
     await userEvent.click(
@@ -88,6 +91,20 @@ describe("Sidebar", () => {
     );
     expect(nav).toHaveAttribute("data-collapsed", "false");
     expect(localStorage.getItem("ai-workforce.sidebar-state")).toBe("expanded");
+  });
+
+  it("offers a fixed control for returning the sidebar navigation to its top", async () => {
+    shell(<Sidebar />);
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    const scrollRegion = nav.querySelector(".sidebar__scroll");
+    expect(scrollRegion).not.toBeNull();
+    const scrollTo = vi.fn();
+    Object.defineProperty(scrollRegion, "scrollTo", { value: scrollTo });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Scroll sidebar to top" }),
+    );
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
   });
 
   it("keyboard focus reaches the brand collapse control, then the nav links", async () => {

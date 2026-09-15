@@ -1,0 +1,59 @@
+.workflow-filters {
+  display: grid;
+  grid-template-columns:
+    minmax(15rem, 1fr) minmax(9rem, 12rem) minmax(9rem, 12rem)
+    auto;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.workflow-filters__search,
+.workflow-filters__select {
+  min-width: 0;
+}
+
+.workflow-filters__search .ui-input,
+.workflow-filters__select .ui-select {
+  width: 100%;
+}
+
+.workflow-filters__count {
+  white-space: nowrap;
+}
+
+.workflow-row__identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workflow-row__name {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.workflow-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.workflow-card__title {
+  font: var(--text-h4);
+}
+
+@media (max-width: 720px) {
+  .workflow-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .workflow-filters__search,
+  .workflow-filters__count {
+    grid-column: 1 / -1;
+  }
+}

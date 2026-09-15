@@ -1,14 +1,13 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { DEFAULT_ROUTE } from "./routes";
 import { ControlCenterLayout } from "../layouts/ControlCenterLayout";
-import { DetailPlaceholderPage } from "../pages/DetailPlaceholderPage";
 import { LoginPage } from "../pages/Login";
 import { NotFoundPage } from "../pages/NotFound";
 import { OverviewPage } from "../pages/Overview";
 import { AgentsPage, AgentDetailPage } from "../pages/Agents";
 import { TaskDetailPage, TasksPage } from "../pages/Tasks";
-import { WorkflowsPage } from "../pages/Workflows";
-import { ProjectsPage } from "../pages/Projects";
+import { WorkflowDetailPage, WorkflowsPage } from "../pages/Workflows";
+import { ProjectDetailPage, ProjectsPage } from "../pages/Projects";
 import { ApprovalsPage } from "../pages/Approvals";
 import { AuditLogPage } from "../pages/AuditLog";
 import { KnowledgePage } from "../pages/Knowledge";
@@ -31,30 +30,10 @@ export function AppRoutes() {
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
 
         <Route path="/workflows" element={<WorkflowsPage />} />
-        <Route
-          path="/workflows/:workflowId"
-          element={
-            <DetailPlaceholderPage
-              resource="Workflow"
-              paramName="workflowId"
-              backTo="/workflows"
-              backLabel="Workflows"
-            />
-          }
-        />
+        <Route path="/workflows/:workflowId" element={<WorkflowDetailPage />} />
 
         <Route path="/projects" element={<ProjectsPage />} />
-        <Route
-          path="/projects/:projectId"
-          element={
-            <DetailPlaceholderPage
-              resource="Project"
-              paramName="projectId"
-              backTo="/projects"
-              backLabel="Projects"
-            />
-          }
-        />
+        <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
 
         <Route path="/approvals" element={<ApprovalsPage />} />
         <Route path="/audit" element={<AuditLogPage />} />
