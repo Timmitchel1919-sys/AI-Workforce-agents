@@ -72,13 +72,21 @@ test("production bootstrap validates and materializes trusted bindings", () => {
   assert.equal(Object.isFrozen(bootstrap.report), true);
 });
 
-test("the authoritative production configuration has no implicit test capability", () => {
+test("the authoritative production configuration resolves only its real OpenAI binding", () => {
   const bootstrap = createProductionWorkforceBootstrap(
     PRODUCTION_WORKFORCE_CONFIGURATION,
   );
-  assert.equal(bootstrap.report.agentCount, 0);
+  assert.equal(bootstrap.report.agentCount, 1);
   assert.equal(bootstrap.report.toolCount, 0);
-  assert.equal(bootstrap.report.operational, false);
+  assert.equal(bootstrap.report.operational, true);
+  assert.equal(
+    bootstrap.agents.require("control-plane-analysis-agent").name,
+    "Control Plane Analysis Agent",
+  );
+  assert.equal(
+    bootstrap.agentExecutors.has("control-plane-analysis-agent"),
+    true,
+  );
 });
 
 test("production bootstrap rejects duplicate agent ids", () => {

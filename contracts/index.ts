@@ -310,7 +310,18 @@ export interface ModelRequest {
 export interface ModelResponse {
   content: string;
   model: string;
-  usage?: { inputTokens?: number; outputTokens?: number };
+  usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
+}
+
+/** Provider-neutral JSON-schema request for bounded structured model output. */
+export interface StructuredModelRequest extends ModelRequest {
+  schemaName: string;
+  schema: Record<string, unknown>;
+}
+
+/** Optional capability implemented by providers that support structured JSON. */
+export interface StructuredModelProvider extends ModelProvider {
+  generateStructured(request: StructuredModelRequest): Promise<ModelResponse>;
 }
 
 /** Provider-neutral text generation. Concrete providers live under adapters/. */

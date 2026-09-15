@@ -12,7 +12,6 @@ import {
   type ApprovalPolicy,
   type PermissionGrant,
   type ProjectAdapter,
-  type Tool,
   type ToolDefinition,
   type ToolExecutionContext,
   ValidationError,
@@ -31,6 +30,10 @@ export type TrustedToolHandler = (
   input: unknown,
   context: ToolExecutionContext,
 ) => Promise<unknown>;
+
+/** A trusted compiled factory receives the runtime audit sink at bootstrap. */
+export type TrustedAgentExecutorBinding =
+  AgentExecutor | ((audit: AuditLog) => AgentExecutor);
 
 export interface ProductionAgentBinding {
   definition: Agent;
@@ -54,7 +57,7 @@ export interface ProductionProjectBinding {
  */
 export interface ProductionWorkforceConfiguration {
   agents: readonly ProductionAgentBinding[];
-  executorBindings: Readonly<Record<string, AgentExecutor>>;
+  executorBindings: Readonly<Record<string, TrustedAgentExecutorBinding>>;
   tools: readonly ProductionToolBinding[];
   toolHandlerBindings: Readonly<Record<string, TrustedToolHandler>>;
   projectAdapters: readonly ProductionProjectBinding[];
@@ -99,9 +102,10 @@ export function createProductionWorkforceBootstrap(
   const agentExecutors = new RoutingAgentExecutor();
   for (const binding of configuration.agents) {
     agents.register(binding.definition);
+    const trusted = configuration.executorBindings[binding.executorKey]!;
     agentExecutors.register(
       binding.definition.id,
-      configuration.executorBindings[binding.executorKey]!,
+      typeof trusted === "function" ? trusted(audit) : trusted,
     );
   }
 
