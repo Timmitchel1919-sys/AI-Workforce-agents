@@ -359,15 +359,30 @@ export function deriveAuditEventView(event: AuditEvent): AuditEventView {
 /* Cursor pagination (opaque, deterministic)                          */
 /* ------------------------------------------------------------------ */
 
-const DEFAULT_PAGE = 25;
-const MAX_PAGE = 200;
+/**
+ * Centralized page-size bounds for every paginated Control Plane query.
+ * Server-side: a request larger than `MAX_PAGE_SIZE` is clamped, so no
+ * caller can force an unbounded read.
+ */
+export const DEFAULT_PAGE_SIZE = 25;
+export const MAX_PAGE_SIZE = 200;
 
+/**
+ * Bounded cursor pagination. The cursor is an opaque string encoding the
+ * offset into the (already deterministically ordered) result list. A
+ * malformed cursor is treated as offset `0` (the first page) — never an
+ * error page, never an unbounded read.
+ */
 export function paginate<T>(
   items: readonly T[],
   limit: number | undefined,
   cursor: string | undefined,
 ): { items: T[]; total: number; nextCursor: string | null } {
-  const size = Math.min(Math.max(1, limit ?? DEFAULT_PAGE), MAX_PAGE);
+  const requested =
+    typeof limit === "number" && Number.isFinite(limit) && limit > 0
+      ? limit
+      : DEFAULT_PAGE_SIZE;
+  const size = Math.min(requested, MAX_PAGE_SIZE);
   const start = cursor ? Math.max(0, Number.parseInt(cursor, 10) || 0) : 0;
   const slice = items.slice(start, start + size);
   const next = start + size;

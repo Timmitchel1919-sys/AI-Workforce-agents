@@ -1,98 +1,25 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { Loader2, type LucideIcon } from "./icons";
-import { cn } from "../../lib/utils";
+import React from "react";
+import "./ui.css";
 
-export type ButtonVariant =
-  "primary" | "secondary" | "outline" | "ghost" | "danger";
-export type ButtonSize = "sm" | "md" | "lg";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Size = "default" | "small" | "large";
 
-export interface ButtonProps extends Omit<
-  ButtonHTMLAttributes<HTMLButtonElement>,
-  "children"
-> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: Variant;
+  size?: Size;
   loading?: boolean;
   fullWidth?: boolean;
-  iconLeft?: LucideIcon;
-  iconRight?: LucideIcon;
-  children: ReactNode;
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  function Button(
-    {
-      variant = "secondary",
-      size = "md",
-      loading = false,
-      fullWidth = false,
-      iconLeft: IconLeft,
-      iconRight: IconRight,
-      disabled,
-      className,
-      children,
-      type = "button",
-      ...rest
-    },
-    ref,
-  ) {
-    return (
-      <button
-        ref={ref}
-        type={type}
-        className={cn(
-          "ui-btn",
-          `ui-btn--${variant}`,
-          `ui-btn--${size}`,
-          fullWidth && "ui-btn--full",
-          className,
-        )}
-        disabled={disabled || loading}
-        aria-busy={loading || undefined}
-        {...rest}
-      >
-        {IconLeft ? (
-          <IconLeft className="ui-btn__icon" aria-hidden="true" />
-        ) : null}
-        {children}
-        {IconRight ? (
-          <IconRight className="ui-btn__icon" aria-hidden="true" />
-        ) : null}
-        {loading ? (
-          <span className="ui-btn__spinner" aria-hidden="true">
-            <Loader2 className="ui-btn__icon ui-spinner__icon" />
-          </span>
-        ) : null}
-      </button>
-    );
-  },
-);
+export function Button({ variant = "secondary", size = "default", loading, fullWidth, children, ...rest }: ButtonProps) {
+  const classNames = ["ui-button", variant, size === "small" ? "small" : size === "large" ? "large" : "", fullWidth ? "fullWidth" : ""].join(" ");
 
-export interface IconButtonProps extends Omit<
-  ButtonHTMLAttributes<HTMLButtonElement>,
-  "children"
-> {
-  icon: LucideIcon;
-  label: string;
-  size?: ButtonSize;
+  return (
+    <button className={classNames} aria-busy={loading} {...rest} disabled={rest.disabled || loading}>
+      {loading ? <span className="ui-spinner" aria-hidden>●</span> : null}
+      <span style={{ marginLeft: loading ? 8 : 0 }}>{children}</span>
+    </button>
+  );
 }
 
-export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  function IconButton(
-    { icon: Icon, label, size = "md", className, type = "button", ...rest },
-    ref,
-  ) {
-    return (
-      <button
-        ref={ref}
-        type={type}
-        className={cn("ui-icon-btn", `ui-icon-btn--${size}`, className)}
-        aria-label={label}
-        title={label}
-        {...rest}
-      >
-        <Icon className="ui-icon-btn__icon" aria-hidden="true" />
-      </button>
-    );
-  },
-);
+export default Button;

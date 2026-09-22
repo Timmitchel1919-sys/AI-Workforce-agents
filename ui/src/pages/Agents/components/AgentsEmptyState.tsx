@@ -1,42 +1,30 @@
-import { Button, EmptyState } from "../../../components/ui";
-import { Bot } from "../../../components/ui/icons";
+import { EmptyState } from "../../../components/ui";
 
-/**
- * Empty state for the Agents registry. Distinguishes "no agents are registered"
- * from "the current filters match nothing" — the two need different operator
- * action. There is no Create Agent route in the Control Center yet, so no
- * fabricated creation CTA is shown.
- */
-export function AgentsEmptyState({
-  filtered,
-  onClearFilters,
-}: {
-  /** True when a filter/search is narrowing an otherwise non-empty registry. */
-  filtered: boolean;
+export interface AgentsEmptyStateProps {
+  reason?: "empty" | "filters";
   onClearFilters?: () => void;
-}) {
-  if (filtered) {
-    return (
-      <EmptyState
-        icon={Bot}
-        title="No agents match these filters"
-        detail="No registered agent matches the current search and filter selection."
-        action={
-          onClearFilters ? (
-            <Button variant="outline" size="sm" onClick={onClearFilters}>
-              Clear filters
-            </Button>
-          ) : undefined
-        }
-      />
-    );
-  }
+}
+
+export function AgentsEmptyState({ reason = "empty", onClearFilters }: AgentsEmptyStateProps) {
+  const isFilteredState = reason === "filters";
 
   return (
     <EmptyState
-      icon={Bot}
-      title="No agents found"
-      detail="No agents are registered with the Control Plane yet. Agents appear here once the workforce registers them."
+      title={isFilteredState ? "No agents match your filters" : "No agents found"}
+      description={
+        isFilteredState
+          ? "Try clearing the current filters or broadening the search criteria to restore the registry view."
+          : "There are currently no agents registered in this workforce."
+      }
+      primaryAction={
+        onClearFilters ? (
+          <button type="button" onClick={onClearFilters} className="agents-empty-state__button">
+            Clear filters
+          </button>
+        ) : undefined
+      }
     />
   );
 }
+
+export default AgentsEmptyState;

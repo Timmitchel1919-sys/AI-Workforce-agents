@@ -1,0 +1,500 @@
+/**
+ * WorkforceQueryService — the read side of the Control Plane.
+ *
+ * Every method takes an authenticated `OperatorPrincipal`, requires the `view`
+ * capability, and returns only data for projects the operator may access.
+ * Nothing here mutates state. All secret-bearing fields are redacted.
+ */
+import { operatorCan, operatorCanAccessProject, PermissionDeniedError, validateOperatorPrincipal, } from "../../contracts/index.js";
+import { now } from "../../core/index.js";
+import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolView, deriveTaskView, deriveWorkflowView, MAX_PAGE_SIZE, paginate, } from "../derive.js";
+import { buildSystemHealth, unverifiedComponent } from "../health.js";
+import { redact } from "../redaction.js";
+export class WorkforceQueryService {
+    ctx;
+    constructor(ctx) {
+        this.ctx = ctx;
+    }
+    /* -------------------------------------------------------------- */
+    /* status + health                                               */
+    /* -------------------------------------------------------------- */
+    getWorkforceStatus(principal) {
+        this.authorizeView(principal);
+        const tasks = this.visibleTasks(principal);
+        const workflows = this.visibleWorkflows(principal);
+        const agents = this.ctx.agents.list();
+        const tools = this.ctx.tools.list();
+        const projects = this.visibleProjects(principal);
+        const byStatus = (status) => tasks.filter((t) => t.status === status).length;
+        const health = this.getSystemHealth(principal);
+        return {
+            status: health.status,
+            generatedAt: now(),
+            counts: {
+                activeWorkflows: workflows.filter((w) => w.status === "running" ||
+                    w.status === "planned" ||
+                    w.status === "awaiting_approval" ||
+                    w.status === "blocked").length,
+                queuedTasks: byStatus("queued") + byStatus("created"),
+                runningTasks: byStatus("running"),
+                blockedTasks: byStatus("blocked"),
+                awaitingApproval: byStatus("awaiting_approval"),
+                failedTasks: byStatus("failed"),
+                completedTasks: byStatus("completed"),
+                cancelledTasks: byStatus("cancelled"),
+                registeredAgents: agents.length,
+                disabledAgents: agents.filter((a) => !this.ctx.agentOps.isEnabled(a.id))
+                    .length,
+                availableTools: tools.length,
+                registeredProjects: projects.length,
+            },
+            recentActivity: this.recentAudit(principal, 15),
+        };
+    }
+    /** @deprecated since Phase 7A — use {@link getSystemHealth}. */
+    getHealth(principal) {
+        return this.getSystemHealth(principal);
+    }
+    getSystemHealth(principal) {
+        this.authorizeView(principal);
+        const clock = this.ctx.clock ?? Date.now;
+        const probes = [
+            {
+                name: "application",
+                check: () => "healthy",
+            },
+            {
+                name: "persistence",
+                check: () => {
+                    try {
+                        this.ctx.tasks.list();
+                        this.ctx.workflows.list();
+                        return { status: "healthy", detail: "readable" };
+                    }
+                    catch (error) {
+                        return {
+                            status: "unavailable",
+                            detail: error instanceof Error ? error.message : String(error),
+                        };
+                    }
+                },
+            },
+            {
+                name: "audit",
+                check: () => ({
+                    status: "healthy",
+                    detail: `${this.ctx.audit.list().length} events retained`,
+                }),
+            },
+            {
+                name: "tool-registry",
+                check: () => ({
+                    status: "healthy",
+                    detail: `${this.ctx.tools.list().length} tools registered`,
+                }),
+            },
+            {
+                name: "projects",
+                check: () => {
+                    const ids = this.ctx.projects.ids();
+                    return ids.length === 0
+                        ? {
+                            status: "degraded",
+                            detail: "no project adapters registered",
+                        }
+                        : {
+                            status: "healthy",
+                            detail: ids.join(", "),
+                        };
+                },
+            },
+            ...(this.ctx.healthProbes ?? [
+                unverifiedComponent("model-provider", "no live probe wired; provider health is unknown"),
+            ]),
+        ];
+        return buildSystemHealth(probes, clock);
+    }
+    /* -------------------------------------------------------------- */
+    /* agents                                                        */
+    /* -------------------------------------------------------------- */
+    getAgents(principal) {
+        this.authorizeView(principal);
+        const tasks = this.ctx.tasks.list();
+        const audit = this.ctx.audit.list();
+        return this.ctx.agents
+            .list()
+            .filter((agent) => this.agentVisible(principal, agent.allowedProjects))
+            .map((agent) => deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit));
+    }
+    getAgent(principal, agentId) {
+        return this.getAgents(principal).find((a) => a.agentId === agentId);
+    }
+    /* -------------------------------------------------------------- */
+    /* tasks                                                         */
+    /* -------------------------------------------------------------- */
+    getTasks(principal, query = {}) {
+        this.authorizeView(principal);
+        let tasks = this.visibleTasks(principal);
+        if (query.taskId)
+            tasks = tasks.filter((t) => t.id === query.taskId);
+        if (query.projectId)
+            tasks = tasks.filter((t) => t.projectId === query.projectId);
+        if (query.agentId)
+            tasks = tasks.filter((t) => t.assignedAgentId === query.agentId);
+        if (query.status)
+            tasks = tasks.filter((t) => t.status === query.status);
+        if (query.priority)
+            tasks = tasks.filter((t) => t.priority === query.priority);
+        if (query.workflowId) {
+            tasks = tasks.filter((t) => t.metadata.workflowId === query.workflowId);
+        }
+        if (query.failedOnly) {
+            tasks = tasks.filter((t) => t.status === "failed" || t.status === "blocked");
+        }
+        if (query.since)
+            tasks = tasks.filter((t) => t.updatedAt >= query.since);
+        if (query.until)
+            tasks = tasks.filter((t) => t.updatedAt <= query.until);
+        if (query.createdAfter)
+            tasks = tasks.filter((t) => t.createdAt >= query.createdAfter);
+        if (query.createdBefore)
+            tasks = tasks.filter((t) => t.createdAt <= query.createdBefore);
+        tasks = [...tasks].sort((a, b) => a.updatedAt < b.updatedAt
+            ? 1
+            : a.updatedAt > b.updatedAt
+                ? -1
+                : b.id.localeCompare(a.id));
+        const page = paginate(tasks, query.limit, query.cursor);
+        return {
+            items: page.items.map((task) => this.taskView(task)),
+            total: page.total,
+            nextCursor: page.nextCursor,
+        };
+    }
+    getTask(principal, taskId) {
+        this.authorizeView(principal);
+        const task = this.ctx.tasks.get(taskId);
+        if (!task || !operatorCanAccessProject(principal, task.projectId)) {
+            return undefined;
+        }
+        return this.taskView(task, { includeInputShape: true });
+    }
+    /* -------------------------------------------------------------- */
+    /* workflows                                                     */
+    /* -------------------------------------------------------------- */
+    /**
+     * Bounded, project-scoped workflow listing. `query.projectId` is evaluated
+     * server-side against `workflow.projectId` — the frontend never joins or
+     * filters this list client-side. Results are deterministically ordered
+     * (`updatedAt` desc, id desc tie-break) and cursor-paginated.
+     */
+    getWorkflows(principal, query = {}) {
+        this.authorizeView(principal);
+        let workflows = this.visibleWorkflows(principal);
+        if (query.projectId) {
+            workflows = workflows.filter((w) => w.projectId === query.projectId);
+        }
+        workflows = [...workflows].sort((a, b) => a.updatedAt < b.updatedAt
+            ? 1
+            : a.updatedAt > b.updatedAt
+                ? -1
+                : b.id.localeCompare(a.id));
+        const page = paginate(workflows, query.limit, query.cursor);
+        return {
+            items: page.items.map((workflow) => this.workflowView(workflow)),
+            total: page.total,
+            nextCursor: page.nextCursor,
+        };
+    }
+    getWorkflow(principal, workflowId) {
+        this.authorizeView(principal);
+        const workflow = this.ctx.workflows.get(workflowId);
+        if (!workflow || !operatorCanAccessProject(principal, workflow.projectId)) {
+            return undefined;
+        }
+        return this.workflowView(workflow);
+    }
+    /* -------------------------------------------------------------- */
+    /* approvals                                                     */
+    /* -------------------------------------------------------------- */
+    getApprovals(principal, filter = {}) {
+        this.authorizeView(principal);
+        return this.ctx.approvals
+            .list()
+            .map(deriveApprovalView)
+            .filter((view) => (filter.status ? view.status === filter.status : true))
+            .filter((view) => this.approvalVisible(principal, view.projectId))
+            .sort((a, b) => (a.requestedAt < b.requestedAt ? 1 : -1));
+    }
+    /* -------------------------------------------------------------- */
+    /* projects                                                      */
+    /* -------------------------------------------------------------- */
+    async getProjects(principal) {
+        this.authorizeView(principal);
+        const out = [];
+        for (const registration of this.ctx.projects.list()) {
+            if (!operatorCanAccessProject(principal, registration.projectId)) {
+                continue;
+            }
+            out.push(await this.projectView(registration.projectId));
+        }
+        return out;
+    }
+    async getProject(principal, projectId) {
+        this.authorizeView(principal);
+        if (!this.ctx.projects.has(projectId) ||
+            !operatorCanAccessProject(principal, projectId)) {
+            return undefined;
+        }
+        return this.projectView(projectId);
+    }
+    /**
+     * The Agents connected to one Project, resolved server-side.
+     *
+     * Membership comes from the authoritative `AgentRegistry`
+     * (`agent.allowedProjects` includes the project, or the agent is
+     * project-neutral) — the caller never supplies an agent id list to join.
+     * Returns `undefined` when the Project does not exist or the operator may
+     * not access it, which the HTTP layer maps to 404 (no existence leak).
+     *
+     * Because membership is derived from live registry entries, a Project
+     * reference to an Agent record that no longer exists cannot be returned:
+     * stale references are vacuously skipped rather than crashing the
+     * endpoint or fabricating an Agent.
+     */
+    async getProjectAgents(principal, projectId) {
+        this.authorizeView(principal);
+        if (!this.ctx.projects.has(projectId) ||
+            !operatorCanAccessProject(principal, projectId)) {
+            return undefined;
+        }
+        const tasks = this.ctx.tasks.list();
+        const audit = this.ctx.audit.list();
+        const byId = new Map(this.ctx.agents.list().map((a) => [a.id, a]));
+        return this.connectedAgentIds(projectId)
+            .map((agentId) => byId.get(agentId))
+            .filter((agent) => agent !== undefined)
+            .map((agent) => deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit));
+    }
+    /* -------------------------------------------------------------- */
+    /* tools                                                         */
+    /* -------------------------------------------------------------- */
+    getTools(principal) {
+        this.authorizeView(principal);
+        const audit = this.ctx.audit.list();
+        return this.ctx.tools.list().map((tool) => deriveToolView(tool, audit));
+    }
+    getTool(principal, toolId) {
+        return this.getTools(principal).find((t) => t.toolId === toolId);
+    }
+    /* -------------------------------------------------------------- */
+    /* audit                                                         */
+    /* -------------------------------------------------------------- */
+    getAuditEvents(principal, query = {}) {
+        this.authorizeView(principal);
+        let views = this.ctx.audit
+            .list()
+            .map(deriveAuditEventView)
+            .filter((view) => this.auditVisible(principal, view.projectId));
+        if (query.type)
+            views = views.filter((v) => v.type === query.type);
+        if (query.agentId)
+            views = views.filter((v) => v.agentId === query.agentId);
+        if (query.projectId)
+            views = views.filter((v) => v.projectId === query.projectId);
+        if (query.taskId)
+            views = views.filter((v) => v.taskId === query.taskId);
+        if (query.workflowId)
+            views = views.filter((v) => v.workflowId === query.workflowId);
+        if (query.toolId)
+            views = views.filter((v) => v.toolId === query.toolId);
+        if (query.actor)
+            views = views.filter((v) => v.actor === query.actor);
+        if (query.correlationId)
+            views = views.filter((v) => v.correlationId === query.correlationId);
+        if (query.outcome)
+            views = views.filter((v) => v.outcome === query.outcome);
+        if (query.since)
+            views = views.filter((v) => v.timestamp >= query.since);
+        if (query.until)
+            views = views.filter((v) => v.timestamp <= query.until);
+        views = [...views].sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+        const page = paginate(views, query.limit, query.cursor);
+        return {
+            items: page.items,
+            total: page.total,
+            nextCursor: page.nextCursor,
+        };
+    }
+    /* -------------------------------------------------------------- */
+    /* dashboard bundle                                              */
+    /* -------------------------------------------------------------- */
+    async getDashboardSnapshot(principal) {
+        this.authorizeView(principal);
+        try {
+            return {
+                generatedAt: now(),
+                operator: { id: principal.id, role: principal.role },
+                status: this.getWorkforceStatus(principal),
+                health: this.getSystemHealth(principal),
+                agents: this.getAgents(principal),
+                workflows: this.getWorkflows(principal, { limit: MAX_PAGE_SIZE }).items,
+                tasks: this.getTasks(principal, { limit: 50 }).items,
+                approvals: this.getApprovals(principal),
+                projects: await this.getProjects(principal),
+                tools: this.getTools(principal),
+                recentAudit: this.getAuditEvents(principal, { limit: 30 }).items,
+            };
+        }
+        catch (error) {
+            return {
+                generatedAt: now(),
+                operator: { id: principal.id, role: principal.role },
+                status: this.getWorkforceStatus(principal),
+                health: this.getSystemHealth(principal),
+                agents: [],
+                workflows: [],
+                tasks: [],
+                approvals: [],
+                projects: [],
+                tools: [],
+                recentAudit: [],
+                error: error instanceof Error ? error.message : String(error),
+            };
+        }
+    }
+    /* -------------------------------------------------------------- */
+    /* internals                                                     */
+    /* -------------------------------------------------------------- */
+    authorizeView(principal) {
+        validateOperatorPrincipal(principal);
+        if (!operatorCan(principal, "view")) {
+            throw new PermissionDeniedError(`operator "${principal.id}" (${principal.role}) may not view the control plane`);
+        }
+    }
+    visibleTasks(principal) {
+        return this.ctx.tasks
+            .list()
+            .filter((t) => operatorCanAccessProject(principal, t.projectId));
+    }
+    visibleWorkflows(principal) {
+        return this.ctx.workflows
+            .list()
+            .filter((w) => operatorCanAccessProject(principal, w.projectId));
+    }
+    visibleProjects(principal) {
+        return this.ctx.projects
+            .list()
+            .filter((p) => operatorCanAccessProject(principal, p.projectId));
+    }
+    agentVisible(principal, allowedProjects) {
+        if (principal.allowedProjects === "*")
+            return true;
+        if (allowedProjects.length === 0)
+            return true; // project-neutral agent
+        return allowedProjects.some((p) => operatorCanAccessProject(principal, p));
+    }
+    approvalVisible(principal, projectId) {
+        return !projectId || operatorCanAccessProject(principal, projectId);
+    }
+    auditVisible(principal, projectId) {
+        return !projectId || operatorCanAccessProject(principal, projectId);
+    }
+    taskView(task, options = {}) {
+        const workflowId = typeof task.metadata.workflowId === "string"
+            ? task.metadata.workflowId
+            : undefined;
+        const workflow = workflowId
+            ? this.ctx.workflows.get(workflowId)
+            : undefined;
+        const approval = task.approvalId
+            ? this.ctx.approvals.get(task.approvalId)
+            : undefined;
+        return deriveTaskView(task, workflow, approval, options);
+    }
+    workflowView(workflow) {
+        const control = this.ctx.workflowControl.get(workflow.id);
+        const approvals = this.ctx.approvals
+            .list()
+            .filter((a) => this.approvalLinkedToWorkflow(a, workflow.id));
+        return deriveWorkflowView(workflow, control, approvals);
+    }
+    approvalLinkedToWorkflow(approval, workflowId) {
+        const meta = approval.decisionMetadata ?? {};
+        if (meta.workflowId === workflowId)
+            return true;
+        const taskId = typeof meta.taskId === "string" ? meta.taskId : undefined;
+        if (!taskId)
+            return false;
+        const task = this.ctx.tasks.get(taskId);
+        return task?.metadata.workflowId === workflowId;
+    }
+    recentAudit(principal, limit) {
+        return [...this.getAuditEvents(principal, { limit }).items];
+    }
+    /**
+     * The authoritative project → agent membership resolution. An Agent is
+     * connected when it explicitly allows the Project, or when it is
+     * project-neutral (`allowedProjects` empty). Derived from the live
+     * `AgentRegistry` only, so it can never reference a missing Agent.
+     */
+    connectedAgentIds(projectId) {
+        return this.ctx.agents
+            .list()
+            .filter((a) => a.allowedProjects.includes(projectId) ||
+            a.allowedProjects.length === 0)
+            .map((a) => a.id);
+    }
+    async projectView(projectId) {
+        const registration = this.ctx.projects.require(projectId);
+        let adapterStatus = "healthy";
+        let capabilities = [];
+        try {
+            const described = await registration.adapter.describe();
+            capabilities = described.capabilities.map((c) => ({
+                operation: c.operation,
+                description: c.description,
+                action: c.action,
+            }));
+        }
+        catch (error) {
+            adapterStatus = "unavailable";
+            capabilities = [];
+            void error;
+        }
+        const connectedAgents = this.connectedAgentIds(projectId);
+        const workflows = this.ctx.workflows
+            .list()
+            .filter((w) => w.projectId === projectId);
+        const activeWorkflows = workflows.filter((w) => w.status === "running" ||
+            w.status === "planned" ||
+            w.status === "awaiting_approval" ||
+            w.status === "blocked").length;
+        const recentTaskIds = this.ctx.tasks
+            .list()
+            .filter((t) => t.projectId === projectId)
+            .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+            .slice(0, 10)
+            .map((t) => t.id);
+        const recentActivity = this.ctx.audit
+            .list()
+            .filter((e) => e.projectId === projectId)
+            .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
+            .slice(0, 15)
+            .map(deriveAuditEventView);
+        const status = adapterStatus === "unavailable" ? "unavailable" : "available";
+        return {
+            projectId,
+            displayName: registration.displayName,
+            status,
+            adapterStatus,
+            capabilities,
+            connectedAgents,
+            activeWorkflows,
+            recentTaskIds,
+            recentActivity,
+        };
+    }
+}
+/** Re-export so callers can `redact` before logging their own diagnostics. */
+export { redact };

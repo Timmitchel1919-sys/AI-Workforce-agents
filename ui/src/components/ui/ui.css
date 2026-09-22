@@ -1,0 +1,74 @@
+/* Unified UI CSS built on top of design tokens (src/styles/tokens.css) */
+@import "../../styles/tokens.css";
+
+:root {
+  --c-primary: var(--color-primary);
+  --c-surface: var(--color-surface);
+  --c-border: var(--color-border);
+  --c-text: var(--color-text);
+  --c-muted: var(--color-text-muted);
+  --c-danger: var(--color-danger);
+}
+
+/* Buttons */
+.ui-button {
+  font-family: inherit;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ui-button:focus { outline: 3px solid color-mix(in srgb, var(--c-primary) 20%, transparent); }
+.ui-button.fullWidth { width: 100%; }
+.ui-button.primary { background: var(--c-primary); color: white; border-color: transparent; }
+.ui-button.secondary { background: transparent; }
+.ui-button.ghost { background: transparent; border-style: dashed; }
+.ui-button.danger { background: var(--c-danger); color: white; border-color: transparent; }
+.ui-button.small { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+.ui-button.large { padding: 0.75rem 1rem; font-size: 1.05rem; }
+.ui-button[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+/* Icon button */
+.ui-icon-button { display:inline-flex; align-items:center; justify-content:center; padding:0.4rem; border-radius:6px; border:1px solid var(--c-border); background:var(--c-surface); }
+.ui-icon-button[disabled] { opacity:0.6; }
+
+/* Form controls */
+.ui-input, .ui-textarea, .ui-select { width:100%; padding:0.5rem; border:1px solid var(--c-border); border-radius:6px; background:var(--c-surface); color:var(--c-text); }
+.ui-input:focus, .ui-textarea:focus, .ui-select:focus { outline:3px solid color-mix(in srgb, var(--c-primary) 20%, transparent); }
+.ui-field { display:flex; flex-direction:column; gap:0.25rem; }
+.ui-field label { font-weight:600; font-size:0.9rem; }
+.ui-field .desc { color:var(--c-muted); font-size:0.85rem; }
+.ui-error { color:var(--c-danger); font-size:0.85rem; }
+
+/* Badges */
+.ui-badge { display:inline-flex; align-items:center; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.75rem; border:1px solid var(--c-border); }
+.ui-badge.neutral { background:transparent; }
+.ui-badge.primary { background:var(--c-primary); color:white; }
+.ui-badge.success { background:var(--color-success, #16a34a); color:white; }
+.ui-badge.warning { background:var(--color-warning, #f59e0b); color:white; }
+.ui-badge.danger { background:var(--c-danger); color:white; }
+.ui-badge.info { background:var(--color-info, #0ea5e9); color:white; }
+
+/* Status */
+.ui-status { display:inline-flex; align-items:center; gap:0.4rem; }
+.status-dot { width:10px; height:10px; border-radius:50%; box-shadow:0 0 0 3px rgba(0,0,0,0.03); }
+.status-text { font-size:0.85rem; }
+
+/* Card */
+.ui-card { border:1px solid var(--c-border); background:var(--c-surface); padding:1rem; border-radius:8px; }
+.ui-card.compact { padding:0.5rem; }
+.ui-card .header { display:flex; justify-content:space-between; align-items:center; }
+
+/* Divider */
+.ui-divider { background:var(--c-border); height:1px; }
+.ui-divider.vertical { width:1px; height:100%; display:inline-block; }
+
+/* Utilities */
+.visually-hidden { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+.ui-spinner { display:inline-block; }
+
+/* Simple responsive utilities */
+.sr-only { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }

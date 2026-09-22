@@ -1,13 +1,18 @@
 /**
  * Firebase Functions Gen 2 entrypoint for the AI Workforce Control Plane.
  *
- * It binds runtime configuration and the server-only OpenAI secret, then
- * delegates every HTTP request to the pre-composed Control Plane runtime.
+ * The heavy runtime graph (Firebase adapters, agents, model providers) is
+ * deliberately NOT imported at module scope: the Functions deploy analyzer
+ * loads this module to enumerate exports and aborts after ~10s, while the full
+ * graph takes far longer to import. Instead the runtime is loaded dynamically
+ * on the first request and cached by the adapter singleton per instance.
  */
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import { createProductionControlPlaneRuntime } from "../api/production-control-plane.js";
-import { createControlPlaneHttpsAdapter } from "./control-plane-function.js";
+import type {
+  FirebaseCompatibleRequest,
+  FirebaseCompatibleResponse,
+} from "./control-plane-function.js";
 
 export const CONTROL_PLANE_FUNCTION_NAME = "controlPlaneApi";
 export const CONTROL_PLANE_REGION = "us-central1";
@@ -20,14 +25,6 @@ export const CONTROL_PLANE_MAX_INSTANCES = 2;
 // The underlying OpenAI provider reads the same server-side variable lazily.
 const openAiApiKey = defineSecret("OPENAI_API_KEY");
 
-const handler = createControlPlaneHttpsAdapter(
-  createProductionControlPlaneRuntime,
-);
-
-/**
- * Stable Gen 2 HTTPS Function identifier for DEPLOY-1C's future Hosting
- * rewrite. No Hosting rewrite is configured in DEPLOY-1B.
- */
 export const controlPlaneApi = onRequest(
   {
     region: CONTROL_PLANE_REGION,
@@ -38,5 +35,33 @@ export const controlPlaneApi = onRequest(
     cors: false,
     secrets: [openAiApiKey],
   },
-  handler,
+  async (request, response): Promise<void> => {
+    const handler = await loadControlPlaneHandler();
+    await handler(
+      request as FirebaseCompatibleRequest,
+      response as FirebaseCompatibleResponse,
+    );
+  },
 );
+
+/**
+ * Lazily assembles the HTTP handler for the production runtime. Importing the
+ * graph costs tens of seconds with its provider SDKs, so it only happens on a
+ * cold start (first request of an instance) rather than during module scan or
+ * every warm invocation.
+ */
+async function loadControlPlaneHandler(): Promise<
+  (
+    request: FirebaseCompatibleRequest,
+    response: FirebaseCompatibleResponse,
+  ) => Promise<void>
+> {
+  const [
+    { createControlPlaneHttpsAdapter },
+    { createProductionControlPlaneRuntime },
+  ] = await Promise.all([
+    import("./control-plane-function.js"),
+    import("../api/production-control-plane.js"),
+  ]);
+  return createControlPlaneHttpsAdapter(createProductionControlPlaneRuntime);
+}

@@ -25,6 +25,7 @@ import {
   type OperatorDirectory,
   type OperatorPrincipal,
   type TaskQuery,
+  type WorkflowQuery,
 } from "../contracts/index.js";
 import {
   type WorkforceCommandService,
@@ -232,7 +233,7 @@ export function createControlPlaneApi(
           200,
           id
             ? notNull(query.getWorkflow(principal, id))
-            : query.getWorkflows(principal),
+            : query.getWorkflows(principal, parseWorkflowQuery(params)),
           correlationId,
         );
       case "approvals":
@@ -243,6 +244,23 @@ export function createControlPlaneApi(
           correlationId,
         );
       case "projects":
+        // `GET /projects/:projectId/agents` — nested project resource route.
+        if (segs.length === 3 && segs[2] === "agents") {
+          return send(
+            res,
+            200,
+            notNull(await query.getProjectAgents(principal, id!)),
+            correlationId,
+          );
+        }
+        if (segs.length >= 3) {
+          return send(
+            res,
+            404,
+            { error: { message: "not found" } },
+            correlationId,
+          );
+        }
         return send(
           res,
           200,
@@ -410,6 +428,17 @@ function parseTaskQuery(params: URLSearchParams): TaskQuery {
   str("createdBefore");
   str("cursor");
   if (params.get("failedOnly") === "true") q.failedOnly = true;
+  const limit = Number(params.get("limit"));
+  if (Number.isFinite(limit) && limit > 0) q.limit = limit;
+  return q;
+}
+
+function parseWorkflowQuery(params: URLSearchParams): WorkflowQuery {
+  const q: WorkflowQuery = {};
+  const projectId = params.get("projectId");
+  if (projectId !== null && projectId !== "") q.projectId = projectId;
+  const cursor = params.get("cursor");
+  if (cursor !== null && cursor !== "") q.cursor = cursor;
   const limit = Number(params.get("limit"));
   if (Number.isFinite(limit) && limit > 0) q.limit = limit;
   return q;

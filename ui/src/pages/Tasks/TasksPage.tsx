@@ -1,73 +1,186 @@
-import { useMemo } from "react";
-import { PageFrame, Section, Stack } from "../../components/layout";
-import { Button } from "../../components/ui";
-import { RefreshCw } from "../../components/ui/icons";
+import { useEffect, useMemo, useState } from "react";
+import { Pagination } from "../../components/ui";
+import PageContainer from "../../components/layout/PageContainer";
+import PageHeader from "../../components/layout/PageHeader";
+import PageSection from "../../components/layout/PageSection";
 import { useTasks } from "../../features/tasks";
-import { formatRelativeTime } from "../../lib/time";
 import { TaskRegistry } from "./components/TaskRegistry";
-import { TasksEmptyState } from "./components/TasksEmptyState";
-import { TasksErrorState } from "./components/TasksErrorState";
-import { TasksLoadingState } from "./components/TasksLoadingState";
-import { TasksSummary } from "./components/TasksSummary";
-import { summarizeTasks } from "./tasksView";
-import "./tasks.css";
+import { TaskFilters } from "./components/TaskFilters";
+import { TaskEmptyState } from "./components/TaskEmptyState";
+import { TaskErrorState } from "./components/TaskErrorState";
+import { TaskLoadingState } from "./components/TaskLoadingState";
+import "./TasksPage.css";
 
-/** Read-only task operations overview. Commands and detail arrive later. */
-export function TasksPage() {
-  const query = useTasks();
-  const { data, isPending, isError, error, isFetching, dataUpdatedAt } = query;
-  const tasks = useMemo(() => data?.items ?? [], [data]);
-  const summary = useMemo(
-    () => summarizeTasks(tasks, data?.total ?? tasks.length),
-    [data?.total, tasks],
-  );
+const PAGE_SIZE = 6;
 
-  const lastUpdated = dataUpdatedAt
-    ? formatRelativeTime(new Date(dataUpdatedAt).toISOString())
-    : null;
+const statusOptions = [
+  "all",
+  "running",
+  "completed",
+  "failed",
+  "pending",
+  "queued",
+  "paused",
+  "blocked",
+  "cancelled",
+] as const;
 
-  const refreshAction = (
-    <div className="ui-inline" style={{ gap: "var(--space-sm)" }}>
-      {lastUpdated && !isPending ? (
-        <span className="text-caption" aria-live="polite">
-          {isFetching ? "Refreshing…" : `Updated ${lastUpdated}`}
-        </span>
-      ) : null}
-      <Button
-        variant="outline"
-        size="sm"
-        iconLeft={RefreshCw}
-        onClick={() => void query.refetch()}
-        loading={isFetching}
-        disabled={isPending}
-      >
-        Refresh
-      </Button>
-    </div>
-  );
+const priorityOptions = ["all", "low", "medium", "high", "critical", "urgent"] as const;
+
+export default function TasksPage() {
+  const { data, status, refetch } = useTasks();
+  const tasks = data?.tasks ?? [];
+  const summary = data?.summary ?? {
+    total: 0,
+    running: 0,
+    completed: 0,
+    failed: 0,
+    pending: 0,
+  };
+
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [page, setPage] = useState(1);
+
+  const filteredTasks = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return tasks.filter((task) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        [task.title, task.description, task.agentName, task.projectName, task.type]
+          .filter(Boolean)
+          .some((val) => String(val).toLowerCase().includes(normalizedQuery));
+
+      const matchesStatus = statusFilter === "all" || task.status === statusFilter;
+      const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
+
+      return matchesQuery && matchesStatus && matchesPriority;
+    });
+  }, [tasks, query, statusFilter, priorityFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter, priorityFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE));
+  const pagedTasks = filteredTasks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  if (status === "loading") {
+    return (
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Tasks"
+          description="Monitor and manage task execution across your workforce."
+        />
+        <TaskLoadingState />
+      </PageContainer>
+    );
+  }
+
+  if (status === "error" || status === "unauthorized" || status === "degraded") {
+    return (
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Tasks"
+          description="Monitor and manage task execution across your workforce."
+        />
+        <TaskErrorState
+          title={status === "unauthorized" ? "Unauthorized" : "Unable to load tasks"}
+          description={
+            status === "unauthorized"
+              ? "You do not have permission to access workforce tasks."
+              : "The task registry could not be retrieved from the Control Plane."
+          }
+          onRetry={refetch}
+        />
+      </PageContainer>
+    );
+  }
+
+  if (status === "empty") {
+    return (
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Tasks"
+          description="Monitor and manage task execution across your workforce."
+        />
+        <TaskEmptyState />
+      </PageContainer>
+    );
+  }
 
   return (
-    <PageFrame
-      title="Tasks"
-      description="Monitor the governed work queue and execution state across projects."
-      actions={refreshAction}
-    >
-      {isPending ? (
-        <TasksLoadingState />
-      ) : isError ? (
-        <TasksErrorState error={error} onRetry={() => void query.refetch()} />
-      ) : tasks.length === 0 ? (
-        <TasksEmptyState />
-      ) : (
-        <Stack gap="lg">
-          <Section title="Queue summary">
-            <TasksSummary summary={summary} />
-          </Section>
-          <Section title="Task registry">
-            <TaskRegistry tasks={tasks} />
-          </Section>
-        </Stack>
-      )}
-    </PageFrame>
+    <PageContainer>
+      <PageHeader
+        eyebrow="AI Workforce"
+        title="Tasks"
+        description="Monitor and manage task execution across your workforce."
+      />
+
+      <div className="tasks-page">
+        <div className="tasks-summary" aria-label="Task summary metrics">
+          <div className="tasks-summary__metric">
+            <span className="tasks-summary__label">Total Tasks</span>
+            <strong>{summary.total}</strong>
+          </div>
+          <div className="tasks-summary__metric">
+            <span className="tasks-summary__label">Running</span>
+            <strong>{summary.running}</strong>
+          </div>
+          <div className="tasks-summary__metric">
+            <span className="tasks-summary__label">Completed</span>
+            <strong>{summary.completed}</strong>
+          </div>
+          <div className="tasks-summary__metric">
+            <span className="tasks-summary__label">Failed / Pending</span>
+            <strong>{summary.failed + summary.pending}</strong>
+          </div>
+        </div>
+
+        <PageSection>
+          <TaskFilters
+            query={query}
+            onQueryChange={setQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            priorityFilter={priorityFilter}
+            onPriorityFilterChange={setPriorityFilter}
+            statusOptions={statusOptions}
+            priorityOptions={priorityOptions}
+          />
+        </PageSection>
+
+        <PageSection
+          title="Task Registry"
+          description="Real-time execution status, assigned agents, and metadata across your workforce."
+        >
+          {filteredTasks.length === 0 ? (
+            <TaskEmptyState
+              reason="filters"
+              onClearFilters={() => {
+                setQuery("");
+                setStatusFilter("all");
+                setPriorityFilter("all");
+              }}
+            />
+          ) : (
+            <>
+              <TaskRegistry tasks={pagedTasks} />
+              {filteredTasks.length > PAGE_SIZE ? (
+                <div className="tasks-pagination" style={{ marginTop: "1.5rem" }}>
+                  <Pagination current={page} total={totalPages} onChange={setPage} />
+                </div>
+              ) : null}
+            </>
+          )}
+        </PageSection>
+      </div>
+    </PageContainer>
   );
 }
+

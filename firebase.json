@@ -9,36 +9,44 @@
   "functions": {
     "source": ".",
     "codebase": "control-plane",
-    "runtime": "nodejs20",
+    "runtime": "nodejs22",
     "predeploy": ["npm run functions:build"],
     "ignore": [
       ".git",
+      "node_modules",
+      ".firebase",
+      ".firebaserc",
       ".github",
-      "adapters",
-      "agents",
-      "api",
-      "contracts",
-      "control",
-      "core",
+      "dataconnect",
+      "temp",
       "docs",
-      "functions",
       "tests",
       "ui",
-      "node_modules",
-      "dist/tests",
-      "firebase-debug*.log",
-      "*.md",
+      "*.log",
       "*.ts",
-      "tsconfig.json",
+      "*.tsbuildinfo",
+      "*.md",
+      ".env",
+      ".env.*",
+      "firebase.json",
       "eslint.config.js",
+      "tsconfig.json",
       ".prettierignore",
-      ".prettierrc.json"
+      ".prettierrc.json",
+      "dist/tests"
     ]
   },
   "hosting": {
     "public": "ui/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
+      {
+        "source": "/api/**",
+        "function": {
+          "functionId": "controlPlaneApi",
+          "region": "us-central1"
+        }
+      },
       {
         "source": "**",
         "destination": "/index.html"

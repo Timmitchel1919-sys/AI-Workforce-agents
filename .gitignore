@@ -1,8 +1,14 @@
 node_modules/
-dist/
+# Compiled Functions runtime (dist/functions, dist/api, ...) is tracked so the
+# Firebase deploy uploads it; only the compiled tests are ignored (they are also
+# stripped from the upload via firebase.json "functions.ignore").
+dist/tests/
 .env
 .env.*
 !.env.example
+# Public build-time config for the deployed UI (no secrets); ".env.*" ignores
+# everything else.
+!.env.production
 coverage/
 
 # Local persistence data written by JsonFilePersistence at runtime
@@ -16,3 +22,10 @@ firebase-debug*.log
 firestore-debug*.log
 ui-debug*.log
 .firebase/
+
+# Scratch copy of this project's git history (real history lives in temp/.git)
+temp/
+
+# Firebase Data Connect scaffolding — generated sources, never hand-edited
+dataconnect/
+ui/src/dataconnect-generated/

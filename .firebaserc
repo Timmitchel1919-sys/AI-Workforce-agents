@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "ai-workforce-agents"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

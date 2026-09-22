@@ -1,44 +1,46 @@
-import { Card, CardBody, Skeleton } from "../../../components/ui";
-import { MetricGroup } from "../../../components/ui";
-import { Stack } from "../../../components/layout";
+import { Skeleton } from "../../../components/ui";
 
-/**
- * Structured loading state for the Agents page — mirrors the real layout
- * (summary metrics, filter toolbar, registry rows) rather than a full-page
- * spinner. Uses the UI-2 Skeleton system.
- */
 export function AgentsLoadingState() {
   return (
-    <Stack gap="lg" aria-busy="true" aria-label="Loading agents">
-      <span className="visually-hidden" role="status">
-        Loading the agent registry…
-      </span>
-
-      <MetricGroup>
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="ui-metric">
-            <Skeleton variant="text" width="4rem" />
-            <Skeleton variant="text" width="2.5rem" height="1.5rem" />
-          </div>
-        ))}
-      </MetricGroup>
-
-      <div className="ui-inline" style={{ gap: "var(--space-sm)" }}>
-        <Skeleton width="16rem" height="2.25rem" />
-        <Skeleton width="9rem" height="2.25rem" />
-        <Skeleton width="9rem" height="2.25rem" />
-        <Skeleton width="9rem" height="2.25rem" />
+    <div className="agents-loading" role="status" aria-live="polite" aria-label="Loading agents">
+      <div className="agents-loading__header">
+        <Skeleton height={22} width="26%" />
+        <Skeleton height={14} width="42%" />
       </div>
 
-      <Card>
-        <CardBody>
-          <Stack gap="sm">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} height="2.5rem" />
-            ))}
-          </Stack>
-        </CardBody>
-      </Card>
-    </Stack>
+      <div className="agents-loading__metrics">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="agents-loading__metric">
+            <Skeleton height={16} width="50%" />
+            <Skeleton height={32} width="36%" />
+          </div>
+        ))}
+      </div>
+
+      <div className="agents-loading__toolbar">
+        <Skeleton height={42} width="100%" />
+        <div className="agents-loading__toolbar-filters">
+          <Skeleton height={42} width="30%" />
+          <Skeleton height={42} width="30%" />
+          <Skeleton height={42} width="30%" />
+        </div>
+      </div>
+
+      <div className="agents-loading__table">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="agents-loading__row">
+            <Skeleton height={20} width="30%" />
+            <Skeleton height={20} width="14%" />
+            <Skeleton height={20} width="18%" />
+            <Skeleton height={20} width="22%" />
+            <Skeleton height={20} width="12%" />
+            <Skeleton height={20} width="13%" />
+            <Skeleton height={20} width="18%" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
+
+export default AgentsLoadingState;

@@ -391,6 +391,18 @@ export interface WorkflowView {
   error?: string;
 }
 
+/**
+ * Server-side workflow query. `projectId` is the authoritative project
+ * membership filter (`workflow.projectId == projectId`), evaluated by the
+ * backend — never by the frontend. `limit` / `cursor` are bounded by the
+ * centralized pagination contract (`DEFAULT_PAGE_SIZE` / `MAX_PAGE_SIZE`).
+ */
+export interface WorkflowQuery {
+  projectId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
 export interface ApprovalView {
   approvalId: string;
   status: string;

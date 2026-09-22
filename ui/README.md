@@ -1,92 +1,75 @@
-# AI Workforce Control Center — frontend
+# React + TypeScript + Vite
 
-React + TypeScript + Vite. A **separate application** in the repository. It talks
-to the existing Control Plane **only** through its HTTP API — never Firestore,
-never the Admin SDK, never `core/` or `control/` directly.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 
 ```
-React UI  →  HTTP API (api/)  →  Query / Command services (control/)  →  Core  →  Firebase adapters
+
+You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+
 ```
-
-## Status
-
-- **UI-1 (foundation)** — routing, typed API client, auth boundary, providers,
-  placeholder pages.
-- **UI-2 (design foundation)** — semantic design tokens, dark/light architecture,
-  the reusable primitive library (`src/components/ui/`), layout primitives
-  (`src/components/layout/`), the unified status/risk system, accessibility
-  baseline.
-- **UI-3 and UI-4** — responsive application shell plus typed API/query and
-  mutation integration.
-- **UI-5 through UI-5E** — Agents registry/detail, governed actions, execution
-  intelligence, permission visibility, and audit summaries.
-
-## Commands
-
-```bash
-npm install
-npm run dev          # Vite dev server (proxies /api → VITE_API_PROXY_TARGET)
-npm run build        # typecheck + production build
-npm run preview
-npm run typecheck
-npm run lint
-npm run test         # Vitest + React Testing Library
-npm run check        # typecheck + lint + format:check + test
-```
-
-## Environment
-
-Copy `.env.example` → `.env.local` (gitignored). Only `VITE_*` values, all
-public — the Firebase **web** config and the API base URL. **Never** put a
-service-account key, Admin credentials, or an Anthropic/OpenAI key here: `VITE_*`
-is embedded in the browser bundle. Server secrets live in the repo-root `.env`.
-
-The Firebase project is the existing one, `ai-workforce-agents`.
-`VITE_FIREBASE_API_KEY` and `VITE_FIREBASE_APP_ID` must be filled in from the
-Firebase console.
-
-## Design system (UI-2)
-
-- **Tokens** — `src/styles/tokens.css`. Semantic only (`--color-surface`,
-  `--space-md`, `--text-body`, `--radius-md`, `--shadow-sm`, `--duration-normal`).
-  Theme via `data-theme` on `<html>` (`light` / `dark`) or OS preference;
-  `ThemeProvider` (`src/theme/`) applies it and persists the choice.
-- **Primitives** — `src/components/ui/`: Button/IconButton, Field + Input /
-  Textarea / Select / Checkbox / Switch, Badge / StatusBadge / StatusDot /
-  StatusIndicator / RiskBadge, Card / Divider, Tabs / Breadcrumb / Pagination,
-  DataTable, Dialog / Drawer / Popover / Dropdown / Tooltip, ToastProvider +
-  `useToast`, Alert / Skeleton / Spinner / LoadingOverlay / EmptyState /
-  ErrorState, Metric / KeyValue / Identifier / Timestamp / Progress /
-  ActivityItem. One icon vocabulary in `components/ui/icons.ts` (Lucide).
-- **Status** — `src/lib/status.ts` maps every domain's status string to one
-  descriptor (label + tone + colour var). Components never invent per-feature
-  colour logic.
-- **Layout** — `src/components/layout/`: PageContainer, PageHeader, Section,
-  Toolbar, Stack, Inline, Grid.
-- **Responsive** — breakpoints in `src/theme/breakpoints.ts`
-  (768 / 1024 / 1280 / 1440) + `useMediaQuery` / `useBreakpointUp`.
-- **Accessibility** — native controls, one visible `:focus-visible` ring,
-  `role`/`aria-*` on composites, native `<dialog>` for modals (focus trap + Esc),
-  `prefers-reduced-motion` honoured globally.
-
-## Layout
-
-| Path                     | Purpose                                                                                            |
-| ------------------------ | -------------------------------------------------------------------------------------------------- |
-| `src/app/`               | `App`, `AppRoutes`, providers (`Theme`, `Query`, `Auth`, `Api`, `Toast`), central `routes.ts`      |
-| `src/auth/`              | `AuthProvider` (Firebase Auth), `useAuth`, `RequireAuth`, `permissions` (UX-only RBAC)             |
-| `src/api/`               | `createApiClient` (Bearer + correlation id + error normalization), typed endpoints, `contracts.ts` |
-| `src/theme/`             | `ThemeProvider`, `useTheme`, breakpoints / media-query hooks                                       |
-| `src/components/ui/`     | The design-system primitives + `icons.ts`                                                          |
-| `src/components/layout/` | Structural layout primitives                                                                       |
-| `src/layouts/`           | App shell (`ControlCenterLayout`, `Sidebar`, `Topbar`, `MobileNavigation`)                         |
-| `src/pages/`             | Feature pages; Agents is implemented through UI-5E, with remaining modules staged incrementally    |
-| `src/features/`          | Typed query/mutation hooks for system, agents, tasks, workflows, approvals, projects, tools, audit |
-| `src/lib/`               | `status.ts`, formatters, dates, `cn` / `cssVars`                                                   |
-| `src/styles/`            | `reset.css`, `tokens.css`, `globals.css`, `components.css`                                         |
-| `src/test/`              | `renderWithProviders`, stubs                                                                       |
-
-Security: the UI is **not** an authorization boundary. `permissions.ts` only
-hides actions the server would reject anyway; every command still goes to the
-Control Plane, which enforces authorization, approval, project isolation, and
-audit.

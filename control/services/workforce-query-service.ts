@@ -20,8 +20,9 @@ import {
   type TaskQuery,
   type TaskView,
   type ToolView,
-  type WorkforceStatus,
+  type WorkflowQuery,
   type WorkflowView,
+  type WorkforceStatus,
   operatorCan,
   operatorCanAccessProject,
   PermissionDeniedError,
@@ -36,6 +37,7 @@ import {
   deriveToolView,
   deriveTaskView,
   deriveWorkflowView,
+  MAX_PAGE_SIZE,
   paginate,
 } from "../derive.js";
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
@@ -213,7 +215,13 @@ export class WorkforceQueryService {
     if (query.createdBefore)
       tasks = tasks.filter((t) => t.createdAt <= query.createdBefore!);
 
-    tasks = [...tasks].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+    tasks = [...tasks].sort((a, b) =>
+      a.updatedAt < b.updatedAt
+        ? 1
+        : a.updatedAt > b.updatedAt
+          ? -1
+          : b.id.localeCompare(a.id),
+    );
 
     const page = paginate(tasks, query.limit, query.cursor);
     return {
@@ -236,18 +244,49 @@ export class WorkforceQueryService {
   /* workflows                                                     */
   /* -------------------------------------------------------------- */
 
-  getWorkflows(principal: OperatorPrincipal): WorkflowView[] {
+  /**
+   * Bounded, project-scoped workflow listing. `query.projectId` is evaluated
+   * server-side against `workflow.projectId` — the frontend never joins or
+   * filters this list client-side. Results are deterministically ordered
+   * (`updatedAt` desc, id desc tie-break) and cursor-paginated.
+   */
+  getWorkflows(
+    principal: OperatorPrincipal,
+    query: WorkflowQuery = {},
+  ): PageResult<WorkflowView> {
     this.authorizeView(principal);
-    return this.visibleWorkflows(principal).map((w) => this.workflowView(w));
+    let workflows = this.visibleWorkflows(principal);
+
+    if (query.projectId) {
+      workflows = workflows.filter((w) => w.projectId === query.projectId);
+    }
+
+    workflows = [...workflows].sort((a, b) =>
+      a.updatedAt < b.updatedAt
+        ? 1
+        : a.updatedAt > b.updatedAt
+          ? -1
+          : b.id.localeCompare(a.id),
+    );
+
+    const page = paginate(workflows, query.limit, query.cursor);
+    return {
+      items: page.items.map((workflow) => this.workflowView(workflow)),
+      total: page.total,
+      nextCursor: page.nextCursor,
+    };
   }
 
   getWorkflow(
     principal: OperatorPrincipal,
     workflowId: string,
   ): WorkflowView | undefined {
-    return this.getWorkflows(principal).find(
-      (w) => w.workflowId === workflowId,
-    );
+    this.authorizeView(principal);
+    const workflow = this.ctx.workflows.get(workflowId);
+    if (!workflow || !operatorCanAccessProject(principal, workflow.projectId)) {
+      return undefined;
+    }
+    return this.workflowView(workflow);
   }
 
   /* -------------------------------------------------------------- */
@@ -292,6 +331,44 @@ export class WorkforceQueryService {
       return undefined;
     }
     return this.projectView(projectId);
+  }
+
+  /**
+   * The Agents connected to one Project, resolved server-side.
+   *
+   * Membership comes from the authoritative `AgentRegistry`
+   * (`agent.allowedProjects` includes the project, or the agent is
+   * project-neutral) — the caller never supplies an agent id list to join.
+   * Returns `undefined` when the Project does not exist or the operator may
+   * not access it, which the HTTP layer maps to 404 (no existence leak).
+   *
+   * Because membership is derived from live registry entries, a Project
+   * reference to an Agent record that no longer exists cannot be returned:
+   * stale references are vacuously skipped rather than crashing the
+   * endpoint or fabricating an Agent.
+   */
+  async getProjectAgents(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ): Promise<AgentView[] | undefined> {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.has(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    ) {
+      return undefined;
+    }
+    const tasks = this.ctx.tasks.list();
+    const audit = this.ctx.audit.list();
+    const byId = new Map(this.ctx.agents.list().map((a) => [a.id, a] as const));
+    return this.connectedAgentIds(projectId)
+      .map((agentId) => byId.get(agentId))
+      .filter(
+        (agent): agent is NonNullable<typeof agent> => agent !== undefined,
+      )
+      .map((agent) =>
+        deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit),
+      );
   }
 
   /* -------------------------------------------------------------- */
@@ -362,7 +439,7 @@ export class WorkforceQueryService {
         status: this.getWorkforceStatus(principal),
         health: this.getSystemHealth(principal),
         agents: this.getAgents(principal),
-        workflows: this.getWorkflows(principal),
+        workflows: this.getWorkflows(principal, { limit: MAX_PAGE_SIZE }).items,
         tasks: this.getTasks(principal, { limit: 50 }).items,
         approvals: this.getApprovals(principal),
         projects: await this.getProjects(principal),
@@ -482,6 +559,23 @@ export class WorkforceQueryService {
     return [...this.getAuditEvents(principal, { limit }).items];
   }
 
+  /**
+   * The authoritative project → agent membership resolution. An Agent is
+   * connected when it explicitly allows the Project, or when it is
+   * project-neutral (`allowedProjects` empty). Derived from the live
+   * `AgentRegistry` only, so it can never reference a missing Agent.
+   */
+  private connectedAgentIds(projectId: string): string[] {
+    return this.ctx.agents
+      .list()
+      .filter(
+        (a) =>
+          a.allowedProjects.includes(projectId) ||
+          a.allowedProjects.length === 0,
+      )
+      .map((a) => a.id);
+  }
+
   private async projectView(projectId: string): Promise<ProjectView> {
     const registration = this.ctx.projects.require(projectId);
     let adapterStatus: HealthStatus = "healthy";
@@ -499,14 +593,7 @@ export class WorkforceQueryService {
       void error;
     }
 
-    const connectedAgents = this.ctx.agents
-      .list()
-      .filter(
-        (a) =>
-          a.allowedProjects.includes(projectId) ||
-          a.allowedProjects.length === 0,
-      )
-      .map((a) => a.id);
+    const connectedAgents = this.connectedAgentIds(projectId);
 
     const workflows = this.ctx.workflows
       .list()

@@ -1,0 +1,14 @@
+# Normalize every text file to LF on checkout and in the index. This keeps the
+# high-level tree stable when the repo is opened on Windows/WSL mounts, where
+# editors may write CRLF and the filesystem reports odd file modes.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

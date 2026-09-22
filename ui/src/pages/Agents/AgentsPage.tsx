@@ -1,165 +1,254 @@
-import { useMemo, useState } from "react";
-import { PageFrame } from "../../components/layout";
-import { Section, Stack } from "../../components/layout";
-import { Button, Pagination } from "../../components/ui";
-import { RefreshCw } from "../../components/ui/icons";
-import { formatRelativeTime } from "../../lib/time";
+import { useEffect, useMemo, useState } from "react";
+import { Input, Pagination, Select } from "../../components/ui";
+import PageContainer from "../../components/layout/PageContainer";
+import PageHeader from "../../components/layout/PageHeader";
+import PageSection from "../../components/layout/PageSection";
 import { useAgents } from "../../features/agents";
-import { AgentsSummary } from "./components/AgentsSummary";
-import { AgentsToolbar } from "./components/AgentsToolbar";
 import { AgentRegistry } from "./components/AgentRegistry";
-import { AgentsLoadingState } from "./components/AgentsLoadingState";
 import { AgentsEmptyState } from "./components/AgentsEmptyState";
 import { AgentsErrorState } from "./components/AgentsErrorState";
-import {
-  DEFAULT_SORT,
-  EMPTY_FILTERS,
-  collectCapabilities,
-  collectProjects,
-  filterAgents,
-  filtersActive,
-  sortAgents,
-  summarize,
-  toAgentListItems,
-  type AgentFilters,
-  type AgentSort,
-  type AgentSortColumn,
-} from "./agentsView";
-import "./agents.css";
+import { AgentsLoadingState } from "./components/AgentsLoadingState";
+import "./AgentsPage.css";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 6;
 
-function nextSort(current: AgentSort, column: AgentSortColumn): AgentSort {
-  if (current.column !== column) return { column, direction: "asc" };
-  return {
-    column,
-    direction: current.direction === "asc" ? "desc" : "asc",
-  };
+const statusOptions = [
+  "all",
+  "active",
+  "idle",
+  "offline",
+  "paused",
+  "error",
+  "provisioning",
+] as const;
+
+function formatMetricLabel(value: number, label: string) {
+  return `${value} ${label}`;
 }
 
-/**
- * Overview / command surface for the AI workforce agent registry.
- *
- * Data flows: page → `useAgents()` (TanStack Query) → agents endpoint → API
- * client → Control Plane. The page owns only UI state (filters, sort, page);
- * server state stays in the query cache. Presentation components are data-
- * agnostic.
- */
-export function AgentsPage() {
-  const query = useAgents();
-  const { data, isPending, isError, error, isFetching, dataUpdatedAt } = query;
+export default function AgentsPage() {
+  const { data, status, refetch } = useAgents();
+  const agents = data?.agents ?? [];
+  const summary = data?.summary ?? { total: 0, active: 0, idle: 0, offline: 0, healthy: 0 };
 
-  const [filters, setFilters] = useState<AgentFilters>(EMPTY_FILTERS);
-  const [sort, setSort] = useState<AgentSort>(DEFAULT_SORT);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<(typeof statusOptions)[number]>("all");
+  const [capabilityFilter, setCapabilityFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
   const [page, setPage] = useState(1);
 
-  const allItems = useMemo(() => (data ? toAgentListItems(data) : []), [data]);
-  const summary = useMemo(() => summarize(allItems), [allItems]);
-  const capabilities = useMemo(() => collectCapabilities(allItems), [allItems]);
-  const projects = useMemo(() => collectProjects(allItems), [allItems]);
-
-  const filtered = useMemo(
-    () => sortAgents(filterAgents(allItems, filters), sort),
-    [allItems, filters, sort],
+  const capabilities = useMemo(
+    () => Array.from(new Set(agents.flatMap((agent) => agent.capabilities))).sort(),
+    [agents],
   );
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount);
-  const pageRows = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+  const projects = useMemo(
+    () => Array.from(new Set(agents.map((agent) => agent.projectId).filter(Boolean))).sort(),
+    [agents],
   );
 
-  function updateFilters(next: AgentFilters) {
-    setFilters(next);
+  const filteredAgents = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return agents.filter((agent) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        [agent.name, agent.description, agent.model, ...(agent.capabilities ?? [])]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedQuery));
+
+      const matchesStatus = statusFilter === "all" || agent.status === statusFilter;
+      const matchesCapability = capabilityFilter === "all" || agent.capabilities.includes(capabilityFilter);
+      const matchesProject = projectFilter === "all" || agent.projectId === projectFilter;
+
+      return matchesQuery && matchesStatus && matchesCapability && matchesProject;
+    });
+  }, [agents, capabilityFilter, projectFilter, query, statusFilter]);
+
+  useEffect(() => {
     setPage(1);
+  }, [query, statusFilter, capabilityFilter, projectFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAgents.length / PAGE_SIZE));
+  const pagedAgents = filteredAgents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  if (status === "loading") {
+    return (
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Agents"
+          description="Monitor and manage the agents operating across your workforce."
+        />
+        <AgentsLoadingState />
+      </PageContainer>
+    );
   }
 
-  function handleSort(column: AgentSortColumn) {
-    setSort((current) => nextSort(current, column));
-    setPage(1);
+  if (status === "error") {
+    return (
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Agents"
+          description="Monitor and manage the agents operating across your workforce."
+        />
+        <AgentsErrorState onRetry={refetch} />
+      </PageContainer>
+    );
   }
 
-  const lastUpdated = dataUpdatedAt
-    ? formatRelativeTime(new Date(dataUpdatedAt).toISOString())
-    : null;
+  if (status === "unauthorized") {
+    return (
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Agents"
+          description="Monitor and manage the agents operating across your workforce."
+        />
+        <AgentsErrorState onRetry={refetch} />
+      </PageContainer>
+    );
+  }
 
-  const refreshAction = (
-    <div className="ui-inline" style={{ gap: "var(--space-sm)" }}>
-      {lastUpdated && !isPending ? (
-        <span className="text-caption" aria-live="polite">
-          {isFetching ? "Refreshing…" : `Updated ${lastUpdated}`}
-        </span>
-      ) : null}
-      <Button
-        variant="outline"
-        size="sm"
-        iconLeft={RefreshCw}
-        onClick={() => void query.refetch()}
-        loading={isFetching}
-        disabled={isPending}
-      >
-        Refresh
-      </Button>
-    </div>
-  );
+  if (status === "empty") {
+    return (
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Agents"
+          description="Monitor and manage the agents operating across your workforce."
+        />
+        <AgentsEmptyState />
+      </PageContainer>
+    );
+  }
 
   return (
-    <PageFrame
-      title="Agents"
-      description="AI workforce registry — monitor the agents operating across your workforce."
-      actions={refreshAction}
-    >
-      {isPending ? (
-        <AgentsLoadingState />
-      ) : isError ? (
-        <AgentsErrorState error={error} onRetry={() => void query.refetch()} />
-      ) : allItems.length === 0 ? (
-        <AgentsEmptyState filtered={false} />
-      ) : (
-        <Stack gap="lg">
-          <Section title="Workforce summary">
-            <AgentsSummary summary={summary} />
-          </Section>
+    <PageContainer>
+      <PageHeader
+        eyebrow="AI Workforce"
+        title="Agents"
+        description="Monitor and manage the agents operating across your workforce."
+      />
 
-          <Section title="Agent registry">
-            <Stack gap="md">
-              <AgentsToolbar
-                filters={filters}
-                onChange={updateFilters}
-                capabilities={capabilities}
-                projects={projects}
-                resultCount={filtered.length}
+      <div className="agents-page">
+        <div className="agents-summary" aria-label="Agent summary metrics">
+          <div className="agents-summary__metric">
+            <span className="agents-summary__label">Total Agents</span>
+            <strong>{summary.total}</strong>
+          </div>
+          <div className="agents-summary__metric">
+            <span className="agents-summary__label">Active</span>
+            <strong>{summary.active}</strong>
+          </div>
+          <div className="agents-summary__metric">
+            <span className="agents-summary__label">Idle</span>
+            <strong>{summary.idle}</strong>
+          </div>
+          <div className="agents-summary__metric">
+            <span className="agents-summary__label">Offline</span>
+            <strong>{summary.offline}</strong>
+          </div>
+          <div className="agents-summary__metric">
+            <span className="agents-summary__label">Healthy</span>
+            <strong>{summary.healthy}</strong>
+          </div>
+        </div>
+
+        <PageSection>
+          <div className="agents-toolbar">
+            <div className="agents-toolbar__search">
+              <label htmlFor="agent-search">Search agents</label>
+              <Input
+                id="agent-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search agents..."
+                aria-label="Search agents"
               />
+            </div>
 
-              {filtered.length === 0 ? (
-                <AgentsEmptyState
-                  filtered={filtersActive(filters)}
-                  onClearFilters={() => updateFilters(EMPTY_FILTERS)}
-                />
-              ) : (
-                <>
-                  <AgentRegistry
-                    agents={pageRows}
-                    sort={sort}
-                    onSortChange={handleSort}
-                  />
-                  {filtered.length > PAGE_SIZE ? (
-                    <Pagination
-                      page={safePage}
-                      pageCount={pageCount}
-                      total={filtered.length}
-                      pageSize={PAGE_SIZE}
-                      onPrev={() => setPage((p) => Math.max(1, p - 1))}
-                      onNext={() => setPage((p) => Math.min(pageCount, p + 1))}
-                    />
-                  ) : null}
-                </>
-              )}
-            </Stack>
-          </Section>
-        </Stack>
-      )}
-    </PageFrame>
+            <div className="agents-toolbar__filters">
+              <Select
+                id="status-filter"
+                label="Status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as (typeof statusOptions)[number])}
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status === "all" ? "All statuses" : status}
+                  </option>
+                ))}
+              </Select>
+
+              <Select
+                id="capability-filter"
+                label="Capability"
+                value={capabilityFilter}
+                onChange={(event) => setCapabilityFilter(event.target.value)}
+              >
+                <option value="all">All capabilities</option>
+                {capabilities.map((capability) => (
+                  <option key={capability} value={capability}>
+                    {capability}
+                  </option>
+                ))}
+              </Select>
+
+              <Select
+                id="project-filter"
+                label="Project"
+                value={projectFilter}
+                onChange={(event) => setProjectFilter(event.target.value)}
+              >
+                <option value="all">All projects</option>
+                {projects.map((project) => (
+                  <option key={project} value={project}>
+                    {project}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        </PageSection>
+
+        <PageSection
+          title="Agent Registry"
+          description="Operational status, workload, and availability across the current workforce."
+        >
+          {filteredAgents.length === 0 ? (
+            <AgentsEmptyState
+              reason="filters"
+              onClearFilters={() => {
+                setQuery("");
+                setStatusFilter("all");
+                setCapabilityFilter("all");
+                setProjectFilter("all");
+              }}
+            />
+          ) : (
+            <>
+              <AgentRegistry agents={pagedAgents} />
+              {filteredAgents.length > PAGE_SIZE ? (
+                <div className="agents-pagination">
+                  <Pagination current={page} total={totalPages} onChange={setPage} />
+                </div>
+              ) : null}
+            </>
+          )}
+        </PageSection>
+      </div>
+    </PageContainer>
+  );
+}
+
+export function AgentSummaryLine({ total, active, idle, offline }: { total: number; active: number; idle: number; offline: number }) {
+  return (
+    <div className="agents-inline-summary" aria-live="polite">
+      {formatMetricLabel(total, "Total")} · {formatMetricLabel(active, "Active")} · {formatMetricLabel(idle, "Idle")} · {formatMetricLabel(offline, "Offline")}
+    </div>
   );
 }

@@ -1,185 +1,216 @@
 import { Link, useParams } from "react-router-dom";
-import { PageFrame } from "../../components/layout";
-import { Section, Stack } from "../../components/layout";
-import {
-  Button,
-  Card,
-  CardBody,
-  Skeleton,
-  ErrorState,
-} from "../../components/ui";
-import { ChevronLeft } from "../../components/ui/icons";
-import { isApiError } from "../../api";
-import { useAgent } from "../../features/agents";
-import {
-  AgentActions,
-  AgentAuditSummary,
-  AgentCapabilities,
-  AgentConfigurationCard,
-  AgentDetailHeader,
-  AgentExecutions,
-  AgentGovernanceCard,
-  AgentHealthCard,
-  AgentWorkloadCard,
-} from "./components";
-import { toAgentListItem } from "./agentsView";
-import "./agents.css";
+import PageContainer from "../../components/layout/PageContainer";
+import PageHeader from "../../components/layout/PageHeader";
+import PageSection from "../../components/layout/PageSection";
+import { Badge, StatusBadge } from "../../components/ui";
+import { EmptyState } from "../../components/states/EmptyState";
+import { ErrorState } from "../../components/states/ErrorState";
+import { useAgents } from "../../features/agents";
+import { AgentsLoadingState } from "./components/AgentsLoadingState";
 
-const BACK = (
-  <Link to="/agents" className="link ui-inline" style={{ gap: 4 }}>
-    <ChevronLeft width={16} height={16} aria-hidden="true" />
-    Back to Agents
-  </Link>
-);
+function formatTimestamp(value?: string) {
+  if (!value) {
+    return "Not reported";
+  }
 
-/**
- * Agent detail — an observational workspace (UI-5B). Two-column on desktop
- * (main: overview / capabilities / executions — supporting: health /
- * workload / configuration), single column on mobile. Every field comes from
- * the `AgentView` contract; nothing is fabricated where the backend is
- * silent, and the only action offered (enable/disable) is one the Control
- * Plane already governs end-to-end.
- */
-export function AgentDetailPage() {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function mapAgentStatusForBadge(status: string) {
+  switch (status) {
+    case "active":
+      return "active";
+    case "idle":
+      return "idle";
+    case "paused":
+      return "paused";
+    case "offline":
+      return "offline";
+    case "error":
+      return "blocked";
+    case "provisioning":
+      return "pending";
+    default:
+      return "offline";
+  }
+}
+
+export default function AgentDetailPage() {
   const { agentId } = useParams();
-  const query = useAgent(agentId);
+  const { data, status, refetch } = useAgents();
 
-  if (query.isPending) {
+  if (status === "loading") {
     return (
-      <PageFrame title="Agent" description="Loading agent…">
-        <Stack gap="lg">
-          {BACK}
-          <Skeleton height="3rem" />
-          <Skeleton height="10rem" />
-          <Skeleton height="10rem" />
-        </Stack>
-      </PageFrame>
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Agent detail"
+          description="Inspect status, execution activity, and configuration details for the selected agent."
+        />
+        <AgentsLoadingState />
+      </PageContainer>
     );
   }
 
-  if (query.isError) {
-    const notFound =
-      isApiError(query.error) && query.error.category === "not_found";
-    const forbidden =
-      isApiError(query.error) && query.error.category === "forbidden";
+  if (status === "error" || status === "unauthorized" || status === "degraded") {
     return (
-      <PageFrame title="Agent" description="Agent detail">
-        <Stack gap="lg">
-          {BACK}
-          <ErrorState
-            variant={
-              notFound ? "not-found" : forbidden ? "forbidden" : "network"
-            }
-            title={
-              notFound
-                ? "Agent not found"
-                : forbidden
-                  ? "Access restricted"
-                  : "Unable to load this agent"
-            }
-            detail={
-              notFound
-                ? "The requested agent does not exist or is no longer available."
-                : forbidden
-                  ? "You do not have permission to view this agent."
-                  : "The Control Center could not retrieve this agent."
-            }
-            action={
-              !notFound && !forbidden ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void query.refetch()}
-                >
-                  Retry
-                </Button>
-              ) : undefined
-            }
-          />
-        </Stack>
-      </PageFrame>
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Agent detail"
+          description="Inspect status, execution activity, and configuration details for the selected agent."
+        />
+        <ErrorState
+          title={status === "unauthorized" ? "Access restricted" : "Unable to load agents"}
+          description={
+            status === "unauthorized"
+              ? "You do not have permission to inspect the current agent registry."
+              : "The agent detail view could not be loaded from the Control Plane."
+          }
+          onRetry={refetch}
+        />
+      </PageContainer>
     );
   }
 
-  const agent = toAgentListItem(query.data);
+  const agent = data?.agents.find((candidate) => candidate.id === agentId);
+
+  if (!agent) {
+    return (
+      <PageContainer>
+        <PageHeader
+          eyebrow="AI Workforce"
+          title="Agent detail"
+          description="Inspect status, execution activity, and configuration details for the selected agent."
+          breadcrumbs={[{ label: "Agents", href: "/agents" }, { label: "Not found", current: true }]}
+        />
+        <EmptyState
+          title="Agent not found"
+          description="The requested agent is not available in the current registry view."
+          primaryAction={<Link to="/agents">Back to agents</Link>}
+        />
+      </PageContainer>
+    );
+  }
+
+  const capabilities = agent.capabilities.length > 0 ? agent.capabilities : ["No capabilities reported"];
+  const healthLabel = agent.health ?? "Unavailable";
+  const executions = agent.recentExecutions ?? [];
 
   return (
-    <PageFrame
-      title={agent.name}
-      description={`${agent.role || "Agent"} · workforce agent`}
-      actions={
-        <AgentActions agent={agent} onChanged={() => void query.refetch()} />
-      }
-    >
-      <Stack gap="lg">
-        {BACK}
-        <AgentDetailHeader agent={agent} />
+    <PageContainer>
+      <PageHeader
+        eyebrow="AI Workforce"
+        title={agent.name}
+        description={agent.description ?? "No description is available for this agent."}
+        breadcrumbs={[{ label: "Agents", href: "/agents" }, { label: agent.name, current: true }]}
+      />
+
+      <div className="agent-detail-page">
+        <PageSection title="Agent identity" description="Core operational identity and availability information.">
+          <div className="agent-detail-identity">
+            <div className="agent-detail-identify">
+              <StatusBadge status={mapAgentStatusForBadge(agent.status)}>{agent.status}</StatusBadge>
+              <p className="agent-detail-id">Agent ID: {agent.id}</p>
+            </div>
+            <div className="agent-detail-metadata">
+              <div>
+                <span className="agent-detail-label">Model</span>
+                <strong>{agent.model ?? "Unavailable"}</strong>
+              </div>
+              <div>
+                <span className="agent-detail-label">Project</span>
+                <strong>{agent.projectId ?? "Unassigned"}</strong>
+              </div>
+              <div>
+                <span className="agent-detail-label">Updated</span>
+                <strong>{formatTimestamp(agent.updatedAt)}</strong>
+              </div>
+            </div>
+          </div>
+        </PageSection>
 
         <div className="agent-detail-grid">
-          <Stack gap="lg" className="agent-detail-grid__main">
-            <Section title="Capabilities">
-              <Card>
-                <CardBody>
-                  <AgentCapabilities capabilities={agent.capabilities} />
-                </CardBody>
-              </Card>
-            </Section>
+          <PageSection title="Capabilities" description="The capabilities currently assigned to this agent.">
+            <div className="agent-detail-tags">
+              {capabilities.map((capability) => (
+                <Badge key={capability} variant="info">
+                  {capability}
+                </Badge>
+              ))}
+            </div>
+          </PageSection>
 
-            <Section title="Recent executions">
-              <Card>
-                <CardBody>
-                  <AgentExecutions
-                    agentId={agent.id}
-                    currentTaskId={agent.currentTaskId}
-                  />
-                </CardBody>
-              </Card>
-            </Section>
+          <PageSection title="Current workload" description="Active execution information for this agent.">
+            <div className="agent-detail-stat-block">
+              <strong>{agent.activeTasks ?? 0}</strong>
+              <span>active tasks</span>
+            </div>
+          </PageSection>
 
-            <Section title="Governance activity">
-              <Card>
-                <CardBody>
-                  <AgentAuditSummary agentId={agent.id} />
-                </CardBody>
-              </Card>
-            </Section>
-          </Stack>
+          <PageSection title="Health" description="Current health and service availability state.">
+            <div className="agent-detail-stat-block">
+              <strong>{healthLabel}</strong>
+              <span>last heartbeat unavailable</span>
+            </div>
+          </PageSection>
 
-          <Stack gap="lg" className="agent-detail-grid__aside">
-            <Section title="Health">
-              <Card>
-                <CardBody>
-                  <AgentHealthCard />
-                </CardBody>
-              </Card>
-            </Section>
-
-            <Section title="Workload">
-              <Card>
-                <CardBody>
-                  <AgentWorkloadCard agent={agent} />
-                </CardBody>
-              </Card>
-            </Section>
-
-            <Section title="Governance">
-              <Card>
-                <CardBody>
-                  <AgentGovernanceCard agent={agent} />
-                </CardBody>
-              </Card>
-            </Section>
-
-            <Section title="Configuration">
-              <Card>
-                <CardBody>
-                  <AgentConfigurationCard agent={agent} />
-                </CardBody>
-              </Card>
-            </Section>
-          </Stack>
+          <PageSection title="Configuration summary" description="Current configuration details available from the Control Plane.">
+            <dl className="agent-detail-config">
+              <div>
+                <dt>Status</dt>
+                <dd>{agent.status}</dd>
+              </div>
+              <div>
+                <dt>Model</dt>
+                <dd>{agent.model ?? "Unavailable"}</dd>
+              </div>
+              <div>
+                <dt>Project</dt>
+                <dd>{agent.projectId ?? "Unassigned"}</dd>
+              </div>
+              <div>
+                <dt>Updated</dt>
+                <dd>{formatTimestamp(agent.updatedAt)}</dd>
+              </div>
+            </dl>
+          </PageSection>
         </div>
-      </Stack>
-    </PageFrame>
+
+        <PageSection title="Recent executions" description="The most recent activity associated with the selected agent.">
+          {executions.length === 0 ? (
+            <EmptyState
+              title="No execution history yet"
+              description="Execution history is not available for this agent yet."
+            />
+          ) : (
+            <ul className="agent-detail-executions">
+              {executions.map((execution) => (
+                <li key={execution.id} className="agent-detail-execution-item">
+                  <div>
+                    <strong>{execution.name}</strong>
+                    <span>{execution.task ?? "No task label"}</span>
+                  </div>
+                  <div>
+                    <Badge variant={execution.status === "completed" ? "success" : execution.status === "failed" ? "danger" : "neutral"}>
+                      {execution.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span>{execution.startedAt ? formatTimestamp(execution.startedAt) : "Start time unavailable"}</span>
+                    <small>{execution.duration ?? "Duration unavailable"}</small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </PageSection>
+
+        <PageSection title="Available actions" description="No destructive operations are provided in this UI layer.">
+          <p className="agent-detail-actions">This module is intentionally read-only and may be expanded when the Control Plane exposes safe operational actions.</p>
+        </PageSection>
+      </div>
+    </PageContainer>
   );
 }

@@ -1,0 +1,128 @@
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.app-shell__sidebar {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  min-width: 0;
+}
+
+.app-shell__workspace {
+  display: grid;
+  grid-template-rows: var(--header-height) minmax(0, 1fr);
+  min-width: 0;
+}
+
+.app-shell__main {
+  min-width: 0;
+  padding: var(--space-8);
+  overflow: auto;
+}
+
+.app-shell__main > * {
+  min-width: 0;
+}
+
+.app-shell__mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: var(--color-overlay);
+  z-index: 40;
+}
+
+.app-shell__mobile-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(84vw, 320px);
+  max-width: 320px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  animation: slide-in 180ms var(--ease-standard);
+}
+
+.app-shell__mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-shell__mobile-drawer-title {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-shell__mobile-close {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.app-shell__mobile-close:focus-visible,
+.app-shell__mobile-backdrop:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(-8%);
+    opacity: 0.9;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .app-shell__main {
+    padding: var(--space-6);
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .app-shell__sidebar {
+    display: none;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .app-shell__main {
+    padding: var(--space-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell__mobile-drawer {
+    animation: none;
+  }
+}

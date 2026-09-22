@@ -1,0 +1,126 @@
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 220px;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  overflow: hidden;
+}
+
+.state--compact {
+  min-height: auto;
+  padding: var(--space-4);
+}
+
+.state--full-content {
+  min-height: 420px;
+}
+
+.state__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 38rem;
+}
+
+.state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.state__icon--warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.state__icon--danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.state__eyebrow {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.state__title {
+  margin: 0;
+  font-size: clamp(var(--text-lg), 2vw, var(--text-xl));
+  line-height: var(--line-tight);
+  color: var(--color-text);
+}
+
+.state__description {
+  margin: 0;
+  max-width: 38rem;
+  color: var(--color-text-secondary);
+  line-height: var(--line-normal);
+}
+
+.state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.state--loading .state__icon {
+  animation: state-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes state-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@media (max-width: 640px) {
+  .state {
+    min-height: 180px;
+    padding: var(--space-5);
+  }
+
+  .state__actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .state__actions > * {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .state--loading .state__icon {
+    animation: none;
+  }
+}

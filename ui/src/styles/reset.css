@@ -1,71 +1,54 @@
-/* Minimal modern reset. UI-1 only — no visual design decisions here. */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-* {
-  margin: 0;
-}
-
 html,
 body,
 #root {
-  height: 100%;
+  margin: 0;
+  min-height: 100%;
+}
+
+html {
+  font-size: 16px;
+  background: var(--color-background);
+  color: var(--color-text);
 }
 
 body {
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  font-family: Inter, "Segoe UI", sans-serif;
+  background: var(--color-background);
+  color: var(--color-text);
+  line-height: var(--line-normal);
 }
 
-img,
-picture,
-svg,
-video,
-canvas {
-  display: block;
-  max-width: 100%;
-}
-
-input,
-button,
-textarea,
-select {
-  font: inherit;
-  color: inherit;
-}
-
-button {
-  cursor: pointer;
-  background: none;
-  border: none;
+* {
+  box-sizing: border-box;
 }
 
 a {
   color: inherit;
-  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
 }
 
 ul,
-ol {
-  list-style: none;
-  padding: 0;
-}
-
-:where([hidden]) {
-  display: none !important;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
+ol,
+li,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-top: 0;
 }

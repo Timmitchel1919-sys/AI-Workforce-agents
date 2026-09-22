@@ -76,18 +76,19 @@ health, and query filters, all within `control/` and `contracts/`.
 domain object. Every method takes an `OperatorPrincipal`, requires the `view`
 capability, and is scoped to the operator's projects.
 
-| Method                                   | Returns                      | Notes                                                                              |
-| ---------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------- |
-| `getWorkforceStatus(p)`                  | `WorkforceStatus`            | Real counts (below); `recentActivity` is redacted audit data.                      |
-| `getAgents(p)` / `getAgent(p, id)`       | `AgentView[]`                | Status derived from actual task state; no credentials or provider config.          |
-| `getTasks(p, q)` / `getTask(p, id)`      | `PageResult<TaskView>`       | Filters + bounded pages; full input/output/context never returned.                 |
-| `getWorkflows(p)` / `getWorkflow(p, id)` | `WorkflowView[]`             | `progress` = completed / total real task records.                                  |
-| `getApprovals(p, {status?})`             | `ApprovalView[]`             | Deterministic `risk`; sensitive fields redacted.                                   |
-| `getProjects(p)` / `getProject(p, id)`   | `ProjectView[]`              | Discovered from `ProjectRegistry`; failing adapter → `adapterStatus: unavailable`. |
-| `getTools(p)` / `getTool(p, id)`         | `ToolView[]`                 | Policy metadata + execution stats only — never keys, tokens, headers.              |
-| `getAuditEvents(p, q)`                   | `PageResult<AuditEventView>` | Filters incl. `actor` / `correlationId`; bounded pages; redacted.                  |
-| `getSystemHealth(p)`                     | `SystemHealth`               | Only measurable components (§10). `getHealth` is a deprecated alias.               |
-| `getDashboardSnapshot(p)`                | `DashboardSnapshot`          | One bounded bundle; on partial failure carries `error` and empty lists.            |
+| Method                                      | Returns                      | Notes                                                                                                                                                                           |
+| ------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getWorkforceStatus(p)`                     | `WorkforceStatus`            | Real counts (below); `recentActivity` is redacted audit data.                                                                                                                   |
+| `getAgents(p)` / `getAgent(p, id)`          | `AgentView[]`                | Status derived from actual task state; no credentials or provider config.                                                                                                       |
+| `getTasks(p, q)` / `getTask(p, id)`         | `PageResult<TaskView>`       | Filters + bounded pages; full input/output/context never returned.                                                                                                              |
+| `getWorkflows(p, q)` / `getWorkflow(p, id)` | `PageResult<WorkflowView>`   | Filters incl. `projectId`, `status`, `limit`, `cursor`; `progress` = completed / total real task records.                                                                       |
+| `getApprovals(p, {status?})`                | `ApprovalView[]`             | Deterministic `risk`; sensitive fields redacted.                                                                                                                                |
+| `getProjects(p)` / `getProject(p, id)`      | `ProjectView[]`              | Discovered from `ProjectRegistry`; failing adapter → `adapterStatus: unavailable`.                                                                                              |
+| `getProjectAgents(p, projectId)`            | `AgentView[]` / `undefined`  | Agents whose allowed projects include the project (or are project-neutral); derived from the live `AgentRegistry`; `undefined` → unknown/out-of-scope project (404 at the API). |
+| `getTools(p)` / `getTool(p, id)`            | `ToolView[]`                 | Policy metadata + execution stats only — never keys, tokens, headers.                                                                                                           |
+| `getAuditEvents(p, q)`                      | `PageResult<AuditEventView>` | Filters incl. `actor` / `correlationId`; bounded pages; redacted.                                                                                                               |
+| `getSystemHealth(p)`                        | `SystemHealth`               | Only measurable components (§10). `getHealth` is a deprecated alias.                                                                                                            |
+| `getDashboardSnapshot(p)`                   | `DashboardSnapshot`          | One bounded bundle; on partial failure carries `error` and empty lists.                                                                                                         |
 
 ### Workforce status
 
@@ -102,7 +103,36 @@ omitted.
 
 `taskId, workflowId, projectId, agentId, status, priority, since` / `until`
 (updatedAt), `createdAfter` / `createdBefore` (createdAt), `failedOnly`, `limit`,
-`cursor`. Results are always bounded (`DEFAULT_PAGE` 25, `MAX_PAGE` 200).
+`cursor`. Results are always bounded (`DEFAULT_PAGE_SIZE` 25, `MAX_PAGE_SIZE`
+200).
+
+### Project-scoped query contracts
+
+Three HTTP contracts let a client scope the query surface to a single project
+(CP-8C):
+
+| Endpoint                              | Semantics                                                                                                             |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `GET /projects/:projectId/agents`     | `AgentView[]` for the project. Unknown, out-of-scope, or malformed `projectId` → `404` (no existence leak).           |
+| `GET /tasks?projectId=:projectId`     | `PageResult<TaskView>` filtered to the project (`200` empty collection for an unknown project — backward compatible). |
+| `GET /workflows?projectId=:projectId` | `PageResult<WorkflowView>` filtered to the project; `?limit&cursor` for pagination.                                   |
+
+Rules that apply uniformly:
+
+- `projectId` must be supplied as an explicit query parameter (or path segment);
+  it never comes from the principal's scope implicitly — the operator must also
+  have access, which is re-checked for the target project.
+- Project membership for `getProjectAgents` is derived from the live
+  `AgentRegistry`: an agent is connected when its `allowedProjects` contains the
+  project **or** is empty (project-neutral). Dangling or duplicate stored
+  references cannot surface because resolution is registry-derived.
+- Pagination is bounded and deterministic: `limit` is clamped to `MAX_PAGE_SIZE`
+  (200; default 25), an invalid `limit` falls back to the default, and an invalid
+  `cursor` is treated as the first page. Ordering is `updatedAt` desc with an `id`
+  desc tie-break, so any page sequence is stable.
+- Reads go through the control-plane store caches (one bounded hydration per warm
+  instance); no new Firestore indexes and no per-request Firestore queries are
+  added. Filtering and pagination happen in memory over the hydrated store.
 
 ### System health (`getSystemHealth`)
 
@@ -328,7 +358,7 @@ response objects without changing the URL, method, headers, or body. Firebase
 may parse JSON before the handler sees it; `api/http-api.ts` detects that
 already-parsed object and does not consume the request stream twice.
 
-The Function is configured with a conservative baseline: Node.js 20,
+The Function is configured with a conservative baseline: Node.js 22,
 `us-central1`, one CPU, `512MiB`, a 60-second timeout, and at most two
 instances. It explicitly binds
 the server-only Firebase Secret Manager secret **`OPENAI_API_KEY`**. The
@@ -339,10 +369,28 @@ Build the backend artifact with `npm run functions:build`; deploy only this
 backend in an authorized, ready Firebase project with:
 
 ```
-firebase deploy --only functions:controlPlaneApi
+firebase deploy --only functions:control-plane:controlPlaneApi
 ```
 
-Firebase Hosting still has only its SPA rewrite during DEPLOY-1B. A Hosting
-`/api/**` rewrite is deliberately deferred to DEPLOY-1C. For local tests, run
-`npm run functions:test`; these use a controlled runtime factory and never
-call OpenAI or a production Firebase service.
+## Hosting rewrite and UI runtime (DEPLOY-1C)
+
+Firebase Hosting now forwards every `/api/**` request to `controlPlaneApi`
+(`firebase.json`, ordered before the SPA catch-all). Hosting passes the **full
+original request path** to the function, so the API's default `basePath: "/api"`
+keeps routing correctly:
+
+```
+Browser → https://<project>.web.app/api/* → Hosting /api/** rewrite
+        → controlPlaneApi (us-central1) → createProductionControlPlaneRuntime()
+```
+
+The deployed UI (`ui/`) is served same-origin and targets the Control Plane
+through the rewrite. `ui/.env.production` pins the API base to the request
+origin (`VITE_API_BASE_URL=`) and maps the live clients to the API routes
+(`/api/agents`, `/api/tasks`, `/api/dashboard`). A non-empty
+`VITE_API_BASE_URL` may point the same routes at any Control Plane API origin
+(e.g. an emulator or loopback server). See `ui/.env.example` /
+`ui/.env.production`.
+
+For local tests, run `npm run functions:test`; these use a controlled runtime
+factory and never call OpenAI or a production Firebase service.

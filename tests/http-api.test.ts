@@ -32,7 +32,9 @@ const directory: OperatorDirectory = {
 
 interface Recorder {
   taskQuery?: unknown;
+  workflowQuery?: unknown;
   auditQuery?: unknown;
+  projectAgentsCall?: { projectId: string };
   commandCalls: Array<{
     method: string;
     input: unknown;
@@ -57,11 +59,19 @@ function fakes(rec: Recorder) {
       return { items: [], total: 0, nextCursor: null };
     },
     getTask: () => undefined,
-    getWorkflows: () => [],
+    getWorkflows: (_p: unknown, q: unknown) => {
+      rec.workflowQuery = q;
+      return { items: [], total: 0, nextCursor: null };
+    },
     getWorkflow: () => undefined,
     getApprovals: () => [],
     getProjects: async () => [],
     getProject: async () => undefined,
+    getProjectAgents: async (_p: unknown, projectId: string) => {
+      rec.projectAgentsCall = { projectId };
+      if (projectId === "ghost") return undefined;
+      return projectId === "p1" ? [{ agentId: "a1" }] : [];
+    },
     getTools: () => [],
     getTool: () => undefined,
     getAuditEvents: (_p: unknown, q: unknown) => {
@@ -188,6 +198,83 @@ test("api: unknown resource id is 404", async () => {
       headers: { authorization: "Bearer good" },
     });
     assert.equal(res.status, 404);
+  });
+});
+
+test("api: GET /projects/:projectId/agents returns the resolved Agents", async () => {
+  const api = makeApi();
+  await withServer(api, async (base) => {
+    const res = await fetch(`${base}/api/projects/p1/agents`, {
+      headers: { authorization: "Bearer good" },
+    });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), [{ agentId: "a1" }]);
+  });
+  assert.deepEqual(rec(api).projectAgentsCall, { projectId: "p1" });
+});
+
+test("api: GET /projects/:projectId/agents is 404 for an unknown/inaccessible project", async () => {
+  await withServer(makeApi(), async (base) => {
+    const res = await fetch(`${base}/api/projects/ghost/agents`, {
+      headers: { authorization: "Bearer good" },
+    });
+    assert.equal(res.status, 404);
+    assert.deepEqual(await res.json(), {
+      error: { message: "resource not found" },
+    });
+  });
+});
+
+test("api: GET /projects/:projectId/agents requires authentication", async () => {
+  await withServer(makeApi(), async (base) => {
+    const res = await fetch(`${base}/api/projects/p1/agents`);
+    assert.equal(res.status, 401);
+    assert.deepEqual(await res.json(), {
+      error: { message: "authentication required" },
+    });
+  });
+});
+
+test("api: GET /projects/:projectId/<other> and deep project paths are 404", async () => {
+  await withServer(makeApi(), async (base) => {
+    const other = await fetch(`${base}/api/projects/p1/tasks`, {
+      headers: { authorization: "Bearer good" },
+    });
+    assert.equal(other.status, 404);
+    const deep = await fetch(`${base}/api/projects/p1/agents/more`, {
+      headers: { authorization: "Bearer good" },
+    });
+    assert.equal(deep.status, 404);
+  });
+});
+
+test("api: workflow query-string filters reach the query service", async () => {
+  const api = makeApi();
+  await withServer(api, async (base) => {
+    await fetch(`${base}/api/workflows?projectId=parent&limit=10&cursor=5`, {
+      headers: { authorization: "Bearer good" },
+    });
+  });
+  assert.deepEqual(rec(api).workflowQuery, {
+    projectId: "parent",
+    limit: 10,
+    cursor: "5",
+  });
+});
+
+test("api: invalid workflow limit is dropped; oversized limit passes to the service to be clamped", async () => {
+  const api = makeApi();
+  await withServer(api, async (base) => {
+    await fetch(`${base}/api/workflows?projectId=parent&limit=banana`, {
+      headers: { authorization: "Bearer good" },
+    });
+    await fetch(`${base}/api/workflows?projectId=parent&limit=1000000`, {
+      headers: { authorization: "Bearer good" },
+    });
+  });
+  assert.deepEqual(rec(api).workflowQuery, {
+    projectId: "parent",
+    limit: 1000000,
   });
 });
 
