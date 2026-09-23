@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import "./ui.css";
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -8,7 +8,8 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 }
 
 export function Textarea({ label, description, error, id, ...rest }: TextareaProps) {
-  const idVal = id || `textarea-${Math.random().toString(36).slice(2,8)}`;
+  const autoId = useId();
+  const idVal = id ?? `textarea-${autoId}`;
   return (
     <div className="ui-field">
       {label ? <label htmlFor={idVal}>{label}</label> : null}

@@ -1,15 +1,20 @@
-import React from "react";
+import React, { useId } from "react";
 import "./ui.css";
 
 export interface DropdownProps {
-  trigger: React.ReactElement<any, any>;
+  trigger: React.ReactElement<{ onClick?: React.MouseEventHandler }>;
   children: React.ReactNode;
 }
 
 export function Dropdown({ trigger, children }: DropdownProps) {
   const [open, setOpen] = React.useState(false);
-  const id = `dropdown-${Math.random().toString(36).slice(2,8)}`;
-  const t = React.cloneElement(trigger as any, { onClick: (e: any) => { e?.preventDefault(); setOpen((v: boolean) => !v); } } as any);
+  const id = useId();
+  const t = React.cloneElement(trigger, {
+    onClick: (e: React.MouseEvent) => {
+      e.preventDefault();
+      setOpen((v) => !v);
+    },
+  });
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       {t}

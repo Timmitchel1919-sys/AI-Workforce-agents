@@ -1,5 +1,4 @@
 import {
-  createContext,
   useEffect,
   useMemo,
   useState,
@@ -10,8 +9,7 @@ import type {
   ThemeContextValue,
   ThemeMode,
 } from "./theme.types";
-
-export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+import { ThemeContext } from "./themeContext";
 
 const THEME_STORAGE_KEY = "ai-workforce-theme";
 

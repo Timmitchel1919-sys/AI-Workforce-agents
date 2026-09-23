@@ -237,7 +237,13 @@ const DEVELOPMENT_TASKS: TaskDetail[] = [
 
 export function getDevelopmentTasksFallback(): TasksSnapshot {
   return {
-    tasks: DEVELOPMENT_TASKS.map(({ timeline, executionSummary, ...summaryItem }) => summaryItem),
+    tasks: DEVELOPMENT_TASKS.map(
+      ({ timeline, executionSummary, ...summaryItem }) => {
+        void timeline;
+        void executionSummary;
+        return summaryItem;
+      },
+    ),
     summary: {
       total: DEVELOPMENT_TASKS.length,
       running: DEVELOPMENT_TASKS.filter((t) => t.status === "running").length,

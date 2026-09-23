@@ -10,23 +10,32 @@ export interface TabsProps {
 }
 
 export function Tabs({ items, activeId, onChange }: TabsProps) {
-  const [active, setActive] = React.useState(activeId ?? items[0]?.id);
+  const [activeInternal, setActiveInternal] = React.useState(
+    activeId ?? items[0]?.id,
+  );
   const listRef = React.useRef<HTMLDivElement | null>(null);
 
-  React.useEffect(() => { if (activeId) setActive(activeId); }, [activeId]);
+  const active = activeId ?? activeInternal;
+
+  const select = (id: string) => {
+    if (activeId === undefined) {
+      setActiveInternal(id);
+    }
+    onChange?.(id);
+  };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     const currentIndex = items.findIndex(i => i.id === active);
     if (e.key === 'ArrowRight') {
       const next = items[(currentIndex + 1) % items.length];
-      setActive(next.id); onChange?.(next.id);
+      select(next.id);
     } else if (e.key === 'ArrowLeft') {
       const prev = items[(currentIndex - 1 + items.length) % items.length];
-      setActive(prev.id); onChange?.(prev.id);
+      select(prev.id);
     } else if (e.key === 'Home') {
-      setActive(items[0].id); onChange?.(items[0].id);
+      select(items[0].id);
     } else if (e.key === 'End') {
-      setActive(items[items.length - 1].id); onChange?.(items[items.length - 1].id);
+      select(items[items.length - 1].id);
     }
   };
 
@@ -34,7 +43,7 @@ export function Tabs({ items, activeId, onChange }: TabsProps) {
     <div>
       <div ref={listRef} role="tablist" aria-label="Tabs" style={{ display: 'flex', gap: 8 }} onKeyDown={onKeyDown}>
         {items.map(item => (
-          <button key={item.id} role="tab" aria-selected={active === item.id} tabIndex={active === item.id ? 0 : -1} onClick={() => { setActive(item.id); onChange?.(item.id); }}>{item.label}</button>
+          <button key={item.id} role="tab" aria-selected={active === item.id} tabIndex={active === item.id ? 0 : -1} onClick={() => select(item.id)}>{item.label}</button>
         ))}
       </div>
       <div>

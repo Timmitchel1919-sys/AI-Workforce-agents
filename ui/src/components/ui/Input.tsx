@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import "./ui.css";
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -8,7 +8,8 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 }
 
 export function Input({ label, description, error, id, ...rest }: InputProps) {
-  const inputId = id || `input-${Math.random().toString(36).slice(2,8)}`;
+  const autoId = useId();
+  const inputId = id ?? `input-${autoId}`;
   return (
     <div className="ui-field">
       {label ? <label htmlFor={inputId}>{label}</label> : null}

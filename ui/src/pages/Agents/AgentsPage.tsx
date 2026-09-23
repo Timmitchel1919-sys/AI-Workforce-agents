@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Input, Pagination, Select } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
@@ -28,8 +28,11 @@ function formatMetricLabel(value: number, label: string) {
 
 export default function AgentsPage() {
   const { data, status, refetch } = useAgents();
-  const agents = data?.agents ?? [];
-  const summary = data?.summary ?? { total: 0, active: 0, idle: 0, offline: 0, healthy: 0 };
+  const agents = useMemo(() => data?.agents ?? [], [data]);
+  const summary = useMemo(
+    () => data?.summary ?? { total: 0, active: 0, idle: 0, offline: 0, healthy: 0 },
+    [data],
+  );
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<(typeof statusOptions)[number]>("all");
@@ -64,10 +67,6 @@ export default function AgentsPage() {
       return matchesQuery && matchesStatus && matchesCapability && matchesProject;
     });
   }, [agents, capabilityFilter, projectFilter, query, statusFilter]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [query, statusFilter, capabilityFilter, projectFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAgents.length / PAGE_SIZE));
   const pagedAgents = filteredAgents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -164,7 +163,10 @@ export default function AgentsPage() {
                 id="agent-search"
                 type="search"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search agents..."
                 aria-label="Search agents"
               />
@@ -175,7 +177,10 @@ export default function AgentsPage() {
                 id="status-filter"
                 label="Status"
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as (typeof statusOptions)[number])}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value as (typeof statusOptions)[number]);
+                  setPage(1);
+                }}
               >
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>
@@ -188,7 +193,10 @@ export default function AgentsPage() {
                 id="capability-filter"
                 label="Capability"
                 value={capabilityFilter}
-                onChange={(event) => setCapabilityFilter(event.target.value)}
+                onChange={(event) => {
+                  setCapabilityFilter(event.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="all">All capabilities</option>
                 {capabilities.map((capability) => (
@@ -202,7 +210,10 @@ export default function AgentsPage() {
                 id="project-filter"
                 label="Project"
                 value={projectFilter}
-                onChange={(event) => setProjectFilter(event.target.value)}
+                onChange={(event) => {
+                  setProjectFilter(event.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="all">All projects</option>
                 {projects.map((project) => (
@@ -227,6 +238,7 @@ export default function AgentsPage() {
                 setStatusFilter("all");
                 setCapabilityFilter("all");
                 setProjectFilter("all");
+                setPage(1);
               }}
             />
           ) : (

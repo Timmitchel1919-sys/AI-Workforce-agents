@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   getAuth,
   onAuthStateChanged,
@@ -14,6 +7,7 @@ import {
 } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import type { AuthContextValue, AuthUser } from "./auth.types";
+import { authContext } from "./authContext";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,8 +21,6 @@ const firebaseConfigured =
   Boolean(firebaseConfig.authDomain) &&
   Boolean(firebaseConfig.projectId) &&
   Boolean(firebaseConfig.appId);
-
-const authContext = createContext<AuthContextValue | undefined>(undefined);
 
 function mapFirebaseUser(user: User): AuthUser {
   return {
@@ -49,7 +41,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     if (!firebaseConfigured) {
-      setLoading(false);
       return;
     }
 
@@ -98,14 +89,4 @@ export function AuthProvider({ children }: AuthProviderProps) {
       {children}
     </authContext.Provider>
   );
-}
-
-export function useAuthContext() {
-  const context = useContext(authContext);
-
-  if (!context) {
-    throw new Error("useAuthContext must be used inside AuthProvider");
-  }
-
-  return context;
 }

@@ -1,15 +1,21 @@
-import React from "react";
+import React, { useId } from "react";
 import "./ui.css";
 
 export interface TooltipProps {
   content: React.ReactNode;
-  children: React.ReactElement<any, any>;
+  children: React.ReactElement<{
+    title?: string;
+    "aria-describedby"?: string;
+  }>;
 }
 
 export function Tooltip({ content, children }: TooltipProps) {
   // Lightweight accessible tooltip using title and aria-describedby fallback
-  const id = `tooltip-${Math.random().toString(36).slice(2,8)}`;
-  const child = React.cloneElement(children as any, { title: typeof content === 'string' ? content : undefined, "aria-describedby": id } as any);
+  const id = useId();
+  const child = React.cloneElement(children, {
+    title: typeof content === 'string' ? content : undefined,
+    'aria-describedby': id,
+  });
   return (
     <span style={{ position: 'relative' }}>
       {child}

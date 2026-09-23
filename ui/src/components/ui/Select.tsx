@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import "./ui.css";
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -8,7 +8,8 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 }
 
 export function Select({ label, description, error, id, children, ...rest }: SelectProps) {
-  const idVal = id || `select-${Math.random().toString(36).slice(2,8)}`;
+  const autoId = useId();
+  const idVal = id ?? `select-${autoId}`;
   return (
     <div className="ui-field">
       {label ? <label htmlFor={idVal}>{label}</label> : null}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import "./ui.css";
 
 export interface SwitchProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -7,7 +7,8 @@ export interface SwitchProps extends React.InputHTMLAttributes<HTMLInputElement>
 }
 
 export function Switch({ label, description, id, checked, ...rest }: SwitchProps) {
-  const idVal = id || `switch-${Math.random().toString(36).slice(2,8)}`;
+  const autoId = useId();
+  const idVal = id ?? `switch-${autoId}`;
   return (
     <div className="ui-field">
       <label htmlFor={idVal} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

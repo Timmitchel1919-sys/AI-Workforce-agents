@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Pagination } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
@@ -29,14 +29,18 @@ const priorityOptions = ["all", "low", "medium", "high", "critical", "urgent"] a
 
 export default function TasksPage() {
   const { data, status, refetch } = useTasks();
-  const tasks = data?.tasks ?? [];
-  const summary = data?.summary ?? {
-    total: 0,
-    running: 0,
-    completed: 0,
-    failed: 0,
-    pending: 0,
-  };
+  const tasks = useMemo(() => data?.tasks ?? [], [data]);
+  const summary = useMemo(
+    () =>
+      data?.summary ?? {
+        total: 0,
+        running: 0,
+        completed: 0,
+        failed: 0,
+        pending: 0,
+      },
+    [data],
+  );
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -59,10 +63,6 @@ export default function TasksPage() {
       return matchesQuery && matchesStatus && matchesPriority;
     });
   }, [tasks, query, statusFilter, priorityFilter]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [query, statusFilter, priorityFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE));
   const pagedTasks = filteredTasks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -145,11 +145,20 @@ export default function TasksPage() {
         <PageSection>
           <TaskFilters
             query={query}
-            onQueryChange={setQuery}
+            onQueryChange={(value) => {
+              setQuery(value);
+              setPage(1);
+            }}
             statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
+            onStatusFilterChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
             priorityFilter={priorityFilter}
-            onPriorityFilterChange={setPriorityFilter}
+            onPriorityFilterChange={(value) => {
+              setPriorityFilter(value);
+              setPage(1);
+            }}
             statusOptions={statusOptions}
             priorityOptions={priorityOptions}
           />
@@ -166,6 +175,7 @@ export default function TasksPage() {
                 setQuery("");
                 setStatusFilter("all");
                 setPriorityFilter("all");
+                setPage(1);
               }}
             />
           ) : (

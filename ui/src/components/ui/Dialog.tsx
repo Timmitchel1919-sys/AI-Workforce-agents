@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import "./ui.css";
 
 export interface DialogProps {
@@ -10,6 +10,8 @@ export interface DialogProps {
 }
 
 export function Dialog({ open, onClose, title, description, children }: DialogProps) {
+  const generatedId = useId();
+
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
     if (open) document.addEventListener('keydown', onKey);
@@ -17,8 +19,8 @@ export function Dialog({ open, onClose, title, description, children }: DialogPr
   }, [open, onClose]);
 
   if (!open) return null;
-  const titleId = title ? `dialog-title-${Math.random().toString(36).slice(2,8)}` : undefined;
-  const descId = description ? `dialog-desc-${Math.random().toString(36).slice(2,8)}` : undefined;
+  const titleId = title ? `dialog-title-${generatedId}` : undefined;
+  const descId = description ? `dialog-desc-${generatedId}` : undefined;
 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.4)' }} onClick={onClose}>
