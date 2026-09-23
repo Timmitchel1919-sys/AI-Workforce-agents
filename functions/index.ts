@@ -32,6 +32,9 @@ export const controlPlaneApi = onRequest(
     cpu: CONTROL_PLANE_CPU,
     timeoutSeconds: CONTROL_PLANE_TIMEOUT_SECONDS,
     maxInstances: CONTROL_PLANE_MAX_INSTANCES,
+    // The HTTPS endpoint is reachable publicly; the Control Plane itself
+    // authenticates and authorizes every protected route.
+    invoker: "public",
     cors: false,
     secrets: [openAiApiKey],
   },

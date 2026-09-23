@@ -29,3 +29,4 @@ temp/
 # Firebase Data Connect scaffolding — generated sources, never hand-edited
 dataconnect/
 ui/src/dataconnect-generated/
+functions.yaml

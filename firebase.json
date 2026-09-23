@@ -10,7 +10,7 @@
     "source": ".",
     "codebase": "control-plane",
     "runtime": "nodejs22",
-    "predeploy": ["npm run functions:build"],
+    "predeploy": ["npm run functions:prepare"],
     "ignore": [
       ".git",
       "node_modules",
@@ -20,6 +20,7 @@
       "dataconnect",
       "temp",
       "docs",
+      "scripts",
       "tests",
       "ui",
       "*.log",

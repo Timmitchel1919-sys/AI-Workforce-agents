@@ -61,7 +61,28 @@ export class FirebaseRepositoryProvider {
 
   /** Hydrate every repository created so far. Await before serving traffic. */
   async hydrateAll(): Promise<void> {
-    for (const repo of this.repos.values()) await repo.hydrate();
+    for (const [collection, repo] of this.repos) {
+      try {
+        await repo.hydrate();
+      } catch (cause) {
+        // Preserve a machine-readable provider code while ensuring callers do
+        // not log the provider's original error text or request details.
+        const candidateCode =
+          cause && typeof cause === "object" && "code" in cause
+            ? (cause as { code?: unknown }).code
+            : undefined;
+        const error = new Error("Control Plane repository hydration failed");
+        Object.assign(error, {
+          safePhase: "firestore_hydration",
+          collection,
+          ...(typeof candidateCode === "string" ||
+          typeof candidateCode === "number"
+            ? { code: candidateCode }
+            : {}),
+        });
+        throw error;
+      }
+    }
   }
 
   /** Await every pending background write. Call on graceful shutdown. */
