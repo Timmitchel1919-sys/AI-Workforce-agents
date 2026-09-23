@@ -99,8 +99,9 @@
   text-align: center;
 }
 
-.auth-brand .lp-core {
-  width: clamp(200px, min(26vw, 34vh), 340px);
+.auth-emblem {
+  --emblem-logo-w: clamp(150px, min(17vw, 24vh), 230px);
+  margin: calc(var(--emblem-stage) * -0.1) 0 calc(var(--emblem-stage) * -0.12);
 }
 
 .auth-brand__name {
@@ -869,11 +870,9 @@
     text-transform: uppercase;
   }
 
-  .auth-mobile-brand img {
-    width: 44px;
-    height: 44px;
-    object-fit: contain;
-    filter: drop-shadow(0 0 14px rgba(47, 123, 255, 0.45));
+  .auth-mobile-emblem {
+    --emblem-logo-w: 72px;
+    margin: -22px 0 -26px;
   }
 
   .auth-mobile-copy {

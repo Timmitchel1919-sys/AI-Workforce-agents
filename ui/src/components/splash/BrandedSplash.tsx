@@ -10,15 +10,15 @@ import {
   useInitialization,
   type InitStage,
 } from "./initialization";
-import { SplashLogo3D } from "./SplashLogo3D";
-import { SplashEarth, SplashOrbits } from "./SplashScenery";
+import { EarthHorizon } from "../brand/EmblemScenery";
+import { RotatingEmblem } from "../brand/RotatingEmblem";
 import "../../styles/os-theme.css";
 import "./BrandedSplash.css";
 
-/** One full Y-axis revolution. Must match `--splash-spin` in the CSS. */
+/** One full Y-axis revolution. Must match `--emblem-spin` in the CSS. */
 export const SPIN_MS = 10_000;
-/** Prevents a flash on fast loads; never waits for a full rotation. */
-export const MIN_DISPLAY_MS = 1_400;
+/** Branded intro length (owner requirement). Progress is paced over it but never runs ahead of real work. */
+export const MIN_DISPLAY_MS = 15_000;
 export const EXIT_MS = 800;
 
 export interface BrandedSplashProps {
@@ -65,7 +65,9 @@ export function BrandedSplash({
 }: BrandedSplashProps) {
   const auth = useAuth();
   const [reducedMotion] = useState(prefersReducedMotion);
-  const [minElapsed, setMinElapsed] = useState(false);
+  const [minElapsed, setMinElapsed] = useState(minDisplayMs <= 0);
+  const [elapsedFraction, setElapsedFraction] = useState(minDisplayMs <= 0 ? 1 : 0);
+  const [skipped, setSkipped] = useState(false);
   const mountedAt = useRef(0);
   const spinnerRef = useRef<HTMLDivElement | null>(null);
   const onFinishedRef = useRef(onFinished);
@@ -92,16 +94,28 @@ export function BrandedSplash({
     maxWaitMs,
   });
 
-  // Minimum display duration (shorter with reduced motion).
+  // Display duration, ticked so the progress bar can pace itself over it.
   useEffect(() => {
+    if (minDisplayMs <= 0) return;
     // Development-only design QA: `?splash-hold` keeps the splash on screen.
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("splash-hold")) return;
-    const timer = window.setTimeout(() => setMinElapsed(true), reducedMotion ? Math.min(minDisplayMs, 600) : minDisplayMs);
-    return () => window.clearTimeout(timer);
-  }, [minDisplayMs, reducedMotion]);
+    const start = performance.now();
+    const interval = window.setInterval(() => {
+      const fraction = Math.min(1, (performance.now() - start) / minDisplayMs);
+      setElapsedFraction(fraction);
+      if (fraction >= 1) {
+        setMinElapsed(true);
+        window.clearInterval(interval);
+      }
+    }, 100);
+    return () => window.clearInterval(interval);
+  }, [minDisplayMs]);
 
   const finished = init.phase === "ready" || init.phase === "degraded";
-  const exiting = finished && minElapsed;
+  const exiting = finished && (minElapsed || skipped);
+  // Paced over the intro, but never ahead of the real initialization stages.
+  const progress = Math.min(init.progress, Math.round(elapsedFraction * 100));
+  const message = finished && progress < 100 ? "Starting AI Workforce OS…" : init.message;
 
   // Exit: settle the emblem to its front face, then fade the splash away.
   useEffect(() => {
@@ -154,7 +168,7 @@ export function BrandedSplash({
       aria-busy={!finished}
     >
       <BackgroundField />
-      <SplashEarth />
+      <EarthHorizon />
 
       <header className="splash-top">
         <div className="splash-brand">
@@ -192,17 +206,7 @@ export function BrandedSplash({
       </aside>
 
       <main className="splash-center">
-        <div className="splash-stage">
-          <SplashOrbits />
-          <div className="splash-sphere" aria-hidden="true" />
-          <div className="splash-scene">
-            <div className="splash-equator" aria-hidden="true">
-              <span />
-              <span />
-            </div>
-            <SplashLogo3D ref={spinnerRef} still={reducedMotion} />
-          </div>
-        </div>
+        <RotatingEmblem ref={spinnerRef} still={reducedMotion} className="splash-emblem" />
 
         <p className="splash-kicker">The next generation</p>
         <h1 className="splash-title">AI Workforce</h1>
@@ -234,16 +238,21 @@ export function BrandedSplash({
               aria-label="Initialization progress"
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={init.progress}
+              aria-valuenow={progress}
             >
-              <span className="splash-progress__fill" style={{ width: `${init.progress}%` }} />
+              <span className="splash-progress__fill" style={{ width: `${progress}%` }} />
             </div>
             <div className="splash-progress__meta">
               <span className="splash-progress__message" aria-live="polite">
-                {init.message}
+                {message}
               </span>
-              <span className="splash-progress__value">{init.progress}%</span>
+              <span className="splash-progress__value">{progress}%</span>
             </div>
+            {finished && !exiting ? (
+              <button type="button" className="splash-skip" onClick={() => setSkipped(true)}>
+                Skip intro
+              </button>
+            ) : null}
           </div>
         )}
       </main>

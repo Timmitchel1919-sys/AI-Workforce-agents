@@ -2,15 +2,17 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { useHeroScrollProgress } from "../hooks/useLandingMotion";
 import { CONTROL_CENTER_ROUTE, scrollToSection } from "../landingActions";
-import { LogoCore } from "../../../components/brand/LogoCore";
+import { EarthHorizon } from "../../../components/brand/EmblemScenery";
+import { RotatingEmblem } from "../../../components/brand/RotatingEmblem";
 
 export function HeroSection() {
   useHeroScrollProgress();
 
   return (
     <section id="top" className="lp-hero" aria-labelledby="lp-hero-title">
+      <EarthHorizon />
       <div className="lp-hero__inner">
-        <LogoCore />
+        <RotatingEmblem className="lp-hero-emblem" />
 
         <h1 id="lp-hero-title" className="lp-hero__title">
           AI Workforce

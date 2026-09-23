@@ -63,12 +63,12 @@ describe("BrandedSplash", () => {
   it("renders the 3D emblem (front, back, extrusion, side) and accessible progress", () => {
     renderSplash({ loadChunk: () => new Promise(() => {}) });
 
-    const logo = screen.getByTestId("splash-logo");
-    expect(logo.querySelector(".splash-logo__spinner")).not.toHaveClass("is-still");
-    expect(logo.querySelector(".splash-logo__face--front img")).toHaveAttribute("alt", expect.stringMatching(/AI Workforce logo/));
-    expect(logo.querySelector(".splash-logo__face--back")).not.toBeNull();
-    expect(logo.querySelectorAll(".splash-logo__slice").length).toBeGreaterThan(8);
-    expect(logo.querySelectorAll(".splash-logo__side")).toHaveLength(2);
+    const logo = screen.getByTestId("emblem-logo");
+    expect(logo.querySelector(".emblem-logo__spinner")).not.toHaveClass("is-still");
+    expect(logo.querySelector(".emblem-logo__face--front img")).toHaveAttribute("alt", expect.stringMatching(/AI Workforce logo/));
+    expect(logo.querySelector(".emblem-logo__face--back")).not.toBeNull();
+    expect(logo.querySelectorAll(".emblem-logo__slice").length).toBeGreaterThan(8);
+    expect(logo.querySelectorAll(".emblem-logo__side")).toHaveLength(2);
     expect(screen.getByRole("progressbar", { name: /Initialization progress/i })).toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: /AI Workforce is starting/i })).toHaveAttribute("aria-busy", "true");
   });
@@ -130,8 +130,22 @@ describe("BrandedSplash", () => {
     setReducedMotion(true);
     const { container, onFinished } = renderSplash();
 
-    expect(container.querySelector(".splash-logo__spinner")).toHaveClass("is-still");
+    expect(container.querySelector(".emblem-logo__spinner")).toHaveClass("is-still");
     expect(container.querySelector(".splash")).toHaveClass("is-reduced");
+    await waitFor(() => expect(onFinished).toHaveBeenCalled(), { timeout: 3000 });
+  });
+
+  it("paces progress over the intro and offers skip only once initialization is real-ready", async () => {
+    const pending = renderSplash({ minDisplayMs: 60_000, loadChunk: () => new Promise(() => {}) });
+    expect(screen.queryByRole("button", { name: /Skip intro/i })).toBeNull();
+    pending.unmount();
+
+    const { onFinished } = renderSplash({ minDisplayMs: 60_000 });
+    const skip = await screen.findByRole("button", { name: /Skip intro/i });
+    // Real stages are done, but the paced bar is nowhere near 100% yet.
+    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuenow"))).toBeLessThan(10);
+    expect(onFinished).not.toHaveBeenCalled();
+    skip.click();
     await waitFor(() => expect(onFinished).toHaveBeenCalled(), { timeout: 3000 });
   });
 

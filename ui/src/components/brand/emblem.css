@@ -1,0 +1,379 @@
+/* Shared 3D AI Workforce emblem + Earth horizon.
+   Used by the splash, the landing page and the auth gateway so all three show
+   the same physical, Y-axis-rotating logo. Size is driven by --emblem-logo-w. */
+
+.emblem {
+  --emblem-spin: 10s;
+  --emblem-logo-w: 240px;
+  --emblem-depth: calc(var(--emblem-logo-w) * 0.12);
+  --emblem-stage: calc(var(--emblem-logo-w) * 1.72);
+}
+
+.emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* The orbital field may exceed narrow screens; it is decorative, so it never widens the layout. */
+  width: min(var(--emblem-stage), 100vw);
+  height: min(var(--emblem-stage), 100vw);
+}
+
+.emblem-orbits {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transition: opacity 600ms var(--lp-ease), transform 800ms var(--lp-ease);
+}
+
+.emblem-orbits__ring {
+  transform-box: view-box;
+  transform-origin: 300px 300px;
+}
+
+.emblem-orbits__ring--inner { animation: lp-rotate 18s linear infinite; }
+.emblem-orbits__ring--middle { animation: lp-rotate 26s linear infinite reverse; }
+.emblem-orbits__ring--outer { animation: lp-rotate 40s linear infinite; }
+
+.emblem-orbits circle,
+.emblem-orbits line,
+.emblem-orbits path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.emblem-orbits__line { stroke: rgba(100, 170, 255, 0.22); stroke-width: 1; }
+.emblem-orbits__tick { stroke: rgba(130, 190, 255, 0.4); stroke-width: 1; }
+.emblem-orbits__hud { stroke: rgba(106, 174, 255, 0.55); stroke-width: 2; stroke-linecap: round; }
+.emblem-orbits__gold { stroke-width: 1.2; opacity: 0.75; }
+.emblem-orbits__dashed { stroke: rgba(100, 170, 255, 0.25); stroke-width: 1; stroke-dasharray: 3 9; }
+
+.emblem-orbits .emblem-orbits__node {
+  fill: var(--lp-cyan);
+  filter: drop-shadow(0 0 4px var(--lp-cyan));
+}
+
+.emblem-orbits .emblem-orbits__node--gold {
+  fill: var(--lp-gold-bright);
+  filter: drop-shadow(0 0 4px var(--lp-gold));
+}
+
+/* Energy sphere the emblem sits in. */
+.emblem-sphere {
+  position: absolute;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(47, 123, 255, 0.28), transparent 58%),
+    radial-gradient(circle at 50% 50%, rgba(8, 26, 78, 0.55), rgba(2, 4, 10, 0) 70%);
+  box-shadow:
+    inset 0 0 40px rgba(47, 123, 255, 0.18),
+    0 0 60px rgba(47, 123, 255, 0.12);
+  border: 1px solid rgba(100, 170, 255, 0.12);
+  animation: lp-breathe 8s ease-in-out infinite;
+}
+
+/* 3D scene: perspective lives here so the logo and the equator share one space. */
+.emblem-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  perspective: 1600px;
+  transform-style: preserve-3d;
+}
+
+/* A tilted orbit around the sphere — its nodes pass in front of and behind the emblem. */
+.emblem-equator {
+  position: absolute;
+  width: 58%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(100, 170, 255, 0.28);
+  border-radius: 50%;
+  transform: rotateX(76deg);
+  transform-style: preserve-3d;
+  animation: emblem-equator 22s linear infinite;
+}
+
+.emblem-equator span {
+  position: absolute;
+  top: -3px;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lp-cyan);
+  box-shadow: 0 0 8px var(--lp-cyan);
+}
+
+.emblem-equator span + span {
+  top: auto;
+  bottom: -3px;
+  background: var(--lp-gold-bright);
+  box-shadow: 0 0 8px var(--lp-gold);
+}
+
+/* ---------- The emblem ----------
+   Everything from .emblem-scene down to the slices must stay in one 3D
+   context: no filter / opacity < 1 / overflow / mix-blend-mode / mask on the
+   container chain, or the emblem flattens and vanishes when side-on. */
+.emblem-logo {
+  position: relative;
+  width: var(--emblem-logo-w);
+  aspect-ratio: 1236 / 948;
+  transform-style: preserve-3d;
+}
+
+.emblem-logo__spinner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  /* True Y-axis rotation — front, side, back, other side, front — never rotateZ. */
+  animation: emblem-spin var(--emblem-spin) linear infinite;
+  will-change: transform;
+}
+
+.emblem-logo__spinner.is-still {
+  animation: none;
+  transform: none;
+}
+
+.emblem-logo__face,
+.emblem-logo__slice,
+.emblem-logo__sheen,
+.emblem-logo__side {
+  position: absolute;
+  inset: 0;
+}
+
+.emblem-logo__face {
+  display: block;
+  backface-visibility: hidden;
+}
+
+.emblem-logo__face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.emblem-logo__face--front {
+  transform: translateZ(calc(var(--emblem-depth) / 2));
+  animation: emblem-light-front var(--emblem-spin) linear infinite;
+}
+
+.emblem-logo__face--back {
+  transform: rotateY(180deg) translateZ(calc(var(--emblem-depth) / 2));
+  animation: emblem-light-back var(--emblem-spin) linear infinite;
+}
+
+/* Gold extrusion: slices cut to the exact logo silhouette via the logo itself as a mask. */
+.emblem-logo__slice,
+.emblem-logo__sheen {
+  -webkit-mask: url("/brand/logo-hero-480.webp") center / 100% 100% no-repeat;
+  mask: url("/brand/logo-hero-480.webp") center / 100% 100% no-repeat;
+}
+
+.emblem-logo__slice {
+  background: linear-gradient(135deg, #f6dc98 0%, #c89a3e 40%, #7a5a1c 70%, #e4c06e 100%);
+}
+
+/* Closes the edge when the emblem is exactly side-on (90° / 270°). */
+.emblem-logo__side {
+  left: 50%;
+  width: var(--emblem-depth);
+  margin-left: calc(var(--emblem-depth) / -2);
+  top: 3%;
+  bottom: 3%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #7a5a1c, #f2d48a 30%, #c89a3e 55%, #f6dc98 75%, #7a5a1c);
+  transform: rotateY(90deg);
+  animation: emblem-light-side var(--emblem-spin) linear infinite;
+}
+
+.emblem-logo__side--far {
+  transform: rotateY(-90deg);
+}
+
+/* Moving specular highlight across blue + gold as the emblem turns. */
+.emblem-logo__sheen {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(180, 215, 255, 0.34) 45%,
+    rgba(255, 240, 200, 0.28) 50%,
+    transparent 64%
+  );
+  background-size: 300% 100%;
+  backface-visibility: hidden;
+  pointer-events: none;
+  /* No mix-blend-mode here: blending forces the 3D context flat in Chromium. */
+}
+
+.emblem-logo__sheen--front {
+  transform: translateZ(calc(var(--emblem-depth) / 2 + 0.5px));
+  animation: emblem-sheen var(--emblem-spin) linear infinite;
+}
+
+.emblem-logo__sheen--back {
+  transform: rotateY(180deg) translateZ(calc(var(--emblem-depth) / 2 + 0.5px));
+  animation: emblem-sheen var(--emblem-spin) linear infinite;
+  animation-delay: calc(var(--emblem-spin) / -2);
+}
+
+/* ---------- Earth ---------- */
+.earth-horizon {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  z-index: 1;
+  width: max(1500px, 150vw);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.earth-horizon__planet {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(30, 80, 200, 0.35), transparent 28%),
+    radial-gradient(circle at 50% 30%, #07122a 0%, #030814 45%, #010207 70%);
+  box-shadow:
+    0 -2px 0 rgba(120, 190, 255, 0.55),
+    0 -18px 60px rgba(47, 123, 255, 0.35),
+    inset 0 30px 80px rgba(47, 123, 255, 0.25);
+}
+
+/* City lights: a sparse gold dot field, masked into continent-like regions, drifting very slowly. */
+.earth-horizon__lights {
+  position: absolute;
+  inset: 0 -50% 0 0;
+  background-image:
+    radial-gradient(circle, rgba(242, 212, 138, 0.9) 0 1px, transparent 1.6px),
+    radial-gradient(circle, rgba(242, 212, 138, 0.55) 0 0.8px, transparent 1.3px);
+  background-size: 22px 18px, 13px 11px;
+  background-position: 0 0, 7px 5px;
+  -webkit-mask-image:
+    radial-gradient(18% 6% at 30% 4%, #000 30%, transparent 70%),
+    radial-gradient(14% 5% at 52% 7%, #000 25%, transparent 70%),
+    radial-gradient(16% 6% at 70% 3%, #000 30%, transparent 70%),
+    radial-gradient(10% 4% at 88% 8%, #000 25%, transparent 70%),
+    radial-gradient(12% 5% at 12% 9%, #000 25%, transparent 70%);
+  mask-image:
+    radial-gradient(18% 6% at 30% 4%, #000 30%, transparent 70%),
+    radial-gradient(14% 5% at 52% 7%, #000 25%, transparent 70%),
+    radial-gradient(16% 6% at 70% 3%, #000 30%, transparent 70%),
+    radial-gradient(10% 4% at 88% 8%, #000 25%, transparent 70%),
+    radial-gradient(12% 5% at 12% 9%, #000 25%, transparent 70%);
+  opacity: 0.7;
+  animation: earth-drift 180s linear infinite;
+}
+
+.earth-horizon__shade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, transparent 20%, rgba(0, 0, 0, 0.55) 45%);
+}
+
+.earth-horizon__network {
+  position: absolute;
+  top: -4%;
+  left: 50%;
+  width: min(100vw, 1500px);
+  height: auto;
+  aspect-ratio: 1500 / 420;
+  transform: translateX(-50%);
+}
+
+.earth-horizon__arc {
+  fill: none;
+  stroke: rgba(100, 170, 255, 0.28);
+  stroke-width: 1;
+}
+
+.earth-horizon__arc.is-gold {
+  stroke: rgba(217, 172, 82, 0.35);
+}
+
+.earth-horizon__pulse {
+  fill: none;
+  stroke: var(--lp-cyan);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 8 100;
+  stroke-dashoffset: 108;
+  animation: lp-pulse-travel 7.6s linear infinite;
+}
+
+.earth-horizon__hub {
+  fill: var(--lp-blue-bright);
+  filter: drop-shadow(0 0 4px var(--lp-blue-bright));
+}
+
+.earth-horizon__hub.is-gold {
+  fill: var(--lp-gold-bright);
+  filter: drop-shadow(0 0 4px var(--lp-gold));
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes emblem-spin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+/* Key light from the viewer: brightest facing us, dimmer edge-on. */
+@keyframes emblem-light-front {
+  0%, 100% { filter: brightness(1.06) saturate(1.05); }
+  25% { filter: brightness(0.62); }
+  50% { filter: brightness(0.5); }
+  75% { filter: brightness(0.62); }
+}
+
+@keyframes emblem-light-back {
+  0%, 100% { filter: brightness(0.5); }
+  25% { filter: brightness(0.62); }
+  50% { filter: brightness(0.98); }
+  75% { filter: brightness(0.62); }
+}
+
+/* Gold rim light catches the edge when side-on. */
+@keyframes emblem-light-side {
+  0%, 50%, 100% { filter: brightness(0.6); }
+  25%, 75% { filter: brightness(1.2); }
+}
+
+@keyframes emblem-sheen {
+  0% { background-position: 110% 0; }
+  50% { background-position: -10% 0; }
+  100% { background-position: -10% 0; }
+}
+
+@keyframes emblem-equator {
+  from { transform: rotateX(76deg) rotateZ(0deg); }
+  to { transform: rotateX(76deg) rotateZ(360deg); }
+}
+
+@keyframes earth-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-33.33%); }
+}
+
+
+/* ---------- Reduced motion: static front-facing emblem ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .emblem *,
+  .earth-horizon * {
+    animation: none !important;
+  }
+
+  .emblem-logo__spinner {
+    transform: none !important;
+  }
+}

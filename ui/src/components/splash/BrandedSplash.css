@@ -2,10 +2,7 @@
    Tokens and shared primitives: src/styles/os-theme.css. */
 
 .splash {
-  --splash-spin: 10s;
   --splash-logo-w: clamp(180px, min(22vw, 30vh), 320px);
-  --splash-depth: calc(var(--splash-logo-w) * 0.12);
-  --splash-stage: calc(var(--splash-logo-w) * 1.72);
 
   position: fixed;
   inset: 0;
@@ -153,221 +150,9 @@
   text-align: center;
 }
 
-.splash-stage {
-  position: relative;
-  display: grid;
-  place-items: center;
-  /* The orbital field may exceed narrow screens; it is decorative, so it never widens the layout. */
-  width: min(var(--splash-stage), 100vw);
-  height: min(var(--splash-stage), 100vw);
-  margin: calc(var(--splash-stage) * -0.12) 0 calc(var(--splash-stage) * -0.1);
-}
-
-.splash-orbits {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  transition: opacity 600ms var(--lp-ease), transform 800ms var(--lp-ease);
-}
-
-.splash-orbits__ring {
-  transform-box: view-box;
-  transform-origin: 300px 300px;
-}
-
-.splash-orbits__ring--inner { animation: lp-rotate 18s linear infinite; }
-.splash-orbits__ring--middle { animation: lp-rotate 26s linear infinite reverse; }
-.splash-orbits__ring--outer { animation: lp-rotate 40s linear infinite; }
-
-.splash-orbits circle,
-.splash-orbits line,
-.splash-orbits path {
-  fill: none;
-  vector-effect: non-scaling-stroke;
-}
-
-.splash-orbits__line { stroke: rgba(100, 170, 255, 0.22); stroke-width: 1; }
-.splash-orbits__tick { stroke: rgba(130, 190, 255, 0.4); stroke-width: 1; }
-.splash-orbits__hud { stroke: rgba(106, 174, 255, 0.55); stroke-width: 2; stroke-linecap: round; }
-.splash-orbits__gold { stroke-width: 1.2; opacity: 0.75; }
-.splash-orbits__dashed { stroke: rgba(100, 170, 255, 0.25); stroke-width: 1; stroke-dasharray: 3 9; }
-
-.splash-orbits .splash-orbits__node {
-  fill: var(--lp-cyan);
-  filter: drop-shadow(0 0 4px var(--lp-cyan));
-}
-
-.splash-orbits .splash-orbits__node--gold {
-  fill: var(--lp-gold-bright);
-  filter: drop-shadow(0 0 4px var(--lp-gold));
-}
-
-/* Energy sphere the emblem sits in. */
-.splash-sphere {
-  position: absolute;
-  width: 62%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(47, 123, 255, 0.28), transparent 58%),
-    radial-gradient(circle at 50% 50%, rgba(8, 26, 78, 0.55), rgba(2, 4, 10, 0) 70%);
-  box-shadow:
-    inset 0 0 40px rgba(47, 123, 255, 0.18),
-    0 0 60px rgba(47, 123, 255, 0.12);
-  border: 1px solid rgba(100, 170, 255, 0.12);
-  animation: lp-breathe 8s ease-in-out infinite;
-}
-
-/* 3D scene: perspective lives here so the logo and the equator share one space. */
-.splash-scene {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  perspective: 1600px;
-  transform-style: preserve-3d;
-}
-
-/* A tilted orbit around the sphere — its nodes pass in front of and behind the emblem. */
-.splash-equator {
-  position: absolute;
-  width: 58%;
-  aspect-ratio: 1;
-  border: 1px solid rgba(100, 170, 255, 0.28);
-  border-radius: 50%;
-  transform: rotateX(76deg);
-  transform-style: preserve-3d;
-  animation: splash-equator 22s linear infinite;
-}
-
-.splash-equator span {
-  position: absolute;
-  top: -3px;
-  left: calc(50% - 3px);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--lp-cyan);
-  box-shadow: 0 0 8px var(--lp-cyan);
-}
-
-.splash-equator span + span {
-  top: auto;
-  bottom: -3px;
-  background: var(--lp-gold-bright);
-  box-shadow: 0 0 8px var(--lp-gold);
-}
-
-/* ---------- The emblem ----------
-   Everything from .splash-scene down to the slices must stay in one 3D
-   context: no filter / opacity < 1 / overflow / mix-blend-mode / mask on the
-   container chain, or the emblem flattens and vanishes when side-on. */
-.splash-logo {
-  position: relative;
-  width: var(--splash-logo-w);
-  aspect-ratio: 1236 / 948;
-  transform-style: preserve-3d;
-}
-
-.splash-logo__spinner {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  /* True Y-axis rotation — front, side, back, other side, front — never rotateZ. */
-  animation: splash-spin var(--splash-spin) linear infinite;
-  will-change: transform;
-}
-
-.splash-logo__spinner.is-still {
-  animation: none;
-  transform: none;
-}
-
-.splash-logo__face,
-.splash-logo__slice,
-.splash-logo__sheen,
-.splash-logo__side {
-  position: absolute;
-  inset: 0;
-}
-
-.splash-logo__face {
-  display: block;
-  backface-visibility: hidden;
-}
-
-.splash-logo__face img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.splash-logo__face--front {
-  transform: translateZ(calc(var(--splash-depth) / 2));
-  animation: splash-light-front var(--splash-spin) linear infinite;
-}
-
-.splash-logo__face--back {
-  transform: rotateY(180deg) translateZ(calc(var(--splash-depth) / 2));
-  animation: splash-light-back var(--splash-spin) linear infinite;
-}
-
-/* Gold extrusion: slices cut to the exact logo silhouette via the logo itself as a mask. */
-.splash-logo__slice,
-.splash-logo__sheen {
-  -webkit-mask: url("/brand/logo-hero-480.webp") center / 100% 100% no-repeat;
-  mask: url("/brand/logo-hero-480.webp") center / 100% 100% no-repeat;
-}
-
-.splash-logo__slice {
-  background: linear-gradient(135deg, #f6dc98 0%, #c89a3e 40%, #7a5a1c 70%, #e4c06e 100%);
-}
-
-/* Closes the edge when the emblem is exactly side-on (90° / 270°). */
-.splash-logo__side {
-  left: 50%;
-  width: var(--splash-depth);
-  margin-left: calc(var(--splash-depth) / -2);
-  top: 3%;
-  bottom: 3%;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #7a5a1c, #f2d48a 30%, #c89a3e 55%, #f6dc98 75%, #7a5a1c);
-  transform: rotateY(90deg);
-  animation: splash-light-side var(--splash-spin) linear infinite;
-}
-
-.splash-logo__side--far {
-  transform: rotateY(-90deg);
-}
-
-/* Moving specular highlight across blue + gold as the emblem turns. */
-.splash-logo__sheen {
-  background: linear-gradient(
-    105deg,
-    transparent 30%,
-    rgba(180, 215, 255, 0.34) 45%,
-    rgba(255, 240, 200, 0.28) 50%,
-    transparent 64%
-  );
-  background-size: 300% 100%;
-  backface-visibility: hidden;
-  pointer-events: none;
-  /* No mix-blend-mode here: blending forces the 3D context flat in Chromium. */
-}
-
-.splash-logo__sheen--front {
-  transform: translateZ(calc(var(--splash-depth) / 2 + 0.5px));
-  animation: splash-sheen var(--splash-spin) linear infinite;
-}
-
-.splash-logo__sheen--back {
-  transform: rotateY(180deg) translateZ(calc(var(--splash-depth) / 2 + 0.5px));
-  animation: splash-sheen var(--splash-spin) linear infinite;
-  animation-delay: calc(var(--splash-spin) / -2);
+.splash-emblem {
+  --emblem-logo-w: var(--splash-logo-w);
+  margin: calc(var(--emblem-stage) * -0.12) 0 calc(var(--emblem-stage) * -0.1);
 }
 
 /* ---------- Typography ---------- */
@@ -451,19 +236,20 @@
   height: 4px;
   overflow: hidden;
   border-radius: 4px;
-  background: rgba(100, 170, 255, 0.12);
+  background: rgba(217, 172, 82, 0.14);
 }
 
 .splash-progress__fill {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, #1a4fd6, var(--lp-blue-bright));
-  box-shadow: 0 0 12px rgba(47, 123, 255, 0.6);
-  transition: width 500ms var(--lp-ease);
+  /* The logo's metallic gold: deep bronze → gold → highlight. */
+  background: linear-gradient(90deg, #7a5a1c, #c89a3e 45%, var(--lp-gold) 75%, var(--lp-gold-bright));
+  box-shadow: 0 0 12px rgba(217, 172, 82, 0.55);
+  transition: width 300ms linear;
 }
 
-/* Thin gold active edge. */
+/* Bright active edge. */
 .splash-progress__fill::after {
   content: "";
   position: absolute;
@@ -471,8 +257,8 @@
   right: 0;
   bottom: -1px;
   width: 2px;
-  background: var(--lp-gold-bright);
-  box-shadow: 0 0 8px var(--lp-gold);
+  background: #fff4d6;
+  box-shadow: 0 0 10px var(--lp-gold-bright);
 }
 
 .splash-progress__meta {
@@ -488,8 +274,32 @@
 }
 
 .splash-progress__value {
-  color: var(--lp-text-secondary);
+  color: var(--lp-gold-bright);
   font-variant-numeric: tabular-nums;
+}
+
+.splash-skip {
+  display: block;
+  margin: 14px auto 0;
+  padding: 6px 14px;
+  border: 1px solid var(--lp-glass-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lp-text-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color var(--lp-hover) var(--lp-ease),
+    border-color var(--lp-hover) var(--lp-ease);
+}
+
+.splash-skip:hover {
+  color: var(--lp-text);
+  border-color: var(--lp-gold-soft);
 }
 
 .splash-error {
@@ -613,103 +423,6 @@
   color: var(--lp-blue-bright);
 }
 
-/* ---------- Earth ---------- */
-.splash-earth {
-  position: absolute;
-  left: 50%;
-  top: 58%;
-  z-index: 1;
-  width: max(1500px, 150vw);
-  aspect-ratio: 1;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.splash-earth__planet {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(30, 80, 200, 0.35), transparent 28%),
-    radial-gradient(circle at 50% 30%, #07122a 0%, #030814 45%, #010207 70%);
-  box-shadow:
-    0 -2px 0 rgba(120, 190, 255, 0.55),
-    0 -18px 60px rgba(47, 123, 255, 0.35),
-    inset 0 30px 80px rgba(47, 123, 255, 0.25);
-}
-
-/* City lights: a sparse gold dot field, masked into continent-like regions, drifting very slowly. */
-.splash-earth__lights {
-  position: absolute;
-  inset: 0 -50% 0 0;
-  background-image:
-    radial-gradient(circle, rgba(242, 212, 138, 0.9) 0 1px, transparent 1.6px),
-    radial-gradient(circle, rgba(242, 212, 138, 0.55) 0 0.8px, transparent 1.3px);
-  background-size: 22px 18px, 13px 11px;
-  background-position: 0 0, 7px 5px;
-  -webkit-mask-image:
-    radial-gradient(18% 6% at 30% 4%, #000 30%, transparent 70%),
-    radial-gradient(14% 5% at 52% 7%, #000 25%, transparent 70%),
-    radial-gradient(16% 6% at 70% 3%, #000 30%, transparent 70%),
-    radial-gradient(10% 4% at 88% 8%, #000 25%, transparent 70%),
-    radial-gradient(12% 5% at 12% 9%, #000 25%, transparent 70%);
-  mask-image:
-    radial-gradient(18% 6% at 30% 4%, #000 30%, transparent 70%),
-    radial-gradient(14% 5% at 52% 7%, #000 25%, transparent 70%),
-    radial-gradient(16% 6% at 70% 3%, #000 30%, transparent 70%),
-    radial-gradient(10% 4% at 88% 8%, #000 25%, transparent 70%),
-    radial-gradient(12% 5% at 12% 9%, #000 25%, transparent 70%);
-  opacity: 0.7;
-  animation: splash-earth-drift 180s linear infinite;
-}
-
-.splash-earth__shade {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 0%, transparent 20%, rgba(0, 0, 0, 0.55) 45%);
-}
-
-.splash-earth__network {
-  position: absolute;
-  top: -4%;
-  left: 50%;
-  width: min(100vw, 1500px);
-  height: auto;
-  aspect-ratio: 1500 / 420;
-  transform: translateX(-50%);
-}
-
-.splash-earth__arc {
-  fill: none;
-  stroke: rgba(100, 170, 255, 0.28);
-  stroke-width: 1;
-}
-
-.splash-earth__arc.is-gold {
-  stroke: rgba(217, 172, 82, 0.35);
-}
-
-.splash-earth__pulse {
-  fill: none;
-  stroke: var(--lp-cyan);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-dasharray: 8 100;
-  stroke-dashoffset: 108;
-  animation: lp-pulse-travel 7.6s linear infinite;
-}
-
-.splash-earth__hub {
-  fill: var(--lp-blue-bright);
-  filter: drop-shadow(0 0 4px var(--lp-blue-bright));
-}
-
-.splash-earth__hub.is-gold {
-  fill: var(--lp-gold-bright);
-  filter: drop-shadow(0 0 4px var(--lp-gold));
-}
-
 /* ---------- Exit transition ---------- */
 .splash.is-exiting {
   opacity: 0;
@@ -719,7 +432,7 @@
   transition-delay: 150ms;
 }
 
-.splash.is-exiting .splash-orbits {
+.splash.is-exiting .emblem-orbits {
   opacity: 0.2;
   transform: scale(1.12);
 }
@@ -733,52 +446,10 @@
 }
 
 /* ---------- Keyframes ---------- */
-@keyframes splash-spin {
-  from { transform: rotateY(0deg); }
-  to { transform: rotateY(360deg); }
-}
-
-/* Key light from the viewer: brightest facing us, dimmer edge-on. */
-@keyframes splash-light-front {
-  0%, 100% { filter: brightness(1.06) saturate(1.05); }
-  25% { filter: brightness(0.62); }
-  50% { filter: brightness(0.5); }
-  75% { filter: brightness(0.62); }
-}
-
-@keyframes splash-light-back {
-  0%, 100% { filter: brightness(0.5); }
-  25% { filter: brightness(0.62); }
-  50% { filter: brightness(0.98); }
-  75% { filter: brightness(0.62); }
-}
-
-/* Gold rim light catches the edge when side-on. */
-@keyframes splash-light-side {
-  0%, 50%, 100% { filter: brightness(0.6); }
-  25%, 75% { filter: brightness(1.2); }
-}
-
-@keyframes splash-sheen {
-  0% { background-position: 110% 0; }
-  50% { background-position: -10% 0; }
-  100% { background-position: -10% 0; }
-}
-
-@keyframes splash-equator {
-  from { transform: rotateX(76deg) rotateZ(0deg); }
-  to { transform: rotateX(76deg) rotateZ(360deg); }
-}
-
-@keyframes splash-earth-drift {
-  from { transform: translateX(0); }
-  to { transform: translateX(-33.33%); }
-}
-
 @keyframes splash-gold-pulse {
-  0% { box-shadow: 0 0 12px rgba(47, 123, 255, 0.6); }
-  50% { box-shadow: 0 0 22px rgba(242, 212, 138, 0.9); }
-  100% { box-shadow: 0 0 12px rgba(47, 123, 255, 0.6); }
+  0% { box-shadow: 0 0 12px rgba(217, 172, 82, 0.55); }
+  50% { box-shadow: 0 0 26px rgba(242, 212, 138, 0.95); }
+  100% { box-shadow: 0 0 12px rgba(217, 172, 82, 0.55); }
 }
 
 /* ---------- Responsive ---------- */
@@ -812,8 +483,8 @@
     --splash-logo-w: clamp(170px, min(34vw, 28vh), 260px);
   }
 
-  .splash-orbits__ring--outer .splash-orbits__tick,
-  .splash-earth__pulse {
+  .emblem-orbits__ring--outer .emblem-orbits__tick,
+  .earth-horizon__pulse {
     display: none;
   }
 
@@ -829,9 +500,9 @@
   .splash-brand__tagline,
   .splash-verbs,
   .splash-modules,
-  .splash-earth__network,
-  .splash-equator,
-  .splash-orbits__hud {
+  .earth-horizon__network,
+  .emblem-equator,
+  .emblem-orbits__hud {
     display: none;
   }
 
@@ -841,7 +512,7 @@
     letter-spacing: 0.16em;
   }
 
-  .splash-earth {
+  .earth-horizon {
     top: 80%;
   }
 
@@ -863,7 +534,7 @@
     animation: none !important;
   }
 
-  .splash-logo__spinner {
+  .emblem-logo__spinner {
     transform: none !important;
   }
 
@@ -874,6 +545,6 @@
   }
 }
 
-.splash.is-reduced .splash-logo__sheen {
+.splash.is-reduced .emblem-logo__sheen {
   display: none;
 }

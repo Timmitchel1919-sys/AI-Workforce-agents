@@ -1,14 +1,14 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { CONTROL_CENTER_ROUTE } from "../landingActions";
-import { LogoCore } from "../../../components/brand/LogoCore";
+import { RotatingEmblem } from "../../../components/brand/RotatingEmblem";
 import { Reveal } from "./primitives";
 
 export function FinalCTA() {
   return (
     <section className="lp-section lp-final" aria-labelledby="lp-final-title">
       <Reveal className="lp-final__inner">
-        <LogoCore size="compact" />
+        <RotatingEmblem className="lp-final-emblem" decorative />
         <h2 id="lp-final-title" className="lp-final__title">
           Ready to enter the workforce?
         </h2>

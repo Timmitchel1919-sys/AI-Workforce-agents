@@ -176,7 +176,45 @@
   text-align: center;
 }
 
+/* Same Y-axis emblem + Earth horizon as the splash, so splash → landing is continuous. */
+.lp-hero {
+  overflow: hidden;
+}
+
+.lp-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  height: 22%;
+  background: linear-gradient(180deg, transparent, var(--lp-bg));
+  pointer-events: none;
+}
+
+.lp-hero .earth-horizon {
+  /* Horizon below the copy block so the city lights never sit behind text. */
+  top: 74%;
+  opacity: calc(1 - var(--lp-hero-progress, 0) * 0.6);
+}
+
+.lp-hero-emblem {
+  --emblem-logo-w: clamp(150px, min(24vw, 24vh), 250px);
+  margin: calc(var(--emblem-stage) * -0.1) 0 calc(var(--emblem-stage) * -0.12);
+}
+
+.lp-hero-emblem .emblem-sphere,
+.lp-hero-emblem .emblem-orbits {
+  opacity: calc(1 - var(--lp-hero-progress, 0) * 0.8);
+}
+
+.lp-final-emblem {
+  --emblem-logo-w: 110px;
+  margin: -20px 0 -14px;
+}
+
 .lp-hero__inner {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -271,6 +309,7 @@
 
 .lp-hero__scroll {
   position: absolute;
+  z-index: 2;
   bottom: 24px;
   left: 50%;
   display: inline-flex;
@@ -1234,8 +1273,12 @@
     padding-top: 96px;
   }
 
-  .lp-core--hero {
-    width: min(68vw, 300px);
+  .lp-hero-emblem {
+    --emblem-logo-w: min(46vw, 190px);
+  }
+
+  .lp-hero .earth-horizon {
+    top: 80%;
   }
 
   .lp-hero__verbs {

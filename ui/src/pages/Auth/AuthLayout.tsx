@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../../auth/useAuth";
 import { safeRedirectPath } from "../../auth/redirect";
 import { BackgroundField } from "../../components/brand/BackgroundField";
-import { LogoCore } from "../../components/brand/LogoCore";
+import { RotatingEmblem } from "../../components/brand/RotatingEmblem";
 import { LOGO_MARK_SRC } from "../../components/brand/brand";
 import { Spinner } from "../../components/ui";
 import { AccessPending } from "./components/AccessPending";
@@ -103,14 +103,14 @@ export default function AuthLayout() {
         <aside className="auth-brand" aria-label="AI Workforce">
           <GlobeVisual />
           <div className="auth-brand__inner">
-            <LogoCore />
+            <RotatingEmblem className="auth-emblem" />
             <BrandCopy />
           </div>
         </aside>
 
         <div className="auth-panel">
           <div className="auth-mobile-brand" aria-hidden="true">
-            <img src={LOGO_MARK_SRC} alt="" width={44} height={44} />
+            <RotatingEmblem className="auth-mobile-emblem" decorative />
             <span>AI Workforce</span>
           </div>
 
