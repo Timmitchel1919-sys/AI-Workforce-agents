@@ -1,5 +1,5 @@
 export const pageTitles: Record<string, string> = {
-  "/": "Overview",
+  "/overview": "Overview",
   "/agents": "Agents",
   "/tasks": "Tasks",
   "/workflows": "Workflows",

@@ -52,7 +52,7 @@ export default function OverviewPage() {
 
   if (status === "loading") {
     return (
-      <PageContainer>
+      <PageContainer variant="wide">
         <PageHeader
           eyebrow="AI Workforce"
           title="Overview"
@@ -65,7 +65,7 @@ export default function OverviewPage() {
 
   if (status === "error") {
     return (
-      <PageContainer>
+      <PageContainer variant="wide">
         <PageHeader
           eyebrow="AI Workforce"
           title="Overview"
@@ -78,7 +78,7 @@ export default function OverviewPage() {
 
   if (status === "unauthorized") {
     return (
-      <PageContainer>
+      <PageContainer variant="wide">
         <PageHeader
           eyebrow="AI Workforce"
           title="Overview"
@@ -91,7 +91,7 @@ export default function OverviewPage() {
 
   if (status === "empty") {
     return (
-      <PageContainer>
+      <PageContainer variant="wide">
         <PageHeader
           eyebrow="AI Workforce"
           title="Overview"
@@ -104,7 +104,7 @@ export default function OverviewPage() {
 
   if (status === "degraded") {
     return (
-      <PageContainer>
+      <PageContainer variant="wide">
         <PageHeader
           eyebrow="AI Workforce"
           title="Overview"
@@ -119,7 +119,7 @@ export default function OverviewPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer variant="wide">
       <PageHeader
         eyebrow="AI Workforce"
         title="Overview"

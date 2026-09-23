@@ -4,8 +4,27 @@ import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import "./AppShell.css";
 
+const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export default function AppShell() {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+    } catch {
+      // Storage unavailable (private mode etc.) — the preference just won't persist.
+    }
+  }, [sidebarCollapsed]);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const shouldRestoreTriggerFocus = useRef(false);
@@ -50,13 +69,16 @@ export default function AppShell() {
   }, [mobileNavigationOpen]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
       <aside
         className="app-shell__sidebar"
         aria-label="Application sidebar"
         hidden={mobileNavigationOpen}
       >
-        <Sidebar />
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
+        />
       </aside>
 
       {mobileNavigationOpen ? (

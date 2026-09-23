@@ -53,7 +53,8 @@
   --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.12);
 }
 
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-theme='dark'] {
   --color-background: #0b1220;
   --color-surface: #111827;
   --color-surface-muted: #1a2334;

@@ -1,10 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
+import { AuthProvider } from '../../../auth/AuthProvider';
 import TopBar from '../TopBar';
 
 function renderTopBar(initialEntry = '/') {
   return render(
+    <AuthProvider>
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route element={<TopBar />}>
@@ -13,7 +15,8 @@ function renderTopBar(initialEntry = '/') {
           <Route path="/design-system" element={<div>Design system page</div>} />
         </Route>
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </AuthProvider>,
   );
 }
 

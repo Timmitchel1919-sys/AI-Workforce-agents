@@ -1,0 +1,879 @@
+/* AI Workforce OS — branded initialization splash.
+   Tokens and shared primitives: src/styles/os-theme.css. */
+
+.splash {
+  --splash-spin: 10s;
+  --splash-logo-w: clamp(180px, min(22vw, 30vh), 320px);
+  --splash-depth: calc(var(--splash-logo-w) * 0.12);
+  --splash-stage: calc(var(--splash-logo-w) * 1.72);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--lp-bg-deep);
+  transition:
+    opacity 700ms var(--lp-ease),
+    transform 800ms var(--lp-ease),
+    filter 700ms var(--lp-ease);
+}
+
+.splash .lp-bg {
+  transform: none;
+}
+
+/* ---------- Top bar ---------- */
+.splash-top {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px clamp(16px, 3vw, 40px) 0;
+}
+
+.splash-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--lp-text);
+  text-transform: uppercase;
+}
+
+.splash-brand img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.splash-brand__name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+}
+
+.splash-brand__divider {
+  width: 1px;
+  height: 26px;
+  background: linear-gradient(180deg, transparent, var(--lp-gold-soft), transparent);
+}
+
+.splash-brand__tagline {
+  color: var(--lp-gold);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  line-height: 1.4;
+}
+
+.splash-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  color: var(--lp-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.splash-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-blue-bright);
+  box-shadow: 0 0 10px var(--lp-blue-bright);
+  animation: lp-node-breathe 2.4s ease-in-out infinite;
+}
+
+.splash-status.is-ready .splash-status__dot { background: var(--lp-success); box-shadow: 0 0 10px var(--lp-success); }
+.splash-status.is-degraded .splash-status__dot { background: var(--lp-gold); box-shadow: 0 0 10px var(--lp-gold); }
+.splash-status.is-error .splash-status__dot { background: var(--lp-error); box-shadow: 0 0 10px var(--lp-error); }
+
+/* ---------- Side microcopy ---------- */
+.splash-side {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--lp-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  transform: translateY(-60%);
+  opacity: 0.75;
+}
+
+.splash-side--left {
+  left: clamp(16px, 3vw, 40px);
+}
+
+.splash-side--left span + span::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 10px;
+  margin: 0 0 14px 3px;
+  background: var(--lp-glass-border);
+}
+
+.splash-side--right {
+  right: clamp(16px, 3vw, 40px);
+  gap: 36px;
+  text-align: right;
+}
+
+.splash-side__quote {
+  color: var(--lp-gold);
+  opacity: 0.85;
+}
+
+/* ---------- Center ---------- */
+.splash-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.splash-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* The orbital field may exceed narrow screens; it is decorative, so it never widens the layout. */
+  width: min(var(--splash-stage), 100vw);
+  height: min(var(--splash-stage), 100vw);
+  margin: calc(var(--splash-stage) * -0.12) 0 calc(var(--splash-stage) * -0.1);
+}
+
+.splash-orbits {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transition: opacity 600ms var(--lp-ease), transform 800ms var(--lp-ease);
+}
+
+.splash-orbits__ring {
+  transform-box: view-box;
+  transform-origin: 300px 300px;
+}
+
+.splash-orbits__ring--inner { animation: lp-rotate 18s linear infinite; }
+.splash-orbits__ring--middle { animation: lp-rotate 26s linear infinite reverse; }
+.splash-orbits__ring--outer { animation: lp-rotate 40s linear infinite; }
+
+.splash-orbits circle,
+.splash-orbits line,
+.splash-orbits path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.splash-orbits__line { stroke: rgba(100, 170, 255, 0.22); stroke-width: 1; }
+.splash-orbits__tick { stroke: rgba(130, 190, 255, 0.4); stroke-width: 1; }
+.splash-orbits__hud { stroke: rgba(106, 174, 255, 0.55); stroke-width: 2; stroke-linecap: round; }
+.splash-orbits__gold { stroke-width: 1.2; opacity: 0.75; }
+.splash-orbits__dashed { stroke: rgba(100, 170, 255, 0.25); stroke-width: 1; stroke-dasharray: 3 9; }
+
+.splash-orbits .splash-orbits__node {
+  fill: var(--lp-cyan);
+  filter: drop-shadow(0 0 4px var(--lp-cyan));
+}
+
+.splash-orbits .splash-orbits__node--gold {
+  fill: var(--lp-gold-bright);
+  filter: drop-shadow(0 0 4px var(--lp-gold));
+}
+
+/* Energy sphere the emblem sits in. */
+.splash-sphere {
+  position: absolute;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(47, 123, 255, 0.28), transparent 58%),
+    radial-gradient(circle at 50% 50%, rgba(8, 26, 78, 0.55), rgba(2, 4, 10, 0) 70%);
+  box-shadow:
+    inset 0 0 40px rgba(47, 123, 255, 0.18),
+    0 0 60px rgba(47, 123, 255, 0.12);
+  border: 1px solid rgba(100, 170, 255, 0.12);
+  animation: lp-breathe 8s ease-in-out infinite;
+}
+
+/* 3D scene: perspective lives here so the logo and the equator share one space. */
+.splash-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  perspective: 1600px;
+  transform-style: preserve-3d;
+}
+
+/* A tilted orbit around the sphere — its nodes pass in front of and behind the emblem. */
+.splash-equator {
+  position: absolute;
+  width: 58%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(100, 170, 255, 0.28);
+  border-radius: 50%;
+  transform: rotateX(76deg);
+  transform-style: preserve-3d;
+  animation: splash-equator 22s linear infinite;
+}
+
+.splash-equator span {
+  position: absolute;
+  top: -3px;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lp-cyan);
+  box-shadow: 0 0 8px var(--lp-cyan);
+}
+
+.splash-equator span + span {
+  top: auto;
+  bottom: -3px;
+  background: var(--lp-gold-bright);
+  box-shadow: 0 0 8px var(--lp-gold);
+}
+
+/* ---------- The emblem ----------
+   Everything from .splash-scene down to the slices must stay in one 3D
+   context: no filter / opacity < 1 / overflow / mix-blend-mode / mask on the
+   container chain, or the emblem flattens and vanishes when side-on. */
+.splash-logo {
+  position: relative;
+  width: var(--splash-logo-w);
+  aspect-ratio: 1236 / 948;
+  transform-style: preserve-3d;
+}
+
+.splash-logo__spinner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  /* True Y-axis rotation — front, side, back, other side, front — never rotateZ. */
+  animation: splash-spin var(--splash-spin) linear infinite;
+  will-change: transform;
+}
+
+.splash-logo__spinner.is-still {
+  animation: none;
+  transform: none;
+}
+
+.splash-logo__face,
+.splash-logo__slice,
+.splash-logo__sheen,
+.splash-logo__side {
+  position: absolute;
+  inset: 0;
+}
+
+.splash-logo__face {
+  display: block;
+  backface-visibility: hidden;
+}
+
+.splash-logo__face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.splash-logo__face--front {
+  transform: translateZ(calc(var(--splash-depth) / 2));
+  animation: splash-light-front var(--splash-spin) linear infinite;
+}
+
+.splash-logo__face--back {
+  transform: rotateY(180deg) translateZ(calc(var(--splash-depth) / 2));
+  animation: splash-light-back var(--splash-spin) linear infinite;
+}
+
+/* Gold extrusion: slices cut to the exact logo silhouette via the logo itself as a mask. */
+.splash-logo__slice,
+.splash-logo__sheen {
+  -webkit-mask: url("/brand/logo-hero-480.webp") center / 100% 100% no-repeat;
+  mask: url("/brand/logo-hero-480.webp") center / 100% 100% no-repeat;
+}
+
+.splash-logo__slice {
+  background: linear-gradient(135deg, #f6dc98 0%, #c89a3e 40%, #7a5a1c 70%, #e4c06e 100%);
+}
+
+/* Closes the edge when the emblem is exactly side-on (90° / 270°). */
+.splash-logo__side {
+  left: 50%;
+  width: var(--splash-depth);
+  margin-left: calc(var(--splash-depth) / -2);
+  top: 3%;
+  bottom: 3%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #7a5a1c, #f2d48a 30%, #c89a3e 55%, #f6dc98 75%, #7a5a1c);
+  transform: rotateY(90deg);
+  animation: splash-light-side var(--splash-spin) linear infinite;
+}
+
+.splash-logo__side--far {
+  transform: rotateY(-90deg);
+}
+
+/* Moving specular highlight across blue + gold as the emblem turns. */
+.splash-logo__sheen {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(180, 215, 255, 0.34) 45%,
+    rgba(255, 240, 200, 0.28) 50%,
+    transparent 64%
+  );
+  background-size: 300% 100%;
+  backface-visibility: hidden;
+  pointer-events: none;
+  /* No mix-blend-mode here: blending forces the 3D context flat in Chromium. */
+}
+
+.splash-logo__sheen--front {
+  transform: translateZ(calc(var(--splash-depth) / 2 + 0.5px));
+  animation: splash-sheen var(--splash-spin) linear infinite;
+}
+
+.splash-logo__sheen--back {
+  transform: rotateY(180deg) translateZ(calc(var(--splash-depth) / 2 + 0.5px));
+  animation: splash-sheen var(--splash-spin) linear infinite;
+  animation-delay: calc(var(--splash-spin) / -2);
+}
+
+/* ---------- Typography ---------- */
+.splash-kicker {
+  margin: 0;
+  color: var(--lp-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+}
+
+.splash-title {
+  margin: 10px 0 0;
+  padding-left: 0.2em;
+  color: var(--lp-text);
+  font-size: clamp(32px, 4.6vw, 64px);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  transition: text-shadow 500ms var(--lp-ease);
+}
+
+.splash-tagline {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0 0;
+  color: var(--lp-gold);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
+
+.splash-tagline::before,
+.splash-tagline::after {
+  content: "";
+  width: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lp-gold-soft));
+}
+
+.splash-tagline::after {
+  transform: scaleX(-1);
+}
+
+.splash-verbs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin: 16px 0 0;
+  color: var(--lp-text-secondary);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.splash-verbs span + span::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin-right: 18px;
+  border-radius: 50%;
+  background: var(--lp-blue-bright);
+  vertical-align: middle;
+}
+
+/* ---------- Progress ---------- */
+.splash-progress {
+  width: min(440px, 100%);
+  margin-top: 26px;
+}
+
+.splash-progress__track {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(100, 170, 255, 0.12);
+}
+
+.splash-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1a4fd6, var(--lp-blue-bright));
+  box-shadow: 0 0 12px rgba(47, 123, 255, 0.6);
+  transition: width 500ms var(--lp-ease);
+}
+
+/* Thin gold active edge. */
+.splash-progress__fill::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 0;
+  bottom: -1px;
+  width: 2px;
+  background: var(--lp-gold-bright);
+  box-shadow: 0 0 8px var(--lp-gold);
+}
+
+.splash-progress__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+  color: var(--lp-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.splash-progress__value {
+  color: var(--lp-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.splash-error {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 520px;
+  margin-top: 26px;
+  padding: 14px 16px;
+  border-color: var(--lp-error-border);
+  border-radius: var(--lp-radius);
+  color: var(--lp-error);
+  text-align: left;
+}
+
+.splash-error__title {
+  margin: 0;
+  color: var(--lp-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.splash-error__text {
+  margin: 4px 0 0;
+  color: var(--lp-text-muted);
+  font-size: 13px;
+}
+
+/* ---------- Bottom: modules panel + capability strip ---------- */
+.splash-modules {
+  position: absolute;
+  left: clamp(16px, 3vw, 40px);
+  bottom: 28px;
+  z-index: 3;
+  width: 280px;
+  padding: 14px 16px;
+  border-radius: var(--lp-radius);
+}
+
+.splash-modules__title {
+  margin: 0 0 10px;
+  color: var(--lp-gold);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.splash-modules ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.splash-stage-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--lp-text-muted);
+  font-size: 11px;
+}
+
+.splash-stage-row__label {
+  color: var(--lp-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.splash-stage-row__detail {
+  font-size: 10px;
+  text-align: right;
+}
+
+.splash-stage-row.is-done svg,
+.splash-stage-row.is-skipped svg { color: var(--lp-success); }
+.splash-stage-row.is-active svg { color: var(--lp-blue-bright); }
+.splash-stage-row.is-degraded svg { color: var(--lp-gold-bright); }
+.splash-stage-row.is-failed svg { color: var(--lp-error); }
+.splash-stage-row.is-skipped .splash-stage-row__label { opacity: 0.75; }
+
+.splash-stage__dot {
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: rgba(141, 154, 184, 0.45);
+}
+
+.splash-spin-icon {
+  animation: lp-rotate 1s linear infinite;
+}
+
+.splash-capabilities {
+  position: relative;
+  z-index: 3;
+  grid-row: 3;
+  display: flex;
+  justify-content: center;
+  gap: clamp(20px, 4vw, 56px);
+  margin: 0;
+  padding: 0 16px 30px;
+  list-style: none;
+}
+
+.splash-capabilities li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--lp-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.splash-capabilities svg {
+  flex-shrink: 0;
+  color: var(--lp-blue-bright);
+}
+
+/* ---------- Earth ---------- */
+.splash-earth {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  z-index: 1;
+  width: max(1500px, 150vw);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.splash-earth__planet {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(30, 80, 200, 0.35), transparent 28%),
+    radial-gradient(circle at 50% 30%, #07122a 0%, #030814 45%, #010207 70%);
+  box-shadow:
+    0 -2px 0 rgba(120, 190, 255, 0.55),
+    0 -18px 60px rgba(47, 123, 255, 0.35),
+    inset 0 30px 80px rgba(47, 123, 255, 0.25);
+}
+
+/* City lights: a sparse gold dot field, masked into continent-like regions, drifting very slowly. */
+.splash-earth__lights {
+  position: absolute;
+  inset: 0 -50% 0 0;
+  background-image:
+    radial-gradient(circle, rgba(242, 212, 138, 0.9) 0 1px, transparent 1.6px),
+    radial-gradient(circle, rgba(242, 212, 138, 0.55) 0 0.8px, transparent 1.3px);
+  background-size: 22px 18px, 13px 11px;
+  background-position: 0 0, 7px 5px;
+  -webkit-mask-image:
+    radial-gradient(18% 6% at 30% 4%, #000 30%, transparent 70%),
+    radial-gradient(14% 5% at 52% 7%, #000 25%, transparent 70%),
+    radial-gradient(16% 6% at 70% 3%, #000 30%, transparent 70%),
+    radial-gradient(10% 4% at 88% 8%, #000 25%, transparent 70%),
+    radial-gradient(12% 5% at 12% 9%, #000 25%, transparent 70%);
+  mask-image:
+    radial-gradient(18% 6% at 30% 4%, #000 30%, transparent 70%),
+    radial-gradient(14% 5% at 52% 7%, #000 25%, transparent 70%),
+    radial-gradient(16% 6% at 70% 3%, #000 30%, transparent 70%),
+    radial-gradient(10% 4% at 88% 8%, #000 25%, transparent 70%),
+    radial-gradient(12% 5% at 12% 9%, #000 25%, transparent 70%);
+  opacity: 0.7;
+  animation: splash-earth-drift 180s linear infinite;
+}
+
+.splash-earth__shade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, transparent 20%, rgba(0, 0, 0, 0.55) 45%);
+}
+
+.splash-earth__network {
+  position: absolute;
+  top: -4%;
+  left: 50%;
+  width: min(100vw, 1500px);
+  height: auto;
+  aspect-ratio: 1500 / 420;
+  transform: translateX(-50%);
+}
+
+.splash-earth__arc {
+  fill: none;
+  stroke: rgba(100, 170, 255, 0.28);
+  stroke-width: 1;
+}
+
+.splash-earth__arc.is-gold {
+  stroke: rgba(217, 172, 82, 0.35);
+}
+
+.splash-earth__pulse {
+  fill: none;
+  stroke: var(--lp-cyan);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 8 100;
+  stroke-dashoffset: 108;
+  animation: lp-pulse-travel 7.6s linear infinite;
+}
+
+.splash-earth__hub {
+  fill: var(--lp-blue-bright);
+  filter: drop-shadow(0 0 4px var(--lp-blue-bright));
+}
+
+.splash-earth__hub.is-gold {
+  fill: var(--lp-gold-bright);
+  filter: drop-shadow(0 0 4px var(--lp-gold));
+}
+
+/* ---------- Exit transition ---------- */
+.splash.is-exiting {
+  opacity: 0;
+  transform: scale(1.04);
+  filter: brightness(0.7);
+  pointer-events: none;
+  transition-delay: 150ms;
+}
+
+.splash.is-exiting .splash-orbits {
+  opacity: 0.2;
+  transform: scale(1.12);
+}
+
+.splash.is-exiting .splash-title {
+  text-shadow: 0 0 22px rgba(242, 212, 138, 0.55);
+}
+
+.splash.is-exiting .splash-progress__fill {
+  animation: splash-gold-pulse 500ms var(--lp-ease) both;
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes splash-spin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+/* Key light from the viewer: brightest facing us, dimmer edge-on. */
+@keyframes splash-light-front {
+  0%, 100% { filter: brightness(1.06) saturate(1.05); }
+  25% { filter: brightness(0.62); }
+  50% { filter: brightness(0.5); }
+  75% { filter: brightness(0.62); }
+}
+
+@keyframes splash-light-back {
+  0%, 100% { filter: brightness(0.5); }
+  25% { filter: brightness(0.62); }
+  50% { filter: brightness(0.98); }
+  75% { filter: brightness(0.62); }
+}
+
+/* Gold rim light catches the edge when side-on. */
+@keyframes splash-light-side {
+  0%, 50%, 100% { filter: brightness(0.6); }
+  25%, 75% { filter: brightness(1.2); }
+}
+
+@keyframes splash-sheen {
+  0% { background-position: 110% 0; }
+  50% { background-position: -10% 0; }
+  100% { background-position: -10% 0; }
+}
+
+@keyframes splash-equator {
+  from { transform: rotateX(76deg) rotateZ(0deg); }
+  to { transform: rotateX(76deg) rotateZ(360deg); }
+}
+
+@keyframes splash-earth-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-33.33%); }
+}
+
+@keyframes splash-gold-pulse {
+  0% { box-shadow: 0 0 12px rgba(47, 123, 255, 0.6); }
+  50% { box-shadow: 0 0 22px rgba(242, 212, 138, 0.9); }
+  100% { box-shadow: 0 0 12px rgba(47, 123, 255, 0.6); }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1180px) {
+  .splash-side {
+    display: none;
+  }
+}
+
+/* Below 1280px there is no room for a floating panel beside the progress bar:
+   the module list joins the flow under the centre and the capability strip steps aside. */
+@media (max-width: 1279px) {
+  .splash-modules {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    grid-row: 3;
+    justify-self: center;
+    width: min(360px, calc(100% - 32px));
+    margin-bottom: 20px;
+  }
+
+  .splash-capabilities {
+    display: none;
+  }
+}
+
+/* Tablet: fewer orbital details, calmer Earth. */
+@media (max-width: 900px) {
+  .splash {
+    --splash-logo-w: clamp(170px, min(34vw, 28vh), 260px);
+  }
+
+  .splash-orbits__ring--outer .splash-orbits__tick,
+  .splash-earth__pulse {
+    display: none;
+  }
+
+}
+
+/* Mobile: emblem, name, tagline, progress, status. */
+@media (max-width: 560px) {
+  .splash {
+    --splash-logo-w: min(56vw, 220px);
+  }
+
+  .splash-brand__divider,
+  .splash-brand__tagline,
+  .splash-verbs,
+  .splash-modules,
+  .splash-earth__network,
+  .splash-equator,
+  .splash-orbits__hud {
+    display: none;
+  }
+
+  .splash-status {
+    padding: 7px 12px;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+  }
+
+  .splash-earth {
+    top: 80%;
+  }
+
+  .splash-center {
+    padding-bottom: 40px;
+  }
+
+  .splash-kicker {
+    font-size: 10px;
+    letter-spacing: 0.36em;
+  }
+}
+
+/* ---------- Reduced motion: static front-facing emblem, functional progress ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .splash *,
+  .splash *::before,
+  .splash *::after {
+    animation: none !important;
+  }
+
+  .splash-logo__spinner {
+    transform: none !important;
+  }
+
+  .splash,
+  .splash.is-exiting {
+    transform: none;
+    transition: opacity 200ms linear;
+  }
+}
+
+.splash.is-reduced .splash-logo__sheen {
+  display: none;
+}

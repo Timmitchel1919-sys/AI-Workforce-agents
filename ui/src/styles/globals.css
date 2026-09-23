@@ -83,3 +83,45 @@ h6 {
   color: var(--color-text);
   line-height: var(--line-tight);
 }
+
+/* Scroll panels: thin, theme-aware scrollbars; scrolling never chains to the page. */
+.scroll-panel,
+.app-shell__main {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.scroll-panel::-webkit-scrollbar,
+.app-shell__main::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scroll-panel::-webkit-scrollbar-thumb,
+.app-shell__main::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.scroll-panel::-webkit-scrollbar-thumb:hover,
+.app-shell__main::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-muted);
+}
+
+.scroll-panel::-webkit-scrollbar-track,
+.app-shell__main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Session check shown by RequireAuth before the Control Center renders. */
+.auth-guard-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100vh;
+  color: var(--color-text-muted);
+}

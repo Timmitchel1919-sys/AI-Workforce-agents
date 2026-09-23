@@ -1,0 +1,416 @@
+/* ==========================================================================
+   AI Workforce OS — shared brand surface
+   Obsidian black + electric blue + metallic gold. Used by the landing page and
+   the authentication gateway (root element carries `.os-theme`). Primitive
+   class names keep their original `lp-` prefix.
+   ========================================================================== */
+
+html.os-document,
+html.os-document body {
+  background: #02040a;
+  color-scheme: dark;
+}
+
+.os-theme {
+  /* Palette */
+  --lp-bg: #02040a;
+  --lp-bg-deep: #000000;
+  --lp-navy: #050c1f;
+  --lp-blue: #2f7bff;
+  --lp-blue-bright: #6aaeff;
+  --lp-blue-soft: rgba(47, 123, 255, 0.16);
+  --lp-cyan: #5fd4ff;
+  --lp-gold: #d9ac52;
+  --lp-gold-bright: #f2d48a;
+  --lp-gold-soft: rgba(217, 172, 82, 0.28);
+  --lp-text: #f3f6ff;
+  --lp-text-secondary: #c3cce2;
+  --lp-text-muted: #8d9ab8;
+
+  /* Glass */
+  --lp-glass-bg: rgba(5, 10, 20, 0.55);
+  --lp-glass-bg-strong: rgba(6, 13, 28, 0.72);
+  --lp-glass-border: rgba(100, 170, 255, 0.16);
+  --lp-glass-border-hover: rgba(120, 185, 255, 0.42);
+  --lp-glass-highlight: rgba(255, 255, 255, 0.05);
+  --lp-blur: 24px;
+
+  /* Form fields */
+  --lp-field-bg: rgba(4, 10, 22, 0.7);
+  --lp-field-border: rgba(140, 170, 220, 0.2);
+  --lp-field-border-focus: rgba(106, 174, 255, 0.85);
+  --lp-field-glow: 0 0 0 3px rgba(47, 123, 255, 0.22), 0 0 18px rgba(47, 123, 255, 0.18);
+  --lp-error: #ff8a8a;
+  --lp-error-border: rgba(255, 120, 120, 0.6);
+  --lp-success: #46e3a8;
+
+  /* Status */
+  --lp-status-available: #46e3a8;
+  --lp-status-registered: var(--lp-blue-bright);
+  --lp-status-implemented: var(--lp-cyan);
+  --lp-status-planned: #7e8aa6;
+  --lp-status-unavailable: #f07a7a;
+
+  /* Layout + motion */
+  --lp-max-width: 1200px;
+  --lp-radius-sm: 10px;
+  --lp-radius: 16px;
+  --lp-radius-lg: 24px;
+  --lp-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --lp-hover: 200ms;
+  --lp-reveal: 650ms;
+  --lp-focus: #9cc8ff;
+  --lp-font: Inter, Manrope, "Segoe UI", system-ui, sans-serif;
+
+
+  color: var(--lp-text);
+  font-family: var(--lp-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.os-theme *,
+.os-theme *::before,
+.os-theme *::after {
+  box-sizing: border-box;
+}
+
+.os-theme a:focus-visible,
+.os-theme button:focus-visible {
+  outline: 2px solid var(--lp-focus);
+  outline-offset: 3px;
+}
+
+/* ---------- Glass surface ---------- */
+.lp-glass {
+  background: var(--lp-glass-bg);
+  border: 1px solid var(--lp-glass-border);
+  -webkit-backdrop-filter: blur(var(--lp-blur)) saturate(140%);
+  backdrop-filter: blur(var(--lp-blur)) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 var(--lp-glass-highlight),
+    0 24px 48px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Background environment ---------- */
+.lp-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transform: translate3d(0, calc(var(--lp-hero-progress, 0) * -40px), 0)
+    scale(calc(1 + var(--lp-hero-progress, 0) * 0.04));
+}
+
+.lp-bg__glow {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 35% at 50% 32%, rgba(47, 123, 255, 0.22), transparent 70%),
+    radial-gradient(30% 25% at 50% 34%, rgba(217, 172, 82, 0.05), transparent 70%),
+    radial-gradient(60% 50% at 15% 90%, rgba(20, 60, 160, 0.14), transparent 70%),
+    radial-gradient(50% 40% at 90% 70%, rgba(20, 70, 190, 0.1), transparent 70%);
+  opacity: calc(1 - var(--lp-hero-progress, 0) * 0.45);
+}
+
+.lp-bg__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(100, 170, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 170, 255, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 35%, #000 20%, transparent 80%);
+  mask-image: radial-gradient(70% 60% at 50% 35%, #000 20%, transparent 80%);
+}
+
+.lp-bg__network {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+}
+
+.lp-bg__edges line {
+  stroke: rgba(100, 170, 255, 0.12);
+  stroke-width: 1;
+}
+
+.lp-bg__pulses line {
+  stroke: var(--lp-cyan);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-dasharray: 8 100;
+  stroke-dashoffset: 108;
+  opacity: 0.8;
+  animation: lp-pulse-travel 9.6s linear infinite;
+}
+
+.lp-bg__nodes circle {
+  fill: var(--lp-blue-bright);
+  opacity: 0.5;
+  animation: lp-node-breathe 7.8s ease-in-out infinite;
+}
+
+.lp-bg__particles span {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(160, 205, 255, 0.55);
+  animation: lp-particle-drift 22s linear infinite;
+}
+
+.lp-bg__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.75));
+}
+
+/* ---------- Buttons ---------- */
+.lp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: var(--lp-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform var(--lp-hover) var(--lp-ease),
+    border-color var(--lp-hover) var(--lp-ease),
+    box-shadow var(--lp-hover) var(--lp-ease),
+    background-color var(--lp-hover) var(--lp-ease);
+}
+
+.lp-button--large {
+  padding: 16px 30px;
+}
+
+.lp-button--primary {
+  border: 1px solid rgba(106, 174, 255, 0.7);
+  background: linear-gradient(180deg, rgba(32, 88, 214, 0.55), rgba(8, 26, 78, 0.7));
+  color: var(--lp-text);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(47, 123, 255, 0.12),
+    0 10px 32px rgba(47, 123, 255, 0.28);
+}
+
+.lp-button--primary:hover {
+  transform: translateY(-2px);
+  border-color: #a9d0ff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 1px rgba(106, 174, 255, 0.3),
+    0 14px 44px rgba(47, 123, 255, 0.42);
+}
+
+.lp-button--secondary {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--lp-text-secondary);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.lp-button--secondary:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--lp-text);
+}
+
+/* ---------- Logo core ---------- */
+.lp-core {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* Scales with both axes so the full hero fits one viewport (e.g. 1366×768). */
+  width: clamp(210px, min(44vw, 38vh), 420px);
+  aspect-ratio: 1;
+}
+
+.lp-core--compact {
+  width: 150px;
+}
+
+.lp-core__aura {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(47, 123, 255, 0.38), transparent 62%),
+    radial-gradient(circle at 50% 50%, rgba(217, 172, 82, 0.12), transparent 72%);
+  filter: blur(18px);
+  opacity: calc(1 - var(--lp-hero-progress, 0) * 0.8);
+  animation: lp-breathe 8s ease-in-out infinite;
+}
+
+.lp-core__rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.lp-core__rings circle,
+.lp-core__rings line {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.lp-core__ring-outer {
+  stroke: rgba(100, 170, 255, 0.28);
+  stroke-width: 1;
+}
+
+.lp-core__markers,
+.lp-core__orbit {
+  transform-box: view-box;
+  transform-origin: 200px 200px;
+}
+
+.lp-core__markers {
+  animation: lp-rotate 40s linear infinite;
+}
+
+.lp-core__markers line {
+  stroke: rgba(130, 190, 255, 0.5);
+  stroke-width: 1;
+}
+
+.lp-core__ring-dashed {
+  stroke: rgba(100, 170, 255, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 2 7;
+}
+
+.lp-core__orbit {
+  animation: lp-rotate 28s linear infinite reverse;
+}
+
+.lp-core__orbit circle {
+  fill: var(--lp-cyan);
+  opacity: 0.85;
+}
+
+.lp-core__ring-gold {
+  stroke-width: 1.2;
+  opacity: 0.8;
+}
+
+.lp-core__logo {
+  position: relative;
+  display: block;
+  width: 72%;
+  animation: lp-float 9s ease-in-out infinite;
+}
+
+.lp-core__logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 0 24px rgba(47, 123, 255, 0.35)) drop-shadow(0 0 2px rgba(242, 212, 138, 0.35));
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes lp-rotate {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes lp-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -6px, 0); }
+}
+
+@keyframes lp-breathe {
+  0%, 100% { opacity: 0.75; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+@keyframes lp-node-breathe {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes lp-pulse-travel {
+  0% { stroke-dashoffset: 108; opacity: 0; }
+  10% { opacity: 0.85; }
+  60% { stroke-dashoffset: 0; opacity: 0.85; }
+  61%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes lp-particle-drift {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  15% { opacity: 0.8; }
+  85% { opacity: 0.6; }
+  100% { transform: translate3d(24px, -120px, 0); opacity: 0; }
+}
+
+@keyframes lp-scroll-hint {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, 5px); }
+}
+
+@keyframes lp-drop {
+  0% { top: -14px; }
+  60%, 100% { top: 100%; }
+}
+
+@keyframes lp-pipeline-flow {
+  0% { left: calc(100% / 22); opacity: 0; }
+  10% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { left: calc(100% - 100% / 22 - 80px); opacity: 0; }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1024px) {
+  .os-theme {
+    --lp-blur: 16px;
+  }
+
+  /* Tablet: calmer background. */
+  .lp-bg__particles,
+  .lp-bg__pulses {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .lp-bg__network {
+    opacity: 0.3;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .os-theme *,
+  .os-theme *::before,
+  .os-theme *::after {
+    animation: none !important;
+  }
+
+  .lp-bg {
+    transform: none;
+  }
+
+  .lp-bg__particles,
+  .lp-bg__pulses {
+    display: none;
+  }
+
+  .lp-button:hover {
+    transform: none;
+  }
+}

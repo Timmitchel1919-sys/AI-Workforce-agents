@@ -29,7 +29,7 @@ export const navigationSections: Array<{ id: NavigationSectionId; label: string 
 ];
 
 export const navigationItems: NavigationItem[] = [
-  { label: "Overview", route: "/", icon: "overview", section: "main" },
+  { label: "Overview", route: "/overview", icon: "overview", section: "main" },
   { label: "Agents", route: "/agents", icon: "agents", section: "main" },
   { label: "Tasks", route: "/tasks", icon: "tasks", section: "main" },
   { label: "Workflows", route: "/workflows", icon: "workflows", section: "main" },

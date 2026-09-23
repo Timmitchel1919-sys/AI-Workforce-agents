@@ -4,11 +4,12 @@
   gap: var(--space-8);
 }
 
+/* Status card spans the full row; metric cards sit beneath it and scale with the viewport. */
 .overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
-  align-items: start;
+  align-items: stretch;
 }
 
 .overview-status-card {
@@ -17,11 +18,22 @@
 
 .overview-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* auto-fit: 4 across on wide screens, wrapping to 2 / 1 as space shrinks. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   gap: var(--space-4);
 }
 
+.overview-metrics > * {
+  min-width: 0;
+}
+
+.overview-metric__link,
+.overview-metrics > .overview-metric {
+  height: 100%;
+}
+
 .overview-metric {
+  height: 100%;
   min-height: 160px;
   display: flex;
   flex-direction: column;
@@ -226,7 +238,7 @@
 
 .overview-activity-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   gap: var(--space-4);
 }
 
@@ -388,24 +400,13 @@
 }
 
 @media (max-width: 1100px) {
-  .overview-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .overview-grid,
   .overview-loading-state__grid,
   .overview-loading-row-group {
-    grid-template-columns: 1fr;
-  }
-
-  .overview-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .overview-metrics,
-  .overview-activity-grid,
   .overview-loading-state__metrics {
     grid-template-columns: 1fr;
   }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, Command, Menu, Search } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import { IconButton } from "../ui";
 import { getPageTitle } from "../../config/pageTitles";
 import "./TopBar.css";
@@ -17,6 +18,9 @@ export default function TopBar({
   mobileNavigationTriggerRef,
 }: TopBarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const accountLabel = user?.displayName || user?.email || "Operator";
   const searchRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -122,9 +126,9 @@ export default function TopBar({
               onClick={() => setMenuOpen((open) => !open)}
             >
               <span className="topbar__avatar" aria-hidden="true">
-                O
+                {accountLabel.charAt(0).toUpperCase()}
               </span>
-              <span>Operator</span>
+              <span>{accountLabel}</span>
             </button>
 
             {menuOpen ? (
@@ -141,7 +145,16 @@ export default function TopBar({
                     </button>
                   </li>
                   <li className="topbar__menu-item">
-                    <button type="button" className="topbar__menu-button" role="menuitem">
+                    <button
+                      type="button"
+                      className="topbar__menu-button"
+                      role="menuitem"
+                      onClick={async () => {
+                        setMenuOpen(false);
+                        await signOut();
+                        navigate("/login", { replace: true });
+                      }}
+                    >
                       Sign out
                     </button>
                   </li>
