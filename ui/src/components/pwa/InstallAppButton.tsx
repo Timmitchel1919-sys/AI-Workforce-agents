@@ -1,6 +1,6 @@
 import { Download } from "lucide-react";
-import { Button } from "../ui";
 import { usePwaInstall } from "../../pwa/install";
+import "./InstallAppButton.css";
 
 export function InstallAppButton({
   className,
@@ -24,14 +24,13 @@ export function InstallAppButton({
   }
 
   return (
-    <Button
-      className={className}
-      variant="outline"
-      fullWidth={fullWidth}
+    <button
+      type="button"
+      className={`pwa-install-button${fullWidth ? " pwa-install-button--full" : ""}${className ? ` ${className}` : ""}`}
       onClick={() => void handleInstall()}
     >
       <Download size={16} aria-hidden="true" />
       Download app
-    </Button>
+    </button>
   );
 }

@@ -4,11 +4,14 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   build: {
-    rolldownOptions: {
+    rollupOptions: {
       output: {
         // Firebase SDK in its own long-lived vendor chunk (cached independently of app code).
-        advancedChunks: {
-          groups: [{ name: "firebase", test: /node_modules[/\\](@firebase|firebase)[/\\]/ }],
+        manualChunks(id) {
+          if (/node_modules[/\\](@firebase|firebase)[/\\]/.test(id)) {
+            return "firebase";
+          }
+          return undefined;
         },
       },
     },

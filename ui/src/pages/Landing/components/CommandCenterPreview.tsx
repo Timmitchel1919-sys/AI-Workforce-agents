@@ -6,6 +6,7 @@ import { useI18n } from "../../../i18n";
 
 // Skeleton's built-in fill is light-only; match the dark theme inside the preview.
 const placeholder = { background: "var(--color-surface-muted)" };
+const previewInertProps = { inert: "" };
 
 /**
  * A non-interactive preview built from the real Control Center components
@@ -35,7 +36,7 @@ export function CommandCenterPreview() {
           <div
             className="lp-preview__app"
             data-theme="dark"
-            inert
+            {...previewInertProps}
             aria-label={t("landing.preview.label")}
             role="img"
           >

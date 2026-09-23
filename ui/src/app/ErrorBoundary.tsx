@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- class error boundaries are not Fast Refresh boundaries. */
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { useI18n } from "../i18n";
 import { ErrorState } from '../components/states';
