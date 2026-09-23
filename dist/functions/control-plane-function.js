@@ -33,9 +33,27 @@ export function createControlPlaneHttpsAdapter(factory) {
 }
 function logInitializationFailure(error) {
     // Error messages may carry provider or platform details. Log only the
-    // category so Cloud Logging is useful without risking credential disclosure.
+    // category and a safe platform error code without risking credential
+    // disclosure.
     const errorType = error instanceof Error ? error.name : "unknown";
-    console.error("Control Plane runtime initialization failed", { errorType });
+    const candidateCode = error && typeof error === "object" && "code" in error
+        ? error.code
+        : undefined;
+    const errorCode = typeof candidateCode === "number" || typeof candidateCode === "string"
+        ? candidateCode
+        : undefined;
+    const safePhase = error && typeof error === "object" && "safePhase" in error
+        ? error.safePhase
+        : undefined;
+    const collection = error && typeof error === "object" && "collection" in error
+        ? error.collection
+        : undefined;
+    console.error("Control Plane runtime initialization failed", {
+        errorType,
+        ...(errorCode === undefined ? {} : { errorCode }),
+        ...(typeof safePhase === "string" ? { safePhase } : {}),
+        ...(typeof collection === "string" ? { collection } : {}),
+    });
 }
 function sendUnavailable(response) {
     if (response.headersSent || response.writableEnded)
