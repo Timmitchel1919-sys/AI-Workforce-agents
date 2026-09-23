@@ -7,6 +7,7 @@
  */
 import type {
   Agent,
+  EnvironmentDescriptor,
   PermissionAction,
   PermissionGrant,
 } from "../contracts/index.js";
@@ -63,3 +64,77 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguratio
     projectAdapters: Object.freeze([]),
     permissionGrants: Object.freeze([]),
   });
+
+/**
+ * The trusted, non-secret environment *support* catalog — descriptors only.
+ * These answer "what can the workforce support?", never "what is installed".
+ * No real host is seeded; registered hosts/environments come exclusively from
+ * live discovery (EO-2B+ probes). See EO-2A.
+ */
+export const PRODUCTION_ENVIRONMENT_DESCRIPTORS: readonly EnvironmentDescriptor[] =
+  Object.freeze([
+    Object.freeze({
+      id: "web-build-cli",
+      name: "Web Build (Node CLI)",
+      description:
+        "CLI-based web application build environment requiring Node and npm.",
+      environmentType: "web_build",
+      supportedToolchains: Object.freeze([Object.freeze({ kind: "node" })]),
+      requiredCapabilities: Object.freeze([]),
+      declaredCapabilities: Object.freeze([
+        "command_execution_available",
+        "web_build_capable",
+      ] as const),
+    }),
+    Object.freeze({
+      id: "desktop-build",
+      name: "Desktop Build",
+      description: "Desktop application build using the .NET SDK.",
+      environmentType: "desktop_build",
+      supportedToolchains: Object.freeze([Object.freeze({ kind: "dotnet" })]),
+      requiredCapabilities: Object.freeze([]),
+      declaredCapabilities: Object.freeze([
+        "command_execution_available",
+        "desktop_build_capable",
+      ] as const),
+    }),
+    Object.freeze({
+      id: "xcode-build-host",
+      name: "macOS Xcode Build Host",
+      description: "Apple/macOS build environment via Xcode and Swift.",
+      environmentType: "xcode",
+      supportedToolchains: Object.freeze([
+        Object.freeze({ kind: "swift_xcode" }),
+      ]),
+      requiredCapabilities: Object.freeze([]),
+      declaredCapabilities: Object.freeze([
+        "command_execution_available",
+        "mobile_build_capable",
+        "desktop_build_capable",
+      ] as const),
+      minimumOs: Object.freeze({ os: "macos" }),
+    }),
+    Object.freeze({
+      id: "docker-runtime-host",
+      name: "Container Runtime Host",
+      description: "Host with a usable Docker/container runtime.",
+      environmentType: "docker",
+      supportedToolchains: Object.freeze([]),
+      requiredCapabilities: Object.freeze([]),
+      declaredCapabilities: Object.freeze([
+        "command_execution_available",
+        "container_runtime_available",
+      ] as const),
+    }),
+    Object.freeze({
+      id: "generic-cli-host",
+      name: "Generic CLI Host",
+      description: "Plain command-line execution host with no build tooling.",
+      environmentType: "cli",
+      supportedToolchains: Object.freeze([]),
+      requiredCapabilities: Object.freeze([]),
+      declaredCapabilities: Object.freeze([
+        "command_execution_available",
+      ] as const),
+    }),
+  ]);

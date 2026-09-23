@@ -9,7 +9,9 @@ import {
   type AgentOperationalRecord,
   type Approval,
   type AuditEvent,
+  type EnvironmentInstance,
   type Handoff,
+  type HostInstance,
   type Task,
   type Workflow,
   type WorkflowControlRecord,
@@ -30,8 +32,11 @@ import {
 import {
   ApprovalSystem,
   AuditLog,
+  EnvironmentDetector,
+  EnvironmentRegistry,
   HandoffSystem,
   Orchestrator,
+  ProbeRegistry,
   TaskSystem,
   WorkflowEngine,
   WorkflowSystem,
@@ -43,7 +48,10 @@ import {
   type ProductionWorkforceBootstrap,
   type ProductionWorkforceConfiguration,
 } from "./production-workforce-bootstrap.js";
-import { PRODUCTION_WORKFORCE_CONFIGURATION } from "./production-workforce-config.js";
+import {
+  PRODUCTION_ENVIRONMENT_DESCRIPTORS,
+  PRODUCTION_WORKFORCE_CONFIGURATION,
+} from "./production-workforce-config.js";
 
 export interface ProductionControlPlaneRuntime {
   readonly handler: ApiHandler;
@@ -53,6 +61,8 @@ export interface ProductionControlPlaneRuntime {
   readonly bootstrap: ProductionWorkforceBootstrap;
   readonly query: WorkforceQueryService;
   readonly command: WorkforceCommandService;
+  /** Environment discovery orchestration (no live probes wired in EO-2A). */
+  readonly environmentDetector: EnvironmentDetector;
   /** Flushes pending Firestore-backed writes on an explicit graceful shutdown. */
   flush(): Promise<void>;
 }
@@ -87,9 +97,29 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<AgentOperationalRecord>("agent_operations");
   const workflowControlRepository =
     repositories.repository<WorkflowControlRecord>("workflow_control");
+  // Environment orchestration collections — empty until live discovery (EO-2B+)
+  // registers real hosts/environments. No fake hosts are ever seeded.
+  const hostRepository = repositories.repository<HostInstance>("hosts");
+  const environmentInstanceRepository =
+    repositories.repository<EnvironmentInstance>("environment_instances");
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
+  const environmentRegistry = new EnvironmentRegistry({
+    hosts: hostRepository,
+    instances: environmentInstanceRepository,
+  });
+  for (const descriptor of PRODUCTION_ENVIRONMENT_DESCRIPTORS) {
+    environmentRegistry.registerDescriptor(descriptor);
+  }
+  // EO-2A ships the environment discovery *framework*; production wires no live
+  // probes yet, so hosts/environments remain derived from future platform
+  // probes only. The detector is built now to prove the production graph.
+  const environmentDetector = new EnvironmentDetector(
+    environmentRegistry,
+    new ProbeRegistry(),
+    audit,
+  );
   const bootstrap = createProductionWorkforceBootstrap(
     options.configuration ?? PRODUCTION_WORKFORCE_CONFIGURATION,
     audit,
@@ -135,6 +165,7 @@ export async function createProductionControlPlaneRuntime(
     audit,
     agentOps,
     workflowControl,
+    environments: environmentRegistry,
     orchestrator,
     workflowEngine,
     events: new FirestoreEventPublisher(
@@ -157,6 +188,7 @@ export async function createProductionControlPlaneRuntime(
     bootstrap,
     query,
     command,
+    environmentDetector,
     flush: () => repositories.flushAll(),
   });
 }

@@ -127,6 +127,27 @@ export function createControlPlaneApi(options) {
                 return send(res, 200, id
                     ? notNull(query.getTool(principal, id))
                     : query.getTools(principal), correlationId);
+            case "environments":
+                // GET /api/environments/descriptors[/:id], GET /api/environments/instances[/:id]
+                if (segs[1] === "descriptors") {
+                    return send(res, 200, segs.length >= 3
+                        ? notNull(query.getEnvironmentDescriptor(principal, segs[2]))
+                        : query.getEnvironmentDescriptors(principal), correlationId);
+                }
+                if (segs[1] === "instances") {
+                    return send(res, 200, segs.length >= 3
+                        ? notNull(query.getEnvironmentInstance(principal, segs[2]))
+                        : query.getEnvironmentInstances(principal), correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
+            case "hosts":
+                // GET /api/hosts[/:id], GET /api/hosts/:id/capabilities
+                if (segs.length === 3 && segs[2] === "capabilities") {
+                    return send(res, 200, notNull(query.getHostCapabilitySnapshot(principal, id)), correlationId);
+                }
+                return send(res, 200, id
+                    ? notNull(query.getHost(principal, id))
+                    : query.getHosts(principal), correlationId);
             case "audit":
                 return send(res, 200, query.getAuditEvents(principal, parseAuditQuery(params)), correlationId);
             default:

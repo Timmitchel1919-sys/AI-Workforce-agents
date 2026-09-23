@@ -28,6 +28,12 @@ import {
   PermissionDeniedError,
   validateOperatorPrincipal,
 } from "../../contracts/index.js";
+import type {
+  EnvironmentDescriptor,
+  EnvironmentInstance,
+  HostCapabilitySnapshot,
+  HostInstance,
+} from "../../contracts/index.js";
 import { now } from "../../core/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import {
@@ -383,6 +389,61 @@ export class WorkforceQueryService {
 
   getTool(principal: OperatorPrincipal, toolId: string): ToolView | undefined {
     return this.getTools(principal).find((t) => t.toolId === toolId);
+  }
+
+  /* -------------------------------------------------------------- */
+  /* environments                                                  */
+  /* -------------------------------------------------------------- */
+
+  getEnvironmentDescriptors(
+    principal: OperatorPrincipal,
+  ): EnvironmentDescriptor[] {
+    this.authorizeView(principal);
+    return this.ctx.environments?.listDescriptors() ?? [];
+  }
+
+  getEnvironmentDescriptor(
+    principal: OperatorPrincipal,
+    id: string,
+  ): EnvironmentDescriptor | undefined {
+    this.authorizeView(principal);
+    return this.ctx.environments?.getDescriptor(id);
+  }
+
+  getEnvironmentInstances(principal: OperatorPrincipal): EnvironmentInstance[] {
+    this.authorizeView(principal);
+    return this.ctx.environments?.listInstances() ?? [];
+  }
+
+  getEnvironmentInstance(
+    principal: OperatorPrincipal,
+    id: string,
+  ): EnvironmentInstance | undefined {
+    this.authorizeView(principal);
+    return this.ctx.environments?.getInstance(id);
+  }
+
+  getHosts(principal: OperatorPrincipal): HostInstance[] {
+    this.authorizeView(principal);
+    return this.ctx.environments?.listHosts() ?? [];
+  }
+
+  getHost(
+    principal: OperatorPrincipal,
+    hostId: string,
+  ): HostInstance | undefined {
+    this.authorizeView(principal);
+    return this.ctx.environments?.getHost(hostId);
+  }
+
+  getHostCapabilitySnapshot(
+    principal: OperatorPrincipal,
+    hostId: string,
+  ): HostCapabilitySnapshot | undefined {
+    this.authorizeView(principal);
+    const host = this.ctx.environments?.getHost(hostId);
+    if (!host) return undefined;
+    return { hostId, host, capabilities: host.capabilities };
   }
 
   /* -------------------------------------------------------------- */

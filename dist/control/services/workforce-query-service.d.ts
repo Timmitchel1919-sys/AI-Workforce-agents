@@ -6,6 +6,7 @@
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
 import { type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
+import type { EnvironmentDescriptor, EnvironmentInstance, HostCapabilitySnapshot, HostInstance } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import { redact } from "../redaction.js";
 export declare class WorkforceQueryService {
@@ -49,6 +50,13 @@ export declare class WorkforceQueryService {
     getProjectAgents(principal: OperatorPrincipal, projectId: string): Promise<AgentView[] | undefined>;
     getTools(principal: OperatorPrincipal): ToolView[];
     getTool(principal: OperatorPrincipal, toolId: string): ToolView | undefined;
+    getEnvironmentDescriptors(principal: OperatorPrincipal): EnvironmentDescriptor[];
+    getEnvironmentDescriptor(principal: OperatorPrincipal, id: string): EnvironmentDescriptor | undefined;
+    getEnvironmentInstances(principal: OperatorPrincipal): EnvironmentInstance[];
+    getEnvironmentInstance(principal: OperatorPrincipal, id: string): EnvironmentInstance | undefined;
+    getHosts(principal: OperatorPrincipal): HostInstance[];
+    getHost(principal: OperatorPrincipal, hostId: string): HostInstance | undefined;
+    getHostCapabilitySnapshot(principal: OperatorPrincipal, hostId: string): HostCapabilitySnapshot | undefined;
     getAuditEvents(principal: OperatorPrincipal, query?: AuditEventQuery): PageResult<AuditEventView>;
     getDashboardSnapshot(principal: OperatorPrincipal): Promise<DashboardSnapshot>;
     private authorizeView;

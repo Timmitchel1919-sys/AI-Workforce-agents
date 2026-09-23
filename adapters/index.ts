@@ -9,3 +9,5 @@ export * from "./projects/project-adapter.js";
 export * from "./projects/money-mind/index.js";
 export * from "./persistence/json-file-persistence.js";
 export * from "./firebase/index.js";
+export * from "./environments/index.js";
+export * from "./execution/index.js";

@@ -7,6 +7,7 @@ import {
   AgentRegistry,
   ApprovalSystem,
   AuditLog,
+  EnvironmentRegistry,
   Orchestrator,
   PermissionSystem,
   ProjectRegistry,
@@ -30,6 +31,12 @@ export interface ControlPlaneContext {
   audit: AuditLog;
   agentOps: AgentOperationalStore;
   workflowControl: WorkflowControlStore;
+  /**
+   * Environment orchestration state (descriptors, hosts, detected instances).
+   * Optional so existing contexts without environment support keep working;
+   * when absent every environment query returns an empty result.
+   */
+  environments?: EnvironmentRegistry;
   /**
    * Needed by command enactment (approve → resume). Structural: only these
    * methods are used, so a test can pass a stub.

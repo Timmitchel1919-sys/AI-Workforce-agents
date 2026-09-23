@@ -1,5 +1,6 @@
 import { type FirebaseServices } from "../adapters/firebase/index.js";
 import { WorkforceCommandService, WorkforceQueryService, type ControlPlaneContext } from "../control/index.js";
+import { EnvironmentDetector } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { type ApiHandler } from "./http-api.js";
 import { type ProductionWorkforceBootstrap, type ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
@@ -11,6 +12,8 @@ export interface ProductionControlPlaneRuntime {
     readonly bootstrap: ProductionWorkforceBootstrap;
     readonly query: WorkforceQueryService;
     readonly command: WorkforceCommandService;
+    /** Environment discovery orchestration (no live probes wired in EO-2A). */
+    readonly environmentDetector: EnvironmentDetector;
     /** Flushes pending Firestore-backed writes on an explicit graceful shutdown. */
     flush(): Promise<void>;
 }

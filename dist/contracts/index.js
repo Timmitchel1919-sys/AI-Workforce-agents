@@ -45,6 +45,10 @@ export const AUDIT_EVENT_TYPES = [
     "workflow_event",
     "project_adapter_event",
     "control_command",
+    "host_registered",
+    "environment_discovered",
+    "environment_refreshed",
+    "environment_unavailable",
 ];
 export const DEFAULT_AGENT_LIMITS = {
     maxIterations: 3,
@@ -213,3 +217,4 @@ export * from "./developer.js";
 export * from "./qa.js";
 export * from "./money-mind.js";
 export * from "./control.js";
+export * from "./environments.js";

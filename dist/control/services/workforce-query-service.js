@@ -288,6 +288,40 @@ export class WorkforceQueryService {
         return this.getTools(principal).find((t) => t.toolId === toolId);
     }
     /* -------------------------------------------------------------- */
+    /* environments                                                  */
+    /* -------------------------------------------------------------- */
+    getEnvironmentDescriptors(principal) {
+        this.authorizeView(principal);
+        return this.ctx.environments?.listDescriptors() ?? [];
+    }
+    getEnvironmentDescriptor(principal, id) {
+        this.authorizeView(principal);
+        return this.ctx.environments?.getDescriptor(id);
+    }
+    getEnvironmentInstances(principal) {
+        this.authorizeView(principal);
+        return this.ctx.environments?.listInstances() ?? [];
+    }
+    getEnvironmentInstance(principal, id) {
+        this.authorizeView(principal);
+        return this.ctx.environments?.getInstance(id);
+    }
+    getHosts(principal) {
+        this.authorizeView(principal);
+        return this.ctx.environments?.listHosts() ?? [];
+    }
+    getHost(principal, hostId) {
+        this.authorizeView(principal);
+        return this.ctx.environments?.getHost(hostId);
+    }
+    getHostCapabilitySnapshot(principal, hostId) {
+        this.authorizeView(principal);
+        const host = this.ctx.environments?.getHost(hostId);
+        if (!host)
+            return undefined;
+        return { hostId, host, capabilities: host.capabilities };
+    }
+    /* -------------------------------------------------------------- */
     /* audit                                                         */
     /* -------------------------------------------------------------- */
     getAuditEvents(principal, query = {}) {
