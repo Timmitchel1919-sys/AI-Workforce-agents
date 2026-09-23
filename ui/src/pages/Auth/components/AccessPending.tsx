@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, LogOut, RefreshCw } from "lucide-react";
 import { useAuth } from "../../../auth/useAuth";
-import { authErrorMessage } from "../../../auth/authErrors";
+import { authErrorKey } from "../../../auth/authErrors";
+import { useI18n } from "../../../i18n";
 import { maskEmail } from "../../../auth/passwordPolicy";
 import { AuthCard } from "./AuthCard";
 import { AuthAlert } from "./AuthFields";
@@ -14,6 +15,7 @@ import { AuthAlert } from "./AuthFields";
  */
 export function AccessPending({ next, justCreated }: { next: string; justCreated: boolean }) {
   const { user, refreshAccess, signOut } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
@@ -28,9 +30,9 @@ export function AccessPending({ next, justCreated }: { next: string; justCreated
         navigate(next, { replace: true });
         return;
       }
-      setMessage({ tone: "info", text: "No access has been assigned yet." });
+      setMessage({ tone: "info", text: t("auth.pending.notYet") });
     } catch (error) {
-      setMessage({ tone: "error", text: authErrorMessage(error, "refresh") });
+      setMessage({ tone: "error", text: t(authErrorKey(error, "refresh")) });
     } finally {
       setChecking(false);
     }
@@ -38,21 +40,15 @@ export function AccessPending({ next, justCreated }: { next: string; justCreated
 
   return (
     <AuthCard
-      eyebrow={justCreated ? "Account created" : "Access pending"}
-      title="Awaiting access"
-      description={
-        <>
-          Signed in as <strong>{user?.email ? maskEmail(user.email) : "your account"}</strong>. Your
-          identity is verified, but no Control Center access has been assigned yet. An AI Workforce
-          administrator grants access.
-        </>
-      }
+      eyebrow={justCreated ? t("auth.pending.created") : t("auth.pending.pending")}
+      title={t("auth.pending.title")}
+      description={t("auth.pending.signedInAs", { email: user?.email ? maskEmail(user.email) : t("auth.pending.yourAccount") })}
     >
       <div className="auth-pending">
         <span className="auth-pending__icon" aria-hidden="true">
           <Clock size={20} />
         </span>
-        <p>Once access is assigned, check again to continue — there is no need to create another account.</p>
+        <p>{t("auth.pending.note")}</p>
       </div>
 
       {message ? <AuthAlert tone={message.tone}>{message.text}</AuthAlert> : null}
@@ -66,11 +62,11 @@ export function AccessPending({ next, justCreated }: { next: string; justCreated
           aria-busy={checking}
         >
           <RefreshCw size={16} aria-hidden="true" className={checking ? "auth-spin" : undefined} />
-          {checking ? "Checking access…" : "Check access again"}
+          {checking ? t("auth.pending.checking") : t("auth.pending.checkAgain")}
         </button>
         <button type="button" className="lp-button lp-button--secondary auth-submit" onClick={() => void signOut()}>
           <LogOut size={16} aria-hidden="true" />
-          Sign out
+          {t("shell.signOut")}
         </button>
       </div>
     </AuthCard>

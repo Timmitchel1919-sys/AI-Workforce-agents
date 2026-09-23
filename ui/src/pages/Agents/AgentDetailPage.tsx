@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router-dom";
+import { formatDateTime, translateStatus, useI18n } from "../../i18n";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
 import PageSection from "../../components/layout/PageSection";
@@ -7,15 +8,6 @@ import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { useAgents } from "../../features/agents";
 import { AgentsLoadingState } from "./components/AgentsLoadingState";
-
-function formatTimestamp(value?: string) {
-  if (!value) {
-    return "Not reported";
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
 
 function mapAgentStatusForBadge(status: string) {
   switch (status) {
@@ -37,6 +29,8 @@ function mapAgentStatusForBadge(status: string) {
 }
 
 export default function AgentDetailPage() {
+  const { t, language } = useI18n();
+  const formatTimestamp = (value?: string) => formatDateTime(value, language) ?? t("common.notReported");
   const { agentId } = useParams();
   const { data, status, refetch } = useAgents();
 
@@ -44,9 +38,9 @@ export default function AgentDetailPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Agent detail"
-          description="Inspect status, execution activity, and configuration details for the selected agent."
+          eyebrow={t("common.brand")}
+          title={t("agents.detailTitle")}
+          description={t("agents.detailDescription")}
         />
         <AgentsLoadingState />
       </PageContainer>
@@ -57,16 +51,16 @@ export default function AgentDetailPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Agent detail"
-          description="Inspect status, execution activity, and configuration details for the selected agent."
+          eyebrow={t("common.brand")}
+          title={t("agents.detailTitle")}
+          description={t("agents.detailDescription")}
         />
         <ErrorState
-          title={status === "unauthorized" ? "Access restricted" : "Unable to load agents"}
+          title={status === "unauthorized" ? t("agents.accessRestricted") : t("agents.errorTitle")}
           description={
             status === "unauthorized"
-              ? "You do not have permission to inspect the current agent registry."
-              : "The agent detail view could not be loaded from the Control Plane."
+              ? t("agents.accessRestrictedDescription")
+              : t("agents.detailErrorDescription")
           }
           onRetry={refetch}
         />
@@ -80,51 +74,51 @@ export default function AgentDetailPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Agent detail"
-          description="Inspect status, execution activity, and configuration details for the selected agent."
-          breadcrumbs={[{ label: "Agents", href: "/agents" }, { label: "Not found", current: true }]}
+          eyebrow={t("common.brand")}
+          title={t("agents.detailTitle")}
+          description={t("agents.detailDescription")}
+          breadcrumbs={[{ label: t("agents.title"), href: "/agents" }, { label: t("agents.notFound"), current: true }]}
         />
         <EmptyState
-          title="Agent not found"
-          description="The requested agent is not available in the current registry view."
-          primaryAction={<Link to="/agents">Back to agents</Link>}
+          title={t("agents.notFoundTitle")}
+          description={t("agents.notFoundDescription")}
+          primaryAction={<Link to="/agents">{t("agents.backToAgents")}</Link>}
         />
       </PageContainer>
     );
   }
 
-  const capabilities = agent.capabilities.length > 0 ? agent.capabilities : ["No capabilities reported"];
-  const healthLabel = agent.health ?? "Unavailable";
+  const capabilities = agent.capabilities.length > 0 ? agent.capabilities : [t("agents.noCapabilities")];
+  const healthLabel = agent.health ?? t("common.unavailable");
   const executions = agent.recentExecutions ?? [];
 
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="AI Workforce"
+        eyebrow={t("common.brand")}
         title={agent.name}
-        description={agent.description ?? "No description is available for this agent."}
-        breadcrumbs={[{ label: "Agents", href: "/agents" }, { label: agent.name, current: true }]}
+        description={agent.description ?? t("agents.noDescription")}
+        breadcrumbs={[{ label: t("agents.title"), href: "/agents" }, { label: agent.name, current: true }]}
       />
 
       <div className="agent-detail-page">
-        <PageSection title="Agent identity" description="Core operational identity and availability information.">
+        <PageSection title={t("agents.identity")} description={t("agents.identityDescription")}>
           <div className="agent-detail-identity">
             <div className="agent-detail-identify">
-              <StatusBadge status={mapAgentStatusForBadge(agent.status)}>{agent.status}</StatusBadge>
-              <p className="agent-detail-id">Agent ID: {agent.id}</p>
+              <StatusBadge status={mapAgentStatusForBadge(agent.status)}>{translateStatus(t, agent.status)}</StatusBadge>
+              <p className="agent-detail-id">{t("agents.agentId", { id: agent.id })}</p>
             </div>
             <div className="agent-detail-metadata">
               <div>
-                <span className="agent-detail-label">Model</span>
-                <strong>{agent.model ?? "Unavailable"}</strong>
+                <span className="agent-detail-label">{t("agents.model")}</span>
+                <strong>{agent.model ?? t("common.unavailable")}</strong>
               </div>
               <div>
-                <span className="agent-detail-label">Project</span>
-                <strong>{agent.projectId ?? "Unassigned"}</strong>
+                <span className="agent-detail-label">{t("common.project")}</span>
+                <strong>{agent.projectId ?? t("common.unassigned")}</strong>
               </div>
               <div>
-                <span className="agent-detail-label">Updated</span>
+                <span className="agent-detail-label">{t("common.updated")}</span>
                 <strong>{formatTimestamp(agent.updatedAt)}</strong>
               </div>
             </div>
@@ -132,7 +126,7 @@ export default function AgentDetailPage() {
         </PageSection>
 
         <div className="agent-detail-grid">
-          <PageSection title="Capabilities" description="The capabilities currently assigned to this agent.">
+          <PageSection title={t("agents.capabilities")} description={t("agents.capabilitiesDescription")}>
             <div className="agent-detail-tags">
               {capabilities.map((capability) => (
                 <Badge key={capability} variant="info">
@@ -142,47 +136,47 @@ export default function AgentDetailPage() {
             </div>
           </PageSection>
 
-          <PageSection title="Current workload" description="Active execution information for this agent.">
+          <PageSection title={t("agents.workload")} description={t("agents.workloadDescription")}>
             <div className="agent-detail-stat-block">
               <strong>{agent.activeTasks ?? 0}</strong>
-              <span>active tasks</span>
+              <span>{t("agents.activeTasks")}</span>
             </div>
           </PageSection>
 
-          <PageSection title="Health" description="Current health and service availability state.">
+          <PageSection title={t("agents.health")} description={t("agents.healthDescription")}>
             <div className="agent-detail-stat-block">
               <strong>{healthLabel}</strong>
-              <span>last heartbeat unavailable</span>
+              <span>{t("agents.heartbeatUnavailable")}</span>
             </div>
           </PageSection>
 
-          <PageSection title="Configuration summary" description="Current configuration details available from the Control Plane.">
+          <PageSection title={t("agents.configuration")} description={t("agents.configurationDescription")}>
             <dl className="agent-detail-config">
               <div>
-                <dt>Status</dt>
-                <dd>{agent.status}</dd>
+                <dt>{t("common.status")}</dt>
+                <dd>{translateStatus(t, agent.status)}</dd>
               </div>
               <div>
-                <dt>Model</dt>
-                <dd>{agent.model ?? "Unavailable"}</dd>
+                <dt>{t("agents.model")}</dt>
+                <dd>{agent.model ?? t("common.unavailable")}</dd>
               </div>
               <div>
-                <dt>Project</dt>
-                <dd>{agent.projectId ?? "Unassigned"}</dd>
+                <dt>{t("common.project")}</dt>
+                <dd>{agent.projectId ?? t("common.unassigned")}</dd>
               </div>
               <div>
-                <dt>Updated</dt>
+                <dt>{t("common.updated")}</dt>
                 <dd>{formatTimestamp(agent.updatedAt)}</dd>
               </div>
             </dl>
           </PageSection>
         </div>
 
-        <PageSection title="Recent executions" description="The most recent activity associated with the selected agent.">
+        <PageSection title={t("agents.executions")} description={t("agents.executionsDescription")}>
           {executions.length === 0 ? (
             <EmptyState
-              title="No execution history yet"
-              description="Execution history is not available for this agent yet."
+              title={t("agents.noExecutionsTitle")}
+              description={t("agents.noExecutionsDescription")}
             />
           ) : (
             <ul className="agent-detail-executions">
@@ -190,16 +184,16 @@ export default function AgentDetailPage() {
                 <li key={execution.id} className="agent-detail-execution-item">
                   <div>
                     <strong>{execution.name}</strong>
-                    <span>{execution.task ?? "No task label"}</span>
+                    <span>{execution.task ?? t("agents.noTaskLabel")}</span>
                   </div>
                   <div>
                     <Badge variant={execution.status === "completed" ? "success" : execution.status === "failed" ? "danger" : "neutral"}>
-                      {execution.status}
+                      {translateStatus(t, execution.status)}
                     </Badge>
                   </div>
                   <div>
-                    <span>{execution.startedAt ? formatTimestamp(execution.startedAt) : "Start time unavailable"}</span>
-                    <small>{execution.duration ?? "Duration unavailable"}</small>
+                    <span>{execution.startedAt ? formatTimestamp(execution.startedAt) : t("agents.startUnavailable")}</span>
+                    <small>{execution.duration ?? t("agents.durationUnavailable")}</small>
                   </div>
                 </li>
               ))}
@@ -207,8 +201,8 @@ export default function AgentDetailPage() {
           )}
         </PageSection>
 
-        <PageSection title="Available actions" description="No destructive operations are provided in this UI layer.">
-          <p className="agent-detail-actions">This module is intentionally read-only and may be expanded when the Control Plane exposes safe operational actions.</p>
+        <PageSection title={t("agents.actions")} description={t("agents.actionsDescription")}>
+          <p className="agent-detail-actions">{t("agents.actionsNote")}</p>
         </PageSection>
       </div>
     </PageContainer>

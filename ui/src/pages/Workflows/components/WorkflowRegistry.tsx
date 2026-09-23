@@ -1,19 +1,21 @@
 import { Table } from "../../../components/ui";
+import { useI18n } from "../../../i18n";
 import type { WorkflowView } from "../../../features/workflows";
 import { WorkflowRow } from "./WorkflowRow";
 
 export function WorkflowRegistry({ workflows }: { workflows: readonly WorkflowView[] }) {
+  const { t } = useI18n();
   return (
     <div className="workflows-registry">
-      <Table caption="Workflow registry">
+      <Table caption={t("workflows.registry")}>
         <thead>
           <tr>
-            <th scope="col">Workflow</th>
-            <th scope="col">Status</th>
-            <th scope="col">Progress</th>
-            <th scope="col">Agents</th>
-            <th scope="col">Project</th>
-            <th scope="col">Updated</th>
+            <th scope="col">{t("workflows.colWorkflow")}</th>
+            <th scope="col">{t("common.status")}</th>
+            <th scope="col">{t("workflows.colProgress")}</th>
+            <th scope="col">{t("workflows.colAgents")}</th>
+            <th scope="col">{t("common.project")}</th>
+            <th scope="col">{t("common.updated")}</th>
           </tr>
         </thead>
         <tbody>

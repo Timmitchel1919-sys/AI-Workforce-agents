@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { translatePriority, translateStatus, useI18n } from "../../../i18n";
 import { ArrowLeft } from "lucide-react";
 import { Badge, StatusBadge } from "../../../components/ui";
 import type { Status } from "../../../components/ui/StatusBadge";
@@ -57,28 +58,29 @@ export function TaskDetailHeader({
   status,
   priority,
 }: TaskDetailHeaderProps) {
+  const { t } = useI18n();
   return (
     <div className="task-detail-header">
       <div className="task-detail-header__nav">
         <Link to="/tasks" className="task-detail-header__back-link">
           <ArrowLeft size={16} aria-hidden />
-          <span>Back to Tasks</span>
+          <span>{t("tasks.backToTasks")}</span>
         </Link>
       </div>
 
       <div className="task-detail-header__main">
         <div className="task-detail-header__titles">
           <div className="task-detail-header__id-row">
-            <span className="task-detail-header__id">ID: {taskId}</span>
+            <span className="task-detail-header__id">{t("common.idLabel", { id: taskId })}</span>
           </div>
           <h1 className="task-detail-header__title">{title}</h1>
         </div>
 
         <div className="task-detail-header__badges">
-          <StatusBadge status={mapTaskStatusToBadge(status)}>{status}</StatusBadge>
+          <StatusBadge status={mapTaskStatusToBadge(status)}>{translateStatus(t, status)}</StatusBadge>
           {priority ? (
             <Badge variant={mapPriorityToBadgeVariant(priority)}>
-              Priority: {priority.toUpperCase()}
+              {t("tasks.priorityLabel", { priority: translatePriority(t, priority) })}
             </Badge>
           ) : null}
         </div>

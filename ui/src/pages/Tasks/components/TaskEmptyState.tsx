@@ -1,4 +1,5 @@
 import { EmptyState } from "../../../components/ui";
+import { useI18n } from "../../../i18n";
 
 export interface TaskEmptyStateProps {
   reason?: "empty" | "filters";
@@ -6,20 +7,21 @@ export interface TaskEmptyStateProps {
 }
 
 export function TaskEmptyState({ reason = "empty", onClearFilters }: TaskEmptyStateProps) {
+  const { t } = useI18n();
   const isFilteredState = reason === "filters";
 
   return (
     <EmptyState
-      title={isFilteredState ? "No tasks match your filters" : "No tasks found"}
+      title={isFilteredState ? t("tasks.emptyFilteredTitle") : t("tasks.emptyTitle")}
       description={
         isFilteredState
-          ? "Try clearing the current filters or broadening the search criteria to restore the task view."
-          : "There are currently no tasks registered in this workforce."
+          ? t("tasks.emptyFilteredDescription")
+          : t("tasks.emptyDescription")
       }
       primaryAction={
         onClearFilters ? (
           <button type="button" onClick={onClearFilters} className="ui-button primary">
-            Clear filters
+            {t("common.clearFilters")}
           </button>
         ) : undefined
       }

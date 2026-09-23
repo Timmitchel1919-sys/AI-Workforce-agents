@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { translatePriority, translateStatus, useI18n } from "../../i18n";
 import { Pagination } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
@@ -28,6 +29,7 @@ const statusOptions = [
 const priorityOptions = ["all", "low", "medium", "high", "critical", "urgent"] as const;
 
 export default function TasksPage() {
+  const { t } = useI18n();
   const { data, status, refetch } = useTasks();
   const tasks = useMemo(() => data?.tasks ?? [], [data]);
   const summary = useMemo(
@@ -71,9 +73,9 @@ export default function TasksPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Tasks"
-          description="Monitor and manage task execution across your workforce."
+          eyebrow={t("common.brand")}
+          title={t("tasks.title")}
+          description={t("tasks.description")}
         />
         <TaskLoadingState />
       </PageContainer>
@@ -84,16 +86,16 @@ export default function TasksPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Tasks"
-          description="Monitor and manage task execution across your workforce."
+          eyebrow={t("common.brand")}
+          title={t("tasks.title")}
+          description={t("tasks.description")}
         />
         <TaskErrorState
-          title={status === "unauthorized" ? "Unauthorized" : "Unable to load tasks"}
+          title={status === "unauthorized" ? t("tasks.unauthorizedTitle") : t("tasks.errorTitle")}
           description={
             status === "unauthorized"
-              ? "You do not have permission to access workforce tasks."
-              : "The task registry could not be retrieved from the Control Plane."
+              ? t("tasks.unauthorizedDescription")
+              : t("tasks.errorDescription")
           }
           onRetry={refetch}
         />
@@ -105,9 +107,9 @@ export default function TasksPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Tasks"
-          description="Monitor and manage task execution across your workforce."
+          eyebrow={t("common.brand")}
+          title={t("tasks.title")}
+          description={t("tasks.description")}
         />
         <TaskEmptyState />
       </PageContainer>
@@ -117,27 +119,27 @@ export default function TasksPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="AI Workforce"
-        title="Tasks"
-        description="Monitor and manage task execution across your workforce."
+        eyebrow={t("common.brand")}
+        title={t("tasks.title")}
+        description={t("tasks.description")}
       />
 
       <div className="tasks-page">
-        <div className="tasks-summary" aria-label="Task summary metrics">
+        <div className="tasks-summary" aria-label={t("tasks.summary")}>
           <div className="tasks-summary__metric">
-            <span className="tasks-summary__label">Total Tasks</span>
+            <span className="tasks-summary__label">{t("tasks.total")}</span>
             <strong>{summary.total}</strong>
           </div>
           <div className="tasks-summary__metric">
-            <span className="tasks-summary__label">Running</span>
+            <span className="tasks-summary__label">{t("status.running")}</span>
             <strong>{summary.running}</strong>
           </div>
           <div className="tasks-summary__metric">
-            <span className="tasks-summary__label">Completed</span>
+            <span className="tasks-summary__label">{t("status.completed")}</span>
             <strong>{summary.completed}</strong>
           </div>
           <div className="tasks-summary__metric">
-            <span className="tasks-summary__label">Failed / Pending</span>
+            <span className="tasks-summary__label">{t("tasks.failedPending")}</span>
             <strong>{summary.failed + summary.pending}</strong>
           </div>
         </div>
@@ -161,12 +163,14 @@ export default function TasksPage() {
             }}
             statusOptions={statusOptions}
             priorityOptions={priorityOptions}
+            formatStatus={(value) => (value === "all" ? t("common.allStatuses") : translateStatus(t, value))}
+            formatPriority={(value) => (value === "all" ? t("common.allPriorities") : translatePriority(t, value))}
           />
         </PageSection>
 
         <PageSection
-          title="Task Registry"
-          description="Real-time execution status, assigned agents, and metadata across your workforce."
+          title={t("tasks.registry")}
+          description={t("tasks.registryDescription")}
         >
           {filteredTasks.length === 0 ? (
             <TaskEmptyState

@@ -23,7 +23,7 @@ export function Dialog({ open, onClose, title, description, children }: DialogPr
   const descId = description ? `dialog-desc-${generatedId}` : undefined;
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.4)' }} onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--color-overlay)' }} onClick={onClose}>
       <div className="ui-card" role="document" onClick={e => e.stopPropagation()} style={{ maxWidth: 720, width: '90%' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>

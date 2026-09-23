@@ -8,3 +8,4 @@ export { default as TaskDetailPage } from "../../pages/Tasks/TaskDetailPage";
 export { default as WorkflowsPage } from "../../pages/Workflows/WorkflowsPage";
 export { default as WorkflowDetailPage } from "../../pages/Workflows/WorkflowDetailPage";
 export { default as DesignSystemPage } from "../../pages/DesignSystem/DesignSystemPage";
+export { default as SettingsPage } from "../../pages/Settings/SettingsPage";

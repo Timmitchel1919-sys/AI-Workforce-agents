@@ -1,3 +1,5 @@
+import type { MessageKey } from "../i18n";
+
 export type NavigationSectionId = "main" | "workspace" | "intelligence" | "governance";
 
 export type NavigationIconId =
@@ -13,29 +15,31 @@ export type NavigationIconId =
 
 export type NavigationBadge = number | string;
 
+/** Labels are message keys, resolved in the active language at render time. */
 export interface NavigationItem {
-  label: string;
+  labelKey: MessageKey;
   route: string;
   icon: NavigationIconId;
   badge?: NavigationBadge;
   section: NavigationSectionId;
 }
 
-export const navigationSections: Array<{ id: NavigationSectionId; label: string }> = [
-  { id: "main", label: "Main" },
-  { id: "workspace", label: "Workspace" },
-  { id: "intelligence", label: "Intelligence" },
-  { id: "governance", label: "Governance" },
+export const navigationSections: Array<{ id: NavigationSectionId; labelKey: MessageKey }> = [
+  { id: "main", labelKey: "nav.sections.main" },
+  { id: "workspace", labelKey: "nav.sections.workspace" },
+  { id: "intelligence", labelKey: "nav.sections.intelligence" },
+  { id: "governance", labelKey: "nav.sections.governance" },
 ];
 
+// Only real routes — no placeholders for modules that do not exist yet (e.g. Environments).
 export const navigationItems: NavigationItem[] = [
-  { label: "Overview", route: "/overview", icon: "overview", section: "main" },
-  { label: "Agents", route: "/agents", icon: "agents", section: "main" },
-  { label: "Tasks", route: "/tasks", icon: "tasks", section: "main" },
-  { label: "Workflows", route: "/workflows", icon: "workflows", section: "main" },
-  { label: "Projects", route: "/projects", icon: "projects", section: "workspace" },
-  { label: "Approvals", route: "/approvals", icon: "approvals", section: "workspace" },
-  { label: "Knowledge", route: "/knowledge", icon: "knowledge", section: "intelligence" },
-  { label: "Audit Log", route: "/audit-log", icon: "audit-log", section: "governance" },
-  { label: "Settings", route: "/settings", icon: "settings", section: "governance" },
+  { labelKey: "nav.overview", route: "/overview", icon: "overview", section: "main" },
+  { labelKey: "nav.agents", route: "/agents", icon: "agents", section: "main" },
+  { labelKey: "nav.tasks", route: "/tasks", icon: "tasks", section: "main" },
+  { labelKey: "nav.workflows", route: "/workflows", icon: "workflows", section: "main" },
+  { labelKey: "nav.projects", route: "/projects", icon: "projects", section: "workspace" },
+  { labelKey: "nav.approvals", route: "/approvals", icon: "approvals", section: "workspace" },
+  { labelKey: "nav.knowledge", route: "/knowledge", icon: "knowledge", section: "intelligence" },
+  { labelKey: "nav.auditLog", route: "/audit-log", icon: "audit-log", section: "governance" },
+  { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },
 ];

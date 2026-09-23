@@ -3,6 +3,7 @@ import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
+import { useI18n, type MessageKey } from "../i18n";
 import { loadAuthRoutes, loadControlCenterRoutes, loadLanding } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
@@ -26,12 +27,14 @@ const TaskDetailPage = fromChunk(loadControlCenterRoutes, "TaskDetailPage");
 const WorkflowsPage = fromChunk(loadControlCenterRoutes, "WorkflowsPage");
 const WorkflowDetailPage = fromChunk(loadControlCenterRoutes, "WorkflowDetailPage");
 const DesignSystemPage = fromChunk(loadControlCenterRoutes, "DesignSystemPage");
+const SettingsPage = fromChunk(loadControlCenterRoutes, "SettingsPage");
 
 function RouteFallback() {
+  const { t } = useI18n();
   return (
     <div className="auth-guard-loading" role="status" aria-live="polite">
       <Spinner />
-      <span>Loading…</span>
+      <span>{t("common.loading")}</span>
     </div>
   );
 }
@@ -40,14 +43,15 @@ function withSuspense(node: ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
 }
 
-function PlaceholderPage({ title }: { title: string }) {
+function PlaceholderPage({ titleKey }: { titleKey: MessageKey }) {
+  const { t } = useI18n();
   return (
     <div className="page">
       <section className="page-header">
-        <p className="eyebrow">AI Workforce</p>
-        <h1>{title}</h1>
+        <p className="eyebrow">{t("common.brand")}</p>
+        <h1>{t(titleKey)}</h1>
         <p className="page-description">
-          This feature area is reserved for the next UI layer.
+          {t("shell.reservedDescription")}
         </p>
       </section>
     </div>
@@ -82,11 +86,11 @@ export const router = createBrowserRouter([
       { path: "tasks/:taskId", element: withSuspense(<TaskDetailPage />) },
       { path: "workflows", element: withSuspense(<WorkflowsPage />) },
       { path: "workflows/:workflowId", element: withSuspense(<WorkflowDetailPage />) },
-      { path: "projects", element: <PlaceholderPage title="Projects" /> },
-      { path: "approvals", element: <PlaceholderPage title="Approvals" /> },
-      { path: "audit-log", element: <PlaceholderPage title="Audit Log" /> },
-      { path: "knowledge", element: <PlaceholderPage title="Knowledge" /> },
-      { path: "settings", element: <PlaceholderPage title="Settings" /> },
+      { path: "projects", element: <PlaceholderPage titleKey="nav.projects" /> },
+      { path: "approvals", element: <PlaceholderPage titleKey="nav.approvals" /> },
+      { path: "audit-log", element: <PlaceholderPage titleKey="nav.auditLog" /> },
+      { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
+      { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "design-system", element: withSuspense(<DesignSystemPage />) },
     ],
   },

@@ -1,5 +1,8 @@
+import type { MessageKey } from "../../i18n";
+
 /**
- * Static presentation content for the landing page.
+ * Static presentation content for the landing page. Copy lives in the locale
+ * catalogues (`landing.*`); this file owns structure and implementation status.
  *
  * Nothing here is live telemetry. Statuses reflect the implementation state of
  * the repository and must be updated when that state changes:
@@ -13,37 +16,29 @@ export type EnvironmentStatus = "available" | "registered" | "planned" | "unavai
 
 export type AgentStatus = "registered" | "implemented" | "planned";
 
-export const statusLabels: Record<EnvironmentStatus | AgentStatus, string> = {
-  available: "Available",
-  registered: "Registered",
-  implemented: "Implemented",
-  planned: "Planned",
-  unavailable: "Unavailable",
-};
+export const navLinks: ReadonlyArray<{ id: string; labelKey: MessageKey }> = [
+  { id: "system", labelKey: "landing.nav.system" },
+  { id: "capabilities", labelKey: "landing.nav.capabilities" },
+  { id: "architecture", labelKey: "landing.nav.architecture" },
+  { id: "security", labelKey: "landing.nav.security" },
+];
 
-export const navLinks = [
-  { id: "system", label: "System" },
-  { id: "capabilities", label: "Capabilities" },
-  { id: "architecture", label: "Architecture" },
-  { id: "security", label: "Security" },
-] as const;
+export const controlPlaneBranches: ReadonlyArray<{ top: MessageKey; bottom: MessageKey }> = [
+  { top: "landing.system.branches.architect", bottom: "landing.system.branches.security" },
+  { top: "landing.system.branches.develop", bottom: "landing.system.branches.deploy" },
+  { top: "landing.system.branches.test", bottom: "landing.system.branches.audit" },
+];
 
-export const controlPlaneBranches = [
-  { top: "Architect", bottom: "Security" },
-  { top: "Develop", bottom: "Deploy" },
-  { top: "Test", bottom: "Audit" },
-] as const;
-
-export const coreModules = [
-  "Project Architect",
-  "Technology Selector",
-  "Agent Router",
-  "Model Router",
-  "Environment Router",
-  "Build Orchestrator",
-  "Security",
-  "AI Auditor",
-] as const;
+export const coreModules: readonly MessageKey[] = [
+  "landing.system.modules.projectArchitect",
+  "landing.system.modules.technologySelector",
+  "landing.system.modules.agentRouter",
+  "landing.system.modules.modelRouter",
+  "landing.system.modules.environmentRouter",
+  "landing.system.modules.buildOrchestrator",
+  "landing.system.modules.security",
+  "landing.system.modules.aiAuditor",
+];
 
 export type EnvironmentIconId =
   | "code"
@@ -56,8 +51,11 @@ export type EnvironmentIconId =
   | "gamepad";
 
 export interface EnvironmentCard {
+  id: string;
+  /** Product names are not translated; `nameKey` is used only for generic names. */
   name: string;
-  description: string;
+  nameKey?: MessageKey;
+  descriptionKey: MessageKey;
   icon: EnvironmentIconId;
   status: EnvironmentStatus;
 }
@@ -68,183 +66,50 @@ export interface EnvironmentCard {
  * workforce *can* support the type, not that any host has it installed.
  */
 export const environments: EnvironmentCard[] = [
-  {
-    name: "VS Code",
-    description: "Editor-driven development and CLI builds on developer workstations.",
-    icon: "code",
-    status: "planned",
-  },
-  {
-    name: "Visual Studio",
-    description: ".NET and C++ solutions, detected through a restricted vswhere probe.",
-    icon: "monitor",
-    status: "planned",
-  },
-  {
-    name: "Xcode",
-    description: "Apple platform builds on dedicated macOS build hosts.",
-    icon: "hammer",
-    status: "registered",
-  },
-  {
-    name: "Android Studio",
-    description: "Android SDK builds and emulator-backed verification.",
-    icon: "smartphone",
-    status: "planned",
-  },
-  {
-    name: "Docker",
-    description: "Isolated container runtimes for reproducible builds and tests.",
-    icon: "container",
-    status: "registered",
-  },
-  {
-    name: "Cloud Runners",
-    description: "Ephemeral cloud hosts with cost-center attribution.",
-    icon: "cloud",
-    status: "planned",
-  },
-  {
-    name: "Unity",
-    description: "Real-time 3D projects and editor-driven build pipelines.",
-    icon: "box",
-    status: "planned",
-  },
-  {
-    name: "Unreal Engine",
-    description: "High-fidelity engine builds on capable GPU hosts.",
-    icon: "gamepad",
-    status: "planned",
-  },
+  { id: "vscode", name: "VS Code", descriptionKey: "landing.env.descriptions.vscode", icon: "code", status: "planned" },
+  { id: "visual-studio", name: "Visual Studio", descriptionKey: "landing.env.descriptions.visualStudio", icon: "monitor", status: "planned" },
+  { id: "xcode", name: "Xcode", descriptionKey: "landing.env.descriptions.xcode", icon: "hammer", status: "registered" },
+  { id: "android-studio", name: "Android Studio", descriptionKey: "landing.env.descriptions.androidStudio", icon: "smartphone", status: "planned" },
+  { id: "docker", name: "Docker", descriptionKey: "landing.env.descriptions.docker", icon: "container", status: "registered" },
+  { id: "cloud-runners", name: "Cloud Runners", nameKey: "landing.env.names.cloudRunners", descriptionKey: "landing.env.descriptions.cloudRunners", icon: "cloud", status: "planned" },
+  { id: "unity", name: "Unity", descriptionKey: "landing.env.descriptions.unity", icon: "box", status: "planned" },
+  { id: "unreal", name: "Unreal Engine", descriptionKey: "landing.env.descriptions.unreal", icon: "gamepad", status: "planned" },
 ];
 
+export type AgentDepartmentId = "cpa" | "dev" | "pm" | "qa" | "res" | "ux" | "sec" | "ops" | "fin" | "aud";
+
 export interface AgentDepartment {
-  name: string;
-  role: string;
-  capability: string;
+  id: AgentDepartmentId;
   status: AgentStatus;
-  code: string;
 }
 
 export const agentDepartments: AgentDepartment[] = [
-  {
-    name: "Control Plane Analysis",
-    role: "Operational analyst",
-    capability: "Reads Control Plane state and explains workforce health.",
-    status: "registered",
-    code: "CPA",
-  },
-  {
-    name: "Software Engineering",
-    role: "Developer agent",
-    capability: "Plans and produces code changes through governed tools.",
-    status: "implemented",
-    code: "DEV",
-  },
-  {
-    name: "Project Management",
-    role: "Project manager agent",
-    capability: "Breaks requests into tasks, dependencies, and handoffs.",
-    status: "implemented",
-    code: "PM",
-  },
-  {
-    name: "Test & QA",
-    role: "QA agent",
-    capability: "Designs and evaluates verification for delivered work.",
-    status: "implemented",
-    code: "QA",
-  },
-  {
-    name: "Research",
-    role: "Research agent",
-    capability: "Gathers and summarises context before work begins.",
-    status: "implemented",
-    code: "RES",
-  },
-  {
-    name: "UI / UX",
-    role: "Interface agent",
-    capability: "Interface structure, accessibility, and design-system use.",
-    status: "planned",
-    code: "UX",
-  },
-  {
-    name: "Security",
-    role: "Security agent",
-    capability: "Reviews changes for vulnerabilities and secret exposure.",
-    status: "planned",
-    code: "SEC",
-  },
-  {
-    name: "Deployment",
-    role: "Release agent",
-    capability: "Promotes verified builds behind approval gates.",
-    status: "planned",
-    code: "OPS",
-  },
-  {
-    name: "AI Cost Center",
-    role: "Cost governance",
-    capability: "Attributes model and compute spend per project.",
-    status: "planned",
-    code: "FIN",
-  },
-  {
-    name: "AI Auditor",
-    role: "Independent review",
-    capability: "Audits agent decisions against policy and evidence.",
-    status: "planned",
-    code: "AUD",
-  },
+  { id: "cpa", status: "registered" },
+  { id: "dev", status: "implemented" },
+  { id: "pm", status: "implemented" },
+  { id: "qa", status: "implemented" },
+  { id: "res", status: "implemented" },
+  { id: "ux", status: "planned" },
+  { id: "sec", status: "planned" },
+  { id: "ops", status: "planned" },
+  { id: "fin", status: "planned" },
+  { id: "aud", status: "planned" },
 ];
 
-export const pipelineSteps = [
-  "Project Request",
-  "Task Analyzer",
-  "Project Architect",
-  "Technology Selector",
-  "Environment Router",
-  "Agent Qualification",
-  "Model Router",
-  "Execution",
-  "Build",
-  "Test / Security",
-  "Deploy",
-] as const;
+export const pipelineSteps: readonly MessageKey[] = [
+  "landing.pipeline.steps.request",
+  "landing.pipeline.steps.analyzer",
+  "landing.pipeline.steps.architect",
+  "landing.pipeline.steps.selector",
+  "landing.pipeline.steps.envRouter",
+  "landing.pipeline.steps.qualification",
+  "landing.pipeline.steps.modelRouter",
+  "landing.pipeline.steps.execution",
+  "landing.pipeline.steps.build",
+  "landing.pipeline.steps.testSecurity",
+  "landing.pipeline.steps.deploy",
+];
 
-export const governanceItems = [
-  {
-    title: "Approval Gates",
-    body: "High-impact actions pause until a human operator approves them.",
-  },
-  {
-    title: "Audit Trail",
-    body: "Every command is recorded with actor, correlation id, and outcome.",
-  },
-  {
-    title: "Agent Permissions",
-    body: "Deny-by-default grants, enforced at the dispatch boundary.",
-  },
-  {
-    title: "Security Controls",
-    body: "Restricted, allowlisted execution — no arbitrary shell access.",
-  },
-  {
-    title: "AI Cost Center",
-    body: "Cost attribution per project, host, and model (planned).",
-  },
-  {
-    title: "Human Oversight",
-    body: "Operators can pause, resume, or cancel work at any time.",
-  },
-] as const;
+export const governanceItems = ["approvals", "audit", "permissions", "controls", "cost", "oversight"] as const;
 
-export const securityItems = [
-  { title: "Zero Trust", body: "No request is trusted by default; every call is authenticated." },
-  { title: "Least Privilege", body: "Agents receive only the permissions their task requires." },
-  { title: "Agent Isolation", body: "Project-isolated context keeps workloads apart." },
-  { title: "Approval Gates", body: "Risky operations require explicit human approval." },
-  { title: "Auditability", body: "A structured, append-only audit log for every action." },
-  { title: "Secret Protection", body: "Registries never accept credentials; errors are redacted." },
-] as const;
+export const securityItems = ["zeroTrust", "leastPrivilege", "isolation", "approvals", "auditability", "secrets"] as const;

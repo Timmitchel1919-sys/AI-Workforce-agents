@@ -11,26 +11,31 @@ import { LandingNavbar } from "./components/LandingNavbar";
 import { OrchestrationPipeline } from "./components/OrchestrationPipeline";
 import { SecuritySection } from "./components/SecuritySection";
 import { SystemSection } from "./components/SystemSection";
+import { useI18n } from "../../i18n";
 import "../../styles/os-theme.css";
 import "./LandingPage.css";
 
 export default function LandingPage() {
+  const { t } = useI18n();
   // The landing experience is always obsidian; keep overscroll areas matching.
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add("os-document");
+    return () => root.classList.remove("os-document");
+  }, []);
+
+  useEffect(() => {
     const previousTitle = document.title;
-    document.title = "AI Workforce — Intelligence at work";
+    document.title = t("landing.documentTitle");
     return () => {
-      root.classList.remove("os-document");
       document.title = previousTitle;
     };
-  }, []);
+  }, [t]);
 
   return (
     <div className="lp os-theme">
       <a className="lp-skip-link" href="#lp-main">
-        Skip to content
+        {t("landing.skip")}
       </a>
       <BackgroundField />
       <LandingNavbar />

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { translateStatus, useI18n } from "../../i18n";
 import { Input, Pagination, Select } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
@@ -27,6 +28,7 @@ function formatMetricLabel(value: number, label: string) {
 }
 
 export default function AgentsPage() {
+  const { t } = useI18n();
   const { data, status, refetch } = useAgents();
   const agents = useMemo(() => data?.agents ?? [], [data]);
   const summary = useMemo(
@@ -75,9 +77,9 @@ export default function AgentsPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Agents"
-          description="Monitor and manage the agents operating across your workforce."
+          eyebrow={t("common.brand")}
+          title={t("agents.title")}
+          description={t("agents.description")}
         />
         <AgentsLoadingState />
       </PageContainer>
@@ -88,9 +90,9 @@ export default function AgentsPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Agents"
-          description="Monitor and manage the agents operating across your workforce."
+          eyebrow={t("common.brand")}
+          title={t("agents.title")}
+          description={t("agents.description")}
         />
         <AgentsErrorState onRetry={refetch} />
       </PageContainer>
@@ -101,9 +103,9 @@ export default function AgentsPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Agents"
-          description="Monitor and manage the agents operating across your workforce."
+          eyebrow={t("common.brand")}
+          title={t("agents.title")}
+          description={t("agents.description")}
         />
         <AgentsErrorState onRetry={refetch} />
       </PageContainer>
@@ -114,9 +116,9 @@ export default function AgentsPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Agents"
-          description="Monitor and manage the agents operating across your workforce."
+          eyebrow={t("common.brand")}
+          title={t("agents.title")}
+          description={t("agents.description")}
         />
         <AgentsEmptyState />
       </PageContainer>
@@ -126,31 +128,31 @@ export default function AgentsPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="AI Workforce"
-        title="Agents"
-        description="Monitor and manage the agents operating across your workforce."
+        eyebrow={t("common.brand")}
+        title={t("agents.title")}
+        description={t("agents.description")}
       />
 
       <div className="agents-page">
-        <div className="agents-summary" aria-label="Agent summary metrics">
+        <div className="agents-summary" aria-label={t("agents.summary")}>
           <div className="agents-summary__metric">
-            <span className="agents-summary__label">Total Agents</span>
+            <span className="agents-summary__label">{t("agents.total")}</span>
             <strong>{summary.total}</strong>
           </div>
           <div className="agents-summary__metric">
-            <span className="agents-summary__label">Active</span>
+            <span className="agents-summary__label">{t("status.active")}</span>
             <strong>{summary.active}</strong>
           </div>
           <div className="agents-summary__metric">
-            <span className="agents-summary__label">Idle</span>
+            <span className="agents-summary__label">{t("status.idle")}</span>
             <strong>{summary.idle}</strong>
           </div>
           <div className="agents-summary__metric">
-            <span className="agents-summary__label">Offline</span>
+            <span className="agents-summary__label">{t("status.offline")}</span>
             <strong>{summary.offline}</strong>
           </div>
           <div className="agents-summary__metric">
-            <span className="agents-summary__label">Healthy</span>
+            <span className="agents-summary__label">{t("agents.healthy")}</span>
             <strong>{summary.healthy}</strong>
           </div>
         </div>
@@ -158,7 +160,7 @@ export default function AgentsPage() {
         <PageSection>
           <div className="agents-toolbar">
             <div className="agents-toolbar__search">
-              <label htmlFor="agent-search">Search agents</label>
+              <label htmlFor="agent-search">{t("agents.search")}</label>
               <Input
                 id="agent-search"
                 type="search"
@@ -167,15 +169,15 @@ export default function AgentsPage() {
                   setQuery(event.target.value);
                   setPage(1);
                 }}
-                placeholder="Search agents..."
-                aria-label="Search agents"
+                placeholder={t("agents.searchPlaceholder")}
+                aria-label={t("agents.search")}
               />
             </div>
 
             <div className="agents-toolbar__filters">
               <Select
                 id="status-filter"
-                label="Status"
+                label={t("common.status")}
                 value={statusFilter}
                 onChange={(event) => {
                   setStatusFilter(event.target.value as (typeof statusOptions)[number]);
@@ -184,21 +186,21 @@ export default function AgentsPage() {
               >
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>
-                    {status === "all" ? "All statuses" : status}
+                    {status === "all" ? t("common.allStatuses") : translateStatus(t, status)}
                   </option>
                 ))}
               </Select>
 
               <Select
                 id="capability-filter"
-                label="Capability"
+                label={t("agents.capability")}
                 value={capabilityFilter}
                 onChange={(event) => {
                   setCapabilityFilter(event.target.value);
                   setPage(1);
                 }}
               >
-                <option value="all">All capabilities</option>
+                <option value="all">{t("agents.allCapabilities")}</option>
                 {capabilities.map((capability) => (
                   <option key={capability} value={capability}>
                     {capability}
@@ -208,14 +210,14 @@ export default function AgentsPage() {
 
               <Select
                 id="project-filter"
-                label="Project"
+                label={t("common.project")}
                 value={projectFilter}
                 onChange={(event) => {
                   setProjectFilter(event.target.value);
                   setPage(1);
                 }}
               >
-                <option value="all">All projects</option>
+                <option value="all">{t("common.allProjects")}</option>
                 {projects.map((project) => (
                   <option key={project} value={project}>
                     {project}
@@ -227,8 +229,8 @@ export default function AgentsPage() {
         </PageSection>
 
         <PageSection
-          title="Agent Registry"
-          description="Operational status, workload, and availability across the current workforce."
+          title={t("agents.registry")}
+          description={t("agents.registryDescription")}
         >
           {filteredAgents.length === 0 ? (
             <AgentsEmptyState

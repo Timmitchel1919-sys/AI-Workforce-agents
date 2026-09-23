@@ -1,4 +1,5 @@
 import { Card } from "../../../components/ui";
+import { formatDateTime, translateStatus, useI18n } from "../../../i18n";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import type { Status } from "../../../components/ui/StatusBadge";
 import type { TaskLifecycleEvent, TaskStatus } from "../../../features/tasks";
@@ -25,30 +26,27 @@ function mapTaskStatusToBadge(status?: TaskStatus): Status {
   }
 }
 
-function formatDate(isoString: string): string {
-  const date = new Date(isoString);
-  return Number.isNaN(date.getTime()) ? isoString : date.toLocaleString();
-}
-
 export interface TaskTimelineProps {
   timeline?: TaskLifecycleEvent[];
 }
 
 export function TaskTimeline({ timeline }: TaskTimelineProps) {
+  const { t, language } = useI18n();
+  const formatDate = (value: string) => formatDateTime(value, language) ?? value;
   const events = timeline ?? [];
   const hasEvents = events.length > 0;
 
   return (
     <Card className="task-timeline-card">
       <div className="task-card-header">
-        <h2>Task Lifecycle Timeline</h2>
+        <h2>{t("tasks.timeline")}</h2>
       </div>
 
       <div className="task-timeline-card__body">
         {!hasEvents ? (
           <div className="task-timeline-empty">
             <p className="task-meta-value task-meta-value--muted">
-              No lifecycle events recorded for this task.
+              {t("tasks.noTimeline")}
             </p>
           </div>
         ) : (
@@ -63,7 +61,7 @@ export function TaskTimeline({ timeline }: TaskTimelineProps) {
                       <span className="task-timeline__event-name">{item.event}</span>
                       {item.status ? (
                         <StatusBadge status={mapTaskStatusToBadge(item.status)}>
-                          {item.status}
+                          {translateStatus(t, item.status)}
                         </StatusBadge>
                       ) : null}
                     </div>

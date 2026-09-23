@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "../../../components/ui";
+import { useI18n, type I18nContextValue } from "../../../i18n";
 import type { MetricStatus, TrendDirection } from "../overviewData";
 
 export interface MetricCardProps {
@@ -17,14 +18,14 @@ export interface MetricCardProps {
   loading?: boolean;
 }
 
-function formatTrend(trend: number, trendDirection?: TrendDirection) {
+function formatTrend(t: I18nContextValue["t"], trend: number, trendDirection?: TrendDirection) {
   const direction = trendDirection ?? (trend > 0 ? "up" : trend < 0 ? "down" : "neutral");
   const absValue = Math.abs(trend);
 
   if (direction === "down") {
     return {
       symbol: "↓",
-      text: `Decrease of ${absValue}`,
+      text: t("overview.trendDown", { value: absValue }),
       value: `-${absValue}`,
     };
   }
@@ -32,14 +33,14 @@ function formatTrend(trend: number, trendDirection?: TrendDirection) {
   if (direction === "neutral") {
     return {
       symbol: "→",
-      text: "No change",
+      text: t("overview.trendNone"),
       value: `${absValue}`,
     };
   }
 
   return {
     symbol: "↑",
-    text: `Increase of ${absValue}`,
+    text: t("overview.trendUp", { value: absValue }),
     value: `+${absValue}`,
   };
 }
@@ -57,7 +58,8 @@ export function MetricCard({
   className,
   loading = false,
 }: MetricCardProps) {
-  const trendMeta = typeof trend === "number" ? formatTrend(trend, trendDirection) : null;
+  const { t } = useI18n();
+  const trendMeta = typeof trend === "number" ? formatTrend(t, trend, trendDirection) : null;
   const metricContent = (
     <Card className={["overview-metric", `overview-metric--${status}`, className].filter(Boolean).join(" ")}>
       <div className="overview-metric__label-row">
@@ -83,7 +85,7 @@ export function MetricCard({
           <span className="sr-only">{trendMeta.text}</span>
         </div>
       ) : null}
-      {loading ? <span className="sr-only">Loading metric data</span> : null}
+      {loading ? <span className="sr-only">{t("overview.loadingMetric")}</span> : null}
     </Card>
   );
 
@@ -93,7 +95,7 @@ export function MetricCard({
         key={id}
         to={linkTo}
         className="overview-metric__link"
-        aria-label={`${label}: ${value}. ${context}. ${trendMeta?.text ?? "No trend"}`}
+        aria-label={`${label}: ${value}. ${context}. ${trendMeta?.text ?? t("overview.noTrend")}`}
       >
         {metricContent}
       </Link>

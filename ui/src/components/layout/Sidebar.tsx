@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { useI18n } from "../../i18n";
 import {
   navigationItems,
   navigationSections,
@@ -48,11 +49,12 @@ export default function Sidebar({
   onToggleCollapsed,
 }: SidebarProps) {
   const isRail = collapsed && Boolean(onToggleCollapsed);
+  const { t } = useI18n();
 
   return (
     <nav
       className={`sidebar${isRail ? " sidebar--collapsed" : ""}`}
-      aria-label="Primary navigation"
+      aria-label={t("shell.primaryNavigation")}
     >
       <div className="sidebar__header">
         {isRail ? (
@@ -61,9 +63,9 @@ export default function Sidebar({
             type="button"
             className="sidebar__brand-toggle"
             onClick={onToggleCollapsed}
-            aria-label="Open sidebar"
+            aria-label={t("shell.openSidebar")}
             aria-expanded={false}
-            title="Open sidebar"
+            title={t("shell.openSidebar")}
           >
             <img
               src={LOGO_SRC}
@@ -78,13 +80,13 @@ export default function Sidebar({
           <NavLink
             to="/overview"
             className="sidebar__brand"
-            aria-label="AI Workforce Control Center — Overview"
+            aria-label={t("shell.homeLink")}
             onClick={() => onNavigate?.()}
           >
             <img src={LOGO_SRC} alt="" className="sidebar__logo" />
             <span className="sidebar__brand-copy">
               <span className="sidebar__brand-name">AI Workforce</span>
-              <span className="sidebar__brand-subtitle">Control Center</span>
+              <span className="sidebar__brand-subtitle">{t("common.tagline")}</span>
             </span>
           </NavLink>
         )}
@@ -94,9 +96,9 @@ export default function Sidebar({
             type="button"
             className="sidebar__collapse"
             onClick={onToggleCollapsed}
-            aria-label="Close sidebar"
+            aria-label={t("shell.closeSidebar")}
             aria-expanded={true}
-            title="Close sidebar"
+            title={t("shell.closeSidebar")}
           >
             <PanelLeftClose size={18} aria-hidden="true" />
           </button>
@@ -113,9 +115,9 @@ export default function Sidebar({
             <div
               key={section.id}
               className="sidebar__section"
-              aria-label={`${section.label} navigation`}
+              aria-label={t("nav.sectionNavigation", { section: t(section.labelKey) })}
             >
-              <div className="sidebar__section-title">{section.label}</div>
+              <div className="sidebar__section-title">{t(section.labelKey)}</div>
               <ul className="sidebar__list">
                 {sectionItems.map((item) => {
                   const Icon = iconMap[item.icon];
@@ -129,13 +131,13 @@ export default function Sidebar({
                           `sidebar__link${isActive ? " is-active" : ""}`
                         }
                         onClick={() => onNavigate?.()}
-                        title={isRail ? item.label : undefined}
-                        aria-label={isRail ? item.label : undefined}
+                        title={isRail ? t(item.labelKey) : undefined}
+                        aria-label={isRail ? t(item.labelKey) : undefined}
                       >
                         <span className="sidebar__icon" aria-hidden="true">
                           <Icon size={16} />
                         </span>
-                        <span className="sidebar__label">{item.label}</span>
+                        <span className="sidebar__label">{t(item.labelKey)}</span>
                         {item.badge !== undefined ? (
                           <span
                             className="sidebar__badge"
@@ -154,11 +156,11 @@ export default function Sidebar({
         })}
       </div>
 
-      <div className="sidebar__footer" aria-label="System status">
-        <div className="sidebar__footer-status">
-          <span className="sidebar__footer-dot" aria-hidden="true" />
-          <span className="sidebar__label">System ready</span>
-        </div>
+      <div className="sidebar__footer">
+        <p className="sidebar__footer-brand">
+          <span className="sidebar__footer-mark" aria-hidden="true" />
+          <span className="sidebar__label">{t("shell.brandFooter")}</span>
+        </p>
       </div>
     </nav>
   );

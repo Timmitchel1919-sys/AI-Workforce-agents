@@ -11,6 +11,27 @@
     <title>AI Workforce</title>
     <!-- Obsidian before any CSS/JS loads, so the splash never follows a white flash. -->
     <style>html { background: #02040a; }</style>
+    <!-- Apply the saved theme + language before first paint (no flash of the wrong theme or language).
+         Values are allowlisted; anything else falls back to defaults. -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        try {
+          var theme = localStorage.getItem("ai-workforce-theme");
+          if (theme !== "light" && theme !== "dark") {
+            theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          }
+          root.dataset.theme = theme;
+          root.style.colorScheme = theme;
+          var lang = localStorage.getItem("ai-workforce-language");
+          if (lang !== "en" && lang !== "nl") {
+            var nav = (navigator.languages && navigator.languages[0]) || navigator.language || "en";
+            lang = nav.toLowerCase().indexOf("nl") === 0 ? "nl" : "en";
+          }
+          root.lang = lang;
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

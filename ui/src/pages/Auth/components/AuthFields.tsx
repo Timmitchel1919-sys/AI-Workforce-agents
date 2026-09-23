@@ -1,5 +1,6 @@
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { Eye, EyeOff, type LucideIcon } from "lucide-react";
+import { useI18n } from "../../../i18n";
 
 interface AuthFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "id"> {
   label: string;
@@ -61,6 +62,7 @@ type PasswordFieldProps = Omit<AuthFieldProps, "type" | "trailing">;
 
 export function PasswordField(props: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
+  const { t } = useI18n();
 
   return (
     <AuthField
@@ -71,7 +73,7 @@ export function PasswordField(props: PasswordFieldProps) {
           type="button"
           className="auth-field__toggle"
           onClick={() => setVisible((value) => !value)}
-          aria-label={visible ? `Hide ${props.label.toLowerCase()}` : `Show ${props.label.toLowerCase()}`}
+          aria-label={visible ? t("auth.hide", { field: props.label.toLowerCase() }) : t("auth.show", { field: props.label.toLowerCase() })}
           aria-pressed={visible}
         >
           {visible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}

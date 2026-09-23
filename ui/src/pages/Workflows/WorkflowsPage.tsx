@@ -7,6 +7,7 @@ import { useWorkflows } from "../../features/workflows";
 import { WorkflowFilters } from "./components/WorkflowFilters";
 import { WorkflowRegistry } from "./components/WorkflowRegistry";
 import { workflowDisplayStatus } from "./components/workflowStatus";
+import { useI18n } from "../../i18n";
 import "../Tasks/TasksPage.css";
 import "./WorkflowsPage.css";
 
@@ -26,16 +27,18 @@ const statusOptions = [
 ] as const;
 
 function WorkflowsHeader() {
+  const { t } = useI18n();
   return (
     <PageHeader
-      eyebrow="AI Workforce"
-      title="Workflows"
-      description="Track multi-agent workflows, their stages, and where they are waiting on you."
+      eyebrow={t("common.brand")}
+      title={t("workflows.title")}
+      description={t("workflows.description")}
     />
   );
 }
 
 export default function WorkflowsPage() {
+  const { t } = useI18n();
   const { data, status, refetch } = useWorkflows();
   const workflows = useMemo(() => data?.items ?? [], [data]);
 
@@ -83,7 +86,7 @@ export default function WorkflowsPage() {
     return (
       <PageContainer>
         <WorkflowsHeader />
-        <div className="tasks-loading" role="status" aria-live="polite" aria-label="Loading workflows">
+        <div className="tasks-loading" role="status" aria-live="polite" aria-label={t("workflows.loading")}>
           <div className="tasks-loading__metrics">
             {Array.from({ length: 4 }).map((_, index) => (
               <div key={index} className="tasks-loading__metric">
@@ -113,14 +116,14 @@ export default function WorkflowsPage() {
       <PageContainer>
         <WorkflowsHeader />
         <ErrorState
-          title={status === "unauthorized" ? "Unauthorized" : "Unable to load workflows"}
+          title={status === "unauthorized" ? t("workflows.unauthorizedTitle") : t("workflows.errorTitle")}
           description={
             status === "unauthorized"
-              ? "You do not have permission to access workforce workflows."
-              : "The workflow registry could not be retrieved from the Control Plane."
+              ? t("workflows.unauthorizedDescription")
+              : t("workflows.errorDescription")
           }
           onRetry={refetch}
-          retryLabel="Retry"
+          retryLabel={t("common.retry")}
         />
       </PageContainer>
     );
@@ -131,8 +134,8 @@ export default function WorkflowsPage() {
       <PageContainer>
         <WorkflowsHeader />
         <EmptyState
-          title="No workflows found"
-          description="There are currently no workflows registered in this workforce."
+          title={t("workflows.emptyTitle")}
+          description={t("workflows.emptyDescription")}
         />
       </PageContainer>
     );
@@ -150,21 +153,21 @@ export default function WorkflowsPage() {
       <WorkflowsHeader />
 
       <div className="tasks-page">
-        <div className="tasks-summary" aria-label="Workflow summary metrics">
+        <div className="tasks-summary" aria-label={t("workflows.summary")}>
           <div className="tasks-summary__metric">
-            <span className="tasks-summary__label">Total Workflows</span>
+            <span className="tasks-summary__label">{t("workflows.total")}</span>
             <strong>{summary.total}</strong>
           </div>
           <div className="tasks-summary__metric">
-            <span className="tasks-summary__label">Active</span>
+            <span className="tasks-summary__label">{t("workflows.active")}</span>
             <strong>{summary.active}</strong>
           </div>
           <div className="tasks-summary__metric">
-            <span className="tasks-summary__label">Needs Attention</span>
+            <span className="tasks-summary__label">{t("workflows.attention")}</span>
             <strong>{summary.attention}</strong>
           </div>
           <div className="tasks-summary__metric">
-            <span className="tasks-summary__label">Failed</span>
+            <span className="tasks-summary__label">{t("workflows.failed")}</span>
             <strong>{summary.failed}</strong>
           </div>
         </div>
@@ -192,16 +195,16 @@ export default function WorkflowsPage() {
         </PageSection>
 
         <PageSection
-          title="Workflow Registry"
-          description="Progress, pending approvals, and participating agents per workflow."
+          title={t("workflows.registry")}
+          description={t("workflows.registryDescription")}
         >
           {filteredWorkflows.length === 0 ? (
             <EmptyState
-              title="No workflows match your filters"
-              description="Try clearing the current filters or broadening the search criteria."
+              title={t("workflows.emptyFilteredTitle")}
+              description={t("workflows.emptyFilteredDescription")}
               primaryAction={
                 <button type="button" onClick={clearFilters} className="ui-button primary">
-                  Clear filters
+                  {t("common.clearFilters")}
                 </button>
               }
             />

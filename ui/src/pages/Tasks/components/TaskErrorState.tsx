@@ -1,4 +1,5 @@
 import { ErrorState } from "../../../components/ui";
+import { useI18n } from "../../../i18n";
 
 export interface TaskErrorStateProps {
   title?: string;
@@ -7,16 +8,17 @@ export interface TaskErrorStateProps {
 }
 
 export function TaskErrorState({
-  title = "Unable to load tasks",
-  description = "The task registry could not be retrieved from the Control Plane.",
+  title,
+  description,
   onRetry,
 }: TaskErrorStateProps) {
+  const { t } = useI18n();
   return (
     <ErrorState
-      title={title}
-      description={description}
+      title={title ?? t("tasks.errorTitle")}
+      description={description ?? t("tasks.errorDescription")}
       onRetry={onRetry}
-      retryLabel="Retry"
+      retryLabel={t("common.retry")}
     />
   );
 }

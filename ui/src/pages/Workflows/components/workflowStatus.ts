@@ -46,12 +46,3 @@ export function mapStageStatusToBadge(status: string): Status {
   }
 }
 
-export function formatStatusLabel(status: string): string {
-  return status.replace(/_/g, " ");
-}
-
-export function formatDate(isoString?: string): string | null {
-  if (!isoString) return null;
-  const date = new Date(isoString);
-  return Number.isNaN(date.getTime()) ? isoString : date.toLocaleString();
-}

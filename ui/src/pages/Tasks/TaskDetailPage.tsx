@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router-dom";
+import { useI18n } from "../../i18n";
 import { ArrowLeft } from "lucide-react";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
@@ -13,6 +14,7 @@ import { TaskLoadingState } from "./components/TaskLoadingState";
 import "./TasksPage.css";
 
 export default function TaskDetailPage() {
+  const { t } = useI18n();
   const { taskId } = useParams<{ taskId: string }>();
   const { data: task, status, refetch } = useTask(taskId);
 
@@ -20,9 +22,9 @@ export default function TaskDetailPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Task Detail"
-          description="Inspect task parameters, context, lifecycle events, and execution summary."
+          eyebrow={t("common.brand")}
+          title={t("tasks.detailTitle")}
+          description={t("tasks.detailDescription")}
         />
         <TaskLoadingState />
       </PageContainer>
@@ -33,18 +35,16 @@ export default function TaskDetailPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Task Detail"
-          description="Inspect task parameters, context, lifecycle events, and execution summary."
+          eyebrow={t("common.brand")}
+          title={t("tasks.detailTitle")}
+          description={t("tasks.detailDescription")}
         />
         <div className="task-not-found">
-          <h2>Task Not Found</h2>
-          <p>
-            The task with ID <code>{taskId}</code> could not be found in the Control Plane or may have been removed.
-          </p>
+          <h2>{t("tasks.notFoundTitle")}</h2>
+          <p>{t("tasks.notFoundDescription", { id: taskId ?? "" })}</p>
           <Link to="/tasks" className="ui-button primary">
             <ArrowLeft size={16} style={{ marginRight: 8 }} aria-hidden />
-            Back to Tasks
+            {t("tasks.backToTasks")}
           </Link>
         </div>
       </PageContainer>
@@ -55,16 +55,16 @@ export default function TaskDetailPage() {
     return (
       <PageContainer>
         <PageHeader
-          eyebrow="AI Workforce"
-          title="Task Detail"
-          description="Inspect task parameters, context, lifecycle events, and execution summary."
+          eyebrow={t("common.brand")}
+          title={t("tasks.detailTitle")}
+          description={t("tasks.detailDescription")}
         />
         <TaskErrorState
-          title={status === "unauthorized" ? "Unauthorized" : "Unable to load task detail"}
+          title={status === "unauthorized" ? t("tasks.unauthorizedTitle") : t("tasks.detailErrorTitle")}
           description={
             status === "unauthorized"
-              ? "You do not have permission to view details for this task."
-              : "Failed to retrieve task information from the Control Plane."
+              ? t("tasks.detailUnauthorizedDescription")
+              : t("tasks.detailErrorDescription")
           }
           onRetry={refetch}
         />
@@ -75,9 +75,9 @@ export default function TaskDetailPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="AI Workforce"
-        title="Task Detail"
-        description="Inspect task parameters, context, lifecycle events, and execution summary."
+        eyebrow={t("common.brand")}
+        title={t("tasks.detailTitle")}
+        description={t("tasks.detailDescription")}
       />
 
       <div className="task-detail-page">

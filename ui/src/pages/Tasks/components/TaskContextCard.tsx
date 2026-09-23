@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useI18n } from "../../../i18n";
 import { Bot, FolderKanban, GitBranch } from "lucide-react";
 import { Card } from "../../../components/ui";
 
@@ -19,18 +20,19 @@ export function TaskContextCard({
   workflowId,
   workflowName,
 }: TaskContextCardProps) {
+  const { t } = useI18n();
   const hasRelationships = Boolean(agentName || projectName || workflowName);
 
   return (
     <Card className="task-context-card">
       <div className="task-card-header">
-        <h2>Task Context & Relationships</h2>
+        <h2>{t("tasks.context")}</h2>
       </div>
 
       <div className="task-context-card__body">
         {!hasRelationships ? (
           <p className="task-meta-value task-meta-value--muted">
-            No agent, project, or workflow context associated with this task.
+            {t("tasks.noContext")}
           </p>
         ) : (
           <div className="task-context-list">
@@ -40,7 +42,7 @@ export function TaskContextCard({
                   <Bot size={18} aria-hidden />
                 </div>
                 <div className="task-context-info">
-                  <span className="task-meta-label">Assigned Agent</span>
+                  <span className="task-meta-label">{t("tasks.assignedAgent")}</span>
                   {agentId ? (
                     <Link to={`/agents/${agentId}`} className="task-context-link">
                       {agentName}
@@ -58,7 +60,7 @@ export function TaskContextCard({
                   <FolderKanban size={18} aria-hidden />
                 </div>
                 <div className="task-context-info">
-                  <span className="task-meta-label">Project</span>
+                  <span className="task-meta-label">{t("common.project")}</span>
                   {projectId ? (
                     <Link to={`/projects`} className="task-context-link">
                       {projectName}
@@ -76,7 +78,7 @@ export function TaskContextCard({
                   <GitBranch size={18} aria-hidden />
                 </div>
                 <div className="task-context-info">
-                  <span className="task-meta-label">Workflow</span>
+                  <span className="task-meta-label">{t("tasks.workflow")}</span>
                   {workflowId ? (
                     <Link to={`/workflows`} className="task-context-link">
                       {workflowName}

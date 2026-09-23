@@ -6,33 +6,32 @@ import PageHeader from "../../components/layout/PageHeader";
 import { useWorkflow } from "../../features/workflows";
 import { WorkflowOverviewCard } from "./components/WorkflowOverviewCard";
 import { WorkflowStages } from "./components/WorkflowStages";
-import {
-  formatStatusLabel,
-  mapWorkflowStatusToBadge,
-  workflowDisplayStatus,
-} from "./components/workflowStatus";
+import { mapWorkflowStatusToBadge, workflowDisplayStatus } from "./components/workflowStatus";
+import { translateStatus, useI18n } from "../../i18n";
 import "../Tasks/TasksPage.css";
 import "./WorkflowsPage.css";
 
 function DetailHeader() {
+  const { t } = useI18n();
   return (
     <PageHeader
-      eyebrow="AI Workforce"
-      title="Workflow Detail"
-      description="Inspect workflow progress, stages, and participating agents."
+      eyebrow={t("common.brand")}
+      title={t("workflows.detailTitle")}
+      description={t("workflows.detailDescription")}
     />
   );
 }
 
 export default function WorkflowDetailPage() {
   const { workflowId } = useParams<{ workflowId: string }>();
+  const { t } = useI18n();
   const { data: workflow, status, refetch } = useWorkflow(workflowId);
 
   if (status === "loading") {
     return (
       <PageContainer>
         <DetailHeader />
-        <div className="tasks-loading" role="status" aria-live="polite" aria-label="Loading workflow">
+        <div className="tasks-loading" role="status" aria-live="polite" aria-label={t("common.loading")}>
           <Skeleton height={28} width="40%" />
           <div className="task-detail-grid">
             <Skeleton height={240} width="100%" />
@@ -48,14 +47,11 @@ export default function WorkflowDetailPage() {
       <PageContainer>
         <DetailHeader />
         <div className="task-not-found">
-          <h2>Workflow Not Found</h2>
-          <p>
-            The workflow with ID <code>{workflowId}</code> could not be found in the Control Plane
-            or may have been removed.
-          </p>
+          <h2>{t("workflows.notFoundTitle")}</h2>
+          <p>{t("workflows.notFoundDescription", { id: workflowId ?? "" })}</p>
           <Link to="/workflows" className="ui-button primary">
             <ArrowLeft size={16} style={{ marginRight: 8 }} aria-hidden />
-            Back to Workflows
+            {t("workflows.backToWorkflows")}
           </Link>
         </div>
       </PageContainer>
@@ -67,14 +63,14 @@ export default function WorkflowDetailPage() {
       <PageContainer>
         <DetailHeader />
         <ErrorState
-          title={status === "unauthorized" ? "Unauthorized" : "Unable to load workflow"}
+          title={status === "unauthorized" ? t("workflows.unauthorizedTitle") : t("workflows.detailErrorTitle")}
           description={
             status === "unauthorized"
-              ? "You do not have permission to view this workflow."
-              : "Failed to retrieve workflow information from the Control Plane."
+              ? t("workflows.detailUnauthorizedDescription")
+              : t("workflows.detailErrorDescription")
           }
           onRetry={refetch}
-          retryLabel="Retry"
+          retryLabel={t("common.retry")}
         />
       </PageContainer>
     );
@@ -91,21 +87,21 @@ export default function WorkflowDetailPage() {
           <div className="task-detail-header__nav">
             <Link to="/workflows" className="task-detail-header__back-link">
               <ArrowLeft size={16} aria-hidden />
-              <span>Back to Workflows</span>
+              <span>{t("workflows.backToWorkflows")}</span>
             </Link>
           </div>
 
           <div className="task-detail-header__main">
             <div className="task-detail-header__titles">
               <div className="task-detail-header__id-row">
-                <span className="task-detail-header__id">ID: {workflow.workflowId}</span>
+                <span className="task-detail-header__id">{t("common.idLabel", { id: workflow.workflowId })}</span>
               </div>
               <h1 className="task-detail-header__title">{workflow.name}</h1>
             </div>
 
             <div className="task-detail-header__badges workflow-detail-header__badges">
               <StatusBadge status={mapWorkflowStatusToBadge(displayStatus)}>
-                {formatStatusLabel(displayStatus)}
+                {translateStatus(t, displayStatus)}
               </StatusBadge>
             </div>
           </div>
@@ -113,17 +109,18 @@ export default function WorkflowDetailPage() {
 
         {workflow.paused ? (
           <div className="workflow-notice workflow-notice--warning" role="status">
-            <strong>Paused.</strong> {workflow.pauseReason ?? "This workflow was paused by an operator."}
+            <strong>{t("workflows.pausedNotice")}</strong> {workflow.pauseReason ?? t("workflows.pausedDefault")}
           </div>
         ) : null}
 
         {workflow.pendingApprovals > 0 ? (
           <div className="workflow-notice workflow-notice--warning" role="status">
             <strong>
-              {workflow.pendingApprovals} pending approval
-              {workflow.pendingApprovals === 1 ? "" : "s"}.
+              {workflow.pendingApprovals === 1
+                ? t("workflows.pendingNoticeOne")
+                : t("workflows.pendingNoticeMany", { count: workflow.pendingApprovals })}
             </strong>{" "}
-            This workflow is waiting on an operator decision before it can continue.
+            {t("workflows.pendingNoticeDetail")}
           </div>
         ) : null}
 

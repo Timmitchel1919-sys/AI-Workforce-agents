@@ -1,4 +1,5 @@
 import { EmptyState } from "../../../components/ui";
+import { useI18n } from "../../../i18n";
 
 export interface AgentsEmptyStateProps {
   reason?: "empty" | "filters";
@@ -6,21 +7,20 @@ export interface AgentsEmptyStateProps {
 }
 
 export function AgentsEmptyState({ reason = "empty", onClearFilters }: AgentsEmptyStateProps) {
+  const { t } = useI18n();
   const isFilteredState = reason === "filters";
 
   return (
     <EmptyState
-      title={isFilteredState ? "No agents match your filters" : "No agents found"}
+      title={isFilteredState ? t("agents.emptyFilteredTitle") : t("agents.emptyTitle")}
       description={
         isFilteredState
-          ? "Try clearing the current filters or broadening the search criteria to restore the registry view."
-          : "There are currently no agents registered in this workforce."
+          ? t("agents.emptyFilteredDescription")
+          : t("agents.emptyDescription")
       }
       primaryAction={
         onClearFilters ? (
-          <button type="button" onClick={onClearFilters} className="agents-empty-state__button">
-            Clear filters
-          </button>
+          <button type="button" onClick={onClearFilters} className="agents-empty-state__button">{t("common.clearFilters")}</button>
         ) : undefined
       }
     />

@@ -1,17 +1,10 @@
 import { ArrowRight } from "lucide-react";
+import { useI18n } from "../../../i18n";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Card, StatusBadge } from "../../../components/ui";
 import type { ActivityStatus, OverviewSummaryCard } from "../overviewData";
 
-const statusText: Record<ActivityStatus, string> = {
-  active: "Active",
-  completed: "Completed",
-  running: "Running",
-  pending: "Pending",
-  failed: "Failed",
-  paused: "Paused",
-};
 
 interface OverviewActivityCardProps {
   item?: OverviewSummaryCard;
@@ -34,10 +27,11 @@ export function OverviewActivityCard({
   status,
   linkTo,
 }: OverviewActivityCardProps) {
+  const { t } = useI18n();
   const summary = item ?? {
     id: "summary",
-    title: title ?? "Operational summary",
-    detail: description ?? "Operational summary",
+    title: title ?? t("overview.operationalSummary"),
+    detail: description ?? t("overview.operationalSummary"),
     value: value ?? "0",
     status: status ?? "active",
     linkTo,
@@ -53,7 +47,7 @@ export function OverviewActivityCard({
     <div className="overview-activity-card__content">
       <div className="overview-activity-card__value-row">
         <span className="overview-activity-card__value">{cardValue}</span>
-        <StatusBadge status={cardStatus}>{statusText[cardStatus]}</StatusBadge>
+        <StatusBadge status={cardStatus}>{t(`status.${cardStatus}`)}</StatusBadge>
       </div>
       <p className="overview-activity-card__detail">{cardDescription}</p>
     </div>
@@ -62,7 +56,7 @@ export function OverviewActivityCard({
   const cardAction = action ?? (cardLinkTo ? (
     <div className="overview-activity-card__footer">
       <Link to={cardLinkTo} className="overview-activity-card__link">
-        Open section
+        {t("overview.openSection")}
         <ArrowRight size={14} aria-hidden="true" />
       </Link>
     </div>

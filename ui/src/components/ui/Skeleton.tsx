@@ -11,7 +11,8 @@ export interface SkeletonProps {
 
 export function Skeleton({ variant = 'text', width, height, style, className }: SkeletonProps) {
   const composedStyle: React.CSSProperties = {
-    background: 'linear-gradient(90deg,#eee,#ddd,#eee)',
+    // Theme-aware: works in light and dark.
+    background: 'linear-gradient(90deg, var(--color-surface-muted), var(--color-border), var(--color-surface-muted))',
     borderRadius: variant === 'circle' ? '50%' : 4,
     width,
     height,

@@ -1,48 +1,33 @@
 import { Link } from "react-router-dom";
+import { useI18n } from "../../../i18n";
 import { Card, StatusBadge } from "../../../components/ui";
-import type { ActivityStatus, ActivityType, RecentActivityItem } from "../overviewData";
-
-const activityTypeLabel: Record<ActivityType, string> = {
-  agent: "Agent",
-  task: "Task",
-  workflow: "Workflow",
-  approval: "Approval",
-  system: "System",
-};
-
-const activityStatusLabel: Record<ActivityStatus, string> = {
-  active: "Active",
-  completed: "Completed",
-  running: "Running",
-  pending: "Pending",
-  failed: "Failed",
-  paused: "Paused",
-};
+import type { RecentActivityItem } from "../overviewData";
 
 interface RecentActivityProps {
   items: RecentActivityItem[];
 }
 
 export function RecentActivity({ items }: RecentActivityProps) {
+  const { t } = useI18n();
   return (
-    <Card className="recent-activity" title="Recent activity" description="Latest operational updates across the workspace">
-      <ul className="recent-activity__list" aria-label="Recent activity list">
+    <Card className="recent-activity" title={t("overview.recentActivity")} description={t("overview.recentActivityCard")}>
+      <ul className="recent-activity__list" aria-label={t("overview.recentActivityList")}>
         {items.map((item) => {
           const content = (
             <>
               <div className="recent-activity__header">
                 <div className="recent-activity__meta-row">
-                  <span className="recent-activity__type">{activityTypeLabel[item.type]}</span>
+                  <span className="recent-activity__type">{t(`overview.activityType.${item.type}`)}</span>
                   {item.actor ? <span className="recent-activity__actor">{item.actor}</span> : null}
                 </div>
-                <StatusBadge status={item.status}>{activityStatusLabel[item.status]}</StatusBadge>
+                <StatusBadge status={item.status}>{t(`status.${item.status}`)}</StatusBadge>
               </div>
 
               <h3 className="recent-activity__title">{item.title}</h3>
               <p className="recent-activity__description">{item.description}</p>
 
               {(item.project || item.actor) && (
-                <div className="recent-activity__details" aria-label={`${item.title} details`}>
+                <div className="recent-activity__details" aria-label={t("overview.itemDetails", { title: item.title })}>
                   {item.project ? <span>{item.project}</span> : null}
                 </div>
               )}
@@ -53,7 +38,7 @@ export function RecentActivity({ items }: RecentActivityProps) {
             <li key={item.id} className="recent-activity__item">
               <div className="recent-activity__content">
                 {item.linkTo ? (
-                  <Link to={item.linkTo} className="recent-activity__link" aria-label={`${item.title} - ${activityTypeLabel[item.type]}`}>
+                  <Link to={item.linkTo} className="recent-activity__link" aria-label={`${item.title} - ${t(`overview.activityType.${item.type}`)}`}>
                     {content}
                   </Link>
                 ) : (

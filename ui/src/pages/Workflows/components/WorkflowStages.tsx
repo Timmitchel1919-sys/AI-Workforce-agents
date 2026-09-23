@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Card, StatusBadge } from "../../../components/ui";
 import type { WorkflowStage } from "../../../features/workflows";
-import { formatStatusLabel, mapStageStatusToBadge } from "./workflowStatus";
+import { mapStageStatusToBadge } from "./workflowStatus";
+import { translateStatus, useI18n } from "../../../i18n";
 
 export interface WorkflowStagesProps {
   stages: readonly WorkflowStage[];
@@ -9,14 +10,15 @@ export interface WorkflowStagesProps {
 }
 
 export function WorkflowStages({ stages, currentSpecId }: WorkflowStagesProps) {
+  const { t } = useI18n();
   return (
     <Card className="workflow-stages-card">
       <div className="task-card-header">
-        <h2>Stages</h2>
+        <h2>{t("workflows.stages")}</h2>
       </div>
 
       {stages.length === 0 ? (
-        <p className="task-row__muted">This workflow has no stages.</p>
+        <p className="task-row__muted">{t("workflows.noStages")}</p>
       ) : (
         <ol className="workflow-stages">
           {stages.map((stage, index) => {
@@ -40,24 +42,24 @@ export function WorkflowStages({ stages, currentSpecId }: WorkflowStagesProps) {
                   <div className="workflow-stage__header">
                     <span className="workflow-stage__id">{stage.specId}</span>
                     <StatusBadge status={mapStageStatusToBadge(stage.status)}>
-                      {formatStatusLabel(stage.status)}
+                      {translateStatus(t, stage.status)}
                     </StatusBadge>
-                    {isCurrent ? <span className="workflow-stage__current">Current</span> : null}
+                    {isCurrent ? <span className="workflow-stage__current">{t("workflows.current")}</span> : null}
                   </div>
                   <p className="workflow-stage__description">{stage.description}</p>
                   <div className="workflow-stage__meta">
-                    <span>Type: {stage.type}</span>
+                    <span>{t("workflows.stageType", { type: stage.type })}</span>
                     <span>
-                      Agent:{" "}
+                      {t("workflows.stageAgent")}{" "}
                       {stage.assignedAgentId ? (
                         <Link to={`/agents/${stage.assignedAgentId}`} className="task-row__agent-link">
                           {stage.assignedAgentId}
                         </Link>
                       ) : (
-                        "Unassigned"
+                        t("common.unassigned")
                       )}
                     </span>
-                    {stage.retryCount > 0 ? <span>Retries: {stage.retryCount}</span> : null}
+                    {stage.retryCount > 0 ? <span>{t("workflows.retries", { count: stage.retryCount })}</span> : null}
                   </div>
                   {stage.error ? (
                     <p className="workflow-stage__error" role="alert">

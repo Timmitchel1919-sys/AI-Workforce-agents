@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AccessState, AuthUser } from "../../auth/auth.types";
 import type { RouteChunk } from "../../app/routeModules";
 import { CONTROL_CENTER_ROUTE } from "../brand/brand";
+import type { MessageKey } from "../../i18n";
 
 /**
  * The splash observes real start-up work; it owns none of it. Each stage maps
@@ -12,9 +13,9 @@ export type StageStatus = "pending" | "active" | "done" | "skipped" | "degraded"
 
 export interface InitStage {
   id: StageId;
-  label: string;
   status: StageStatus;
-  detail?: string;
+  /** Message key; the stage label itself is `splash.stages.<id>`. */
+  detail?: MessageKey;
 }
 
 export type InitPhase = "booting" | "ready" | "degraded" | "error";
@@ -71,10 +72,10 @@ export interface InitializationDeps {
 }
 
 const INITIAL_STAGES: InitStage[] = [
-  { id: "application", label: "Application", status: "done", detail: "Interface loaded" },
-  { id: "session", label: "Secure session", status: "active" },
-  { id: "modules", label: "Workspace modules", status: "pending" },
-  { id: "controlPlane", label: "Control Plane", status: "pending" },
+  { id: "application", status: "done", detail: "splash.details.interfaceLoaded" },
+  { id: "session", status: "active" },
+  { id: "modules", status: "pending" },
+  { id: "controlPlane", status: "pending" },
 ];
 
 export interface InitializationState {
@@ -82,7 +83,7 @@ export interface InitializationState {
   phase: InitPhase;
   progress: number;
   destination: Destination | null;
-  message: string;
+  message: MessageKey;
 }
 
 const SETTLED: StageStatus[] = ["done", "skipped", "degraded", "failed"];
@@ -98,7 +99,7 @@ export function useInitialization(deps: InitializationDeps): InitializationState
     depsRef.current = deps;
   });
 
-  const update = (id: StageId, status: StageStatus, detail?: string) =>
+  const update = (id: StageId, status: StageStatus, detail?: MessageKey) =>
     setStages((current) => current.map((stage) => (stage.id === id ? { ...stage, status, detail } : stage)));
 
   // Hard ceiling.
@@ -117,9 +118,15 @@ export function useInitialization(deps: InitializationDeps): InitializationState
     const run = async () => {
       const current = depsRef.current;
       if (cancelled) return;
-      update("session", current.configured ? "done" : "skipped", current.configured
-        ? current.user ? "Signed in" : "No active session"
-        : "Authentication not configured");
+      update(
+        "session",
+        current.configured ? "done" : "skipped",
+        current.configured
+          ? current.user
+            ? "splash.details.signedIn"
+            : "splash.details.noSession"
+          : "splash.details.notConfigured",
+      );
 
       const dest = resolveDestination(current);
       setDestination(dest);
@@ -128,25 +135,25 @@ export function useInitialization(deps: InitializationDeps): InitializationState
       try {
         await current.loadChunk(dest.chunk);
         if (cancelled) return;
-        update("modules", "done", "Ready");
+        update("modules", "done", "splash.details.ready");
       } catch {
         if (cancelled) return;
-        update("modules", "failed", "Could not load the interface");
+        update("modules", "failed", "splash.details.loadFailed");
         return;
       }
 
       const authorized = current.configured && current.user && current.access === "granted" && current.accessToken;
       if (!authorized) {
-        update("controlPlane", "skipped", "Connects after sign-in");
+        update("controlPlane", "skipped", "splash.details.afterSignIn");
         return;
       }
       update("controlPlane", "active");
       try {
         const ok = await current.checkControlPlane(current.accessToken as string);
         if (cancelled) return;
-        update("controlPlane", ok ? "done" : "degraded", ok ? "Connected" : "Unavailable — continuing");
+        update("controlPlane", ok ? "done" : "degraded", ok ? "splash.details.connected" : "splash.details.unavailable");
       } catch {
-        if (!cancelled) update("controlPlane", "degraded", "Unreachable — continuing");
+        if (!cancelled) update("controlPlane", "degraded", "splash.details.unreachable");
       }
     };
 
@@ -169,16 +176,22 @@ export function useInitialization(deps: InitializationDeps): InitializationState
   const progress = phase === "ready" || phase === "degraded" ? 100 : Math.round((settled / stages.length) * 100);
   const active = stages.find((stage) => stage.status === "active");
 
-  const message =
+  const ACTIVE_MESSAGES: Record<StageId, MessageKey> = {
+    application: "splash.messages.initializing",
+    session: "splash.messages.session",
+    modules: "splash.messages.modules",
+    controlPlane: "splash.messages.controlPlane",
+  };
+  const message: MessageKey =
     phase === "error"
-      ? "Initialization failed"
+      ? "splash.messages.error"
       : phase === "degraded"
-        ? "Ready with limited connectivity"
+        ? "splash.messages.degraded"
         : phase === "ready"
-          ? "AI Workforce OS ready"
+          ? "splash.messages.ready"
           : active
-            ? `${active.label === "Secure session" ? "Verifying secure session" : active.label === "Workspace modules" ? "Loading workspace modules" : "Connecting to Control Plane"}…`
-            : "Initializing AI Workforce OS…";
+            ? ACTIVE_MESSAGES[active.id]
+            : "splash.messages.initializing";
 
   return { stages, phase, progress, destination, message };
 }

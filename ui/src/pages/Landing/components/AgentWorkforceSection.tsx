@@ -1,47 +1,49 @@
+import { useI18n } from "../../../i18n";
 import { agentDepartments } from "../landingContent";
 import { PresentationNote, Reveal, SectionHeading, StatusPill } from "./primitives";
 
 export function AgentWorkforceSection() {
+  const { t } = useI18n();
   return (
     <section className="lp-section" aria-labelledby="lp-agents-title">
       <SectionHeading
         id="lp-agents-title"
-        eyebrow="Agent Workforce"
+        eyebrow={t("landing.agents.eyebrow")}
         title={
           <>
-            Specialized intelligence.
+            {t("landing.agents.title1")}
             <br />
-            One coordinated workforce.
+            {t("landing.agents.title2")}
           </>
         }
-        lead="Each agent is a declared system node with a role, a capability boundary, and explicit permissions — orchestrated, never improvised."
+        lead={t("landing.agents.lead")}
       />
 
       <ul className="lp-agent-grid">
         {agentDepartments.map((agent, index) => (
-          <li key={agent.name}>
+          <li key={agent.id}>
             <Reveal
               className={`lp-agent-card lp-glass lp-agent-card--${agent.status}`}
               delay={(index % 5) * 60}
             >
               <div className="lp-agent-card__top">
                 <span className="lp-agent-card__code" aria-hidden="true">
-                  {agent.code}
+                  {agent.id.toUpperCase()}
                 </span>
                 <StatusPill status={agent.status} />
               </div>
-              <h3 className="lp-agent-card__name">{agent.name}</h3>
-              <p className="lp-agent-card__role">{agent.role}</p>
-              <p className="lp-agent-card__capability">{agent.capability}</p>
+              <h3 className="lp-agent-card__name">{t(`landing.agents.items.${agent.id}.name`)}</h3>
+              <p className="lp-agent-card__role">{t(`landing.agents.items.${agent.id}.role`)}</p>
+              <p className="lp-agent-card__capability">{t(`landing.agents.items.${agent.id}.capability`)}</p>
             </Reveal>
           </li>
         ))}
       </ul>
 
       <PresentationNote>
-        <strong>Registered</strong> — bound in the production workforce.{" "}
-        <strong>Implemented</strong> — agent exists in the codebase, not yet enabled in production.{" "}
-        <strong>Planned</strong> — on the roadmap.
+        <strong>{t("landing.agents.noteRegistered")}</strong> {t("landing.agents.noteRegisteredText")}{" "}
+        <strong>{t("landing.agents.noteImplemented")}</strong> {t("landing.agents.noteImplementedText")}{" "}
+        <strong>{t("landing.agents.notePlanned")}</strong> {t("landing.agents.notePlannedText")}
       </PresentationNote>
     </section>
   );

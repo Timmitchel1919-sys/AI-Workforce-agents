@@ -18,7 +18,7 @@ export function Drawer({ open, onClose, side = 'right', title, children }: Drawe
 
   if (!open) return null;
   return (
-    <div role="dialog" aria-modal="true" style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.3)' }} onClick={onClose}>
+    <div role="dialog" aria-modal="true" style={{ position:'fixed', inset:0, background:'var(--color-overlay)' }} onClick={onClose}>
       <aside className="ui-card" style={{ width: 360, height: '100%', position:'absolute', top:0, [side]:0 }} onClick={e => e.stopPropagation()}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>{title}</div>

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, Check, Mail } from "lucide-react";
 import { useAuth } from "../../auth/useAuth";
-import { authErrorMessage } from "../../auth/authErrors";
+import { authErrorKey } from "../../auth/authErrors";
+import { useI18n } from "../../i18n";
 import { isValidEmail } from "../../auth/passwordPolicy";
 import { safeRedirectPath } from "../../auth/redirect";
 import { prefersReducedMotion } from "../../components/brand/motion";
@@ -19,6 +20,7 @@ interface FieldErrors {
 
 function ResetPassword({ initialEmail, onBack }: { initialEmail: string; onBack: () => void }) {
   const { sendPasswordReset } = useAuth();
+  const { t } = useI18n();
   const [email, setEmail] = useState(initialEmail);
   const [error, setError] = useState<string>();
   const [formError, setFormError] = useState<string>();
@@ -29,7 +31,7 @@ function ResetPassword({ initialEmail, onBack }: { initialEmail: string; onBack:
     event.preventDefault();
     if (submitting) return;
     if (!isValidEmail(email)) {
-      setError("Enter a valid email address.");
+      setError(t("auth.validation.email"));
       return;
     }
     setError(undefined);
@@ -39,7 +41,7 @@ function ResetPassword({ initialEmail, onBack }: { initialEmail: string; onBack:
       await sendPasswordReset(email.trim());
       setSent(true);
     } catch (err) {
-      setFormError(authErrorMessage(err, "reset"));
+      setFormError(t(authErrorKey(err, "reset")));
     } finally {
       setSubmitting(false);
     }
@@ -47,24 +49,24 @@ function ResetPassword({ initialEmail, onBack }: { initialEmail: string; onBack:
 
   return (
     <AuthCard
-      eyebrow="Secure access"
-      title="Reset password"
-      description="Enter your account email and we'll send a link to choose a new password."
+      eyebrow={t("auth.secureAccess")}
+      title={t("auth.resetTitle")}
+      description={t("auth.resetDescription")}
       footer={
         <button type="button" className="auth-link" onClick={onBack}>
-          Back to sign in
+          {t("auth.backToSignIn")}
         </button>
       }
     >
       {sent ? (
         // Identical message whether or not an account exists for the address.
         <AuthAlert tone="success">
-          If an account exists for that address, a reset link is on its way. Check your inbox.
+          {t("auth.resetSent")}
         </AuthAlert>
       ) : (
         <form className="auth-form" onSubmit={submit} noValidate>
           <AuthField
-            label="Email address"
+            label={t("auth.email")}
             icon={Mail}
             type="email"
             name="email"
@@ -82,7 +84,7 @@ function ResetPassword({ initialEmail, onBack }: { initialEmail: string; onBack:
             disabled={submitting}
             aria-busy={submitting}
           >
-            {submitting ? "Sending…" : "Send reset link"}
+            {submitting ? t("auth.sending") : t("auth.sendReset")}
           </button>
         </form>
       )}
@@ -92,6 +94,7 @@ function ResetPassword({ initialEmail, onBack }: { initialEmail: string; onBack:
 
 export default function LoginPage() {
   const { signIn } = useAuth();
+  const { t } = useI18n();
   const { setInFlight } = useAuthFlow();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -117,8 +120,8 @@ export default function LoginPage() {
 
   const validate = (): FieldErrors => {
     const nextErrors: FieldErrors = {};
-    if (!isValidEmail(email)) nextErrors.email = "Enter a valid email address.";
-    if (!password) nextErrors.password = "Enter your password.";
+    if (!isValidEmail(email)) nextErrors.email = t("auth.validation.email");
+    if (!password) nextErrors.password = t("auth.validation.password");
     return nextErrors;
   };
 
@@ -151,7 +154,7 @@ export default function LoginPage() {
       // Signed in without a role: the layout shows the pending state.
       setInFlight(false);
     } catch (error) {
-      setFormError(authErrorMessage(error, "signIn"));
+      setFormError(t(authErrorKey(error, "signIn")));
       setInFlight(false);
     } finally {
       submittingRef.current = false;
@@ -163,15 +166,15 @@ export default function LoginPage() {
 
   return (
     <AuthCard
-      eyebrow="Secure access"
-      title="Welcome back"
-      description="Sign in to enter your AI Workforce."
+      eyebrow={t("auth.secureAccess")}
+      title={t("auth.welcomeBack")}
+      description={t("auth.signInDescription")}
       granted={granted}
       footer={
         <p className="auth-switch">
-          New to AI Workforce?{" "}
+          {t("auth.newHere")}{" "}
           <Link to={signupHref} className="auth-link">
-            Create account <ArrowRight size={13} aria-hidden="true" />
+            {t("auth.createAccount")} <ArrowRight size={13} aria-hidden="true" />
           </Link>
         </p>
       }
@@ -181,13 +184,13 @@ export default function LoginPage() {
           <span className="auth-granted__icon" aria-hidden="true">
             <Check size={22} />
           </span>
-          <p className="auth-granted__title">Access granted</p>
-          <p className="auth-granted__text">Entering the Control Center…</p>
+          <p className="auth-granted__title">{t("auth.accessGranted")}</p>
+          <p className="auth-granted__text">{t("auth.entering")}</p>
         </div>
       ) : (
         <form ref={formRef} className="auth-form" onSubmit={submit} noValidate>
           <AuthField
-            label="Email address"
+            label={t("auth.email")}
             icon={Mail}
             type="email"
             name="email"
@@ -201,10 +204,10 @@ export default function LoginPage() {
             autoFocus
           />
           <PasswordField
-            label="Password"
+            label={t("auth.password")}
             name="password"
             autoComplete="current-password"
-            placeholder="Enter your password"
+            placeholder={t("auth.passwordPlaceholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}
@@ -219,10 +222,10 @@ export default function LoginPage() {
                 onChange={(e) => setRemember(e.target.checked)}
               />
               <span className="auth-check__box" aria-hidden="true" />
-              Keep me signed in
+              {t("auth.keepSignedIn")}
             </label>
             <button type="button" className="auth-link" onClick={() => setView("reset")}>
-              Forgot password?
+              {t("auth.forgotPassword")}
             </button>
           </div>
 
@@ -237,11 +240,11 @@ export default function LoginPage() {
             {submitting ? (
               <>
                 <span className="auth-progress" aria-hidden="true" />
-                Verifying…
+                {t("auth.verifying")}
               </>
             ) : (
               <>
-                Enter Workforce
+                {t("auth.enterWorkforce")}
                 <ArrowRight size={16} aria-hidden="true" />
               </>
             )}

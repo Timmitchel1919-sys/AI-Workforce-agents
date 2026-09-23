@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Command, Menu, Search } from "lucide-react";
+import { Bell, Command, Menu, Moon, Search, Sun } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { IconButton } from "../ui";
-import { getPageTitle } from "../../config/pageTitles";
+import { getPageTitleKey } from "../../config/pageTitles";
+import { LANGUAGE_NATIVE_NAMES, SUPPORTED_LANGUAGES, useI18n } from "../../i18n";
+import { useTheme } from "../../themes/useTheme";
 import "./TopBar.css";
 
 interface TopBarProps {
@@ -20,11 +22,14 @@ export default function TopBar({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { t, language, setLanguage } = useI18n();
+  const { resolvedTheme, setTheme } = useTheme();
   const accountLabel = user?.displayName || user?.email || "Operator";
+  const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
   const searchRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const pageTitle = useMemo(() => getPageTitle(location.pathname), [location.pathname]);
+  const pageTitleKey = useMemo(() => getPageTitleKey(location.pathname), [location.pathname]);
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -56,14 +61,14 @@ export default function TopBar({
   }, []);
 
   return (
-    <header className="topbar app-shell__topbar" aria-label="Application header">
+    <header className="topbar app-shell__topbar" aria-label={t("shell.headerActions")}>
       <div className="topbar__content app-shell__topbar-content">
         <div className="topbar__left app-shell__topbar-branding">
           <button
             ref={mobileNavigationTriggerRef}
             type="button"
             className="topbar__nav-trigger"
-            aria-label={mobileNavigationOpen ? "Toggle navigation" : "Open navigation"}
+            aria-label={mobileNavigationOpen ? t("shell.toggleNavigation") : t("shell.openNavigation")}
             aria-controls="mobile-navigation-drawer"
             aria-expanded={mobileNavigationOpen}
             onClick={onMobileNavigationToggle}
@@ -72,14 +77,14 @@ export default function TopBar({
           </button>
 
           <div className="topbar__context" aria-live="polite">
-            <span className="topbar__eyebrow">Current view</span>
-            <span className="topbar__title">{pageTitle}</span>
+            <span className="topbar__eyebrow">{t("shell.currentView")}</span>
+            <span className="topbar__title">{t(pageTitleKey)}</span>
           </div>
         </div>
 
-        <div className="topbar__search" role="search" aria-label="Command search">
+        <div className="topbar__search" role="search" aria-label={t("shell.commandSearch")}>
           <label htmlFor="global-command" className="sr-only">
-            Search commands
+            {t("shell.searchCommands")}
           </label>
           <Search size={16} className="topbar__search-icon" aria-hidden="true" />
           <input
@@ -88,30 +93,46 @@ export default function TopBar({
             className="topbar__search-field"
             type="search"
             role="searchbox"
-            aria-label="Search commands"
-            placeholder="Search commands or pages"
+            aria-label={t("shell.searchCommands")}
+            placeholder={t("shell.searchPlaceholder")}
           />
           <span className="topbar__kbd" aria-hidden="true">
             <Command size={12} />
           </span>
         </div>
 
-        <div className="topbar__right app-shell__topbar-actions" aria-label="Header actions">
-          <div
-            className="topbar__status"
-            role="status"
-            aria-label="Control Plane status"
-            aria-live="polite"
-          >
-            <span className="topbar__status-indicator" aria-hidden="true" />
-            <span className="topbar__status-label">Control Plane</span>
-            <span className="topbar__status-text">Operational</span>
+        <div className="topbar__right app-shell__topbar-actions" aria-label={t("shell.headerActions")}>
+          {/* Quick controls; the persistent preferences live in Settings → Appearance. */}
+          <div className="topbar__lang" role="group" aria-label={t("shell.languageQuick")}>
+            {SUPPORTED_LANGUAGES.map((code) => (
+              <button
+                key={code}
+                type="button"
+                lang={code}
+                className={`topbar__lang-option${language === code ? " is-active" : ""}`}
+                aria-pressed={language === code}
+                aria-label={LANGUAGE_NATIVE_NAMES[code]}
+                onClick={() => setLanguage(code)}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
           </div>
 
           <IconButton
             type="button"
-            label="Notifications"
-            aria-label="Notifications"
+            label={nextTheme === "light" ? t("shell.switchToLight") : t("shell.switchToDark")}
+            aria-label={nextTheme === "light" ? t("shell.switchToLight") : t("shell.switchToDark")}
+            className="topbar__action-button"
+            onClick={() => setTheme(nextTheme)}
+          >
+            {nextTheme === "light" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+          </IconButton>
+
+          <IconButton
+            type="button"
+            label={t("shell.notifications")}
+            aria-label={t("shell.notifications")}
             className="topbar__action-button"
           >
             <Bell size={16} aria-hidden="true" />
@@ -121,7 +142,7 @@ export default function TopBar({
             <button
               type="button"
               className="topbar__account-button"
-              aria-label="Operator menu"
+              aria-label={t("shell.accountMenu")}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((open) => !open)}
             >
@@ -132,16 +153,24 @@ export default function TopBar({
             </button>
 
             {menuOpen ? (
-              <div className="topbar__menu" role="menu" aria-label="Operator menu">
+              <div className="topbar__menu" role="menu" aria-label={t("shell.accountMenu")}>
                 <ul className="topbar__menu-list">
                   <li className="topbar__menu-item">
                     <button type="button" className="topbar__menu-button" role="menuitem">
-                      Profile
+                      {t("shell.profile")}
                     </button>
                   </li>
                   <li className="topbar__menu-item">
-                    <button type="button" className="topbar__menu-button" role="menuitem">
-                      Preferences
+                    <button
+                      type="button"
+                      className="topbar__menu-button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        navigate("/settings");
+                      }}
+                    >
+                      {t("shell.preferences")}
                     </button>
                   </li>
                   <li className="topbar__menu-item">
@@ -155,7 +184,7 @@ export default function TopBar({
                         navigate("/login", { replace: true });
                       }}
                     >
-                      Sign out
+                      {t("shell.signOut")}
                     </button>
                   </li>
                 </ul>

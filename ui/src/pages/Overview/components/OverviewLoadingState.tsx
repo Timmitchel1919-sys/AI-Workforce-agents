@@ -1,8 +1,10 @@
 import { Skeleton } from '../../../components/ui';
+import { useI18n } from "../../../i18n";
 
 export function OverviewLoadingState() {
+  const { t } = useI18n();
   return (
-    <div className="overview-loading-state" role="status" aria-live="polite" aria-label="Loading workforce overview">
+    <div className="overview-loading-state" role="status" aria-live="polite" aria-label={t("overview.loading")}>
       <div className="overview-loading-state__section overview-loading-state__header">
         <Skeleton variant="rect" width="120px" height="12px" />
         <Skeleton variant="rect" width="220px" height="28px" />

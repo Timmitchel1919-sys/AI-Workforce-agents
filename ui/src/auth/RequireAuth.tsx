@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { Spinner } from "../components/ui";
 import { loginPathFor } from "./redirect";
 import { useAuth } from "./useAuth";
+import { useI18n } from "../i18n";
 
 /**
  * Route guard for the Control Center. It only decides where to send the
@@ -15,6 +16,7 @@ import { useAuth } from "./useAuth";
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { configured, loading, user, access } = useAuth();
   const location = useLocation();
+  const { t } = useI18n();
 
   if (!configured) {
     return <>{children}</>;
@@ -24,7 +26,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return (
       <div className="auth-guard-loading" role="status" aria-live="polite">
         <Spinner />
-        <span>Verifying session…</span>
+        <span>{t("shell.verifyingSession")}</span>
       </div>
     );
   }

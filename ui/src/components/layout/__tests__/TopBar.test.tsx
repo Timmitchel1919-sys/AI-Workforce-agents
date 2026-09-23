@@ -2,11 +2,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { AuthProvider } from '../../../auth/AuthProvider';
+import { ThemeProvider } from '../../../themes/ThemeProvider';
 import TopBar from '../TopBar';
 
 function renderTopBar(initialEntry = '/') {
   return render(
-    <AuthProvider>
+    <ThemeProvider><AuthProvider>
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route element={<TopBar />}>
@@ -16,7 +17,7 @@ function renderTopBar(initialEntry = '/') {
         </Route>
       </Routes>
     </MemoryRouter>
-    </AuthProvider>,
+    </AuthProvider></ThemeProvider>,
   );
 }
 
@@ -26,9 +27,11 @@ describe('TopBar', () => {
 
     expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByRole('searchbox', { name: /search commands/i })).toBeInTheDocument();
-    expect(screen.getByRole('status', { name: /control plane status/i })).toBeInTheDocument();
+    // No fabricated Control Plane status; the header offers theme + language quick controls instead.
+    expect(screen.getByRole('group', { name: /interface language/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /switch to (light|dark) theme/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /operator menu/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument();
   });
 
   it('focuses the command input on Ctrl/Cmd + K', () => {

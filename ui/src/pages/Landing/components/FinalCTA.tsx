@@ -3,20 +3,22 @@ import { ArrowRight } from "lucide-react";
 import { CONTROL_CENTER_ROUTE } from "../landingActions";
 import { RotatingEmblem } from "../../../components/brand/RotatingEmblem";
 import { Reveal } from "./primitives";
+import { useI18n } from "../../../i18n";
 
 export function FinalCTA() {
+  const { t } = useI18n();
   return (
     <section className="lp-section lp-final" aria-labelledby="lp-final-title">
       <Reveal className="lp-final__inner">
         <RotatingEmblem className="lp-final-emblem" decorative />
         <h2 id="lp-final-title" className="lp-final__title">
-          Ready to enter the workforce?
+          {t("landing.final.title")}
         </h2>
         <p className="lp-final__lead">
-          Open the Control Center to direct your agents, review approvals, and follow every action.
+          {t("landing.final.lead")}
         </p>
         <Link to={CONTROL_CENTER_ROUTE} className="lp-button lp-button--primary lp-button--large">
-          Enter AI Workforce
+          {t("landing.final.cta")}
           <ArrowRight size={18} aria-hidden="true" />
         </Link>
       </Reveal>

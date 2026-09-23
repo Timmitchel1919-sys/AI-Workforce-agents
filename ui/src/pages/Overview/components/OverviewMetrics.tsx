@@ -1,4 +1,5 @@
 import type { OverviewMetric } from "../overviewData";
+import { useI18n } from "../../../i18n";
 import { MetricCard } from "./MetricCard";
 
 interface OverviewMetricsProps {
@@ -6,8 +7,9 @@ interface OverviewMetricsProps {
 }
 
 export function OverviewMetrics({ metrics }: OverviewMetricsProps) {
+  const { t } = useI18n();
   return (
-    <div className="overview-metrics" aria-label="Workforce metrics">
+    <div className="overview-metrics" aria-label={t("overview.metrics")}>
       {metrics.map((metric) => (
         <MetricCard key={metric.id} {...metric} />
       ))}

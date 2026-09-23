@@ -1,4 +1,5 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+import { useI18n } from "../i18n";
 import { ErrorState } from '../components/states';
 
 interface ErrorBoundaryProps {
@@ -9,6 +10,11 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   resetKey: number;
+}
+
+function ErrorFallback({ onRetry }: { onRetry: () => void }) {
+  const { t } = useI18n();
+  return <ErrorState title={t("shell.errorTitle")} description={t("shell.errorDescription")} onRetry={onRetry} />;
 }
 
 export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -44,11 +50,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   render() {
     if (this.state.hasError) {
       return (
-        <ErrorState
-          title="Something went wrong"
-          description="The Control Center encountered a problem. Please refresh or return to Overview."
-          onRetry={this.reset}
-        />
+        <ErrorFallback onRetry={this.reset} />
       );
     }
 

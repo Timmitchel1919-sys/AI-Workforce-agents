@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, Check, Mail, User, X } from "lucide-react";
 import { useAuth } from "../../auth/useAuth";
 import type { PasswordPolicy } from "../../auth/auth.types";
-import { authErrorMessage } from "../../auth/authErrors";
+import { authErrorKey } from "../../auth/authErrors";
+import { useI18n } from "../../i18n";
 import {
   DEFAULT_PASSWORD_POLICY,
   isValidEmail,
@@ -24,10 +25,9 @@ interface FieldErrors {
 
 const MAX_NAME_LENGTH = 80;
 
-const strengthLabels = { weak: "Weak", fair: "Fair", strong: "Strong" } as const;
-
 export default function SignupPage() {
   const { signUp, getPasswordPolicy } = useAuth();
+  const { t } = useI18n();
   const { setInFlight, markAccountCreated } = useAuthFlow();
   const [params] = useSearchParams();
 
@@ -59,15 +59,15 @@ export default function SignupPage() {
   const validate = (): FieldErrors => {
     const nextErrors: FieldErrors = {};
     if (displayName.trim().length > MAX_NAME_LENGTH) {
-      nextErrors.displayName = `Use at most ${MAX_NAME_LENGTH} characters.`;
+      nextErrors.displayName = t("auth.validation.nameLength", { count: MAX_NAME_LENGTH });
     }
-    if (!isValidEmail(email)) nextErrors.email = "Enter a valid email address.";
-    if (!password) nextErrors.password = "Choose a password.";
+    if (!isValidEmail(email)) nextErrors.email = t("auth.validation.email");
+    if (!password) nextErrors.password = t("auth.validation.choosePassword");
     else if (requirements.some((rule) => !rule.met)) {
-      nextErrors.password = "Password does not meet the requirements.";
+      nextErrors.password = t("auth.validation.requirements");
     }
-    if (!confirm) nextErrors.confirm = "Confirm your password.";
-    else if (confirm !== password) nextErrors.confirm = "Passwords do not match.";
+    if (!confirm) nextErrors.confirm = t("auth.validation.confirm");
+    else if (confirm !== password) nextErrors.confirm = t("auth.validation.mismatch");
     return nextErrors;
   };
 
@@ -98,7 +98,7 @@ export default function SignupPage() {
       setConfirm("");
       markAccountCreated();
     } catch (error) {
-      setFormError(authErrorMessage(error, "signUp"));
+      setFormError(t(authErrorKey(error, "signUp")));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -111,33 +111,33 @@ export default function SignupPage() {
 
   return (
     <AuthCard
-      eyebrow="New account"
-      title="Create your account"
-      description="Set up secure access to AI Workforce."
+      eyebrow={t("auth.newAccount")}
+      title={t("auth.createTitle")}
+      description={t("auth.createDescription")}
       footer={
         <p className="auth-switch">
-          Already have access?{" "}
+          {t("auth.alreadyHaveAccess")}{" "}
           <Link to={loginHref} className="auth-link">
-            Sign in <ArrowRight size={13} aria-hidden="true" />
+            {t("auth.signIn")} <ArrowRight size={13} aria-hidden="true" />
           </Link>
         </p>
       }
     >
       <form ref={formRef} className="auth-form" onSubmit={submit} noValidate>
         <AuthField
-          label="Full name (optional)"
+          label={t("auth.fullName")}
           icon={User}
           type="text"
           name="name"
           autoComplete="name"
-          placeholder="Your name"
+          placeholder={t("auth.fullNamePlaceholder")}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           error={liveErrors.displayName}
           maxLength={MAX_NAME_LENGTH + 20}
         />
         <AuthField
-          label="Email address"
+          label={t("auth.email")}
           icon={Mail}
           type="email"
           name="email"
@@ -150,10 +150,10 @@ export default function SignupPage() {
           required
         />
         <PasswordField
-          label="Password"
+          label={t("auth.password")}
           name="new-password"
           autoComplete="new-password"
-          placeholder="Choose a password"
+          placeholder={t("auth.choosePassword")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={liveErrors.password}
@@ -161,10 +161,10 @@ export default function SignupPage() {
           hint={
             <div className="auth-requirements">
               <div className="auth-strength" aria-live="polite">
-                <span className="auth-requirements__title">Password requirements</span>
+                <span className="auth-requirements__title">{t("auth.requirements")}</span>
                 {password ? (
                   <span className={`auth-strength__label auth-strength__label--${strength}`}>
-                    {strengthLabels[strength]}
+                    {t(`auth.strength.${strength}`)}
                   </span>
                 ) : null}
               </div>
@@ -180,8 +180,8 @@ export default function SignupPage() {
                   <li key={rule.id} className={rule.met ? "is-met" : undefined}>
                     {rule.met ? <Check size={13} aria-hidden="true" /> : <X size={13} aria-hidden="true" />}
                     <span>
-                      {rule.label}
-                      <span className="sr-only">{rule.met ? " — met" : " — not met"}</span>
+                      {t(rule.labelKey, rule.params)}
+                      <span className="sr-only">{rule.met ? ` — ${t("auth.met")}` : ` — ${t("auth.notMet")}`}</span>
                     </span>
                   </li>
                 ))}
@@ -190,10 +190,10 @@ export default function SignupPage() {
           }
         />
         <PasswordField
-          label="Confirm password"
+          label={t("auth.confirmPassword")}
           name="confirm-password"
           autoComplete="new-password"
-          placeholder="Repeat your password"
+          placeholder={t("auth.repeatPassword")}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           error={liveErrors.confirm}
@@ -211,17 +211,17 @@ export default function SignupPage() {
           {submitting ? (
             <>
               <span className="auth-progress" aria-hidden="true" />
-              Creating account…
+              {t("auth.creating")}
             </>
           ) : (
             <>
-              Create account
+              {t("auth.createAccount")}
               <ArrowRight size={16} aria-hidden="true" />
             </>
           )}
         </button>
         <p className="auth-fineprint">
-          New accounts start without Control Center access. An administrator assigns your role.
+          {t("auth.newAccountNote")}
         </p>
       </form>
     </AuthCard>

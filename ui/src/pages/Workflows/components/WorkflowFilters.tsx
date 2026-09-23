@@ -1,5 +1,5 @@
 import { Input, Select } from "../../../components/ui";
-import { formatStatusLabel } from "./workflowStatus";
+import { translateStatus, useI18n } from "../../../i18n";
 
 export interface WorkflowFiltersProps {
   query: string;
@@ -22,6 +22,7 @@ export function WorkflowFilters({
   statusOptions,
   projectOptions,
 }: WorkflowFiltersProps) {
+  const { t } = useI18n();
   return (
     <div className="tasks-toolbar">
       <div className="tasks-toolbar__search">
@@ -30,32 +31,32 @@ export function WorkflowFilters({
           type="search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Search workflows by name, description, or agent..."
-          aria-label="Search workflows"
+          placeholder={t("workflows.searchPlaceholder")}
+          aria-label={t("workflows.search")}
         />
       </div>
 
       <div className="tasks-toolbar__filters">
         <Select
           id="workflow-status-filter"
-          label="Status"
+          label={t("common.status")}
           value={statusFilter}
           onChange={(e) => onStatusFilterChange(e.target.value)}
         >
           {statusOptions.map((status) => (
             <option key={status} value={status}>
-              {status === "all" ? "All statuses" : formatStatusLabel(status)}
+              {status === "all" ? t("common.allStatuses") : translateStatus(t, status)}
             </option>
           ))}
         </Select>
 
         <Select
           id="workflow-project-filter"
-          label="Project"
+          label={t("common.project")}
           value={projectFilter}
           onChange={(e) => onProjectFilterChange(e.target.value)}
         >
-          <option value="all">All projects</option>
+          <option value="all">{t("common.allProjects")}</option>
           {projectOptions.map((projectId) => (
             <option key={projectId} value={projectId}>
               {projectId}

@@ -1,20 +1,110 @@
-:root {
-  --color-background: #f5f7ff;
-  --color-surface: #ffffff;
-  --color-surface-muted: #eef3ff;
-  --color-border: #dfe7ff;
-  --color-border-strong: #bfd0ff;
-  --color-text: #101828;
-  --color-text-secondary: #334155;
-  --color-text-muted: #667085;
-  --color-primary: #1f5eff;
-  --color-primary-soft: rgba(31, 94, 255, 0.12);
-  --color-success: #16a34a;
-  --color-warning: #f59e0b;
-  --color-danger: #dc2626;
-  --color-focus: #2563eb;
-  --color-overlay: rgba(15, 23, 42, 0.52);
+/* ==========================================================================
+   AI Workforce design tokens — the single source of theme values.
 
+   Components use the semantic names only. The two themes are equal:
+     LIGHT (:root)  — ice blue, soft lavender, royal blue, deep violet, gold, light glass
+     DARK           — obsidian, deep navy, electric blue, gold, dark glass
+   The brand logo is never recoloured in either theme.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand palette (raw scales; referenced only by semantic tokens below) ---- */
+  --aw-blue-50: #eef5ff;
+  --aw-blue-100: #dceaff;
+  --aw-blue-200: #bcd5ff;
+  --aw-blue-300: #8eb8ff;
+  --aw-blue-400: #5795ff;
+  --aw-blue-500: #2874f0;
+  --aw-blue-600: #1459d9;
+  --aw-blue-700: #1245ad;
+  --aw-blue-800: #123887;
+  --aw-blue-900: #102a66;
+
+  --aw-purple-50: #f3efff;
+  --aw-purple-100: #e6dcff;
+  --aw-purple-300: #b28fff;
+  --aw-purple-500: #7137e8;
+  --aw-purple-600: #5924c8;
+  --aw-purple-700: #451b9e;
+
+  --aw-gold-100: #fff2c7;
+  --aw-gold-200: #f7d978;
+  --aw-gold-400: #d9a72e;
+  --aw-gold-500: #b98312;
+  --aw-gold-600: #8f6208;
+
+  /* ---- LIGHT theme (default) ---- */
+  --color-background: #eef4ff;
+  --color-bg-secondary: #e7eefc;
+  --color-bg-tertiary: #e2e9fa;
+  --color-bg-gradient: linear-gradient(135deg, #f2f6ff 0%, #e8f0ff 45%, #eeeafe 100%);
+
+  --color-surface: rgba(248, 251, 255, 0.82);
+  --color-surface-solid: #f8fbff;
+  --color-surface-muted: rgba(228, 239, 255, 0.72);
+  --color-surface-lavender: rgba(241, 237, 255, 0.72);
+  --color-surface-hover: rgba(236, 243, 255, 0.92);
+  --color-sidebar: rgba(244, 248, 255, 0.86);
+  --color-topbar: rgba(244, 248, 255, 0.72);
+
+  --color-border: rgba(45, 88, 165, 0.14);
+  --color-border-strong: rgba(40, 82, 170, 0.24);
+  --color-border-selected: var(--aw-blue-500);
+
+  --color-text: #0d2557;
+  --color-text-heading: #102a66;
+  --color-text-secondary: #405987;
+  --color-text-muted: #5f7299;
+  --color-text-disabled: #9aa8c1;
+  --color-text-on-brand: #ffffff;
+
+  --color-primary: var(--aw-blue-600);
+  --color-primary-strong: var(--aw-blue-700);
+  --color-primary-soft: rgba(20, 89, 217, 0.1);
+  --color-brand-secondary: var(--aw-purple-500);
+  --color-brand-secondary-soft: rgba(113, 55, 232, 0.1);
+  --color-brand-gold: var(--aw-gold-400);
+  --color-brand-gold-strong: var(--aw-gold-500);
+  --color-brand-gold-soft: rgba(217, 167, 46, 0.16);
+
+  --color-success: #159447;
+  --color-warning: #b97800;
+  --color-danger: #c83b4d;
+  --color-info: var(--aw-blue-600);
+  --color-disabled: #7c8ba8;
+  --color-focus: var(--aw-blue-500);
+  --color-overlay: rgba(16, 42, 102, 0.36);
+
+  --color-nav-active-bg: linear-gradient(135deg, #2767df 0%, #2448bc 55%, #4a2da8 100%);
+  --color-nav-active-text: #ffffff;
+  --color-nav-hover: rgba(113, 55, 232, 0.07);
+  --color-button-primary-bg: linear-gradient(135deg, var(--aw-blue-600), #2447b8);
+  --color-button-primary-hover: linear-gradient(135deg, var(--aw-blue-700), #1d3a99);
+
+  /* Overview hero: richer blue → lavender, darker toward the Earth side. */
+  --color-hero-bg: linear-gradient(115deg, #dde9ff 0%, #afc8fa 45%, #829fe7 75%, #7a67d6 100%);
+  --color-hero-text: #0d2557;
+  --color-hero-text-muted: #2b4274;
+
+  /* Charts (for future data visualisation). */
+  --chart-1: var(--aw-blue-600);
+  --chart-2: var(--aw-blue-500);
+  --chart-3: var(--aw-purple-500);
+  --chart-4: var(--aw-purple-600);
+  --chart-5: var(--aw-gold-400);
+  --chart-6: #20a45b;
+
+  /* Glass */
+  --glass-blur: blur(18px) saturate(120%);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+
+  --shadow-sm: 0 1px 2px rgba(36, 67, 130, 0.06);
+  --shadow-md: 0 8px 24px rgba(36, 67, 130, 0.08);
+  --shadow-lg: 0 16px 40px rgba(36, 67, 130, 0.1);
+  --shadow-card: var(--glass-highlight), 0 10px 30px rgba(40, 70, 140, 0.08);
+  --shadow-card-hover: var(--glass-highlight), 0 14px 34px rgba(40, 70, 140, 0.12);
+
+  /* ---- Layout / type / motion (theme-independent) ---- */
   --sidebar-width: 280px;
   --header-height: 72px;
   --content-max-width: 1200px;
@@ -27,9 +117,10 @@
   --space-6: 1.5rem;
   --space-8: 2rem;
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
   --radius-full: 999px;
 
   --text-xs: 0.75rem;
@@ -47,29 +138,76 @@
   --duration-fast: 140ms;
   --duration-normal: 200ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 12px 24px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.12);
 }
 
 :root[data-theme='dark'],
 [data-theme='dark'] {
   --color-background: #0b1220;
-  --color-surface: #111827;
+  --color-bg-secondary: #0e1627;
+  --color-bg-tertiary: #121b2e;
+  --color-bg-gradient: linear-gradient(135deg, #0b1220 0%, #0c1426 55%, #110f26 100%);
+
+  --color-surface: rgba(17, 24, 39, 0.82);
+  --color-surface-solid: #111827;
   --color-surface-muted: #1a2334;
+  --color-surface-lavender: rgba(40, 30, 80, 0.45);
+  --color-surface-hover: rgba(26, 35, 52, 0.95);
+  --color-sidebar: rgba(17, 24, 39, 0.92);
+  --color-topbar: rgba(17, 24, 39, 0.82);
+
   --color-border: #2a374d;
   --color-border-strong: #3a4b67;
+  --color-border-selected: #7aa2ff;
+
   --color-text: #edf2ff;
+  --color-text-heading: #f4f7ff;
   --color-text-secondary: #d7def3;
   --color-text-muted: #a8b4cd;
+  --color-text-disabled: #6b7894;
+  --color-text-on-brand: #ffffff;
+
   --color-primary: #7aa2ff;
+  --color-primary-strong: #9dbbff;
   --color-primary-soft: rgba(122, 162, 255, 0.18);
+  --color-brand-secondary: #a98bff;
+  --color-brand-secondary-soft: rgba(169, 139, 255, 0.16);
+  --color-brand-gold: #d9ac52;
+  --color-brand-gold-strong: #f2d48a;
+  --color-brand-gold-soft: rgba(217, 172, 82, 0.2);
+
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-danger: #f87171;
+  --color-info: #7aa2ff;
+  --color-disabled: #6b7894;
   --color-focus: #93c5fd;
   --color-overlay: rgba(2, 6, 23, 0.7);
+
+  --color-nav-active-bg: linear-gradient(135deg, rgba(47, 123, 255, 0.28), rgba(74, 45, 168, 0.3));
+  --color-nav-active-text: #ffffff;
+  --color-nav-hover: rgba(122, 162, 255, 0.08);
+  --color-button-primary-bg: linear-gradient(135deg, #2f6fe8, #2447b8);
+  --color-button-primary-hover: linear-gradient(135deg, #3b7cf5, #2a52c9);
+
+  --color-hero-bg: linear-gradient(115deg, #0c1630 0%, #0f1f4a 50%, #1b1850 100%);
+  --color-hero-text: #f3f6ff;
+  --color-hero-text-muted: #b8c4e0;
+
+  --chart-1: #5795ff;
+  --chart-2: #8eb8ff;
+  --chart-3: #a98bff;
+  --chart-4: #7137e8;
+  --chart-5: #d9ac52;
+  --chart-6: #34d399;
+
+  --glass-blur: blur(18px) saturate(130%);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 12px 24px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.4);
+  --shadow-card: var(--glass-highlight), 0 10px 30px rgba(0, 0, 0, 0.25);
+  --shadow-card-hover: var(--glass-highlight), 0 14px 34px rgba(0, 0, 0, 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {

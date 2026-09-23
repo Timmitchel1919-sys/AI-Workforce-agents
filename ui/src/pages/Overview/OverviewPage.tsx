@@ -1,8 +1,10 @@
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
 import PageSection from "../../components/layout/PageSection";
-import { getDevelopmentOverviewFallback } from "../../features/overview/api/overviewDevelopmentAdapter";
 import { useOverview } from "../../features/overview";
+import type { OverviewSnapshot } from "../../features/overview/api/overviewTypes";
+import { useI18n } from "../../i18n";
+import { OverviewHero } from "./components/OverviewHero";
 import { OverviewMetrics } from "./components/OverviewMetrics";
 import { OverviewActivityCard } from "./components/OverviewActivityCard";
 import { OverviewDegradedState } from "./components/OverviewDegradedState";
@@ -12,120 +14,67 @@ import { WorkforceStatusCard } from "./components/WorkforceStatusCard";
 import "./OverviewPage.css";
 
 function OverviewContent({
-  metrics,
-  summaryCards,
-  activity,
+  snapshot,
+  connection,
 }: {
-  metrics: ReturnType<typeof getDevelopmentOverviewFallback>['metrics'];
-  summaryCards: ReturnType<typeof getDevelopmentOverviewFallback>['summaryCards'];
-  activity: ReturnType<typeof getDevelopmentOverviewFallback>['activity'];
+  snapshot: OverviewSnapshot;
+  connection: "connected" | "degraded";
 }) {
+  const { t } = useI18n();
   return (
     <div className="overview-page">
       <PageSection>
         <div className="overview-grid">
-          <WorkforceStatusCard />
+          <WorkforceStatusCard connection={connection} />
           <div className="overview-status-side">
-            <OverviewMetrics metrics={metrics} />
+            <OverviewMetrics metrics={snapshot.metrics} />
           </div>
         </div>
       </PageSection>
 
-      <PageSection title="Operational activity" description="A summary of the current operational landscape.">
+      <PageSection title={t("overview.operationalActivity")} description={t("overview.operationalActivityDescription")}>
         <div className="overview-activity-grid">
-          {summaryCards.map((item) => (
+          {snapshot.summaryCards.map((item) => (
             <OverviewActivityCard key={item.id} item={item} />
           ))}
         </div>
       </PageSection>
 
-      <PageSection title="Recent activity" description="Latest actions and system events from the workforce.">
-        <RecentActivity items={activity} />
+      <PageSection title={t("overview.recentActivity")} description={t("overview.recentActivityDescription")}>
+        <RecentActivity items={snapshot.activity} />
       </PageSection>
     </div>
   );
 }
 
 export default function OverviewPage() {
+  const { t } = useI18n();
   const { data, status, refetch } = useOverview();
-  const overview = data ?? getDevelopmentOverviewFallback();
 
-  if (status === "loading") {
+  const header = (
+    <>
+      <PageHeader eyebrow={t("common.brand")} title={t("overview.title")} description={t("overview.description")} />
+      <OverviewHero />
+    </>
+  );
+
+  if (status === "loading" || status === "error" || status === "unauthorized" || status === "empty") {
     return (
       <PageContainer variant="wide">
-        <PageHeader
-          eyebrow="AI Workforce"
-          title="Overview"
-          description="Monitor your AI workforce, operations, and Control Plane activity."
-        />
-        <OverviewStateView state="loading" />
+        {header}
+        <OverviewStateView state={status} onRetry={status === "error" ? refetch : undefined} />
       </PageContainer>
     );
   }
 
-  if (status === "error") {
-    return (
-      <PageContainer variant="wide">
-        <PageHeader
-          eyebrow="AI Workforce"
-          title="Overview"
-          description="Monitor your AI workforce, operations, and Control Plane activity."
-        />
-        <OverviewStateView state="error" onRetry={refetch} />
-      </PageContainer>
-    );
-  }
-
-  if (status === "unauthorized") {
-    return (
-      <PageContainer variant="wide">
-        <PageHeader
-          eyebrow="AI Workforce"
-          title="Overview"
-          description="Monitor your AI workforce, operations, and Control Plane activity."
-        />
-        <OverviewStateView state="unauthorized" />
-      </PageContainer>
-    );
-  }
-
-  if (status === "empty") {
-    return (
-      <PageContainer variant="wide">
-        <PageHeader
-          eyebrow="AI Workforce"
-          title="Overview"
-          description="Monitor your AI workforce, operations, and Control Plane activity."
-        />
-        <OverviewStateView state="empty" />
-      </PageContainer>
-    );
-  }
-
-  if (status === "degraded") {
-    return (
-      <PageContainer variant="wide">
-        <PageHeader
-          eyebrow="AI Workforce"
-          title="Overview"
-          description="Monitor your AI workforce, operations, and Control Plane activity."
-        />
-        <div className="overview-page">
-          <OverviewDegradedState />
-          <OverviewContent metrics={overview.metrics} summaryCards={overview.summaryCards} activity={overview.activity} />
-        </div>
-      </PageContainer>
-    );
-  }
-
+  // Only real snapshot data is rendered; there is no demo fallback outside development.
   return (
     <PageContainer variant="wide">
-      <PageHeader
-        eyebrow="AI Workforce"
-        title="Overview"
-        description="Monitor your AI workforce, operations, and Control Plane activity."
-      />
-      <OverviewContent metrics={overview.metrics} summaryCards={overview.summaryCards} activity={overview.activity} />
+      {header}
+      {status === "degraded" ? <OverviewDegradedState /> : null}
+      {data ? (
+        <OverviewContent snapshot={data} connection={status === "degraded" ? "degraded" : "connected"} />
+      ) : null}
     </PageContainer>
   );
 }

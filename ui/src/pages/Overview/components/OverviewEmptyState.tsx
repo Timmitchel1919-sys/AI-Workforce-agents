@@ -1,15 +1,17 @@
 import { Link } from 'react-router-dom';
 import { Button, EmptyState } from '../../../components/ui';
+import { useI18n } from '../../../i18n';
 
 export function OverviewEmptyState() {
+  const { t } = useI18n();
   return (
     <EmptyState
-      title="No workforce activity yet"
-      description="Your AI Workforce has not generated operational activity yet. Create an agent, task, or workflow to get started."
+      title={t('overview.emptyTitle')}
+      description={t('overview.emptyDescription')}
       primaryAction={
-        <Link to="/agents" aria-label="Create an agent">
+        <Link to="/agents">
           <Button type="button" variant="primary">
-            Create an agent
+            {t('overview.emptyAction')}
           </Button>
         </Link>
       }

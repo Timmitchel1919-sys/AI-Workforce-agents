@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
+import { useI18n } from "../../../i18n";
 
 interface AuthCardProps {
   eyebrow: string;
@@ -16,6 +17,7 @@ function isEncryptedConnection(): boolean {
 }
 
 export function AuthCard({ eyebrow, title, description, children, footer, granted = false }: AuthCardProps) {
+  const { t } = useI18n();
   const encrypted = isEncryptedConnection();
 
   return (
@@ -34,11 +36,11 @@ export function AuthCard({ eyebrow, title, description, children, footer, grante
       </svg>
 
       <div className="auth-card__edge">
-        <span>Authentication node</span>
+        <span>{t("auth.authNode")}</span>
         {encrypted ? (
           <span className="auth-card__edge-status">
             <span className="auth-card__dot" aria-hidden="true" />
-            Encrypted connection
+            {t("auth.encrypted")}
           </span>
         ) : null}
       </div>
@@ -57,7 +59,7 @@ export function AuthCard({ eyebrow, title, description, children, footer, grante
 
       <p className="auth-card__protected">
         <Lock size={12} aria-hidden="true" />
-        Protected access · credentials are handled by Firebase Authentication
+        {t("auth.protected")}
       </p>
     </section>
   );

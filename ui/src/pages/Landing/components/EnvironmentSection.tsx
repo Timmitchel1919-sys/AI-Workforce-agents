@@ -9,6 +9,7 @@ import {
   Smartphone,
   type LucideIcon,
 } from "lucide-react";
+import { useI18n } from "../../../i18n";
 import { environments, type EnvironmentIconId } from "../landingContent";
 import { PresentationNote, Reveal, SectionHeading, StatusPill } from "./primitives";
 
@@ -24,20 +25,21 @@ const iconMap: Record<EnvironmentIconId, LucideIcon> = {
 };
 
 export function EnvironmentSection() {
+  const { t } = useI18n();
   return (
     <section id="capabilities" className="lp-section" aria-labelledby="lp-env-title">
       <SectionHeading
         id="lp-env-title"
-        eyebrow="Multi-Environment"
-        title="Build without environment limits"
-        lead="The Environment Router matches each task to a detected, capable host. Support is declared per environment type; availability only ever comes from live detection."
+        eyebrow={t("landing.env.eyebrow")}
+        title={t("landing.env.title")}
+        lead={t("landing.env.lead")}
       />
 
       <ul className="lp-env-grid">
         {environments.map((environment, index) => {
           const Icon = iconMap[environment.icon];
           return (
-            <li key={environment.name}>
+            <li key={environment.id}>
               <Reveal className="lp-env-card lp-glass" delay={(index % 4) * 70}>
                 <div className="lp-env-card__top">
                   <span className="lp-env-card__icon" aria-hidden="true">
@@ -45,8 +47,10 @@ export function EnvironmentSection() {
                   </span>
                   <StatusPill status={environment.status} />
                 </div>
-                <h3 className="lp-env-card__name">{environment.name}</h3>
-                <p className="lp-env-card__description">{environment.description}</p>
+                <h3 className="lp-env-card__name">
+                  {environment.nameKey ? t(environment.nameKey) : environment.name}
+                </h3>
+                <p className="lp-env-card__description">{t(environment.descriptionKey)}</p>
               </Reveal>
             </li>
           );
@@ -54,9 +58,8 @@ export function EnvironmentSection() {
       </ul>
 
       <PresentationNote>
-        <strong>Registered</strong> — a support descriptor exists in the production catalog.{" "}
-        <strong>Planned</strong> — detection probe not yet shipped. No environment is shown as
-        available until a real host reports it.
+        <strong>{t("landing.env.noteRegistered")}</strong> {t("landing.env.noteRegisteredText")}{" "}
+        <strong>{t("landing.env.notePlanned")}</strong> {t("landing.env.notePlannedText")}
       </PresentationNote>
     </section>
   );

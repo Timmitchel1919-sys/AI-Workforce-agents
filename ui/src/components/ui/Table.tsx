@@ -11,7 +11,7 @@ export function Table({ caption, children, empty }: TableProps) {
   // Expect consumer to pass semantic <thead>/<tbody> rows
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table className="ui-table">
         {caption ? <caption>{caption}</caption> : null}
         {children}
       </table>

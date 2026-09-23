@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
+import { useI18n } from "../../i18n";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -15,6 +16,7 @@ function readSidebarCollapsed(): boolean {
 }
 
 export default function AppShell() {
+  const { t } = useI18n();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
 
@@ -38,7 +40,7 @@ export default function AppShell() {
     if (mobileNavigationOpen) {
       const focusTarget =
         drawerRef.current?.querySelector<HTMLButtonElement>(
-          'button[aria-label="Close navigation"]',
+          "button[data-drawer-close]",
         ) ?? null;
 
       focusTarget?.focus();
@@ -72,7 +74,7 @@ export default function AppShell() {
     <div className={`app-shell${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
       <aside
         className="app-shell__sidebar"
-        aria-label="Application sidebar"
+        aria-label={t("shell.applicationSidebar")}
         hidden={mobileNavigationOpen}
       >
         <Sidebar
@@ -86,7 +88,7 @@ export default function AppShell() {
           <button
             type="button"
             className="app-shell__mobile-backdrop"
-            aria-label="Dismiss navigation drawer"
+            aria-label={t("shell.dismissNavigation")}
             tabIndex={-1}
             onClick={closeMobileNavigation}
           />
@@ -96,17 +98,18 @@ export default function AppShell() {
             className="app-shell__mobile-drawer"
             role="dialog"
             aria-modal="true"
-            aria-label="Navigation drawer"
+            aria-label={t("shell.navigationDrawer")}
           >
             <div className="app-shell__mobile-drawer-header">
-              <div className="app-shell__mobile-drawer-title">Navigation</div>
+              <div className="app-shell__mobile-drawer-title">{t("shell.navigation")}</div>
               <button
                 type="button"
                 className="app-shell__mobile-close"
-                aria-label="Close navigation"
+                data-drawer-close
+                aria-label={t("shell.closeNavigation")}
                 onClick={closeMobileNavigation}
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
             <Sidebar onNavigate={closeMobileNavigation} />

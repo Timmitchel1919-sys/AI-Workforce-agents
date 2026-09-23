@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { formatDateTime, translatePriority, translateStatus, useI18n } from "../../../i18n";
 import { Badge, StatusBadge } from "../../../components/ui";
 import type { Status } from "../../../components/ui/StatusBadge";
 import type { TaskListItem, TaskPriority, TaskStatus } from "../../../features/tasks";
@@ -44,12 +45,13 @@ function mapPriorityToBadgeVariant(
 }
 
 export function TaskRow({ task }: { task: TaskListItem }) {
+  const { t, language } = useI18n();
   const taskHref = `/tasks/${task.id}`;
 
   return (
     <tr className="task-row">
       <td className="task-row__cell task-row__cell--primary">
-        <Link to={taskHref} className="task-row__link" aria-label={`View details for ${task.title}`}>
+        <Link to={taskHref} className="task-row__link" aria-label={t("common.viewDetails", { name: task.title })}>
           <div className="task-row__name-block">
             <span className="task-row__name">{task.title}</span>
             {task.description ? <span className="task-row__description">{task.description}</span> : null}
@@ -57,12 +59,12 @@ export function TaskRow({ task }: { task: TaskListItem }) {
         </Link>
       </td>
       <td className="task-row__cell">
-        <StatusBadge status={mapTaskStatusToBadge(task.status)}>{task.status}</StatusBadge>
+        <StatusBadge status={mapTaskStatusToBadge(task.status)}>{translateStatus(t, task.status)}</StatusBadge>
       </td>
       <td className="task-row__cell">
         {task.priority ? (
           <Badge variant={mapPriorityToBadgeVariant(task.priority)}>
-            {task.priority.toUpperCase()}
+            {translatePriority(t, task.priority)}
           </Badge>
         ) : (
           <span className="task-row__muted">—</span>
@@ -78,12 +80,12 @@ export function TaskRow({ task }: { task: TaskListItem }) {
             task.agentName
           )
         ) : (
-          "Unassigned"
+          t("common.unassigned")
         )}
       </td>
-      <td className="task-row__cell task-row__cell--muted">{task.projectName ?? task.type ?? "General"}</td>
+      <td className="task-row__cell task-row__cell--muted">{task.projectName ?? task.type ?? t("common.general")}</td>
       <td className="task-row__cell task-row__cell--muted">
-        {task.updatedAt ? new Date(task.updatedAt).toLocaleString() : new Date(task.createdAt).toLocaleString()}
+        {formatDateTime(task.updatedAt ?? task.createdAt, language)}
       </td>
     </tr>
   );

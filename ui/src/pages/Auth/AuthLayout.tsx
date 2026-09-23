@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../../auth/useAuth";
+import { useI18n } from "../../i18n";
 import { safeRedirectPath } from "../../auth/redirect";
 import { BackgroundField } from "../../components/brand/BackgroundField";
 import { RotatingEmblem } from "../../components/brand/RotatingEmblem";
@@ -15,20 +16,20 @@ import "../../styles/os-theme.css";
 import "./AuthPage.css";
 
 function BrandCopy() {
+  const { t } = useI18n();
   return (
     <>
       <p className="auth-brand__name">AI Workforce</p>
       <p className="auth-brand__tagline">Intelligence at work</p>
       <p className="auth-brand__description">
-        One intelligent operating system for autonomous software engineering, multi-agent
-        orchestration and controlled digital execution.
+        {t("landing.hero.description")}
       </p>
-      <p className="auth-brand__verbs" aria-label="Architect, build, test, secure, deploy">
-        <span>Architect</span>
-        <span>Build</span>
-        <span>Test</span>
-        <span>Secure</span>
-        <span>Deploy</span>
+      <p className="auth-brand__verbs" aria-label={t("landing.hero.verbs")}>
+        <span>{t("landing.hero.architect")}</span>
+        <span>{t("landing.hero.build")}</span>
+        <span>{t("landing.hero.test")}</span>
+        <span>{t("landing.hero.secure")}</span>
+        <span>{t("landing.hero.deploy")}</span>
       </p>
     </>
   );
@@ -41,6 +42,7 @@ function BrandCopy() {
  */
 export default function AuthLayout() {
   const { configured, loading, user, access } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   const [params] = useSearchParams();
   const next = safeRedirectPath(params.get("next"));
@@ -54,9 +56,8 @@ export default function AuthLayout() {
   }, []);
 
   useEffect(() => {
-    document.title =
-      location.pathname === "/signup" ? "Create account — AI Workforce" : "Sign in — AI Workforce";
-  }, [location.pathname]);
+    document.title = location.pathname === "/signup" ? t("auth.titleSignUp") : t("auth.titleSignIn");
+  }, [location.pathname, t]);
 
   const flow = useMemo<AuthFlowContext>(
     () => ({ setInFlight, markAccountCreated: () => setAccountCreated(true) }),
@@ -68,7 +69,7 @@ export default function AuthLayout() {
     card = (
       <div className="auth-card auth-card--loading lp-glass" role="status" aria-live="polite">
         <Spinner />
-        <span>Verifying session…</span>
+        <span>{t("shell.verifyingSession")}</span>
       </div>
     );
   } else if (user && access === "granted" && !inFlight) {
@@ -95,7 +96,7 @@ export default function AuthLayout() {
         </Link>
         <Link to="/" className="auth-topbar__back">
           <ArrowLeft size={14} aria-hidden="true" />
-          Back to system
+          {t("auth.backToSystem")}
         </Link>
       </header>
 
@@ -116,7 +117,7 @@ export default function AuthLayout() {
 
           {!configured ? (
             <AuthAlert tone="info">
-              Authentication is not configured for this environment (Firebase web config missing).
+              {t("auth.notConfigured")}
             </AuthAlert>
           ) : null}
 

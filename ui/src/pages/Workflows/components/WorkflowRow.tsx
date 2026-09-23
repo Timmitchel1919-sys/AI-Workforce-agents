@@ -1,15 +1,12 @@
 import { Link } from "react-router-dom";
+import { formatDateTime, translateStatus, useI18n } from "../../../i18n";
 import { Badge, StatusBadge } from "../../../components/ui";
 import type { WorkflowView } from "../../../features/workflows";
 import { WorkflowProgressBar } from "./WorkflowProgressBar";
-import {
-  formatDate,
-  formatStatusLabel,
-  mapWorkflowStatusToBadge,
-  workflowDisplayStatus,
-} from "./workflowStatus";
+import { mapWorkflowStatusToBadge, workflowDisplayStatus } from "./workflowStatus";
 
 export function WorkflowRow({ workflow }: { workflow: WorkflowView }) {
+  const { t, language } = useI18n();
   const displayStatus = workflowDisplayStatus(workflow);
 
   return (
@@ -18,7 +15,7 @@ export function WorkflowRow({ workflow }: { workflow: WorkflowView }) {
         <Link
           to={`/workflows/${workflow.workflowId}`}
           className="workflow-row__link"
-          aria-label={`View details for ${workflow.name}`}
+          aria-label={t("common.viewDetails", { name: workflow.name })}
         >
           <div className="workflow-row__name-block">
             <span className="workflow-row__name">{workflow.name}</span>
@@ -29,11 +26,13 @@ export function WorkflowRow({ workflow }: { workflow: WorkflowView }) {
       <td className="workflow-row__cell">
         <div className="workflow-row__status">
           <StatusBadge status={mapWorkflowStatusToBadge(displayStatus)}>
-            {formatStatusLabel(displayStatus)}
+            {translateStatus(t, displayStatus)}
           </StatusBadge>
           {workflow.pendingApprovals > 0 ? (
             <Badge variant="warning">
-              {workflow.pendingApprovals} approval{workflow.pendingApprovals === 1 ? "" : "s"}
+              {workflow.pendingApprovals === 1
+                ? t("workflows.approvalsOne")
+                : t("workflows.approvalsMany", { count: workflow.pendingApprovals })}
             </Badge>
           ) : null}
         </div>
@@ -48,7 +47,7 @@ export function WorkflowRow({ workflow }: { workflow: WorkflowView }) {
       </td>
       <td className="workflow-row__cell workflow-row__cell--muted">{workflow.projectId}</td>
       <td className="workflow-row__cell workflow-row__cell--muted">
-        {formatDate(workflow.updatedAt)}
+        {formatDateTime(workflow.updatedAt, language)}
       </td>
     </tr>
   );

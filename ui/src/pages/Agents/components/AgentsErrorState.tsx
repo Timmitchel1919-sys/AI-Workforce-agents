@@ -1,16 +1,18 @@
 import { ErrorState } from "../../../components/ui";
+import { useI18n } from "../../../i18n";
 
 export interface AgentsErrorStateProps {
   onRetry?: () => void;
 }
 
 export function AgentsErrorState({ onRetry }: AgentsErrorStateProps) {
+  const { t } = useI18n();
   return (
     <ErrorState
-      title="Unable to load agents"
-      description="The agent registry could not be retrieved from the Control Plane."
+      title={t("agents.errorTitle")}
+      description={t("agents.errorDescription")}
       onRetry={onRetry}
-      retryLabel="Retry"
+      retryLabel={t("common.retry")}
     />
   );
 }

@@ -1,3 +1,5 @@
+import { translate, type MessageKey } from "../i18n/messages";
+
 /**
  * Maps Firebase Auth error codes to a small set of user-safe outcomes. Raw
  * codes, messages, and stack traces never reach the UI.
@@ -55,41 +57,45 @@ export class AuthFlowError extends Error {
 
 export type AuthFlow = "signIn" | "signUp" | "reset" | "refresh";
 
-export function authErrorMessage(error: unknown, flow: AuthFlow): string {
+/** Message key for a user-safe error (translated by the caller). */
+export function authErrorKey(error: unknown, flow: AuthFlow): MessageKey {
   const kind = AuthFlowError.from(error).kind;
 
   switch (kind) {
     case "invalid-credentials":
-      return "Invalid email or password.";
+      return "auth.errors.invalidCredentials";
     case "account-unavailable":
-      return "Account access unavailable. Contact your AI Workforce administrator.";
+      return "auth.errors.accountUnavailable";
     case "signup-rejected":
       // Deliberately does not confirm that the address is registered.
-      return "We couldn't create an account with these details. If you already have access, sign in or reset your password.";
+      return "auth.errors.signupRejected";
     case "weak-password":
-      return "Password does not meet the requirements.";
+      return "auth.errors.weakPassword";
     case "invalid-email":
-      return "Enter a valid email address.";
+      return "auth.errors.invalidEmail";
     case "rate-limited":
-      return "Too many attempts. Wait a moment and try again.";
+      return "auth.errors.rateLimited";
     case "network":
-      return "Connection problem. Try again.";
+      return "auth.errors.network";
     case "method-disabled":
-      return flow === "signUp"
-        ? "Account creation is not enabled for this system."
-        : "Email sign-in is not enabled for this system.";
+      return flow === "signUp" ? "auth.errors.signupDisabled" : "auth.errors.signinDisabled";
     case "not-configured":
-      return "Authentication is not configured for this environment.";
+      return "auth.errors.notConfigured";
     default:
       switch (flow) {
         case "signUp":
-          return "Account creation failed. Try again.";
+          return "auth.errors.signupFailed";
         case "reset":
-          return "Could not send the reset email. Try again.";
+          return "auth.errors.resetFailed";
         case "refresh":
-          return "Could not check access. Try again.";
+          return "auth.errors.refreshFailed";
         default:
-          return "Sign-in failed. Try again.";
+          return "auth.errors.signinFailed";
       }
   }
+}
+
+/** English message (for non-UI callers and tests). */
+export function authErrorMessage(error: unknown, flow: AuthFlow): string {
+  return translate("en", authErrorKey(error, flow));
 }

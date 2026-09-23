@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useReveal } from "../hooks/useLandingMotion";
-import { statusLabels, type AgentStatus, type EnvironmentStatus } from "../landingContent";
+import type { AgentStatus, EnvironmentStatus } from "../landingContent";
+import { useI18n } from "../../../i18n";
 
 export function Reveal({
   children,
@@ -48,10 +49,11 @@ export function SectionHeading({
 }
 
 export function StatusPill({ status }: { status: EnvironmentStatus | AgentStatus }) {
+  const { t } = useI18n();
   return (
     <span className={`lp-status lp-status--${status}`}>
       <span className="lp-status__dot" aria-hidden="true" />
-      {statusLabels[status]}
+      {t(`landing.statuses.${status}`)}
     </span>
   );
 }

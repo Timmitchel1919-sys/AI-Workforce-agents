@@ -1,8 +1,10 @@
 import { Skeleton } from "../../../components/ui";
+import { useI18n } from "../../../i18n";
 
 export function TaskLoadingState() {
+  const { t } = useI18n();
   return (
-    <div className="tasks-loading" role="status" aria-live="polite" aria-label="Loading tasks">
+    <div className="tasks-loading" role="status" aria-live="polite" aria-label={t("tasks.loading")}>
       <div className="tasks-loading__header">
         <Skeleton height={22} width="26%" />
         <Skeleton height={14} width="42%" />

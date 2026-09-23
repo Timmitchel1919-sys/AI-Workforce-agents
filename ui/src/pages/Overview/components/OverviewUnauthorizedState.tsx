@@ -1,10 +1,12 @@
 import { UnauthorizedState } from '../../../components/states';
+import { useI18n } from "../../../i18n";
 
 export function OverviewUnauthorizedState() {
+  const { t } = useI18n();
   return (
     <UnauthorizedState
-      title="Access restricted"
-      description="You do not have permission to view workforce operational data."
+      title={t("overview.unauthorizedTitle")}
+      description={t("overview.unauthorizedDescription")}
     />
   );
 }

@@ -1,4 +1,5 @@
 import type { PasswordPolicy } from "./auth.types";
+import type { MessageKey, MessageParams } from "../i18n/messages";
 
 /** Firebase Auth always rejects passwords shorter than 6 characters. */
 export const DEFAULT_PASSWORD_POLICY: PasswordPolicy = {
@@ -12,7 +13,8 @@ export const DEFAULT_PASSWORD_POLICY: PasswordPolicy = {
 
 export interface PasswordRequirement {
   id: string;
-  label: string;
+  labelKey: MessageKey;
+  params?: MessageParams;
   met: boolean;
 }
 
@@ -24,30 +26,32 @@ export function passwordRequirements(
   const requirements: PasswordRequirement[] = [
     {
       id: "length",
-      label: `At least ${policy.minLength} characters`,
+      labelKey: "auth.rules.length",
+      params: { count: policy.minLength },
       met: password.length >= policy.minLength,
     },
   ];
   if (policy.maxLength) {
     requirements.push({
       id: "max-length",
-      label: `At most ${policy.maxLength} characters`,
+      labelKey: "auth.rules.maxLength",
+      params: { count: policy.maxLength },
       met: password.length <= policy.maxLength,
     });
   }
   if (policy.requireLowercase) {
-    requirements.push({ id: "lower", label: "A lowercase letter", met: /[a-z]/.test(password) });
+    requirements.push({ id: "lower", labelKey: "auth.rules.lower", met: /[a-z]/.test(password) });
   }
   if (policy.requireUppercase) {
-    requirements.push({ id: "upper", label: "An uppercase letter", met: /[A-Z]/.test(password) });
+    requirements.push({ id: "upper", labelKey: "auth.rules.upper", met: /[A-Z]/.test(password) });
   }
   if (policy.requireNumber) {
-    requirements.push({ id: "number", label: "A number", met: /\d/.test(password) });
+    requirements.push({ id: "number", labelKey: "auth.rules.number", met: /\d/.test(password) });
   }
   if (policy.requireSymbol) {
     requirements.push({
       id: "symbol",
-      label: "A special character",
+      labelKey: "auth.rules.symbol",
       met: /[^A-Za-z0-9]/.test(password),
     });
   }

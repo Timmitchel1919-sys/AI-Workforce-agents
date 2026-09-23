@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { formatDateTime, translateStatus, useI18n } from "../../../i18n";
 import { Card } from "../../../components/ui";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import type { Status } from "../../../components/ui/StatusBadge";
@@ -21,48 +22,44 @@ function mapExecutionStatusToBadge(status: TaskExecutionSummaryType["status"]): 
   }
 }
 
-function formatDate(isoString?: string): string | null {
-  if (!isoString) return null;
-  const date = new Date(isoString);
-  return Number.isNaN(date.getTime()) ? isoString : date.toLocaleString();
-}
-
 export interface TaskExecutionSummaryProps {
   executionSummary?: TaskExecutionSummaryType;
 }
 
 export function TaskExecutionSummary({ executionSummary }: TaskExecutionSummaryProps) {
+  const { t, language } = useI18n();
+  const formatDate = (value: string) => formatDateTime(value, language) ?? value;
   return (
     <Card className="task-execution-summary-card">
       <div className="task-card-header">
-        <h2>Execution Summary</h2>
+        <h2>{t("tasks.execution")}</h2>
       </div>
 
       <div className="task-execution-summary-card__body">
         {!executionSummary ? (
           <p className="task-meta-value task-meta-value--muted">
-            No execution summary data available for this task.
+            {t("tasks.noExecution")}
           </p>
         ) : (
           <div className="task-execution-details">
             <div className="task-execution-grid">
               <div className="task-meta-item">
-                <span className="task-meta-label">Execution ID</span>
+                <span className="task-meta-label">{t("tasks.executionId")}</span>
                 <span className="task-meta-value task-meta-value--code">
                   {executionSummary.executionId}
                 </span>
               </div>
 
               <div className="task-meta-item">
-                <span className="task-meta-label">Execution Status</span>
+                <span className="task-meta-label">{t("tasks.executionStatus")}</span>
                 <StatusBadge status={mapExecutionStatusToBadge(executionSummary.status)}>
-                  {executionSummary.status}
+                  {translateStatus(t, executionSummary.status)}
                 </StatusBadge>
               </div>
 
               {executionSummary.agentName ? (
                 <div className="task-meta-item">
-                  <span className="task-meta-label">Assigned Agent</span>
+                  <span className="task-meta-label">{t("tasks.assignedAgent")}</span>
                   {executionSummary.agentId ? (
                     <Link to={`/agents/${executionSummary.agentId}`} className="task-context-link">
                       {executionSummary.agentName}
@@ -75,21 +72,21 @@ export function TaskExecutionSummary({ executionSummary }: TaskExecutionSummaryP
 
               {executionSummary.duration ? (
                 <div className="task-meta-item">
-                  <span className="task-meta-label">Duration</span>
+                  <span className="task-meta-label">{t("tasks.duration")}</span>
                   <span className="task-meta-value">{executionSummary.duration}</span>
                 </div>
               ) : null}
 
               {executionSummary.startedAt ? (
                 <div className="task-meta-item">
-                  <span className="task-meta-label">Started</span>
+                  <span className="task-meta-label">{t("common.started")}</span>
                   <span className="task-meta-value">{formatDate(executionSummary.startedAt)}</span>
                 </div>
               ) : null}
 
               {executionSummary.completedAt ? (
                 <div className="task-meta-item">
-                  <span className="task-meta-label">Completed</span>
+                  <span className="task-meta-label">{t("common.completed")}</span>
                   <span className="task-meta-value">{formatDate(executionSummary.completedAt)}</span>
                 </div>
               ) : null}
@@ -97,7 +94,7 @@ export function TaskExecutionSummary({ executionSummary }: TaskExecutionSummaryP
 
             {executionSummary.resultSummary ? (
               <div className="task-execution-result">
-                <span className="task-meta-label">Result Summary</span>
+                <span className="task-meta-label">{t("tasks.resultSummary")}</span>
                 <div className="task-execution-result-box">
                   <p>{executionSummary.resultSummary}</p>
                 </div>

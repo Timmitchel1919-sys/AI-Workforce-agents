@@ -1,29 +1,22 @@
-export const pageTitles: Record<string, string> = {
-  "/overview": "Overview",
-  "/agents": "Agents",
-  "/tasks": "Tasks",
-  "/workflows": "Workflows",
-  "/projects": "Projects",
-  "/approvals": "Approvals",
-  "/audit-log": "Audit Log",
-  "/knowledge": "Knowledge",
-  "/settings": "Settings",
-  "/design-system": "Design System",
+import type { MessageKey } from "../i18n";
+
+export const pageTitleKeys: Record<string, MessageKey> = {
+  "/overview": "nav.overview",
+  "/agents": "nav.agents",
+  "/tasks": "nav.tasks",
+  "/workflows": "nav.workflows",
+  "/projects": "nav.projects",
+  "/approvals": "nav.approvals",
+  "/audit-log": "nav.auditLog",
+  "/knowledge": "nav.knowledge",
+  "/settings": "nav.settings",
+  "/design-system": "nav.designSystem",
 };
 
-export function getPageTitle(pathname: string): string {
-  const mappedTitle = pageTitles[pathname];
-
-  if (mappedTitle) {
-    return mappedTitle;
-  }
-
-  const fallbackTitle = pathname
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => segment.replace(/[-_]/g, " "))
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-
-  return fallbackTitle || "Overview";
+/** Message key for the page title; detail routes use their module's title. */
+export function getPageTitleKey(pathname: string): MessageKey {
+  const exact = pageTitleKeys[pathname];
+  if (exact) return exact;
+  const base = `/${pathname.split("/").filter(Boolean)[0] ?? ""}`;
+  return pageTitleKeys[base] ?? "nav.overview";
 }

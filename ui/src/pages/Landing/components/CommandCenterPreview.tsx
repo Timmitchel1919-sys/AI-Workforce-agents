@@ -2,6 +2,7 @@ import Sidebar from "../../../components/layout/Sidebar";
 import PageHeader from "../../../components/layout/PageHeader";
 import { Skeleton } from "../../../components/ui";
 import { PresentationNote, Reveal, SectionHeading } from "./primitives";
+import { useI18n } from "../../../i18n";
 
 // Skeleton's built-in fill is light-only; match the dark theme inside the preview.
 const placeholder = { background: "var(--color-surface-muted)" };
@@ -12,13 +13,14 @@ const placeholder = { background: "var(--color-surface-muted)" };
  * placeholders on purpose — the product shows data from the Control Plane.
  */
 export function CommandCenterPreview() {
+  const { t } = useI18n();
   return (
     <section className="lp-section" aria-labelledby="lp-preview-title">
       <SectionHeading
         id="lp-preview-title"
-        eyebrow="Command Center"
-        title="Your workforce, in one control center"
-        lead="Projects, agents, tasks, workflows, approvals, and the audit log — one operator console on top of the Control Plane."
+        eyebrow={t("landing.preview.eyebrow")}
+        title={t("landing.preview.title")}
+        lead={t("landing.preview.lead")}
       />
 
       <Reveal className="lp-preview">
@@ -27,14 +29,14 @@ export function CommandCenterPreview() {
             <span />
             <span />
             <span />
-            <p>AI Workforce — Control Center</p>
+            <p>{t("landing.preview.windowTitle")}</p>
           </div>
 
           <div
             className="lp-preview__app"
             data-theme="dark"
             inert
-            aria-label="Preview of the Control Center interface"
+            aria-label={t("landing.preview.label")}
             role="img"
           >
             <div className="lp-preview__sidebar">
@@ -42,9 +44,9 @@ export function CommandCenterPreview() {
             </div>
             <div className="lp-preview__main">
               <PageHeader
-                eyebrow="AI Workforce"
-                title="Overview"
-                description="Monitor your AI workforce, operations, and Control Plane activity."
+                eyebrow={t("common.brand")}
+                title={t("overview.title")}
+                description={t("overview.description")}
               />
               <div className="lp-preview__cards">
                 {Array.from({ length: 4 }).map((_, index) => (
@@ -68,7 +70,7 @@ export function CommandCenterPreview() {
         </div>
       </Reveal>
 
-      <PresentationNote>Interface preview with placeholder content — no workforce data is shown here.</PresentationNote>
+      <PresentationNote>{t("landing.preview.note")}</PresentationNote>
     </section>
   );
 }

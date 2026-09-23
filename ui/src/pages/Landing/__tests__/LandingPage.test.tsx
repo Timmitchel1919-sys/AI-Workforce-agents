@@ -61,7 +61,8 @@ describe("Landing Page", () => {
     renderLanding();
 
     const registered = agentDepartments.filter((agent) => agent.status === "registered");
-    expect(registered.map((agent) => agent.name)).toEqual(["Control Plane Analysis"]);
+    expect(registered.map((agent) => agent.id)).toEqual(["cpa"]);
+    expect(screen.getByText("Control Plane Analysis")).toBeInTheDocument();
     expect(screen.getAllByText("Planned").length).toBeGreaterThan(0);
   });
 });
