@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import { useI18n } from "../../i18n";
+import { InstallAppButton } from "../pwa/InstallAppButton";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -113,6 +114,9 @@ export default function AppShell() {
               </button>
             </div>
             <Sidebar onNavigate={closeMobileNavigation} />
+            <div className="app-shell__mobile-install">
+              <InstallAppButton fullWidth />
+            </div>
           </div>
         </>
       ) : null}

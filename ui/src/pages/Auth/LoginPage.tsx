@@ -10,6 +10,7 @@ import { prefersReducedMotion } from "../../components/brand/motion";
 import { AuthCard } from "./components/AuthCard";
 import { AuthAlert, AuthField, PasswordField } from "./components/AuthFields";
 import { ACCESS_GRANTED_MS, focusFirstInvalid, useAuthFlow } from "./authFlow";
+import { InstallAppButton } from "../../components/pwa/InstallAppButton";
 
 type View = "signin" | "reset";
 
@@ -231,24 +232,27 @@ export default function LoginPage() {
 
           {formError ? <AuthAlert>{formError}</AuthAlert> : null}
 
-          <button
-            type="submit"
-            className="lp-button lp-button--primary auth-submit"
-            disabled={submitting}
-            aria-busy={submitting}
-          >
-            {submitting ? (
-              <>
-                <span className="auth-progress" aria-hidden="true" />
-                {t("auth.verifying")}
-              </>
-            ) : (
-              <>
-                {t("auth.enterWorkforce")}
-                <ArrowRight size={16} aria-hidden="true" />
-              </>
-            )}
-          </button>
+          <div className="auth-primary-actions">
+            <InstallAppButton className="auth-primary-actions__install" />
+            <button
+              type="submit"
+              className="lp-button lp-button--primary auth-submit"
+              disabled={submitting}
+              aria-busy={submitting}
+            >
+              {submitting ? (
+                <>
+                  <span className="auth-progress" aria-hidden="true" />
+                  {t("auth.verifying")}
+                </>
+              ) : (
+                <>
+                  {t("auth.enterWorkforce")}
+                  <ArrowRight size={16} aria-hidden="true" />
+                </>
+              )}
+            </button>
+          </div>
         </form>
       )}
     </AuthCard>

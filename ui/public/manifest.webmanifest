@@ -1,7 +1,10 @@
 {
   "name": "AI Workforce Control Center",
   "short_name": "AI Workforce",
+  "description": "AI Workforce Control Center for governed agent operations.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0b1120",
   "theme_color": "#0b1120",

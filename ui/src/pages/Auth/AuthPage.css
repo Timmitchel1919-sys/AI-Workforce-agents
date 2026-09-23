@@ -674,6 +674,22 @@
   margin-top: 4px;
 }
 
+.auth-primary-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.auth-primary-actions .auth-submit {
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .auth-primary-actions__install {
+    display: none;
+  }
+}
+
 .lp-button--primary.auth-submit {
   /* Gold micro-accent on the top edge, echoing the landing CTA. */
   background:

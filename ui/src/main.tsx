@@ -13,3 +13,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </AppProviders>
   </React.StrictMode>,
 );
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker.register("/service-worker.js");
+  });
+}
