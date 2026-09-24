@@ -5,7 +5,7 @@
  * capability, and returns only data for projects the operator may access.
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
-import { type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
+import { type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
 import type { EnvironmentDescriptor, EnvironmentInstance, HostCapabilitySnapshot, HostInstance } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import { redact } from "../redaction.js";
@@ -57,8 +57,21 @@ export declare class WorkforceQueryService {
     getHosts(principal: OperatorPrincipal): HostInstance[];
     getHost(principal: OperatorPrincipal, hostId: string): HostInstance | undefined;
     getHostCapabilitySnapshot(principal: OperatorPrincipal, hostId: string): HostCapabilitySnapshot | undefined;
+    /**
+     * Plan versions of one project, newest first, cursor-paginated with the
+     * shared page-size bounds. `undefined` when the project does not exist or
+     * the operator may not access it (→ 404, no existence leak).
+     */
+    getExecutionPlans(principal: OperatorPrincipal, projectId: string, query?: ExecutionPlanQuery): PageResult<ExecutionPlanSummaryView> | undefined;
+    /**
+     * One plan of a project: the current version of series `planId`, or a
+     * specific `version`. Plans of other projects are indistinguishable from
+     * missing ones.
+     */
+    getExecutionPlan(principal: OperatorPrincipal, projectId: string, planId: string, version?: number): ExecutionPlanView | undefined;
     getAuditEvents(principal: OperatorPrincipal, query?: AuditEventQuery): PageResult<AuditEventView>;
     getDashboardSnapshot(principal: OperatorPrincipal): Promise<DashboardSnapshot>;
+    private canSeeProject;
     private authorizeView;
     private visibleTasks;
     private visibleWorkflows;

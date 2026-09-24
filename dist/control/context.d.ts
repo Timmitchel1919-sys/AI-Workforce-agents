@@ -3,7 +3,7 @@
  * services read from and act through. Everything is injected — the Control
  * Plane owns none of it and constructs none of it.
  */
-import { AgentRegistry, ApprovalSystem, AuditLog, EnvironmentRegistry, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
+import { AgentRegistry, ApprovalSystem, AuditLog, EnvironmentRegistry, ExecutionPlanningService, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
 import { type HealthProbe } from "./health.js";
 import { type ControlEventPublisher } from "./ports.js";
 import { AgentOperationalStore, WorkflowControlStore } from "./stores.js";
@@ -24,6 +24,12 @@ export interface ControlPlaneContext {
      * when absent every environment query returns an empty result.
      */
     environments?: EnvironmentRegistry;
+    /**
+     * Execution planning (EO-3.1). Optional: when absent every plan query
+     * returns "not found" and plan commands are rejected as invalid state.
+     * Planning never executes anything.
+     */
+    planning?: ExecutionPlanningService;
     /**
      * Needed by command enactment (approve → resume). Structural: only these
      * methods are used, so a test can pass a stub.

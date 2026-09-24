@@ -18,9 +18,10 @@
  *        CORE  →  Security  →  Audit / State
  */
 import { type Entity, type Repository } from "./index.js";
+import type { CredentialReference, DeploymentRequirement, ExecutionPlan, PlanApprovalState, PlanStatus } from "./planning.js";
 export declare const OPERATOR_ROLES: readonly ["viewer", "operator", "admin"];
 export type OperatorRole = (typeof OPERATOR_ROLES)[number];
-export declare const CONTROL_CAPABILITIES: readonly ["view", "approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent"];
+export declare const CONTROL_CAPABILITIES: readonly ["view", "approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent", "create_execution_plan", "replan_execution_plan", "submit_execution_plan"];
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export declare const ROLE_CAPABILITIES: Record<OperatorRole, readonly ControlCapability[]>;
@@ -39,7 +40,7 @@ export interface OperatorPrincipal {
 export declare function validateOperatorPrincipal(principal: OperatorPrincipal): void;
 export declare function operatorCan(principal: OperatorPrincipal, capability: ControlCapability): boolean;
 export declare function operatorCanAccessProject(principal: OperatorPrincipal, projectId: string): boolean;
-export declare const CONTROL_COMMANDS: readonly ["approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent"];
+export declare const CONTROL_COMMANDS: readonly ["approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent", "create_execution_plan", "replan_execution_plan", "submit_execution_plan"];
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 /**
  * `executed` — the command ran and changed state.
@@ -419,5 +420,49 @@ export interface WorkflowCommandInput {
 export interface AgentCommandInput {
     agentId: string;
     reason?: string;
+}
+/** The body IS the planning request; it is validated and normalized server-side. */
+export type CreateExecutionPlanCommandInput = Record<string, unknown>;
+export interface ExecutionPlanCommandInput {
+    /** Plan SERIES id — the command acts on its current (latest) version. */
+    planId: string;
+}
+export interface ExecutionPlanSummaryView {
+    id: string;
+    planId: string;
+    version: number;
+    projectId: string;
+    title: string;
+    status: PlanStatus;
+    /** True for the highest version of its series. */
+    current: boolean;
+    blockerCodes: readonly string[];
+    environmentCount: number;
+    approvalState: PlanApprovalState["state"];
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+    supersededBy?: string;
+}
+/**
+ * The full plan for an authorized operator. Credential references are reduced
+ * to their kind — the reference itself stays server-side — and nothing
+ * executable is exposed (`execution.available` is always false in EO-3.1).
+ */
+export interface ExecutionPlanView extends Omit<ExecutionPlan, "deployment"> {
+    current: boolean;
+    deployment: readonly (Omit<DeploymentRequirement, "credentialRef"> & {
+        credentialRef?: {
+            kind: CredentialReference["kind"];
+        };
+    })[];
+    execution: {
+        available: false;
+        reason: string;
+    };
+}
+export interface ExecutionPlanQuery {
+    limit?: number;
+    cursor?: string;
 }
 export declare function requireId(value: unknown, field: string): string;

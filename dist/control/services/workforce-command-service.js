@@ -15,8 +15,8 @@
  * written to the audit event and returned on the result, so a control request
  * can be traced through the command, the core operation, and the audit log.
  */
-import { DEFAULT_RETRY_POLICY, operatorCan, operatorCanAccessProject, requireId, validateOperatorPrincipal, } from "../../contracts/index.js";
-import { extractFailureReason, now } from "../../core/index.js";
+import { DEFAULT_RETRY_POLICY, NotFoundError, StateTransitionError, ValidationError, operatorCan, operatorCanAccessProject, requireId, validateOperatorPrincipal, } from "../../contracts/index.js";
+import { extractFailureReason, now, } from "../../core/index.js";
 import { resolveCorrelationId } from "../correlation.js";
 import { redact } from "../redaction.js";
 const TERMINAL_TASK_STATUSES = new Set(["completed", "cancelled"]);
@@ -77,7 +77,13 @@ export class WorkforceCommandService {
         const meta = approval.decisionMetadata ?? {};
         const taskId = typeof meta.taskId === "string" ? meta.taskId : undefined;
         const linkedTask = taskId ? this.ctx.tasks.get(taskId) : undefined;
-        const projectId = linkedTask?.projectId;
+        const planDocId = typeof meta.executionPlanId === "string"
+            ? meta.executionPlanId
+            : undefined;
+        const linkedPlan = planDocId
+            ? this.ctx.planning?.get(planDocId)
+            : undefined;
+        const projectId = linkedTask?.projectId ?? linkedPlan?.projectId;
         if (projectId && !operatorCanAccessProject(principal, projectId)) {
             return this.audited(principal, command, "denied", approvalId, `operator may not act on project "${projectId}"`, { projectId }, run);
         }
@@ -111,6 +117,24 @@ export class WorkforceCommandService {
                 enacted.taskResumeError = message(error);
             }
         }
+        // Mirror the decision onto an execution plan. Approval changes planning
+        // governance state only — nothing is executed.
+        if (linkedPlan && this.ctx.planning) {
+            try {
+                const decided = this.ctx.approvals.get(approvalId);
+                const updated = decided
+                    ? this.ctx.planning.applyApprovalDecision(decided, {
+                        id: principal.id,
+                        correlationId: run.correlationId,
+                    })
+                    : undefined;
+                enacted.executionPlanId = linkedPlan.id;
+                enacted.executionPlanStatus = updated?.status ?? linkedPlan.status;
+            }
+            catch (error) {
+                enacted.executionPlanError = message(error);
+            }
+        }
         // best-effort workflow continuation
         const workflowId = typeof meta.workflowId === "string"
             ? meta.workflowId
@@ -131,6 +155,147 @@ export class WorkforceCommandService {
             }
         }
         return this.audited(principal, command, "executed", approvalId, `approval ${opts.decision}`, { decision: opts.decision, taskId, workflowId, ...enacted }, run);
+    }
+    /* -------------------------------------------------------------- */
+    /* execution plans (EO-3.1) — planning only, never execution     */
+    /* -------------------------------------------------------------- */
+    /**
+     * Create an execution plan from a planning request. The server derives
+     * environments, agents, blockers and status; client-supplied values for
+     * any of those are ignored.
+     */
+    async createExecutionPlan(principal, input, options) {
+        const run = { correlationId: resolveCorrelationId(options) };
+        const command = "create_execution_plan";
+        let projectId;
+        try {
+            projectId = requireId(input?.projectId, "request.projectId");
+        }
+        catch (error) {
+            return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+        }
+        if (!operatorCan(principal, command)) {
+            return this.audited(principal, command, "denied", undefined, `role "${principal.role}" may not create execution plans`, { projectId }, run);
+        }
+        const planning = this.ctx.planning;
+        if (!planning) {
+            return this.audited(principal, command, "rejected", undefined, "execution planning is not configured", { projectId }, run, "invalid_state");
+        }
+        if (!this.ctx.projects.has(projectId)) {
+            return this.audited(principal, command, "rejected", undefined, "unknown project", { projectId }, run, "not_found");
+        }
+        if (!operatorCanAccessProject(principal, projectId)) {
+            return this.audited(principal, command, "denied", undefined, `operator may not act on project "${projectId}"`, { projectId }, run);
+        }
+        return this.runPlanning(principal, command, undefined, { projectId }, run, () => {
+            const plan = planning.createPlan(input, {
+                id: principal.id,
+                correlationId: run.correlationId,
+            });
+            return { plan, reason: `execution plan created (${plan.status})` };
+        });
+    }
+    /** Re-evaluate the current revision; creates a new version when inputs changed. */
+    async replanExecutionPlan(principal, input, options) {
+        const run = { correlationId: resolveCorrelationId(options) };
+        const command = "replan_execution_plan";
+        const check = this.resolvePlan(principal, command, input?.planId, run);
+        if (!check.ok)
+            return check.result;
+        const { planning, plan } = check;
+        return this.runPlanning(principal, command, plan.planId, { projectId: plan.projectId }, run, () => {
+            const result = planning.replan(plan.planId, {
+                id: principal.id,
+                correlationId: run.correlationId,
+            });
+            return {
+                plan: result.plan,
+                reason: result.outcome === "unchanged"
+                    ? "inputs unchanged — current revision kept"
+                    : `replanned as version ${result.plan.version} (${result.plan.status})`,
+                extra: {
+                    replanOutcome: result.outcome,
+                    previousId: result.previous.id,
+                },
+            };
+        });
+    }
+    /** Request human approval for a ready plan with protected stages. */
+    async submitExecutionPlan(principal, input, options) {
+        const run = { correlationId: resolveCorrelationId(options) };
+        const command = "submit_execution_plan";
+        const check = this.resolvePlan(principal, command, input?.planId, run);
+        if (!check.ok)
+            return check.result;
+        const { planning, plan } = check;
+        return this.runPlanning(principal, command, plan.planId, { projectId: plan.projectId }, run, () => {
+            const next = planning.submitForApproval(plan.planId, {
+                id: principal.id,
+                correlationId: run.correlationId,
+            });
+            return {
+                plan: next,
+                reason: "approval requested — the plan is not executed",
+                extra: { approvalId: next.approval.approvalId },
+            };
+        });
+    }
+    resolvePlan(principal, command, planIdRaw, run) {
+        let planId;
+        try {
+            planId = requireId(planIdRaw, `${command}.planId`);
+        }
+        catch (error) {
+            return {
+                ok: false,
+                result: this.audited(principal, command, "rejected", undefined, message(error), {}, run),
+            };
+        }
+        if (!operatorCan(principal, command)) {
+            return {
+                ok: false,
+                result: this.audited(principal, command, "denied", planId, `role "${principal.role}" may not ${command.replace(/_/g, " ")}`, {}, run),
+            };
+        }
+        const planning = this.ctx.planning;
+        const plan = planning?.latest(planId);
+        if (!planning || !plan) {
+            return {
+                ok: false,
+                result: this.audited(principal, command, "rejected", planId, "unknown execution plan", {}, run, "not_found"),
+            };
+        }
+        if (!operatorCanAccessProject(principal, plan.projectId)) {
+            return {
+                ok: false,
+                result: this.audited(principal, command, "denied", planId, `operator may not act on project "${plan.projectId}"`, { projectId: plan.projectId }, run),
+            };
+        }
+        return { ok: true, planning, plan };
+    }
+    /** Run a planning operation and map domain errors to control outcomes. */
+    runPlanning(principal, command, resourceId, details, run, operation) {
+        try {
+            const { plan, reason, extra } = operation();
+            return this.audited(principal, command, "executed", plan.id, reason, {
+                ...details,
+                planId: plan.planId,
+                version: plan.version,
+                status: plan.status,
+                blockerCodes: plan.blockers.map((b) => b.code),
+                ...extra,
+            }, run);
+        }
+        catch (error) {
+            const kind = error instanceof NotFoundError
+                ? "not_found"
+                : error instanceof StateTransitionError
+                    ? "invalid_state"
+                    : error instanceof ValidationError
+                        ? "invalid_request"
+                        : "command_failure";
+            return this.audited(principal, command, "rejected", resourceId, message(error), details, run, kind);
+        }
     }
     /* -------------------------------------------------------------- */
     /* tasks                                                         */

@@ -18,6 +18,9 @@ const COMMAND_METHODS = {
     "cancel-workflow": "cancelWorkflow",
     "disable-agent": "disableAgent",
     "enable-agent": "enableAgent",
+    "create-execution-plan": "createExecutionPlan",
+    "replan-execution-plan": "replanExecutionPlan",
+    "submit-execution-plan": "submitExecutionPlan",
 };
 function defaultCorrelationId() {
     const c = globalThis.crypto;
@@ -116,6 +119,14 @@ export function createControlPlaneApi(options) {
                 // `GET /projects/:projectId/agents` — nested project resource route.
                 if (segs.length === 3 && segs[2] === "agents") {
                     return send(res, 200, notNull(await query.getProjectAgents(principal, id)), correlationId);
+                }
+                // `GET /projects/:projectId/execution-plans[/:planId][?version=N]`
+                // — planning state only; there is no execution route.
+                if (segs[2] === "execution-plans" && segs.length === 3) {
+                    return send(res, 200, notNull(query.getExecutionPlans(principal, id, parsePageQuery(params))), correlationId);
+                }
+                if (segs[2] === "execution-plans" && segs.length === 4) {
+                    return send(res, 200, notNull(query.getExecutionPlan(principal, id, segs[3], parsePlanVersion(params))), correlationId);
                 }
                 if (segs.length >= 3) {
                     return send(res, 404, { error: { message: "not found" } }, correlationId);
@@ -260,6 +271,27 @@ function parseTaskQuery(params) {
     if (Number.isFinite(limit) && limit > 0)
         q.limit = limit;
     return q;
+}
+function parsePageQuery(params) {
+    const q = {};
+    const cursor = params.get("cursor");
+    if (cursor !== null && cursor !== "")
+        q.cursor = cursor;
+    const limit = Number(params.get("limit"));
+    if (Number.isFinite(limit) && limit > 0)
+        q.limit = limit;
+    return q;
+}
+/** `?version=N` — a positive integer, otherwise the current version. */
+function parsePlanVersion(params) {
+    const raw = params.get("version");
+    if (raw === null || raw === "")
+        return undefined;
+    const version = Number(raw);
+    if (!Number.isInteger(version) || version < 1) {
+        throw new ValidationError("version must be a positive integer");
+    }
+    return version;
 }
 function parseWorkflowQuery(params) {
     const q = {};

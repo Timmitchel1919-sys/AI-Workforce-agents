@@ -15,7 +15,7 @@
  * written to the audit event and returned on the result, so a control request
  * can be traced through the command, the core operation, and the audit log.
  */
-import { type AgentCommandInput, type ApprovalCommandInput, type CommandOptions, type ControlCommandResult, type OperatorPrincipal, type RejectCommandInput, type TaskCommandInput, type WorkflowCommandInput } from "../../contracts/index.js";
+import { type AgentCommandInput, type ApprovalCommandInput, type CommandOptions, type ControlCommandResult, type CreateExecutionPlanCommandInput, type ExecutionPlanCommandInput, type OperatorPrincipal, type RejectCommandInput, type TaskCommandInput, type WorkflowCommandInput } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 export declare class WorkforceCommandService {
     private readonly ctx;
@@ -24,6 +24,19 @@ export declare class WorkforceCommandService {
     approve(principal: OperatorPrincipal, input: ApprovalCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     reject(principal: OperatorPrincipal, input: RejectCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     private decideApproval;
+    /**
+     * Create an execution plan from a planning request. The server derives
+     * environments, agents, blockers and status; client-supplied values for
+     * any of those are ignored.
+     */
+    createExecutionPlan(principal: OperatorPrincipal, input: CreateExecutionPlanCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    /** Re-evaluate the current revision; creates a new version when inputs changed. */
+    replanExecutionPlan(principal: OperatorPrincipal, input: ExecutionPlanCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    /** Request human approval for a ready plan with protected stages. */
+    submitExecutionPlan(principal: OperatorPrincipal, input: ExecutionPlanCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    private resolvePlan;
+    /** Run a planning operation and map domain errors to control outcomes. */
+    private runPlanning;
     cancelTask(principal: OperatorPrincipal, input: TaskCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     retryTask(principal: OperatorPrincipal, input: TaskCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     pauseWorkflow(principal: OperatorPrincipal, input: WorkflowCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;

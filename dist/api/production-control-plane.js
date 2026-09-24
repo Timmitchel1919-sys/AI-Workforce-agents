@@ -1,6 +1,6 @@
 import { FirebaseOperatorDirectory, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, ExecutionPlanningService, ExecutionPlanRepository, } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
@@ -26,6 +26,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     // registers real hosts/environments. No fake hosts are ever seeded.
     const hostRepository = repositories.repository("hosts");
     const environmentInstanceRepository = repositories.repository("environment_instances");
+    // Execution plans (EO-3.1) — written only by the planning service through
+    // the Control Plane. Never seeded: production starts with no plans.
+    const executionPlanRepository = repositories.repository("execution_plans");
     await repositories.hydrateAll();
     const audit = new AuditLog(undefined, auditRepository);
     const environmentRegistry = new EnvironmentRegistry({
@@ -61,6 +64,18 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         permissions: bootstrap.permissions,
         toolRegistry: bootstrap.tools,
     });
+    // Planning uses the REAL registries. Production declares no model
+    // capability profiles yet, so model requirements are reported as missing
+    // (MISSING_MODEL_CAPABILITY) rather than assumed.
+    const planning = new ExecutionPlanningService({
+        environments: environmentRegistry,
+        agents: bootstrap.agents,
+        audit,
+        approvals,
+        repository: new ExecutionPlanRepository(executionPlanRepository),
+        isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+        projectExists: (projectId) => bootstrap.projects.has(projectId),
+    });
     const context = {
         agents: bootstrap.agents,
         tasks,
@@ -73,6 +88,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         agentOps,
         workflowControl,
         environments: environmentRegistry,
+        planning,
         orchestrator,
         workflowEngine,
         events: new FirestoreEventPublisher(services.firestore.collection("control_events")),

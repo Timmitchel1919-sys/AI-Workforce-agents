@@ -9,6 +9,7 @@ import { operatorCan, operatorCanAccessProject, PermissionDeniedError, validateO
 import { now } from "../../core/index.js";
 import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolView, deriveTaskView, deriveWorkflowView, MAX_PAGE_SIZE, paginate, } from "../derive.js";
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
+import { executionPlanSummaryView, executionPlanView } from "../plan-views.js";
 import { redact } from "../redaction.js";
 export class WorkforceQueryService {
     ctx;
@@ -322,6 +323,50 @@ export class WorkforceQueryService {
         return { hostId, host, capabilities: host.capabilities };
     }
     /* -------------------------------------------------------------- */
+    /* execution plans (EO-3.1) — planning state only                */
+    /* -------------------------------------------------------------- */
+    /**
+     * Plan versions of one project, newest first, cursor-paginated with the
+     * shared page-size bounds. `undefined` when the project does not exist or
+     * the operator may not access it (→ 404, no existence leak).
+     */
+    getExecutionPlans(principal, projectId, query = {}) {
+        this.authorizeView(principal);
+        if (!this.canSeeProject(principal, projectId))
+            return undefined;
+        const planning = this.ctx.planning;
+        const plans = planning ? planning.listByProject(projectId) : [];
+        const latest = new Map();
+        for (const plan of plans) {
+            latest.set(plan.planId, Math.max(latest.get(plan.planId) ?? 0, plan.version));
+        }
+        const page = paginate(plans, query.limit, query.cursor);
+        return {
+            ...page,
+            items: page.items.map((plan) => executionPlanSummaryView(plan, latest.get(plan.planId) === plan.version)),
+        };
+    }
+    /**
+     * One plan of a project: the current version of series `planId`, or a
+     * specific `version`. Plans of other projects are indistinguishable from
+     * missing ones.
+     */
+    getExecutionPlan(principal, projectId, planId, version) {
+        this.authorizeView(principal);
+        if (!this.canSeeProject(principal, projectId))
+            return undefined;
+        const planning = this.ctx.planning;
+        if (!planning)
+            return undefined;
+        const latest = planning.latest(planId);
+        if (!latest || latest.projectId !== projectId)
+            return undefined;
+        const plan = version === undefined ? latest : planning.get(`${planId}@v${version}`);
+        if (!plan || plan.projectId !== projectId)
+            return undefined;
+        return executionPlanView(plan, plan.version === latest.version);
+    }
+    /* -------------------------------------------------------------- */
     /* audit                                                         */
     /* -------------------------------------------------------------- */
     getAuditEvents(principal, query = {}) {
@@ -400,6 +445,10 @@ export class WorkforceQueryService {
     /* -------------------------------------------------------------- */
     /* internals                                                     */
     /* -------------------------------------------------------------- */
+    canSeeProject(principal, projectId) {
+        return (this.ctx.projects.has(projectId) &&
+            operatorCanAccessProject(principal, projectId));
+    }
     authorizeView(principal) {
         validateOperatorPrincipal(principal);
         if (!operatorCan(principal, "view")) {

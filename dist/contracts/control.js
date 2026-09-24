@@ -33,6 +33,9 @@ export const CONTROL_CAPABILITIES = [
     "cancel_workflow",
     "disable_agent",
     "enable_agent",
+    "create_execution_plan",
+    "replan_execution_plan",
+    "submit_execution_plan",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -46,6 +49,9 @@ export const ROLE_CAPABILITIES = {
         "pause_workflow",
         "resume_workflow",
         "cancel_workflow",
+        "create_execution_plan",
+        "replan_execution_plan",
+        "submit_execution_plan",
     ],
     admin: [
         "view",
@@ -58,6 +64,9 @@ export const ROLE_CAPABILITIES = {
         "cancel_workflow",
         "disable_agent",
         "enable_agent",
+        "create_execution_plan",
+        "replan_execution_plan",
+        "submit_execution_plan",
     ],
 };
 export function validateOperatorPrincipal(principal) {
@@ -93,6 +102,9 @@ export const CONTROL_COMMANDS = [
     "cancel_workflow",
     "disable_agent",
     "enable_agent",
+    "create_execution_plan",
+    "replan_execution_plan",
+    "submit_execution_plan",
 ];
 /**
  * A refinement of a non-`executed` outcome, aligned with the `WorkforceError`

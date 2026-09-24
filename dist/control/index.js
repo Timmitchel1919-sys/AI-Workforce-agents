@@ -14,6 +14,7 @@ export * from "./redaction.js";
 export * from "./risk.js";
 export * from "./health.js";
 export * from "./derive.js";
+export * from "./plan-views.js";
 export * from "./services/workforce-query-service.js";
 export * from "./services/workforce-command-service.js";
 export * from "./dashboard/render.js";
