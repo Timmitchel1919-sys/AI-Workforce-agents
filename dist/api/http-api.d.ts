@@ -14,12 +14,20 @@
  * and audit. No stack trace is ever sent to a client.
  */
 import { type IncomingMessage, type ServerResponse } from "node:http";
-import { type OperatorDirectory } from "../contracts/index.js";
+import { type IdentityVerifier, type OperatorDirectory } from "../contracts/index.js";
 import { type WorkforceCommandService, type WorkforceQueryService } from "../control/index.js";
+import type { AccessService } from "../core/index.js";
 export interface ControlPlaneApiOptions {
     query: WorkforceQueryService;
     command: WorkforceCommandService;
     operatorDirectory: OperatorDirectory;
+    /**
+     * AUTHZ-1: verifies a token WITHOUT requiring an active role, for
+     * `GET /me/access` only. Every other route still needs `operatorDirectory`.
+     */
+    identityVerifier?: IdentityVerifier;
+    /** AUTHZ-1: serves `GET /me/access` (the caller's own access state). */
+    access?: Pick<AccessService, "myAccess">;
     /** Path prefix for every route. Default `/api`. */
     basePath?: string;
     /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */

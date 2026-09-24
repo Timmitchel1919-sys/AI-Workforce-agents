@@ -32,3 +32,4 @@ export * from "./environments/environment-router.js";
 export * from "./environments/agent-qualification-router.js";
 export * from "./technology/technology-selector.js";
 export * from "./planning/index.js";
+export * from "./access/index.js";

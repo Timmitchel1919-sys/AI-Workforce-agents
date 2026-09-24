@@ -36,6 +36,7 @@ export const CONTROL_CAPABILITIES = [
     "create_execution_plan",
     "replan_execution_plan",
     "submit_execution_plan",
+    "manage_access",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -67,6 +68,7 @@ export const ROLE_CAPABILITIES = {
         "create_execution_plan",
         "replan_execution_plan",
         "submit_execution_plan",
+        "manage_access",
     ],
 };
 export function validateOperatorPrincipal(principal) {
@@ -105,6 +107,12 @@ export const CONTROL_COMMANDS = [
     "create_execution_plan",
     "replan_execution_plan",
     "submit_execution_plan",
+    "approve_access",
+    "reject_access",
+    "suspend_access",
+    "reactivate_access",
+    "revoke_access",
+    "change_operator_role",
 ];
 /**
  * A refinement of a non-`executed` outcome, aligned with the `WorkforceError`

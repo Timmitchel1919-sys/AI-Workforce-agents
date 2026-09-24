@@ -50,6 +50,7 @@ export const AUDIT_EVENT_TYPES = [
     "environment_refreshed",
     "environment_unavailable",
     "execution_plan_event",
+    "access_event",
 ];
 export const DEFAULT_AGENT_LIMITS = {
     maxIterations: 3,
@@ -77,6 +78,27 @@ export class PlanRevisionConflictError extends StateTransitionError {
     }
 }
 export class PermissionDeniedError extends WorkforceError {
+}
+/** An operator account changed concurrently (AUTHZ-1). HTTP 409. */
+export class AccountConflictError extends StateTransitionError {
+    constructor(message = "operator account changed concurrently — reload") {
+        super(message);
+        this.name = "AccountConflictError";
+    }
+}
+/** The change would leave no active administrator (AUTHZ-1). HTTP 409. */
+export class LastAdministratorError extends StateTransitionError {
+    constructor() {
+        super("the last active administrator cannot be removed or demoted");
+        this.name = "LastAdministratorError";
+    }
+}
+/** Initial administrator bootstrap is no longer available (AUTHZ-1). */
+export class BootstrapLockedError extends PermissionDeniedError {
+    constructor() {
+        super("initial administrator bootstrap is locked: an administrator already exists");
+        this.name = "BootstrapLockedError";
+    }
 }
 export class NotFoundError extends WorkforceError {
 }
@@ -230,3 +252,4 @@ export * from "./money-mind.js";
 export * from "./control.js";
 export * from "./environments.js";
 export * from "./planning.js";
+export * from "./access.js";

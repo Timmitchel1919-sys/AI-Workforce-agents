@@ -178,7 +178,7 @@ export interface AgentContext {
     values: Record<string, unknown>;
 }
 export type Context = TaskContext | ProjectContext | AgentContext;
-export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event"];
+export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event"];
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
 export interface AuditEvent {
     id: string;
@@ -301,6 +301,18 @@ export declare class PlanRevisionConflictError extends StateTransitionError {
 }
 export declare class PermissionDeniedError extends WorkforceError {
 }
+/** An operator account changed concurrently (AUTHZ-1). HTTP 409. */
+export declare class AccountConflictError extends StateTransitionError {
+    constructor(message?: string);
+}
+/** The change would leave no active administrator (AUTHZ-1). HTTP 409. */
+export declare class LastAdministratorError extends StateTransitionError {
+    constructor();
+}
+/** Initial administrator bootstrap is no longer available (AUTHZ-1). */
+export declare class BootstrapLockedError extends PermissionDeniedError {
+    constructor();
+}
 export declare class NotFoundError extends WorkforceError {
 }
 /**
@@ -376,3 +388,4 @@ export * from "./money-mind.js";
 export * from "./control.js";
 export * from "./environments.js";
 export * from "./planning.js";
+export * from "./access.js";

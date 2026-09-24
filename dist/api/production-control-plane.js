@@ -1,6 +1,6 @@
-import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreOperatorAccountStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, ExecutionPlanningService, ValidationError, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
@@ -82,6 +82,15 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
         projectExists: (projectId) => bootstrap.projects.has(projectId),
     });
+    // AUTHZ-1: operator accounts (Firestore, transactional) are the only source
+    // of authorization. A valid Firebase token alone grants nothing.
+    const operatorAccounts = new FirestoreOperatorAccountStore(transactionalFirestore, { collectionPrefix: options.collectionPrefix });
+    const access = new AccessService({
+        store: operatorAccounts,
+        audit,
+        projects: bootstrap.projects,
+    });
+    const operatorDirectory = new FirebaseOperatorDirectory(services.auth, operatorAccounts);
     const context = {
         agents: bootstrap.agents,
         tasks,
@@ -95,6 +104,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         workflowControl,
         environments: environmentRegistry,
         planning,
+        access,
         orchestrator,
         workflowEngine,
         events: new FirestoreEventPublisher(services.firestore.collection("control_events")),
@@ -104,7 +114,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const handler = createControlPlaneApi({
         query,
         command,
-        operatorDirectory: new FirebaseOperatorDirectory(services.auth),
+        operatorDirectory,
+        identityVerifier: operatorDirectory,
+        access,
     });
     return Object.freeze({
         handler,

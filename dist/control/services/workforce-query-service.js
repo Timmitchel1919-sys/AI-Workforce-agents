@@ -390,6 +390,20 @@ export class WorkforceQueryService {
         return current ? executionPlanView(current, true) : null;
     }
     /* -------------------------------------------------------------- */
+    /* operator access (AUTHZ-1)                                     */
+    /* -------------------------------------------------------------- */
+    /**
+     * Every operator account for Users & Access. Administrators only
+     * (`manage_access`) — a PermissionDeniedError maps to 403.
+     */
+    async getOperatorAccounts(principal) {
+        this.authorizeView(principal);
+        if (!operatorCan(principal, "manage_access")) {
+            throw new PermissionDeniedError("managing access requires the administrator role");
+        }
+        return this.ctx.access?.listAccounts(principal);
+    }
+    /* -------------------------------------------------------------- */
     /* audit                                                         */
     /* -------------------------------------------------------------- */
     getAuditEvents(principal, query = {}) {

@@ -15,7 +15,7 @@
  * written to the audit event and returned on the result, so a control request
  * can be traced through the command, the core operation, and the audit log.
  */
-import { type AgentCommandInput, type ApprovalCommandInput, type CommandOptions, type ControlCommandResult, type CreateExecutionPlanCommandInput, type ExecutionPlanCommandInput, type OperatorPrincipal, type RejectCommandInput, type TaskCommandInput, type WorkflowCommandInput } from "../../contracts/index.js";
+import { type AccessCommandInput, type AgentCommandInput, type ApprovalCommandInput, type CommandOptions, type ControlCommandResult, type CreateExecutionPlanCommandInput, type ExecutionPlanCommandInput, type OperatorPrincipal, type RejectCommandInput, type TaskCommandInput, type WorkflowCommandInput } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 export declare class WorkforceCommandService {
     private readonly ctx;
@@ -37,6 +37,18 @@ export declare class WorkforceCommandService {
     private resolvePlan;
     /** Run a planning operation and map domain errors to control outcomes. */
     private runPlanning;
+    approveAccess(principal: OperatorPrincipal, input: AccessCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    rejectAccess(principal: OperatorPrincipal, input: AccessCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    suspendAccess(principal: OperatorPrincipal, input: AccessCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    reactivateAccess(principal: OperatorPrincipal, input: AccessCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    revokeAccess(principal: OperatorPrincipal, input: AccessCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    changeOperatorRole(principal: OperatorPrincipal, input: AccessCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    /**
+     * The capability is checked here AND inside AccessService; domain errors map
+     * onto the existing control outcomes (denied → 403, not_found → 404,
+     * invalid_state → 409, invalid_request → 400).
+     */
+    private runAccess;
     cancelTask(principal: OperatorPrincipal, input: TaskCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     retryTask(principal: OperatorPrincipal, input: TaskCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     pauseWorkflow(principal: OperatorPrincipal, input: WorkflowCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;

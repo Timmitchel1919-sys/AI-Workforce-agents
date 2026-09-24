@@ -21,6 +21,12 @@ const COMMAND_METHODS = {
     "create-execution-plan": "createExecutionPlan",
     "replan-execution-plan": "replanExecutionPlan",
     "submit-execution-plan": "submitExecutionPlan",
+    "approve-access": "approveAccess",
+    "reject-access": "rejectAccess",
+    "suspend-access": "suspendAccess",
+    "reactivate-access": "reactivateAccess",
+    "revoke-access": "revokeAccess",
+    "change-operator-role": "changeOperatorRole",
 };
 function defaultCorrelationId() {
     const c = globalThis.crypto;
@@ -67,6 +73,25 @@ export function createControlPlaneApi(options) {
         if (method === "GET" && segs.length === 1 && segs[0] === "health") {
             return send(res, 200, { status: "ok" }, correlationId);
         }
+        // `GET /me/access` — the signed-in user's own access state. Needs only a
+        // verified identity (authentication), never an active role: this is how
+        // a pending user learns they are pending. Creates a PENDING request on
+        // first contact; grants nothing.
+        if (method === "GET" && route === "/me/access") {
+            const identity = await verifyIdentity(req);
+            if (!identity) {
+                return send(res, 401, { error: { message: "authentication required" } }, correlationId);
+            }
+            if (!options.access) {
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
+            }
+            try {
+                return send(res, 200, await options.access.myAccess(identity), correlationId);
+            }
+            catch (error) {
+                return send(res, statusForError(error), { error: { message: errorMessage(error) } }, correlationId);
+            }
+        }
         // Authenticate every other route.
         const principal = await authenticate(req);
         if (!principal) {
@@ -84,6 +109,15 @@ export function createControlPlaneApi(options) {
         catch (error) {
             return send(res, statusForError(error), { error: { message: errorMessage(error) } }, correlationId);
         }
+    }
+    async function verifyIdentity(req) {
+        if (!options.identityVerifier)
+            return null;
+        const header = headerValue(req, "authorization") ?? "";
+        const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+        if (!match)
+            return null;
+        return options.identityVerifier.verify(match[1].trim());
     }
     async function authenticate(req) {
         const header = headerValue(req, "authorization") ?? "";
@@ -169,6 +203,12 @@ export function createControlPlaneApi(options) {
                 return send(res, 200, id
                     ? notNull(query.getHost(principal, id))
                     : query.getHosts(principal), correlationId);
+            case "operators":
+                // GET /api/operators — Users & Access (administrators only).
+                if (segs.length !== 1) {
+                    return send(res, 404, { error: { message: "not found" } }, correlationId);
+                }
+                return send(res, 200, notNull(await query.getOperatorAccounts(principal)), correlationId);
             case "audit":
                 return send(res, 200, query.getAuditEvents(principal, parseAuditQuery(params)), correlationId);
             default:

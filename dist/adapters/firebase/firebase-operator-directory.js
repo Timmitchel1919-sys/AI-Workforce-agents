@@ -1,28 +1,26 @@
 /**
- * `OperatorDirectory` backed by Firebase Auth.
+ * `OperatorDirectory` + `IdentityVerifier` backed by Firebase Auth (AUTHZ-1).
  *
- * Verifies a Firebase ID token and maps its custom claims to an
- * `OperatorPrincipal`:
+ *   Firebase ID token ──verifyIdToken──▶ VerifiedIdentity (WHO — authentication)
+ *   Firebase UID ──OperatorAccountStore──▶ ACTIVE account + role (WHAT — authorization)
  *
- *   role             -> "viewer" | "operator" | "admin"   (custom claim)
- *   allowedProjects  -> string[] | "*"                     (custom claim)
- *
- * Anything unverifiable — a bad/expired token, a missing or out-of-range role,
- * a malformed project list — resolves to `null` (deny by default). The control
- * services still enforce authorization from the returned principal; this only
- * establishes identity + claims.
+ * Authentication ≠ authorization: a valid token alone grants nothing. Only an
+ * ACTIVE operator account (read from the authoritative store on every request,
+ * so suspension/revocation take effect immediately) yields a principal. A bad
+ * or expired token, a missing account, or a pending/rejected/suspended/revoked
+ * account resolves to `null` (deny by default). Custom claims are not used for
+ * authorization.
  */
-import { OPERATOR_ROLES, validateOperatorPrincipal, } from "../../contracts/index.js";
+import { principalFor, } from "../../contracts/index.js";
 export class FirebaseOperatorDirectory {
     auth;
-    roleClaim;
-    projectsClaim;
-    constructor(auth, options = {}) {
+    accounts;
+    constructor(auth, accounts) {
         this.auth = auth;
-        this.roleClaim = options.roleClaim ?? "role";
-        this.projectsClaim = options.projectsClaim ?? "allowedProjects";
+        this.accounts = accounts;
     }
-    async resolve(credential) {
+    /** Authentication only: token → identity, or null. Never throws. */
+    async verify(credential) {
         if (typeof credential !== "string" || credential.trim() === "") {
             return null;
         }
@@ -36,34 +34,25 @@ export class FirebaseOperatorDirectory {
         if (!decoded || typeof decoded.uid !== "string" || decoded.uid === "") {
             return null;
         }
-        const role = decoded[this.roleClaim];
-        if (typeof role !== "string" ||
-            !OPERATOR_ROLES.includes(role)) {
-            return null;
-        }
-        const rawProjects = decoded[this.projectsClaim];
-        let allowedProjects;
-        if (rawProjects === "*") {
-            allowedProjects = "*";
-        }
-        else if (Array.isArray(rawProjects) &&
-            rawProjects.every((p) => typeof p === "string")) {
-            allowedProjects = rawProjects;
-        }
-        else {
-            return null;
-        }
-        const principal = {
-            id: decoded.uid,
-            role: role,
-            allowedProjects,
+        const email = typeof decoded.email === "string" ? decoded.email : undefined;
+        const name = typeof decoded.name === "string" ? decoded.name : undefined;
+        return {
+            uid: decoded.uid,
+            ...(email ? { email } : {}),
+            ...(name ? { displayName: name } : {}),
+            emailVerified: decoded.email_verified === true,
         };
+    }
+    /** Authentication + authorization: only an ACTIVE account is a principal. */
+    async resolve(credential) {
+        const identity = await this.verify(credential);
+        if (!identity)
+            return null;
         try {
-            validateOperatorPrincipal(principal);
+            return principalFor(await this.accounts.get(identity.uid));
         }
         catch {
             return null;
         }
-        return principal;
     }
 }
