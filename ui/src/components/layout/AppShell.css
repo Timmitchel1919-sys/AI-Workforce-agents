@@ -39,15 +39,33 @@
  * background — no extra element, border, seam or hard-coded colour — and it
  * clips hit-testing too, so it can never intercept clicks.
  */
-.app-shell__sidebar {
+.app-shell {
+  position: relative;
   --sidebar-notch-depth: 11px;
   --sidebar-notch-half: 10px;
 }
 
-.app-shell--sidebar-collapsed .app-shell__sidebar {
+.app-shell--sidebar-collapsed {
   /* The rail's items sit closer to the edge; keep clear of the active icon. */
   --sidebar-notch-depth: 7px;
   --sidebar-notch-half: 8px;
+}
+
+/* The cutout is filled in brand gold: one seamless triangle, no border. */
+.app-shell[data-notch]::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--sidebar-notch-y) - var(--sidebar-notch-half));
+  left: calc(var(--shell-sidebar-width) - var(--sidebar-notch-depth));
+  width: 0;
+  height: 0;
+  border-style: solid;
+  /* Left-pointing wedge; its flat side lies on the sidebar edge. */
+  border-width: var(--sidebar-notch-half) var(--sidebar-notch-depth)
+    var(--sidebar-notch-half) 0;
+  border-color: transparent var(--color-brand-gold) transparent transparent;
+  pointer-events: none;
 }
 
 .app-shell__sidebar[data-notch] {

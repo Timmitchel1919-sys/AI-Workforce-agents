@@ -1,46 +1,44 @@
 import { useId } from "react";
-import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
+import { Moon, Sun, type LucideIcon } from "lucide-react";
 import { LANGUAGE_NATIVE_NAMES, SUPPORTED_LANGUAGES, isLanguage, useI18n, type MessageKey } from "../../i18n";
-import type { ThemeMode } from "../../themes/theme.types";
+import type { ResolvedTheme } from "../../themes/theme.types";
 import { useTheme } from "../../themes/useTheme";
 import "../Settings/SettingsPage.css";
 
-const THEME_OPTIONS: Array<{ mode: ThemeMode; icon: LucideIcon; label: MessageKey; description: MessageKey }> = [
+const THEME_OPTIONS: Array<{ mode: ResolvedTheme; icon: LucideIcon; label: MessageKey; description: MessageKey }> = [
   { mode: "light", icon: Sun, label: "settings.light", description: "settings.lightDescription" },
   { mode: "dark", icon: Moon, label: "settings.dark", description: "settings.darkDescription" },
-  { mode: "system", icon: Monitor, label: "settings.system", description: "settings.systemDescription" },
 ];
 
 /**
- * Profile → Preferences: the only place for theme and language. Both apply
- * immediately, are independent, and persist locally (allowlisted values only).
+ * Profile → Preferences: two separate cards, Theme and Language. Both apply
+ * immediately, are independent, and persist locally (allowlisted values
+ * only). The selected theme shown is the one in effect.
  */
 export default function PreferencesCard() {
   const { t, language, setLanguage } = useI18n();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const themeTitleId = useId();
   const languageId = useId();
   const languageHintId = useId();
 
   return (
-    <section id="preferences" className="settings-section profile-card" aria-labelledby="profile-preferences">
-      <header className="settings-section__header">
-        <h2 id="profile-preferences" className="settings-section__title">
-          {t("profile.preferencesTitle")}
-        </h2>
-        <p className="settings-section__description">{t("profile.preferencesDescription")}</p>
-      </header>
-
-      <fieldset className="settings-field">
-        <legend className="settings-field__label">{t("settings.theme")}</legend>
-        <p className="settings-field__hint">{t("settings.themeDescription")}</p>
-        <div className="settings-theme-grid">
+    <>
+      <section id="preferences" className="settings-section preference-card" aria-labelledby={themeTitleId}>
+        <header className="preference-card__header">
+          <h2 id={themeTitleId} className="preference-card__title">
+            {t("settings.theme")}
+          </h2>
+          <p className="settings-field__hint">{t("settings.themeDescription")}</p>
+        </header>
+        <div className="settings-theme-grid" role="radiogroup" aria-labelledby={themeTitleId}>
           {THEME_OPTIONS.map(({ mode, icon: Icon, label, description }) => (
-            <label key={mode} className={`settings-theme${theme === mode ? " is-selected" : ""}`}>
+            <label key={mode} className={`settings-theme${resolvedTheme === mode ? " is-selected" : ""}`}>
               <input
                 type="radio"
                 name="theme"
                 value={mode}
-                checked={theme === mode}
+                checked={resolvedTheme === mode}
                 onChange={() => setTheme(mode)}
                 className="settings-theme__input"
               />
@@ -59,19 +57,22 @@ export default function PreferencesCard() {
             </label>
           ))}
         </div>
-      </fieldset>
+      </section>
 
-      <div className="settings-field">
-        <label htmlFor={languageId} className="settings-field__label">
-          {t("settings.language")}
-        </label>
-        <p id={languageHintId} className="settings-field__hint">
-          {t("settings.languageDescription")}
-        </p>
+      <section className="settings-section preference-card" aria-labelledby={`${languageId}-title`}>
+        <header className="preference-card__header">
+          <h2 id={`${languageId}-title`} className="preference-card__title">
+            {t("settings.language")}
+          </h2>
+          <p id={languageHintId} className="settings-field__hint">
+            {t("settings.languageDescription")}
+          </p>
+        </header>
         <select
           id={languageId}
           className="ui-select settings-language"
           value={language}
+          aria-labelledby={`${languageId}-title`}
           aria-describedby={languageHintId}
           onChange={(event) => {
             if (isLanguage(event.target.value)) setLanguage(event.target.value);
@@ -83,9 +84,8 @@ export default function PreferencesCard() {
             </option>
           ))}
         </select>
-      </div>
-
-      <p className="settings-note">{t("settings.storageNote")}</p>
-    </section>
+        <p className="settings-note">{t("settings.storageNote")}</p>
+      </section>
+    </>
   );
 }

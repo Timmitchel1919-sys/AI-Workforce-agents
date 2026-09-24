@@ -307,6 +307,15 @@
   padding: var(--space-2) 0;
 }
 
+/* Rail: the gold icon outline marks the active module — no navy tile glow. */
+.sidebar--collapsed .sidebar__link.is-active,
+.sidebar--collapsed .sidebar__link.is-active:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--color-text);
+}
+
 .sidebar--collapsed .sidebar__label,
 .sidebar--collapsed .sidebar__badge {
   display: none;

@@ -19,11 +19,17 @@ export function useSidebarNotch(
   useLayoutEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    // The gold wedge renders on the shell (outside the clipped sidebar).
+    const targets = [host, host.parentElement].filter(
+      (el): el is HTMLElement => el !== null,
+    );
+    const hide = () => targets.forEach((el) => el.removeAttribute("data-notch"));
     const update = () => {
       const active = host.querySelector<HTMLElement>(".sidebar__link.is-active");
       const scroller = host.querySelector<HTMLElement>(".sidebar__scroll");
-      if (!active) {
-        host.removeAttribute("data-notch");
+      // No active module, or the sidebar is not rendered (mobile drawer mode).
+      if (!active || host.hidden || getComputedStyle(host).display === "none") {
+        hide();
         return;
       }
       const hostBox = host.getBoundingClientRect();
@@ -33,12 +39,14 @@ export function useSidebarNotch(
         const view = scroller.getBoundingClientRect();
         // Hide rather than point at nothing while the item is scrolled away.
         if (centre < view.top || centre > view.bottom) {
-          host.removeAttribute("data-notch");
+          hide();
           return;
         }
       }
-      host.style.setProperty("--sidebar-notch-y", `${Math.round(centre - hostBox.top)}px`);
-      host.setAttribute("data-notch", "");
+      for (const el of targets) {
+        el.style.setProperty("--sidebar-notch-y", `${Math.round(centre - hostBox.top)}px`);
+        el.setAttribute("data-notch", "");
+      }
     };
     // Measured synchronously: scroll/resize events already arrive at most once
     // per frame, and rAF is paused in background tabs (the notch would go stale).

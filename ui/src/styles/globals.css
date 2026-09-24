@@ -89,26 +89,26 @@ h6 {
 .app-shell__main {
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border-strong) transparent;
+  scrollbar-color: var(--color-scrollbar) transparent;
 }
 
 .scroll-panel::-webkit-scrollbar,
 .app-shell__main::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 .scroll-panel::-webkit-scrollbar-thumb,
 .app-shell__main::-webkit-scrollbar-thumb {
-  background: var(--color-border-strong);
-  border: 3px solid transparent;
+  background: var(--color-scrollbar);
+  border: 1px solid transparent;
   border-radius: 999px;
   background-clip: padding-box;
 }
 
 .scroll-panel::-webkit-scrollbar-thumb:hover,
 .app-shell__main::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-text-muted);
+  background-color: var(--color-scrollbar-hover);
 }
 
 .scroll-panel::-webkit-scrollbar-track,

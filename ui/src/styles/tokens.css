@@ -34,22 +34,25 @@
   --aw-gold-600: #8f6208;
 
   /* ---- LIGHT theme (default) ---- */
-  --color-background: #eef4ff;
-  --color-bg-secondary: #e7eefc;
-  --color-bg-tertiary: #e2e9fa;
-  --color-bg-gradient: linear-gradient(135deg, #f2f6ff 0%, #e8f0ff 45%, #eeeafe 100%);
+  /* Deeper frost blue + lavender, so light glass surfaces stand out. */
+  --color-background: #dfe9fb;
+  --color-bg-secondary: #d7e3f8;
+  --color-bg-tertiary: #cfdcf5;
+  --color-bg-gradient: linear-gradient(135deg, #e2ebfc 0%, #d4e2f9 45%, #dfd6f8 100%);
 
   --color-surface: rgba(248, 251, 255, 0.82);
   --color-surface-solid: #f8fbff;
   --color-surface-muted: rgba(228, 239, 255, 0.72);
   --color-surface-lavender: rgba(241, 237, 255, 0.72);
   --color-surface-hover: rgba(236, 243, 255, 0.92);
-  --color-sidebar: rgba(244, 248, 255, 0.86);
+  --color-sidebar: rgba(236, 242, 253, 0.88);
   --color-topbar: rgba(244, 248, 255, 0.72);
 
   --color-border: rgba(45, 88, 165, 0.14);
   --color-border-strong: rgba(40, 82, 170, 0.24);
   --color-border-selected: var(--aw-blue-500);
+  --color-scrollbar: rgba(40, 82, 170, 0.16);
+  --color-scrollbar-hover: rgba(40, 82, 170, 0.34);
 
   --color-text: #0d2557;
   --color-text-heading: #102a66;
@@ -158,6 +161,8 @@
   --color-border: #2a374d;
   --color-border-strong: #3a4b67;
   --color-border-selected: #7aa2ff;
+  --color-scrollbar: rgba(148, 163, 184, 0.14);
+  --color-scrollbar-hover: rgba(148, 163, 184, 0.32);
 
   --color-text: #edf2ff;
   --color-text-heading: #f4f7ff;

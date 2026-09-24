@@ -109,7 +109,11 @@ describe("Profile", () => {
     renderPage(<ProfilePage />);
     expect(screen.getByRole("heading", { level: 1, name: "Profile" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Profile" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Preferences" })).toBeInTheDocument();
+    // Theme and Language are separate cards; no "Preferences" heading, no System option.
+    expect(screen.getByRole("region", { name: "Theme" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Language" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Preferences" })).toBeNull();
+    expect(screen.getAllByRole("radio").map((r) => (r as HTMLInputElement).value)).toEqual(["light", "dark"]);
     expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
     const card = screen.getByRole("region", { name: "Profile" });
     expect(await within(card).findByText("Operator")).toBeInTheDocument();
@@ -173,22 +177,22 @@ describe("Profile", () => {
     mockApi();
     renderPage(<ProfilePage />, { language: "en" });
 
-    await user.selectOptions(screen.getByLabelText("Language"), "nl");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Language" }), "nl");
     expect(screen.getByRole("heading", { level: 1, name: "Profiel" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Voorkeuren" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Thema" })).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Hoofdnavigatie" });
     expect(within(nav).getByText("Overzicht")).toBeInTheDocument();
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("nl");
     expect(document.documentElement.lang).toBe("nl");
-    const options = within(screen.getByLabelText("Taal")).getAllByRole("option");
+    const options = within(screen.getByRole("combobox", { name: "Taal" })).getAllByRole("option");
     expect(options.map((option) => option.textContent)).toEqual(["English", "Nederlands"]);
   });
 
   it.each([
-    ["light", "en", "Profile", "Preferences"],
-    ["light", "nl", "Profiel", "Voorkeuren"],
-    ["dark", "en", "Profile", "Preferences"],
-    ["dark", "nl", "Profiel", "Voorkeuren"],
+    ["light", "en", "Profile", "Theme"],
+    ["light", "nl", "Profiel", "Thema"],
+    ["dark", "en", "Profile", "Theme"],
+    ["dark", "nl", "Profiel", "Thema"],
   ] as const)("works as %s + %s", async (theme, language, title, section) => {
     window.localStorage.setItem("ai-workforce-theme", theme);
     mockApi();

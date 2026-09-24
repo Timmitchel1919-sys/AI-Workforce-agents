@@ -124,8 +124,6 @@ export const nl: Messages = {
     role: "Rol",
     roleNote: "Toegewezen door een beheerder.",
     notSet: "Niet ingesteld",
-    preferencesTitle: "Voorkeuren",
-    preferencesDescription: "Thema en taal worden direct toegepast en op dit apparaat onthouden.",
     avatarAlt: "Profielfoto van {name}",
   },
   infrastructure: {

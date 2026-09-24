@@ -112,3 +112,30 @@
   background: color-mix(in srgb, var(--color-danger) 12%, transparent);
   color: var(--color-danger);
 }
+
+/* Theme and Language each get their own compact card. */
+.preference-card {
+  gap: var(--space-4);
+  padding: var(--space-5, 1.25rem) var(--space-6);
+}
+
+.preference-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.preference-card__title {
+  margin: 0;
+  color: var(--color-text-heading);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.preference-card .settings-theme-grid {
+  margin-top: 0;
+}
+
+.preference-card .settings-note {
+  margin: 0;
+}

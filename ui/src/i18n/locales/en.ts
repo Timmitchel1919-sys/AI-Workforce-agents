@@ -125,8 +125,6 @@ export const en = {
     role: "Role",
     roleNote: "Assigned by an administrator.",
     notSet: "Not set",
-    preferencesTitle: "Preferences",
-    preferencesDescription: "Theme and language apply immediately and are remembered on this device.",
     avatarAlt: "Profile photo of {name}",
   },
   infrastructure: {
