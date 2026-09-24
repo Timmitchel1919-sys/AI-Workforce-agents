@@ -300,3 +300,41 @@ export declare function normalizeProjectRequest(input: unknown): ProjectRequest;
 export declare function validateModelCapabilityProfile(profile: ModelCapabilityProfile): void;
 /** Structural check of a stored/produced plan. Never invents missing fields. */
 export declare function validateExecutionPlan(plan: ExecutionPlan): void;
+/** The persisted shape of a plan: plain JSON with canonical key order. */
+export type ExecutionPlanRecord = Record<string, unknown>;
+/**
+ * One atomic plan mutation with its optimistic precondition:
+ *
+ *   create_series  the series head must not exist yet
+ *   new_revision   the head must still point at `expectedCurrentVersion` and
+ *                  the previous revision must be unchanged since it was read
+ *   transition     the version must still be current and unchanged
+ */
+export type PlanRevisionChange = {
+    kind: "create_series";
+    record: ExecutionPlanRecord;
+} | {
+    kind: "new_revision";
+    record: ExecutionPlanRecord;
+    /** The previous revision, already marked superseded. */
+    supersededRecord: ExecutionPlanRecord;
+    expectedCurrentVersion: number;
+    expectedPreviousUpdatedAt: string;
+    expectedPreviousStatus: string;
+} | {
+    kind: "transition";
+    record: ExecutionPlanRecord;
+    expectedUpdatedAt: string;
+    expectedStatus: string;
+};
+/**
+ * Authoritative, transactional plan storage. Adapters (Firestore) implement
+ * `commit` atomically; nothing is written when the precondition fails.
+ */
+export interface ExecutionPlanStore {
+    commit(change: PlanRevisionChange): Promise<void>;
+    /** Raw records of one project (single-field equality query). */
+    listByProject(projectId: string): Promise<unknown[]>;
+    /** Raw records of one plan series. */
+    listSeries(planId: string): Promise<unknown[]>;
+}

@@ -22,6 +22,26 @@ export interface FirestoreCollectionLike {
 export interface FirestoreLike {
     collection(path: string): FirestoreCollectionLike;
 }
+/** Equality query (single-field — served by Firestore's automatic index). */
+export interface FirestoreQueryLike {
+    get(): Promise<FirestoreQuerySnapshotLike>;
+}
+export interface FirestoreQueryableCollectionLike extends FirestoreCollectionLike {
+    where(field: string, op: "==", value: string): FirestoreQueryLike;
+}
+/** The subset of a Firestore transaction the adapters use. */
+export interface FirestoreTransactionLike {
+    get(ref: FirestoreDocRefLike): Promise<FirestoreDocSnapshotLike>;
+    /** Fails the transaction when the document already exists. */
+    create(ref: FirestoreDocRefLike, data: Record<string, unknown>): unknown;
+    set(ref: FirestoreDocRefLike, data: Record<string, unknown>): unknown;
+}
+/** Firestore with transactions + equality queries (the Admin SDK has both). */
+export interface TransactionalFirestoreLike {
+    collection(path: string): FirestoreQueryableCollectionLike;
+    runTransaction<T>(fn: (transaction: FirestoreTransactionLike) => Promise<T>): Promise<T>;
+}
+export declare function isTransactionalFirestore(firestore: FirestoreLike): firestore is FirestoreLike & TransactionalFirestoreLike;
 export interface DecodedTokenLike {
     uid: string;
     [claim: string]: unknown;

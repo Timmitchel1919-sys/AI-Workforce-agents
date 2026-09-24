@@ -18,6 +18,10 @@
  *   FIREBASE_AUTH_EMULATOR_HOST      auth emulator host
  */
 import { ValidationError } from "../../contracts/index.js";
+export function isTransactionalFirestore(firestore) {
+    const candidate = firestore;
+    return typeof candidate.runTransaction === "function";
+}
 function safeEnv() {
     try {
         return globalThis.process?.env ?? {};

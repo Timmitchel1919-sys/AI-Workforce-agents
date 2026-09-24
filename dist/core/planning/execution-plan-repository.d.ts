@@ -1,34 +1,45 @@
 /**
- * ExecutionPlanRepository — plan persistence over the provider-neutral
- * `Repository<ExecutionPlan>` port (in-memory by default; Firestore through
- * `FirebaseRepositoryProvider` → `CachedRepository` in production). The
- * planning domain never imports Firestore.
+ * ExecutionPlanRepository — the in-process view of execution plans plus the
+ * domain rules every revision must satisfy.
  *
- * Versions are separate documents (`${planId}@v${version}`) and are never
- * overwritten with different content: after creation a document may only
- * change its lifecycle fields (status, approval, blockers on rejection,
- * supersede links, updatedAt), and only along an allowed transition.
+ * Since EO-3.2 the AUTHORITATIVE copy lives in an `ExecutionPlanStore`
+ * (Firestore in production) and every write is an atomic store commit made by
+ * `ExecutionPlanningService`. This repository holds validated plans loaded
+ * from — or just committed to — that store, and enforces:
+ *
+ *   - versions are separate documents (`${planId}@v${version}`), numbered
+ *     1, 2, 3 … without gaps, never overwritten with different content;
+ *   - after creation only lifecycle fields (status, approval, blockers on
+ *     rejection, supersededBy, updatedAt) may change, along allowed
+ *     transitions only;
+ *   - the CURRENT revision is the highest version number — never a client
+ *     timestamp.
+ *
+ * It never imports Firestore.
  */
 import { type ExecutionPlan, type Repository } from "../../contracts/index.js";
-/** Firestore documents are capped at 1 MiB; stay well below. */
-export declare const MAX_PLAN_BYTES = 200000;
 export declare class ExecutionPlanRepository {
     private readonly repo;
     constructor(repo?: Repository<ExecutionPlan>);
-    /** Store a NEW version. Refuses to overwrite an existing document. */
+    /** A NEW version must be storable and continue its series without gaps. */
+    assertNewVersion(plan: ExecutionPlan): void;
+    /** A lifecycle change may only touch lifecycle fields, along the lifecycle. */
+    assertTransition(current: ExecutionPlan, next: ExecutionPlan): void;
+    /** Cache a plan that is known to be valid and committed. */
+    load(plan: ExecutionPlan): void;
+    /** Check + cache a new version (local-only use; production commits first). */
     create(plan: ExecutionPlan): ExecutionPlan;
-    /** Apply a lifecycle change to an existing version. */
+    /** Check + cache a lifecycle change (local-only use). */
     transition(next: ExecutionPlan): ExecutionPlan;
     get(id: string): ExecutionPlan | undefined;
     require(id: string): ExecutionPlan;
     /** Every version of one plan series, newest first. */
     versions(planId: string): ExecutionPlan[];
-    /** Current revision = highest version number (never a client timestamp). */
+    /** Current revision = highest version number. */
     latestVersion(planId: string): ExecutionPlan | undefined;
     /**
-     * All plan documents of a project: newest series first (by creation of its
-     * first version), versions descending, id as final tie-break.
+     * All plan documents of a project in a deterministic order: newest first
+     * by `createdAt`, then version descending, then id descending.
      */
     listByProject(projectId: string): ExecutionPlan[];
-    private assertStorable;
 }

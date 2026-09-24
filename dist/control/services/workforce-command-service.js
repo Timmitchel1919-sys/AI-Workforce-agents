@@ -123,7 +123,7 @@ export class WorkforceCommandService {
             try {
                 const decided = this.ctx.approvals.get(approvalId);
                 const updated = decided
-                    ? this.ctx.planning.applyApprovalDecision(decided, {
+                    ? await this.ctx.planning.applyApprovalDecision(decided, {
                         id: principal.id,
                         correlationId: run.correlationId,
                     })
@@ -187,8 +187,8 @@ export class WorkforceCommandService {
         if (!operatorCanAccessProject(principal, projectId)) {
             return this.audited(principal, command, "denied", undefined, `operator may not act on project "${projectId}"`, { projectId }, run);
         }
-        return this.runPlanning(principal, command, undefined, { projectId }, run, () => {
-            const plan = planning.createPlan(input, {
+        return this.runPlanning(principal, command, undefined, { projectId }, run, async () => {
+            const plan = await planning.createPlan(input, {
                 id: principal.id,
                 correlationId: run.correlationId,
             });
@@ -199,12 +199,12 @@ export class WorkforceCommandService {
     async replanExecutionPlan(principal, input, options) {
         const run = { correlationId: resolveCorrelationId(options) };
         const command = "replan_execution_plan";
-        const check = this.resolvePlan(principal, command, input?.planId, run);
+        const check = await this.resolvePlan(principal, command, input?.planId, run);
         if (!check.ok)
             return check.result;
         const { planning, plan } = check;
-        return this.runPlanning(principal, command, plan.planId, { projectId: plan.projectId }, run, () => {
-            const result = planning.replan(plan.planId, {
+        return this.runPlanning(principal, command, plan.planId, { projectId: plan.projectId }, run, async () => {
+            const result = await planning.replan(plan.planId, {
                 id: principal.id,
                 correlationId: run.correlationId,
             });
@@ -224,12 +224,12 @@ export class WorkforceCommandService {
     async submitExecutionPlan(principal, input, options) {
         const run = { correlationId: resolveCorrelationId(options) };
         const command = "submit_execution_plan";
-        const check = this.resolvePlan(principal, command, input?.planId, run);
+        const check = await this.resolvePlan(principal, command, input?.planId, run);
         if (!check.ok)
             return check.result;
         const { planning, plan } = check;
-        return this.runPlanning(principal, command, plan.planId, { projectId: plan.projectId }, run, () => {
-            const next = planning.submitForApproval(plan.planId, {
+        return this.runPlanning(principal, command, plan.planId, { projectId: plan.projectId }, run, async () => {
+            const next = await planning.submitForApproval(plan.planId, {
                 id: principal.id,
                 correlationId: run.correlationId,
             });
@@ -240,7 +240,7 @@ export class WorkforceCommandService {
             };
         });
     }
-    resolvePlan(principal, command, planIdRaw, run) {
+    async resolvePlan(principal, command, planIdRaw, run) {
         let planId;
         try {
             planId = requireId(planIdRaw, `${command}.planId`);
@@ -258,6 +258,18 @@ export class WorkforceCommandService {
             };
         }
         const planning = this.ctx.planning;
+        if (planning) {
+            try {
+                // Read the authoritative store, not a possibly stale instance cache.
+                await planning.refreshSeries(planId);
+            }
+            catch (error) {
+                return {
+                    ok: false,
+                    result: this.audited(principal, command, "rejected", planId, message(error), {}, run, "command_failure"),
+                };
+            }
+        }
         const plan = planning?.latest(planId);
         if (!planning || !plan) {
             return {
@@ -274,9 +286,9 @@ export class WorkforceCommandService {
         return { ok: true, planning, plan };
     }
     /** Run a planning operation and map domain errors to control outcomes. */
-    runPlanning(principal, command, resourceId, details, run, operation) {
+    async runPlanning(principal, command, resourceId, details, run, operation) {
         try {
-            const { plan, reason, extra } = operation();
+            const { plan, reason, extra } = await operation();
             return this.audited(principal, command, "executed", plan.id, reason, {
                 ...details,
                 planId: plan.planId,

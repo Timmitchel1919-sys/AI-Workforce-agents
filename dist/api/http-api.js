@@ -123,10 +123,20 @@ export function createControlPlaneApi(options) {
                 // `GET /projects/:projectId/execution-plans[/:planId][?version=N]`
                 // — planning state only; there is no execution route.
                 if (segs[2] === "execution-plans" && segs.length === 3) {
-                    return send(res, 200, notNull(query.getExecutionPlans(principal, id, parsePageQuery(params))), correlationId);
+                    return send(res, 200, notNull(await query.getExecutionPlans(principal, id, parsePageQuery(params))), correlationId);
+                }
+                // `current` is reserved: plan ids are `plan_<uuid>`.
+                if (segs[2] === "execution-plans" &&
+                    segs.length === 4 &&
+                    segs[3] === "current") {
+                    const current = await query.getCurrentExecutionPlan(principal, id);
+                    // undefined → 404 (unknown/foreign project); null → no plan yet.
+                    if (current === undefined)
+                        throw new NotFoundError("resource not found");
+                    return send(res, 200, { plan: current }, correlationId);
                 }
                 if (segs[2] === "execution-plans" && segs.length === 4) {
-                    return send(res, 200, notNull(query.getExecutionPlan(principal, id, segs[3], parsePlanVersion(params))), correlationId);
+                    return send(res, 200, notNull(await query.getExecutionPlan(principal, id, segs[3], parsePlanVersion(params))), correlationId);
                 }
                 if (segs.length >= 3) {
                     return send(res, 404, { error: { message: "not found" } }, correlationId);

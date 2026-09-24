@@ -5,5 +5,7 @@ export * from "./dependency-graph.js";
 export * from "./model-capability-registry.js";
 export * from "./stage-planner.js";
 export * from "./plan-secret-guard.js";
+export * from "./execution-plan-serialization.js";
+export * from "./execution-plan-store.js";
 export * from "./execution-plan-repository.js";
 export * from "./execution-planning-service.js";

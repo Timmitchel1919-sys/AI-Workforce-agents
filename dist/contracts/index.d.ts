@@ -292,6 +292,13 @@ export declare class ValidationError extends WorkforceError {
 }
 export declare class StateTransitionError extends WorkforceError {
 }
+/**
+ * An execution plan changed concurrently: an optimistic precondition of a plan
+ * commit failed (EO-3.2). Nothing was written. HTTP 409.
+ */
+export declare class PlanRevisionConflictError extends StateTransitionError {
+    constructor(message?: string);
+}
 export declare class PermissionDeniedError extends WorkforceError {
 }
 export declare class NotFoundError extends WorkforceError {

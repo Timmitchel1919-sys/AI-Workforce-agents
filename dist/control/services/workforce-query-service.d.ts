@@ -62,13 +62,19 @@ export declare class WorkforceQueryService {
      * shared page-size bounds. `undefined` when the project does not exist or
      * the operator may not access it (→ 404, no existence leak).
      */
-    getExecutionPlans(principal: OperatorPrincipal, projectId: string, query?: ExecutionPlanQuery): PageResult<ExecutionPlanSummaryView> | undefined;
+    getExecutionPlans(principal: OperatorPrincipal, projectId: string, query?: ExecutionPlanQuery): Promise<PageResult<ExecutionPlanSummaryView> | undefined>;
     /**
      * One plan of a project: the current version of series `planId`, or a
      * specific `version`. Plans of other projects are indistinguishable from
      * missing ones.
      */
-    getExecutionPlan(principal: OperatorPrincipal, projectId: string, planId: string, version?: number): ExecutionPlanView | undefined;
+    getExecutionPlan(principal: OperatorPrincipal, projectId: string, planId: string, version?: number): Promise<ExecutionPlanView | undefined>;
+    /**
+     * The project's current plan: the current (highest) version of the most
+     * recently created plan series, or `null` when the project has no plan.
+     * `undefined` (→ 404) when the project is unknown or not accessible.
+     */
+    getCurrentExecutionPlan(principal: OperatorPrincipal, projectId: string): Promise<ExecutionPlanView | null | undefined>;
     getAuditEvents(principal: OperatorPrincipal, query?: AuditEventQuery): PageResult<AuditEventView>;
     getDashboardSnapshot(principal: OperatorPrincipal): Promise<DashboardSnapshot>;
     private canSeeProject;
