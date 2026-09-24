@@ -358,6 +358,29 @@ export class WorkforceQueryService {
         return { hostId, host, capabilities: host.capabilities };
     }
     /* -------------------------------------------------------------- */
+    /* execution control boundary (EO-4.1) — never executes           */
+    /* -------------------------------------------------------------- */
+    /**
+     * Pre-flight for one plan stage: ELIGIBLE or DENIED with reason codes.
+     * Denials are data (200), not errors. `undefined` → execution not configured.
+     */
+    async executionPreflight(principal, request) {
+        validateOperatorPrincipal(principal);
+        return this.ctx.execution?.preflight(principal, request);
+    }
+    getExecutionOperations(principal) {
+        this.authorizeView(principal);
+        return this.ctx.execution?.listOperations(principal) ?? [];
+    }
+    async getExecutionSession(principal, sessionId) {
+        this.authorizeView(principal);
+        return this.ctx.execution?.getSession(principal, sessionId);
+    }
+    async getExecutionSessions(principal, projectId) {
+        this.authorizeView(principal);
+        return this.ctx.execution?.listSessions(principal, projectId);
+    }
+    /* -------------------------------------------------------------- */
     /* execution plans (EO-3.1) — planning state only                */
     /* -------------------------------------------------------------- */
     /**

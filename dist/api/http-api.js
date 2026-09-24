@@ -26,6 +26,8 @@ const COMMAND_METHODS = {
     "suspend-access": "suspendAccess",
     "reactivate-access": "reactivateAccess",
     "revoke-access": "revokeAccess",
+    "cancel-execution": "cancelExecution",
+    "kill-execution": "killExecution",
     "change-operator-role": "changeOperatorRole",
 };
 function defaultCorrelationId() {
@@ -104,6 +106,17 @@ export function createControlPlaneApi(options) {
             if (method === "GET") {
                 return await handleGet(res, segs, url.searchParams, principal, correlationId);
             }
+            if (method === "POST" && route === "/execution/preflight") {
+                // EO-4.1: evaluation only. There is no execute / shell endpoint.
+                let body;
+                try {
+                    body = await readJsonBody(req, maxBody);
+                }
+                catch (error) {
+                    return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+                }
+                return send(res, 200, notNull(await query.executionPreflight(principal, body)), correlationId);
+            }
             if (method === "POST" && segs[0] === "commands" && segs.length === 2) {
                 return await handleCommand(req, res, segs[1], principal, correlationId);
             }
@@ -163,6 +176,10 @@ export function createControlPlaneApi(options) {
                 if (segs.length === 3 && segs[2] === "agents") {
                     return send(res, 200, notNull(await query.getProjectAgents(principal, id)), correlationId);
                 }
+                // `GET /projects/:projectId/execution-sessions` (EO-4.1, metadata only)
+                if (segs.length === 3 && segs[2] === "execution-sessions") {
+                    return send(res, 200, notNull(await query.getExecutionSessions(principal, id)), correlationId);
+                }
                 // `GET /projects/:projectId/execution-plans[/:planId][?version=N]`
                 // — planning state only; there is no execution route.
                 if (segs[2] === "execution-plans" && segs.length === 3) {
@@ -212,6 +229,15 @@ export function createControlPlaneApi(options) {
                 return send(res, 200, id
                     ? notNull(query.getHost(principal, id))
                     : query.getHosts(principal), correlationId);
+            case "execution":
+                // GET /api/execution/operations, GET /api/execution/sessions/:sessionId
+                if (segs.length === 2 && segs[1] === "operations") {
+                    return send(res, 200, query.getExecutionOperations(principal), correlationId);
+                }
+                if (segs.length === 3 && segs[1] === "sessions") {
+                    return send(res, 200, notNull(await query.getExecutionSession(principal, segs[2])), correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
             case "planning":
                 // GET /api/planning/technologies — read-only planner catalog.
                 if (segs.length === 2 && segs[1] === "technologies") {

@@ -178,7 +178,7 @@ export interface AgentContext {
     values: Record<string, unknown>;
 }
 export type Context = TaskContext | ProjectContext | AgentContext;
-export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event"];
+export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event", "execution_event"];
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
 export interface AuditEvent {
     id: string;
@@ -316,6 +316,14 @@ export declare class BootstrapLockedError extends PermissionDeniedError {
 export declare class NotFoundError extends WorkforceError {
 }
 /**
+ * EO-4.1: an EXPECTED execution security outcome (policy denial, workspace
+ * violation, …). A 403-class error if it ever escapes — never a 500.
+ */
+export declare class ExecutionDeniedError extends PermissionDeniedError {
+    readonly code: import("./execution.js").ExecutionErrorCode;
+    constructor(code: import("./execution.js").ExecutionErrorCode, detail: string);
+}
+/**
  * Structured failure from a General Agent execution. Carries a machine-readable
  * `reason` and diagnostic `details` (never secrets). Agents fail closed with
  * this rather than returning a partial or unstructured result.
@@ -390,3 +398,4 @@ export * from "./environments.js";
 export * from "./planning.js";
 export * from "./access.js";
 export * from "./profile.js";
+export * from "./execution.js";

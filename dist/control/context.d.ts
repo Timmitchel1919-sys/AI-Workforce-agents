@@ -3,7 +3,7 @@
  * services read from and act through. Everything is injected — the Control
  * Plane owns none of it and constructs none of it.
  */
-import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, TechnologyCatalog, ExecutionPlanningService, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
+import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, TechnologyCatalog, ExecutionPlanningService, ExecutionManager, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
 import { type HealthProbe } from "./health.js";
 import { type ControlEventPublisher } from "./ports.js";
 import { AgentOperationalStore, WorkflowControlStore } from "./stores.js";
@@ -30,6 +30,11 @@ export interface ControlPlaneContext {
      * Planning never executes anything.
      */
     planning?: ExecutionPlanningService;
+    /**
+     * EO-4.1 execution control boundary: pre-flight, session metadata,
+     * cancel/kill. Optional; absent → execution routes 404. Never executes.
+     */
+    execution?: ExecutionManager;
     /**
      * Operator access lifecycle (AUTHZ-1): pending → approve/reject →
      * suspend/reactivate/revoke. Optional; absent → access routes 404.

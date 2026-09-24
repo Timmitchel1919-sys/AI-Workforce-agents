@@ -15,7 +15,7 @@
  * written to the audit event and returned on the result, so a control request
  * can be traced through the command, the core operation, and the audit log.
  */
-import { type AccessCommandInput, type AgentCommandInput, type ApprovalCommandInput, type CommandOptions, type ControlCommandResult, type CreateExecutionPlanCommandInput, type ExecutionPlanCommandInput, type OperatorPrincipal, type RejectCommandInput, type TaskCommandInput, type WorkflowCommandInput } from "../../contracts/index.js";
+import { type AccessCommandInput, type ExecutionCancelCommandInput, type AgentCommandInput, type ApprovalCommandInput, type CommandOptions, type ControlCommandResult, type CreateExecutionPlanCommandInput, type ExecutionPlanCommandInput, type OperatorPrincipal, type RejectCommandInput, type TaskCommandInput, type WorkflowCommandInput } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 export declare class WorkforceCommandService {
     private readonly ctx;
@@ -49,6 +49,14 @@ export declare class WorkforceCommandService {
      * invalid_state → 409, invalid_request → 400).
      */
     private runAccess;
+    /** Cancel one execution session (operators). Idempotent and audited. */
+    cancelExecution(principal: OperatorPrincipal, input: ExecutionCancelCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    /**
+     * Emergency kill switch for ONE session (administrators only). Not a shell
+     * kill: it asks the governed session to terminate, and is audited.
+     */
+    killExecution(principal: OperatorPrincipal, input: ExecutionCancelCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
+    private runExecutionCancel;
     cancelTask(principal: OperatorPrincipal, input: TaskCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     retryTask(principal: OperatorPrincipal, input: TaskCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     pauseWorkflow(principal: OperatorPrincipal, input: WorkflowCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;

@@ -51,6 +51,7 @@ export const AUDIT_EVENT_TYPES = [
     "environment_unavailable",
     "execution_plan_event",
     "access_event",
+    "execution_event",
 ];
 export const DEFAULT_AGENT_LIMITS = {
     maxIterations: 3,
@@ -101,6 +102,18 @@ export class BootstrapLockedError extends PermissionDeniedError {
     }
 }
 export class NotFoundError extends WorkforceError {
+}
+/**
+ * EO-4.1: an EXPECTED execution security outcome (policy denial, workspace
+ * violation, …). A 403-class error if it ever escapes — never a 500.
+ */
+export class ExecutionDeniedError extends PermissionDeniedError {
+    code;
+    constructor(code, detail) {
+        super(detail);
+        this.name = "ExecutionDeniedError";
+        this.code = code;
+    }
 }
 /**
  * Structured failure from a General Agent execution. Carries a machine-readable
@@ -254,3 +267,4 @@ export * from "./environments.js";
 export * from "./planning.js";
 export * from "./access.js";
 export * from "./profile.js";
+export * from "./execution.js";

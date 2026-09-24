@@ -5,7 +5,7 @@
  * capability, and returns only data for projects the operator may access.
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
-import { type ApprovalQuery, type ApprovalView, type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
+import { type ExecutionOperationDefinition, type ExecutionSession, type PreflightResult, type ApprovalQuery, type ApprovalView, type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
 import type { EnvironmentDescriptor, EnvironmentInstance, HostCapabilitySnapshot, HostInstance } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import { redact } from "../redaction.js";
@@ -70,6 +70,14 @@ export declare class WorkforceQueryService {
     getHosts(principal: OperatorPrincipal): HostInstance[];
     getHost(principal: OperatorPrincipal, hostId: string): HostInstance | undefined;
     getHostCapabilitySnapshot(principal: OperatorPrincipal, hostId: string): HostCapabilitySnapshot | undefined;
+    /**
+     * Pre-flight for one plan stage: ELIGIBLE or DENIED with reason codes.
+     * Denials are data (200), not errors. `undefined` → execution not configured.
+     */
+    executionPreflight(principal: OperatorPrincipal, request: unknown): Promise<PreflightResult | undefined>;
+    getExecutionOperations(principal: OperatorPrincipal): ExecutionOperationDefinition[];
+    getExecutionSession(principal: OperatorPrincipal, sessionId: string): Promise<ExecutionSession | undefined>;
+    getExecutionSessions(principal: OperatorPrincipal, projectId: string): Promise<ExecutionSession[] | undefined>;
     /**
      * Plan versions of one project, newest first, cursor-paginated with the
      * shared page-size bounds. `undefined` when the project does not exist or

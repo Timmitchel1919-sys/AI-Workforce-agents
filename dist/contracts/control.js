@@ -37,6 +37,9 @@ export const CONTROL_CAPABILITIES = [
     "replan_execution_plan",
     "submit_execution_plan",
     "manage_access",
+    "prepare_execution",
+    "cancel_execution",
+    "kill_execution",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -53,6 +56,8 @@ export const ROLE_CAPABILITIES = {
         "create_execution_plan",
         "replan_execution_plan",
         "submit_execution_plan",
+        "prepare_execution",
+        "cancel_execution",
     ],
     admin: [
         "view",
@@ -69,6 +74,10 @@ export const ROLE_CAPABILITIES = {
         "replan_execution_plan",
         "submit_execution_plan",
         "manage_access",
+        "prepare_execution",
+        "cancel_execution",
+        // Emergency termination of a specific session: administrators only.
+        "kill_execution",
     ],
 };
 export function validateOperatorPrincipal(principal) {
@@ -107,6 +116,8 @@ export const CONTROL_COMMANDS = [
     "create_execution_plan",
     "replan_execution_plan",
     "submit_execution_plan",
+    "cancel_execution",
+    "kill_execution",
     "approve_access",
     "reject_access",
     "suspend_access",
