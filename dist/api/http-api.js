@@ -203,6 +203,12 @@ export function createControlPlaneApi(options) {
                 return send(res, 200, id
                     ? notNull(query.getHost(principal, id))
                     : query.getHosts(principal), correlationId);
+            case "planning":
+                // GET /api/planning/technologies — read-only planner catalog.
+                if (segs.length === 2 && segs[1] === "technologies") {
+                    return send(res, 200, query.getTechnologyCatalog(principal), correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
             case "operators":
                 // GET /api/operators — Users & Access (administrators only).
                 if (segs.length !== 1) {
@@ -330,6 +336,9 @@ function parsePageQuery(params) {
     const limit = Number(params.get("limit"));
     if (Number.isFinite(limit) && limit > 0)
         q.limit = limit;
+    const planId = params.get("planId");
+    if (planId !== null && planId !== "")
+        q.planId = planId;
     return q;
 }
 /** `?version=N` — a positive integer, otherwise the current version. */

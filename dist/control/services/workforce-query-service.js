@@ -6,7 +6,7 @@
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
 import { operatorCan, operatorCanAccessProject, PermissionDeniedError, validateOperatorPrincipal, } from "../../contracts/index.js";
-import { now } from "../../core/index.js";
+import { now, TechnologyCatalog } from "../../core/index.js";
 import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolView, deriveTaskView, deriveWorkflowView, MAX_PAGE_SIZE, paginate, } from "../derive.js";
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
 import { executionPlanSummaryView, executionPlanView } from "../plan-views.js";
@@ -338,9 +338,12 @@ export class WorkforceQueryService {
         // Fresh from the authoritative store, scoped to this project only.
         if (planning)
             await planning.refreshProject(projectId);
-        const plans = planning ? planning.listByProject(projectId) : [];
+        const all = planning ? planning.listByProject(projectId) : [];
+        const plans = query.planId
+            ? all.filter((plan) => plan.planId === query.planId)
+            : all;
         const latest = new Map();
-        for (const plan of plans) {
+        for (const plan of all) {
             latest.set(plan.planId, Math.max(latest.get(plan.planId) ?? 0, plan.version));
         }
         const page = paginate(plans, query.limit, query.cursor);
@@ -388,6 +391,18 @@ export class WorkforceQueryService {
             .filter((plan) => plan.version === 1)[0];
         const current = newestSeries && planning.latest(newestSeries.planId);
         return current ? executionPlanView(current, true) : null;
+    }
+    /** The planner's technology catalog (read-only; for planning requests). */
+    getTechnologyCatalog(principal) {
+        this.authorizeView(principal);
+        return (this.ctx.technologyCatalog ?? new TechnologyCatalog())
+            .list()
+            .map((profile) => ({
+            id: profile.id,
+            label: profile.label,
+            componentKinds: [...profile.componentKinds],
+            platforms: [...profile.platforms],
+        }));
     }
     /* -------------------------------------------------------------- */
     /* operator access (AUTHZ-1)                                     */

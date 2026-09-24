@@ -76,7 +76,7 @@ export declare class ExecutionPlanningService {
      * is committed and version n superseded in ONE atomic commit. A concurrent
      * replan loses with `PlanRevisionConflictError` instead of forking history.
      */
-    replan(planId: string, actor: PlanActor): Promise<{
+    replan(planId: string, actor: PlanActor, expectedVersion?: number): Promise<{
         plan: ExecutionPlan;
         outcome: ReplanOutcome;
         previous: ExecutionPlan;
@@ -87,7 +87,7 @@ export declare class ExecutionPlanningService {
      * changed concurrently the new approval request is expired again, so no
      * orphan approval remains.
      */
-    submitForApproval(planId: string, actor: PlanActor): Promise<ExecutionPlan>;
+    submitForApproval(planId: string, actor: PlanActor, expectedVersion?: number): Promise<ExecutionPlan>;
     /**
      * Mirror an authoritative approval decision onto its plan. Returns the
      * updated plan, or `undefined` when the approval is not (or no longer) the
@@ -107,6 +107,8 @@ export declare class ExecutionPlanningService {
     /** Commit; on a conflict reload the series so the caller sees fresh state. */
     private commitOrRefresh;
     private expireApproval;
+    /** Stale-plan protection: never act on a version the operator did not see. */
+    private assertExpectedVersion;
     private assertProjectExists;
     private materialize;
     /** Stable hash of every input that can change a planning decision. */

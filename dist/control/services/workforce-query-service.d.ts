@@ -5,7 +5,7 @@
  * capability, and returns only data for projects the operator may access.
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
-import { type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
+import { type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
 import type { EnvironmentDescriptor, EnvironmentInstance, HostCapabilitySnapshot, HostInstance } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import { redact } from "../redaction.js";
@@ -75,6 +75,8 @@ export declare class WorkforceQueryService {
      * `undefined` (→ 404) when the project is unknown or not accessible.
      */
     getCurrentExecutionPlan(principal: OperatorPrincipal, projectId: string): Promise<ExecutionPlanView | null | undefined>;
+    /** The planner's technology catalog (read-only; for planning requests). */
+    getTechnologyCatalog(principal: OperatorPrincipal): TechnologyCatalogEntryView[];
     /**
      * Every operator account for Users & Access. Administrators only
      * (`manage_access`) — a PermissionDeniedError maps to 403.

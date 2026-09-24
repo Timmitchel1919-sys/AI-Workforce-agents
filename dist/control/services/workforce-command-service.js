@@ -204,10 +204,7 @@ export class WorkforceCommandService {
             return check.result;
         const { planning, plan } = check;
         return this.runPlanning(principal, command, plan.planId, { projectId: plan.projectId }, run, async () => {
-            const result = await planning.replan(plan.planId, {
-                id: principal.id,
-                correlationId: run.correlationId,
-            });
+            const result = await planning.replan(plan.planId, { id: principal.id, correlationId: run.correlationId }, expectedVersionOf(input));
             return {
                 plan: result.plan,
                 reason: result.outcome === "unchanged"
@@ -229,10 +226,7 @@ export class WorkforceCommandService {
             return check.result;
         const { planning, plan } = check;
         return this.runPlanning(principal, command, plan.planId, { projectId: plan.projectId }, run, async () => {
-            const next = await planning.submitForApproval(plan.planId, {
-                id: principal.id,
-                correlationId: run.correlationId,
-            });
+            const next = await planning.submitForApproval(plan.planId, { id: principal.id, correlationId: run.correlationId }, expectedVersionOf(input));
             return {
                 plan: next,
                 reason: "approval requested — the plan is not executed",
@@ -656,6 +650,14 @@ export class WorkforceCommandService {
             /* the command already succeeded/failed on its own terms */
         }
     }
+}
+/** `expectedVersion` from an untrusted body; anything non-numeric is invalid. */
+function expectedVersionOf(input) {
+    const raw = input
+        ?.expectedVersion;
+    if (raw === undefined || raw === null)
+        return undefined;
+    return typeof raw === "number" ? raw : Number.NaN;
 }
 function message(error) {
     return error instanceof Error ? error.message : String(error);

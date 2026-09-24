@@ -3,7 +3,7 @@
  * services read from and act through. Everything is injected — the Control
  * Plane owns none of it and constructs none of it.
  */
-import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, ExecutionPlanningService, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
+import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, TechnologyCatalog, ExecutionPlanningService, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
 import { type HealthProbe } from "./health.js";
 import { type ControlEventPublisher } from "./ports.js";
 import { AgentOperationalStore, WorkflowControlStore } from "./stores.js";
@@ -35,6 +35,8 @@ export interface ControlPlaneContext {
      * suspend/reactivate/revoke. Optional; absent → access routes 404.
      */
     access?: AccessService;
+    /** The planner's technology catalog; defaults to the built-in catalog. */
+    technologyCatalog?: TechnologyCatalog;
     /**
      * Needed by command enactment (approve → resume). Structural: only these
      * methods are used, so a test can pass a stub.
