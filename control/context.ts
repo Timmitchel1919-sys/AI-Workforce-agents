@@ -7,6 +7,7 @@ import {
   AgentRegistry,
   ApprovalSystem,
   AuditLog,
+  AccessService,
   EnvironmentRegistry,
   ExecutionPlanningService,
   Orchestrator,
@@ -44,6 +45,11 @@ export interface ControlPlaneContext {
    * Planning never executes anything.
    */
   planning?: ExecutionPlanningService;
+  /**
+   * Operator access lifecycle (AUTHZ-1): pending → approve/reject →
+   * suspend/reactivate/revoke. Optional; absent → access routes 404.
+   */
+  access?: AccessService;
   /**
    * Needed by command enactment (approve → resume). Structural: only these
    * methods are used, so a test can pass a stub.

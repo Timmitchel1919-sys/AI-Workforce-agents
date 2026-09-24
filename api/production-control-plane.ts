@@ -19,6 +19,7 @@ import {
 import {
   FirebaseOperatorDirectory,
   FirestoreExecutionPlanStore,
+  FirestoreOperatorAccountStore,
   isTransactionalFirestore,
   FirestoreEventPublisher,
   type FirebaseServices,
@@ -42,6 +43,7 @@ import {
   TaskSystem,
   WorkflowEngine,
   WorkflowSystem,
+  AccessService,
   ExecutionPlanningService,
   ValidationError,
 } from "../core/index.js";
@@ -181,6 +183,21 @@ export async function createProductionControlPlaneRuntime(
     isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
     projectExists: (projectId) => bootstrap.projects.has(projectId),
   });
+  // AUTHZ-1: operator accounts (Firestore, transactional) are the only source
+  // of authorization. A valid Firebase token alone grants nothing.
+  const operatorAccounts = new FirestoreOperatorAccountStore(
+    transactionalFirestore,
+    { collectionPrefix: options.collectionPrefix },
+  );
+  const access = new AccessService({
+    store: operatorAccounts,
+    audit,
+    projects: bootstrap.projects,
+  });
+  const operatorDirectory = new FirebaseOperatorDirectory(
+    services.auth,
+    operatorAccounts,
+  );
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
     tasks,
@@ -194,6 +211,7 @@ export async function createProductionControlPlaneRuntime(
     workflowControl,
     environments: environmentRegistry,
     planning,
+    access,
     orchestrator,
     workflowEngine,
     events: new FirestoreEventPublisher(
@@ -205,7 +223,9 @@ export async function createProductionControlPlaneRuntime(
   const handler = createControlPlaneApi({
     query,
     command,
-    operatorDirectory: new FirebaseOperatorDirectory(services.auth),
+    operatorDirectory,
+    identityVerifier: operatorDirectory,
+    access,
   });
 
   return Object.freeze({

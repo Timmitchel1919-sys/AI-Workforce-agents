@@ -26,6 +26,7 @@ function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue 
     accessToken: null,
     configured: true,
     access: "none" as AccessState,
+    accessDetails: { capabilities: [] },
     signIn: vi.fn(),
     signUp: vi.fn(),
     sendPasswordReset: vi.fn(),

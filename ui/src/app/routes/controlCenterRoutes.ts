@@ -11,3 +11,4 @@ export { default as DesignSystemPage } from "../../pages/DesignSystem/DesignSyst
 export { default as SettingsPage } from "../../pages/Settings/SettingsPage";
 export { default as ProjectsPage } from "../../pages/Projects/ProjectsPage";
 export { default as ExecutionPlanPage } from "../../pages/Projects/ExecutionPlanPage";
+export { default as UsersAccessPage } from "../../pages/Settings/UsersAccessPage";

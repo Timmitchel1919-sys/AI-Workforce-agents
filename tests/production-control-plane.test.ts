@@ -9,17 +9,44 @@ import { FakeFirestore } from "./fixtures/fake-firestore.js";
 
 class FakeAuth implements FirebaseAuthLike {
   async verifyIdToken(token: string) {
-    if (token === "viewer")
-      return { uid: "viewer-1", role: "viewer", allowedProjects: "*" };
-    if (token === "limited")
-      return { uid: "limited-1", role: "viewer", allowedProjects: [] };
+    if (token === "viewer") return { uid: "viewer-1" };
+    if (token === "limited") return { uid: "limited-1" };
+    if (token === "pending") return { uid: "pending-1", email_verified: true };
     throw new Error("invalid token");
   }
 }
 
+/** AUTHZ-1: authorization comes from operator accounts, not token claims. */
+function seededFirestore(): FakeFirestore {
+  const firestore = new FakeFirestore();
+  const operators = firestore.collection("operators");
+  const T = "2026-09-24T00:00:00.000Z";
+  const base = {
+    emailVerified: true,
+    requestedAt: T,
+    updatedAt: T,
+    revision: 1,
+  };
+  operators.values.set("viewer-1", {
+    ...base,
+    id: "viewer-1",
+    status: "active",
+    role: "viewer",
+    allowedProjects: "*",
+  });
+  operators.values.set("limited-1", {
+    ...base,
+    id: "limited-1",
+    status: "active",
+    role: "viewer",
+    allowedProjects: [],
+  });
+  return firestore;
+}
+
 function services(): FirebaseServices {
   return {
-    firestore: new FakeFirestore(),
+    firestore: seededFirestore(),
     auth: new FakeAuth(),
     storage: {} as FirebaseServices["storage"],
     config: {

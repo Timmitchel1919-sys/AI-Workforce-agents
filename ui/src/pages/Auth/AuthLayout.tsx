@@ -75,7 +75,9 @@ export default function AuthLayout() {
   } else if (user && access === "granted" && !inFlight) {
     // Already signed in with access: go straight to the Control Center.
     return <Navigate to={next} replace />;
-  } else if (user && access === "pending" && !inFlight) {
+  } else if (user && access !== "granted" && access !== "none" && !inFlight) {
+    // Signed in, but the Control Plane grants no access (pending, rejected,
+    // suspended, revoked, or unreachable).
     card = <AccessPending next={next} justCreated={accountCreated} />;
   } else {
     card = (

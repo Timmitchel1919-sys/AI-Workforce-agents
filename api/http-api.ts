@@ -22,20 +22,30 @@ import {
   WorkforceError,
   type AuditEventQuery,
   type ControlErrorKind,
+  type IdentityVerifier,
   type OperatorDirectory,
   type OperatorPrincipal,
   type TaskQuery,
+  type VerifiedIdentity,
   type WorkflowQuery,
 } from "../contracts/index.js";
 import {
   type WorkforceCommandService,
   type WorkforceQueryService,
 } from "../control/index.js";
+import type { AccessService } from "../core/index.js";
 
 export interface ControlPlaneApiOptions {
   query: WorkforceQueryService;
   command: WorkforceCommandService;
   operatorDirectory: OperatorDirectory;
+  /**
+   * AUTHZ-1: verifies a token WITHOUT requiring an active role, for
+   * `GET /me/access` only. Every other route still needs `operatorDirectory`.
+   */
+  identityVerifier?: IdentityVerifier;
+  /** AUTHZ-1: serves `GET /me/access` (the caller's own access state). */
+  access?: Pick<AccessService, "myAccess">;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -73,6 +83,12 @@ const COMMAND_METHODS: Record<
   "create-execution-plan": "createExecutionPlan",
   "replan-execution-plan": "replanExecutionPlan",
   "submit-execution-plan": "submitExecutionPlan",
+  "approve-access": "approveAccess",
+  "reject-access": "rejectAccess",
+  "suspend-access": "suspendAccess",
+  "reactivate-access": "reactivateAccess",
+  "revoke-access": "revokeAccess",
+  "change-operator-role": "changeOperatorRole",
 };
 
 function defaultCorrelationId(): string {
@@ -132,6 +148,45 @@ export function createControlPlaneApi(
       return send(res, 200, { status: "ok" }, correlationId);
     }
 
+    // `GET /me/access` — the signed-in user's own access state. Needs only a
+    // verified identity (authentication), never an active role: this is how
+    // a pending user learns they are pending. Creates a PENDING request on
+    // first contact; grants nothing.
+    if (method === "GET" && route === "/me/access") {
+      const identity = await verifyIdentity(req);
+      if (!identity) {
+        return send(
+          res,
+          401,
+          { error: { message: "authentication required" } },
+          correlationId,
+        );
+      }
+      if (!options.access) {
+        return send(
+          res,
+          404,
+          { error: { message: "not found" } },
+          correlationId,
+        );
+      }
+      try {
+        return send(
+          res,
+          200,
+          await options.access.myAccess(identity),
+          correlationId,
+        );
+      } catch (error) {
+        return send(
+          res,
+          statusForError(error),
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+    }
+
     // Authenticate every other route.
     const principal = await authenticate(req);
     if (!principal) {
@@ -176,6 +231,16 @@ export function createControlPlaneApi(
         correlationId,
       );
     }
+  }
+
+  async function verifyIdentity(
+    req: IncomingMessage,
+  ): Promise<VerifiedIdentity | null> {
+    if (!options.identityVerifier) return null;
+    const header = headerValue(req, "authorization") ?? "";
+    const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+    if (!match) return null;
+    return options.identityVerifier.verify(match[1]!.trim());
   }
 
   async function authenticate(
@@ -368,6 +433,22 @@ export function createControlPlaneApi(
           id
             ? notNull(query.getHost(principal, id))
             : query.getHosts(principal),
+          correlationId,
+        );
+      case "operators":
+        // GET /api/operators — Users & Access (administrators only).
+        if (segs.length !== 1) {
+          return send(
+            res,
+            404,
+            { error: { message: "not found" } },
+            correlationId,
+          );
+        }
+        return send(
+          res,
+          200,
+          notNull(await query.getOperatorAccounts(principal)),
           correlationId,
         );
       case "audit":

@@ -5,11 +5,32 @@ export interface AuthUser {
 }
 
 /**
- * Whether the signed-in user's ID token carries a Control Plane role claim.
- * UX only — the Control Plane re-verifies the token and enforces authorization
- * on every request; this never grants access by itself.
+ * The signed-in user's AI Workforce access, as reported by the Control Plane
+ * (`GET /api/me/access`). UX only — the backend re-verifies the token and the
+ * operator account on every request; this never grants access by itself.
+ *
+ *   none         not signed in
+ *   granted      ACTIVE operator account
+ *   pending      signed in, waiting for an administrator
+ *   rejected     access request declined
+ *   suspended    access temporarily suspended
+ *   revoked      access revoked
+ *   unavailable  the Control Plane could not be reached — nothing is assumed
  */
-export type AccessState = "none" | "granted" | "pending";
+export type AccessState =
+  | "none"
+  | "granted"
+  | "pending"
+  | "rejected"
+  | "suspended"
+  | "revoked"
+  | "unavailable";
+
+/** Backend-reported role/capabilities for the active account (UX only). */
+export interface AccessDetails {
+  role?: "viewer" | "operator" | "admin";
+  capabilities: readonly string[];
+}
 
 export interface SignUpInput {
   displayName?: string;
@@ -36,10 +57,12 @@ export interface AuthContextValue {
   /** False when Firebase web config is absent (local development / demo data). */
   configured: boolean;
   access: AccessState;
+  /** Role and capabilities of an ACTIVE account; empty otherwise. */
+  accessDetails: AccessDetails;
   signIn: (email: string, password: string, remember: boolean) => Promise<AccessState>;
   signUp: (input: SignUpInput) => Promise<AccessState>;
   sendPasswordReset: (email: string) => Promise<void>;
-  /** Forces an ID-token refresh so newly assigned role claims are picked up. */
+  /** Refreshes the ID token and asks the Control Plane for the current access state. */
   refreshAccess: () => Promise<AccessState>;
   getPasswordPolicy: () => Promise<PasswordPolicy>;
   signOut: () => Promise<void>;

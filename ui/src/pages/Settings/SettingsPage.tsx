@@ -1,11 +1,14 @@
-import { useId } from "react";
-import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
+import { useContext, useId } from "react";
+import { Link } from "react-router-dom";
+import { ChevronRight, Monitor, Moon, ShieldCheck, Sun, type LucideIcon } from "lucide-react";
+import { authContext } from "../../auth/authContext";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
 import { LANGUAGE_NATIVE_NAMES, SUPPORTED_LANGUAGES, isLanguage, useI18n, type MessageKey } from "../../i18n";
 import type { ThemeMode } from "../../themes/theme.types";
 import { useTheme } from "../../themes/useTheme";
 import "./SettingsPage.css";
+import "./UsersAccess.css";
 
 const THEME_OPTIONS: Array<{ mode: ThemeMode; icon: LucideIcon; label: MessageKey; description: MessageKey }> = [
   { mode: "light", icon: Sun, label: "settings.light", description: "settings.lightDescription" },
@@ -23,6 +26,9 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const languageId = useId();
   const languageHintId = useId();
+  // UX only: the link shows for administrators; the Control Plane enforces it.
+  const canManageAccess =
+    useContext(authContext)?.accessDetails.capabilities.includes("manage_access") ?? false;
 
   return (
     <PageContainer>
@@ -93,6 +99,25 @@ export default function SettingsPage() {
 
         <p className="settings-note">{t("settings.storageNote")}</p>
       </section>
+
+      {canManageAccess ? (
+        <section className="settings-section" aria-labelledby="settings-access">
+          <header className="settings-section__header">
+            <h2 id="settings-access" className="settings-section__title">
+              {t("access.title")}
+            </h2>
+          </header>
+          <Link to="/settings/access" className="settings-access-link">
+            <ShieldCheck size={20} aria-hidden />
+            <span>
+              <strong>{t("access.settingsLink")}</strong>
+              <br />
+              <span className="access-muted">{t("access.settingsLinkDescription")}</span>
+            </span>
+            <ChevronRight size={18} aria-hidden style={{ marginLeft: "auto" }} />
+          </Link>
+        </section>
+      ) : null}
     </PageContainer>
   );
 }

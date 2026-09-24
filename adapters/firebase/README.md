@@ -7,7 +7,7 @@ references `firebase-admin` (an optional peer dependency, loaded lazily).
 | -------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `firebase-services.ts`           | —                       | `loadFirebaseConfig()` + `createFirebaseServices()`; the narrow `FirestoreLike` / `FirebaseAuthLike` / `FirebaseStorageLike` seams. |
 | `firestore-repository.ts`        | `AsyncRepository<T>`    | one doc per entity; bridge to sync with `CachedRepository`.                                                                         |
-| `firebase-operator-directory.ts` | `OperatorDirectory`     | verify Firebase ID token → `role` / `allowedProjects` claims → `OperatorPrincipal`; anything unverifiable → `null`.                 |
+| `firebase-operator-directory.ts` | `OperatorDirectory`     | verify Firebase ID token → ACTIVE operator account (`operators/{uid}`) → `OperatorPrincipal`; anything else → `null` (AUTHZ-1).     |
 | `firestore-event-publisher.ts`   | `ControlEventPublisher` | fire-and-forget append to `control_events`; never throws.                                                                           |
 | `firebase-object-store.ts`       | `ObjectStore`           | Firebase Storage; hands out signed URLs, never credentials.                                                                         |
 

@@ -262,7 +262,7 @@ index is required; none was added.
 | SUBMIT       | `POST /api/commands/submit-execution-plan` `{ planId }`            | `submit_execution_plan` + project access                           |
 
 Authentication is the existing Firebase ID token → `FirebaseOperatorDirectory`
-(custom claims `role` + `allowedProjects`). A signed-in user without an AI
+(operator account `operators/{uid}`, see [access-control.md](access-control.md)). A signed-in user without an AI
 Workforce role (awaiting access) is 401 on every route. Server-side planning is
 authoritative: status, agents, environments, approvals sent by a client are
 ignored.

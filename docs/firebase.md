@@ -32,7 +32,7 @@ provide a real absolute VITE_API_BASE_URL for the separately deployed API.
 | Contract port           | Firebase adapter (`adapters/firebase/`) | Backs                                                                     |
 | ----------------------- | --------------------------------------- | ------------------------------------------------------------------------- |
 | `AsyncRepository<T>`    | `FirestoreRepository<T>`                | one document per entity, keyed by `entity.id`                             |
-| `OperatorDirectory`     | `FirebaseOperatorDirectory`             | verify ID token → `role` / `allowedProjects` claims → `OperatorPrincipal` |
+| `OperatorDirectory`     | `FirebaseOperatorDirectory`             | verify ID token → ACTIVE operator account → `OperatorPrincipal` (AUTHZ-1) |
 | `ControlEventPublisher` | `FirestoreEventPublisher`               | append-only `control_events` collection                                   |
 | `ObjectStore`           | `FirebaseObjectStore`                   | Firebase Storage bucket; UI gets signed URLs only                         |
 

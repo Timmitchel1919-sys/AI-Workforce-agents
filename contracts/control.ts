@@ -52,6 +52,7 @@ export const CONTROL_CAPABILITIES = [
   "create_execution_plan",
   "replan_execution_plan",
   "submit_execution_plan",
+  "manage_access",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -88,6 +89,7 @@ export const ROLE_CAPABILITIES: Record<
     "create_execution_plan",
     "replan_execution_plan",
     "submit_execution_plan",
+    "manage_access",
   ],
 };
 
@@ -158,6 +160,12 @@ export const CONTROL_COMMANDS = [
   "create_execution_plan",
   "replan_execution_plan",
   "submit_execution_plan",
+  "approve_access",
+  "reject_access",
+  "suspend_access",
+  "reactivate_access",
+  "revoke_access",
+  "change_operator_role",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 
@@ -614,6 +622,15 @@ export interface AgentCommandInput {
 }
 /** The body IS the planning request; it is validated and normalized server-side. */
 export type CreateExecutionPlanCommandInput = Record<string, unknown>;
+/** AUTHZ-1 access administration. `operatorId` is the Firebase UID. */
+export interface AccessCommandInput {
+  operatorId: string;
+  /** Required for approve / change role; one of the existing roles. */
+  role?: string;
+  /** `"*"` or registered project ids; defaults to the current value. */
+  allowedProjects?: unknown;
+  reason?: string;
+}
 export interface ExecutionPlanCommandInput {
   /** Plan SERIES id — the command acts on its current (latest) version. */
   planId: string;

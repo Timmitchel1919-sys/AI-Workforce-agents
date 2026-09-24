@@ -15,7 +15,9 @@ import {
   type User,
 } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
+import { apiRequest } from "../api/client";
 import type {
+  AccessDetails,
   AccessState,
   AuthContextValue,
   AuthUser,
@@ -39,8 +41,24 @@ const firebaseConfigured =
   Boolean(firebaseConfig.projectId) &&
   Boolean(firebaseConfig.appId);
 
-/** Mirrors `OPERATOR_ROLES` in contracts/control.ts (the backend's role claim values). */
+/** Mirrors `OPERATOR_ROLES` in contracts/control.ts. */
 const OPERATOR_ROLES = ["viewer", "operator", "admin"] as const;
+const NO_DETAILS: AccessDetails = { capabilities: [] };
+
+/** `GET /api/me/access` (contracts/access.ts `MyAccessView`). */
+interface MyAccessResponse {
+  authorized: boolean;
+  status: string;
+  role?: string;
+  capabilities?: readonly string[];
+}
+
+const STATUS_TO_ACCESS: Record<string, AccessState> = {
+  pending: "pending",
+  rejected: "rejected",
+  suspended: "suspended",
+  revoked: "revoked",
+};
 
 function getFirebaseAuth(): Auth {
   const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
@@ -62,11 +80,29 @@ function mapFirebaseUser(user: User): AuthUser {
   };
 }
 
-function accessFromClaims(claims: Record<string, unknown>): AccessState {
-  const role = claims.role;
-  return typeof role === "string" && (OPERATOR_ROLES as readonly string[]).includes(role)
-    ? "granted"
-    : "pending";
+/**
+ * Ask the Control Plane — the only authority — what this identity may do.
+ * Authentication (a Firebase token) alone never yields "granted".
+ */
+async function fetchAccess(token: string): Promise<{ access: AccessState; details: AccessDetails }> {
+  try {
+    const me = await apiRequest<MyAccessResponse>("/api/me/access", {
+      method: "GET",
+      accessToken: token,
+    });
+    if (me.authorized && me.status === "active") {
+      const role = (OPERATOR_ROLES as readonly string[]).includes(me.role ?? "")
+        ? (me.role as AccessDetails["role"])
+        : undefined;
+      return {
+        access: "granted",
+        details: { ...(role ? { role } : {}), capabilities: me.capabilities ?? [] },
+      };
+    }
+    return { access: STATUS_TO_ACCESS[me.status] ?? "pending", details: NO_DETAILS };
+  } catch {
+    return { access: "unavailable", details: NO_DETAILS };
+  }
 }
 
 interface AuthProviderProps {
@@ -77,6 +113,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [access, setAccess] = useState<AccessState>("none");
+  const [accessDetails, setAccessDetails] = useState<AccessDetails>(NO_DETAILS);
   const [loading, setLoading] = useState(firebaseConfigured);
 
   useEffect(() => {
@@ -91,23 +128,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(null);
         setAccessToken(null);
         setAccess("none");
+        setAccessDetails(NO_DETAILS);
         setLoading(false);
         return;
       }
 
-      const result = await firebaseUser.getIdTokenResult();
+      const token = await firebaseUser.getIdToken();
+      const result = await fetchAccess(token);
       setUser(mapFirebaseUser(firebaseUser));
-      setAccessToken(result.token);
-      setAccess(accessFromClaims(result.claims));
+      setAccessToken(token);
+      setAccess(result.access);
+      setAccessDetails(result.details);
       setLoading(false);
     });
   }, []);
 
   const readAccess = useCallback(async (firebaseUser: User, forceRefresh: boolean) => {
-    const result = await firebaseUser.getIdTokenResult(forceRefresh);
-    const next = accessFromClaims(result.claims);
-    setAccess(next);
-    return next;
+    const token = await firebaseUser.getIdToken(forceRefresh);
+    const result = await fetchAccess(token);
+    setAccessToken(token);
+    setAccess(result.access);
+    setAccessDetails(result.details);
+    return result.access;
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -117,6 +159,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       accessToken,
       configured: firebaseConfigured,
       access,
+      accessDetails,
       signIn: async (email, password, remember) => {
         const auth = requireAuth();
         try {
@@ -139,7 +182,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             await updateProfile(credential.user, { displayName: name });
             setUser(mapFirebaseUser(credential.user));
           }
-          // A new account carries no role claim; roles are assigned server-side.
+          // A new account is recorded as PENDING by the Control Plane; access
+          // is granted only by an administrator.
           return await readAccess(credential.user, false);
         } catch (error) {
           throw AuthFlowError.from(error);
@@ -160,6 +204,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const current = requireAuth().currentUser;
         if (!current) {
           setAccess("none");
+          setAccessDetails(NO_DETAILS);
           return "none";
         }
         try {
@@ -194,13 +239,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(null);
           setAccessToken(null);
           setAccess("none");
+          setAccessDetails(NO_DETAILS);
           return;
         }
 
         await firebaseSignOut(getFirebaseAuth());
       },
     }),
-    [user, loading, accessToken, access, readAccess],
+    [user, loading, accessToken, access, accessDetails, readAccess],
   );
 
   return (

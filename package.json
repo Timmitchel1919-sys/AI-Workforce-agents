@@ -14,6 +14,7 @@
     "functions:build": "npm run build",
     "functions:manifest": "node scripts/generate-functions-manifest.mjs",
     "functions:prepare": "npm run functions:build && npm run functions:manifest",
+    "admin:bootstrap": "npm run build && node scripts/bootstrap-initial-admin.mjs",
     "functions:test": "npm run build && node --test dist/tests/firebase-function-adapter.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",

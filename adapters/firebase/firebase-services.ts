@@ -90,8 +90,18 @@ export interface DecodedTokenLike {
   [claim: string]: unknown;
 }
 
+export interface FirebaseUserRecordLike {
+  uid: string;
+  email?: string;
+  displayName?: string;
+  emailVerified: boolean;
+  disabled: boolean;
+}
+
 export interface FirebaseAuthLike {
   verifyIdToken(idToken: string): Promise<DecodedTokenLike>;
+  /** Admin SDK user lookup — used only by the trusted bootstrap tool. */
+  getUser?(uid: string): Promise<FirebaseUserRecordLike>;
 }
 
 export interface StorageFileLike {

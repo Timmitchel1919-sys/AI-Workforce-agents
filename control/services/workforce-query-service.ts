@@ -12,6 +12,7 @@ import {
   type AgentView,
   type DashboardSnapshot,
   type ExecutionPlanQuery,
+  type OperatorAccountView,
   type ExecutionPlanSummaryView,
   type ExecutionPlanView,
   type HealthStatus,
@@ -532,6 +533,26 @@ export class WorkforceQueryService {
       .filter((plan) => plan.version === 1)[0];
     const current = newestSeries && planning.latest(newestSeries.planId);
     return current ? executionPlanView(current, true) : null;
+  }
+
+  /* -------------------------------------------------------------- */
+  /* operator access (AUTHZ-1)                                     */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Every operator account for Users & Access. Administrators only
+   * (`manage_access`) — a PermissionDeniedError maps to 403.
+   */
+  async getOperatorAccounts(
+    principal: OperatorPrincipal,
+  ): Promise<OperatorAccountView[] | undefined> {
+    this.authorizeView(principal);
+    if (!operatorCan(principal, "manage_access")) {
+      throw new PermissionDeniedError(
+        "managing access requires the administrator role",
+      );
+    }
+    return this.ctx.access?.listAccounts(principal);
   }
 
   /* -------------------------------------------------------------- */

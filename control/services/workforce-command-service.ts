@@ -16,6 +16,7 @@
  * can be traced through the command, the core operation, and the audit log.
  */
 import {
+  type AccessCommandInput,
   type AgentCommandInput,
   type ApprovalCommandInput,
   type CommandOptions,
@@ -34,6 +35,7 @@ import {
   type WorkflowCommandInput,
   DEFAULT_RETRY_POLICY,
   NotFoundError,
+  PermissionDeniedError,
   StateTransitionError,
   ValidationError,
   operatorCan,
@@ -44,6 +46,7 @@ import {
 import {
   extractFailureReason,
   now,
+  type AccessAction,
   type ExecutionPlanningService,
 } from "../../core/index.js";
 import { type ControlPlaneContext } from "../context.js";
@@ -600,6 +603,165 @@ export class WorkforceCommandService {
         resourceId,
         message(error),
         details,
+        run,
+        kind,
+      );
+    }
+  }
+
+  /* -------------------------------------------------------------- */
+  /* operator access (AUTHZ-1) — administrators only               */
+  /* -------------------------------------------------------------- */
+
+  async approveAccess(
+    principal: OperatorPrincipal,
+    input: AccessCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    return this.runAccess(
+      principal,
+      "approve_access",
+      "approve",
+      input,
+      options,
+    );
+  }
+
+  async rejectAccess(
+    principal: OperatorPrincipal,
+    input: AccessCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    return this.runAccess(principal, "reject_access", "reject", input, options);
+  }
+
+  async suspendAccess(
+    principal: OperatorPrincipal,
+    input: AccessCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    return this.runAccess(
+      principal,
+      "suspend_access",
+      "suspend",
+      input,
+      options,
+    );
+  }
+
+  async reactivateAccess(
+    principal: OperatorPrincipal,
+    input: AccessCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    return this.runAccess(
+      principal,
+      "reactivate_access",
+      "reactivate",
+      input,
+      options,
+    );
+  }
+
+  async revokeAccess(
+    principal: OperatorPrincipal,
+    input: AccessCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    return this.runAccess(principal, "revoke_access", "revoke", input, options);
+  }
+
+  async changeOperatorRole(
+    principal: OperatorPrincipal,
+    input: AccessCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    return this.runAccess(
+      principal,
+      "change_operator_role",
+      "change_role",
+      input,
+      options,
+    );
+  }
+
+  /**
+   * The capability is checked here AND inside AccessService; domain errors map
+   * onto the existing control outcomes (denied → 403, not_found → 404,
+   * invalid_state → 409, invalid_request → 400).
+   */
+  private async runAccess(
+    principal: OperatorPrincipal,
+    command: ControlCommand,
+    action: AccessAction,
+    input: AccessCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    const operatorId =
+      typeof input?.operatorId === "string" ? input.operatorId : undefined;
+    if (!operatorCan(principal, "manage_access")) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        operatorId,
+        `role "${principal.role}" may not manage access`,
+        {},
+        run,
+      );
+    }
+    const access = this.ctx.access;
+    if (!access) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        operatorId,
+        "access management is not configured",
+        {},
+        run,
+        "invalid_state",
+      );
+    }
+    try {
+      const view = await access.apply(
+        action,
+        { principal, correlationId: run.correlationId },
+        {
+          operatorId: operatorId ?? "",
+          role: input?.role,
+          allowedProjects: input?.allowedProjects,
+          reason: input?.reason,
+        },
+      );
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        view.operatorId,
+        `operator access is now ${view.status}`,
+        { status: view.status, role: view.role },
+        run,
+      );
+    } catch (error) {
+      const denied = error instanceof PermissionDeniedError;
+      const kind: ControlErrorKind = denied
+        ? "forbidden"
+        : error instanceof NotFoundError
+          ? "not_found"
+          : error instanceof StateTransitionError
+            ? "invalid_state"
+            : error instanceof ValidationError
+              ? "invalid_request"
+              : "command_failure";
+      return this.audited(
+        principal,
+        command,
+        denied ? "denied" : "rejected",
+        operatorId,
+        message(error),
+        {},
         run,
         kind,
       );
