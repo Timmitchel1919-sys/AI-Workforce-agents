@@ -277,6 +277,7 @@ export const AUDIT_EVENT_TYPES = [
   "environment_discovered",
   "environment_refreshed",
   "environment_unavailable",
+  "execution_plan_event",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -662,3 +663,4 @@ export * from "./qa.js";
 export * from "./money-mind.js";
 export * from "./control.js";
 export * from "./environments.js";
+export * from "./planning.js";

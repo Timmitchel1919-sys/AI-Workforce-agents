@@ -10,6 +10,7 @@ import {
   type Approval,
   type AuditEvent,
   type EnvironmentInstance,
+  type ExecutionPlan,
   type Handoff,
   type HostInstance,
   type Task,
@@ -40,6 +41,8 @@ import {
   TaskSystem,
   WorkflowEngine,
   WorkflowSystem,
+  ExecutionPlanningService,
+  ExecutionPlanRepository,
 } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi, type ApiHandler } from "./http-api.js";
@@ -102,6 +105,10 @@ export async function createProductionControlPlaneRuntime(
   const hostRepository = repositories.repository<HostInstance>("hosts");
   const environmentInstanceRepository =
     repositories.repository<EnvironmentInstance>("environment_instances");
+  // Execution plans (EO-3.1) — written only by the planning service through
+  // the Control Plane. Never seeded: production starts with no plans.
+  const executionPlanRepository =
+    repositories.repository<ExecutionPlan>("execution_plans");
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
@@ -154,6 +161,18 @@ export async function createProductionControlPlaneRuntime(
     permissions: bootstrap.permissions,
     toolRegistry: bootstrap.tools,
   });
+  // Planning uses the REAL registries. Production declares no model
+  // capability profiles yet, so model requirements are reported as missing
+  // (MISSING_MODEL_CAPABILITY) rather than assumed.
+  const planning = new ExecutionPlanningService({
+    environments: environmentRegistry,
+    agents: bootstrap.agents,
+    audit,
+    approvals,
+    repository: new ExecutionPlanRepository(executionPlanRepository),
+    isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+    projectExists: (projectId) => bootstrap.projects.has(projectId),
+  });
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
     tasks,
@@ -166,6 +185,7 @@ export async function createProductionControlPlaneRuntime(
     agentOps,
     workflowControl,
     environments: environmentRegistry,
+    planning,
     orchestrator,
     workflowEngine,
     events: new FirestoreEventPublisher(

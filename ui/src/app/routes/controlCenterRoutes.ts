@@ -9,3 +9,5 @@ export { default as WorkflowsPage } from "../../pages/Workflows/WorkflowsPage";
 export { default as WorkflowDetailPage } from "../../pages/Workflows/WorkflowDetailPage";
 export { default as DesignSystemPage } from "../../pages/DesignSystem/DesignSystemPage";
 export { default as SettingsPage } from "../../pages/Settings/SettingsPage";
+export { default as ProjectsPage } from "../../pages/Projects/ProjectsPage";
+export { default as ExecutionPlanPage } from "../../pages/Projects/ExecutionPlanPage";

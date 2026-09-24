@@ -194,6 +194,10 @@ Three roles, deny-by-default, no RBAC engine
 | `operator` | `view` + `approve` `reject` `cancel_task` `retry_task` `pause_workflow` `resume_workflow` `cancel_workflow` |
 | `admin`    | operator + `disable_agent` `enable_agent`                                                                   |
 
+Operators and admins also hold the EO-3.1 planning capabilities
+`create_execution_plan`, `replan_execution_plan` and `submit_execution_plan`
+(planning only — see [execution-planning.md](execution-planning.md)).
+
 Authorization is enforced **inside the services** from the `OperatorPrincipal`
 argument — `validateOperatorPrincipal` then `operatorCan` /
 `operatorCanAccessProject` on every query and command. The UI is **not** a trust

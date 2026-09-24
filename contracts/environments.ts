@@ -75,6 +75,20 @@ export function versionAtLeast(
   );
 }
 
+/**
+ * Total order on major/minor/patch; an absent version sorts lowest.
+ * Returns a negative number when `a < b`, positive when `a > b`, else 0.
+ */
+export function compareVersions(
+  a: VersionInfo | undefined,
+  b: VersionInfo | undefined,
+): number {
+  if (!a && !b) return 0;
+  if (!a) return -1;
+  if (!b) return 1;
+  return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
+}
+
 /* ------------------------------------------------------------------ */
 /* Operating system                                                   */
 /* ------------------------------------------------------------------ */
@@ -255,9 +269,20 @@ export interface ToolchainDescriptor {
   installation?: string;
 }
 
+/**
+ * A named component a toolchain must carry (an SDK, a package manager, an
+ * engine module, a target-platform package). Matched against the detected
+ * `ToolchainDescriptor.componentVersions` keys — never inferred.
+ */
+export interface ToolchainComponentRequirement {
+  name: string;
+  minimum?: VersionInfo;
+}
+
 export interface ToolchainRequirement {
   kind: ToolchainKind;
   minimum?: VersionInfo;
+  components?: readonly ToolchainComponentRequirement[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -410,6 +435,58 @@ export interface EnvironmentRequirement {
   environmentType?: EnvironmentType;
   requiredCapabilities?: readonly CapabilityId[];
   toolchains?: readonly ToolchainRequirement[];
+  /** Host platform guard, matched against the instance's host OS. */
+  os?: { os?: OsName; architecture?: Architecture };
+  /** Lowest acceptable instance trust level. Absent = any. */
+  minimumTrust?: TrustLevel;
+}
+
+/** Machine-readable reasons an instance was rejected for a requirement. */
+export const ENVIRONMENT_REJECTION_REASONS = [
+  "instance_unavailable",
+  "host_unavailable",
+  "host_unknown",
+  "descriptor_mismatch",
+  "environment_type_mismatch",
+  "os_mismatch",
+  "architecture_mismatch",
+  "trust_too_low",
+  "missing_capability",
+  "missing_toolchain",
+  "toolchain_version_too_low",
+  "missing_toolchain_component",
+  "toolchain_component_version_too_low",
+] as const;
+export type EnvironmentRejectionReason =
+  (typeof ENVIRONMENT_REJECTION_REASONS)[number];
+
+export interface EnvironmentCandidateEvidence {
+  instanceId: string;
+  hostId: string;
+  descriptorId: string;
+  environmentType: EnvironmentType;
+  trustLevel: TrustLevel;
+  eligible: boolean;
+  reasonCodes: readonly EnvironmentRejectionReason[];
+  matchedCapabilities: readonly CapabilityId[];
+  missingCapabilities: readonly CapabilityId[];
+  /** `kind` or `kind:component` labels that were not satisfied. */
+  missingToolchains: readonly string[];
+}
+
+/**
+ * Explainable, deterministic evaluation of a requirement against every
+ * registered instance. `selectedInstanceId` is set only when an eligible,
+ * usable instance exists — a descriptor alone never selects anything.
+ */
+export interface EnvironmentMatchEvidence {
+  outcome: EnvironmentRoutingOutcome["outcome"];
+  selectedInstanceId?: string;
+  selectedHostId?: string;
+  /** Descriptor that declares support (may exist with no usable instance). */
+  supportingDescriptorId?: string;
+  candidates: readonly EnvironmentCandidateEvidence[];
+  tieBreak: readonly string[];
 }
 
 export type EnvironmentRoutingOutcome =
@@ -471,6 +548,12 @@ export function validateToolchainRequirement(
 ): void {
   if (!TOOLCHAIN_KINDS.includes(requirement.kind)) {
     throw new ValidationError(`${field}.kind is not a known toolchain kind`);
+  }
+  if (requirement.components !== undefined) {
+    requireArray(requirement.components, `${field}.components`);
+    requirement.components.forEach((component, index) =>
+      requireText(component?.name, `${field}.components[${index}].name`),
+    );
   }
 }
 
@@ -690,4 +773,26 @@ export function validateEnvironmentRequirement(
   requirement.toolchains?.forEach((t, index) =>
     validateToolchainRequirement(t, `requirement.toolchains[${index}]`),
   );
+  if (requirement.os !== undefined) {
+    if (
+      requirement.os.os !== undefined &&
+      !OS_NAMES.includes(requirement.os.os)
+    ) {
+      throw new ValidationError("environment requirement os is not known");
+    }
+    if (
+      requirement.os.architecture !== undefined &&
+      !ARCHITECTURES.includes(requirement.os.architecture)
+    ) {
+      throw new ValidationError(
+        "environment requirement architecture is not known",
+      );
+    }
+  }
+  if (
+    requirement.minimumTrust !== undefined &&
+    !TRUST_LEVELS.includes(requirement.minimumTrust)
+  ) {
+    throw new ValidationError("environment requirement trust is not known");
+  }
 }

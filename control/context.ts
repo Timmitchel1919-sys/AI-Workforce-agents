@@ -8,6 +8,7 @@ import {
   ApprovalSystem,
   AuditLog,
   EnvironmentRegistry,
+  ExecutionPlanningService,
   Orchestrator,
   PermissionSystem,
   ProjectRegistry,
@@ -37,6 +38,12 @@ export interface ControlPlaneContext {
    * when absent every environment query returns an empty result.
    */
   environments?: EnvironmentRegistry;
+  /**
+   * Execution planning (EO-3.1). Optional: when absent every plan query
+   * returns "not found" and plan commands are rejected as invalid state.
+   * Planning never executes anything.
+   */
+  planning?: ExecutionPlanningService;
   /**
    * Needed by command enactment (approve → resume). Structural: only these
    * methods are used, so a test can pass a stub.

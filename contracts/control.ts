@@ -23,6 +23,13 @@ import {
   type Entity,
   type Repository,
 } from "./index.js";
+import type {
+  CredentialReference,
+  DeploymentRequirement,
+  ExecutionPlan,
+  PlanApprovalState,
+  PlanStatus,
+} from "./planning.js";
 
 /* ------------------------------------------------------------------ */
 /* Operator authorization                                             */
@@ -42,6 +49,9 @@ export const CONTROL_CAPABILITIES = [
   "cancel_workflow",
   "disable_agent",
   "enable_agent",
+  "create_execution_plan",
+  "replan_execution_plan",
+  "submit_execution_plan",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -60,6 +70,9 @@ export const ROLE_CAPABILITIES: Record<
     "pause_workflow",
     "resume_workflow",
     "cancel_workflow",
+    "create_execution_plan",
+    "replan_execution_plan",
+    "submit_execution_plan",
   ],
   admin: [
     "view",
@@ -72,6 +85,9 @@ export const ROLE_CAPABILITIES: Record<
     "cancel_workflow",
     "disable_agent",
     "enable_agent",
+    "create_execution_plan",
+    "replan_execution_plan",
+    "submit_execution_plan",
   ],
 };
 
@@ -139,6 +155,9 @@ export const CONTROL_COMMANDS = [
   "cancel_workflow",
   "disable_agent",
   "enable_agent",
+  "create_execution_plan",
+  "replan_execution_plan",
+  "submit_execution_plan",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 
@@ -592,6 +611,52 @@ export interface WorkflowCommandInput {
 export interface AgentCommandInput {
   agentId: string;
   reason?: string;
+}
+/** The body IS the planning request; it is validated and normalized server-side. */
+export type CreateExecutionPlanCommandInput = Record<string, unknown>;
+export interface ExecutionPlanCommandInput {
+  /** Plan SERIES id — the command acts on its current (latest) version. */
+  planId: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Execution plan views                                               */
+/* ------------------------------------------------------------------ */
+
+export interface ExecutionPlanSummaryView {
+  id: string;
+  planId: string;
+  version: number;
+  projectId: string;
+  title: string;
+  status: PlanStatus;
+  /** True for the highest version of its series. */
+  current: boolean;
+  blockerCodes: readonly string[];
+  environmentCount: number;
+  approvalState: PlanApprovalState["state"];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  supersededBy?: string;
+}
+
+/**
+ * The full plan for an authorized operator. Credential references are reduced
+ * to their kind — the reference itself stays server-side — and nothing
+ * executable is exposed (`execution.available` is always false in EO-3.1).
+ */
+export interface ExecutionPlanView extends Omit<ExecutionPlan, "deployment"> {
+  current: boolean;
+  deployment: readonly (Omit<DeploymentRequirement, "credentialRef"> & {
+    credentialRef?: { kind: CredentialReference["kind"] };
+  })[];
+  execution: { available: false; reason: string };
+}
+
+export interface ExecutionPlanQuery {
+  limit?: number;
+  cursor?: string;
 }
 
 export function requireId(value: unknown, field: string): string {
