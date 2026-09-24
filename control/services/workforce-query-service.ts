@@ -6,6 +6,7 @@
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
 import {
+  TOOL_WILDCARD,
   type Approval,
   type ApprovalQuery,
   type ApprovalView,
@@ -426,7 +427,20 @@ export class WorkforceQueryService {
   getTools(principal: OperatorPrincipal): ToolView[] {
     this.authorizeView(principal);
     const audit = this.ctx.audit.list();
-    return this.ctx.tools.list().map((tool) => deriveToolView(tool, audit));
+    return this.ctx.tools.list().map((tool) => {
+      const view = deriveToolView(tool, audit);
+      // Project isolation: never reveal project ids outside the operator's scope.
+      return principal.allowedProjects === "*"
+        ? view
+        : {
+            ...view,
+            allowedProjects: view.allowedProjects.filter(
+              (projectId) =>
+                projectId === TOOL_WILDCARD ||
+                this.canSeeProject(principal, projectId),
+            ),
+          };
+    });
   }
 
   getTool(principal: OperatorPrincipal, toolId: string): ToolView | undefined {

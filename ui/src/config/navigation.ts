@@ -11,6 +11,7 @@ export type NavigationIconId =
   | "approvals"
   | "audit-log"
   | "knowledge"
+  | "infrastructure"
   | "settings";
 
 export type NavigationBadge = number | string;
@@ -31,7 +32,7 @@ export const navigationSections: Array<{ id: NavigationSectionId; labelKey: Mess
   { id: "governance", labelKey: "nav.sections.governance" },
 ];
 
-// Only real routes — no placeholders for modules that do not exist yet (e.g. Environments).
+// Only real routes — no placeholders for modules that do not exist yet.
 export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.overview", route: "/overview", icon: "overview", section: "main" },
   { labelKey: "nav.agents", route: "/agents", icon: "agents", section: "main" },
@@ -39,6 +40,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.workflows", route: "/workflows", icon: "workflows", section: "main" },
   { labelKey: "nav.projects", route: "/projects", icon: "projects", section: "workspace" },
   { labelKey: "nav.approvals", route: "/approvals", icon: "approvals", section: "workspace" },
+  { labelKey: "nav.infrastructure", route: "/infrastructure", icon: "infrastructure", section: "workspace" },
   { labelKey: "nav.knowledge", route: "/knowledge", icon: "knowledge", section: "intelligence" },
   { labelKey: "nav.auditLog", route: "/audit-log", icon: "audit-log", section: "governance" },
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },

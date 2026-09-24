@@ -9,6 +9,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
+  Server,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   approvals: ClipboardCheck,
   "audit-log": ScrollText,
   knowledge: BookOpen,
+  infrastructure: Server,
   settings: Settings,
 };
 

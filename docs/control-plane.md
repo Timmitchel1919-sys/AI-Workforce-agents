@@ -405,3 +405,16 @@ origin (`VITE_API_BASE_URL=`) and maps the live clients to the API routes
 
 For local tests, run `npm run functions:test`; these use a controlled runtime
 factory and never call OpenAI or a production Firebase service.
+
+## Infrastructure view (UI)
+
+The Control Center's **Infrastructure** module (`/infrastructure`,
+`/infrastructure/hosts`, `/infrastructure/tools`) is a read-only view over
+existing routes: `GET /api/environments/descriptors` (supported environment
+types), `GET /api/environments/instances` (detected installations),
+`GET /api/hosts` and `GET /api/tools`. Nothing is seeded or simulated: with no
+discovery running, hosts and installations are shown as empty.
+
+`GET /api/tools` is project-scoped per operator: a tool's `allowedProjects`
+only lists projects the caller may access (the `*` wildcard is kept), so the
+registry never reveals project ids outside the operator's scope.

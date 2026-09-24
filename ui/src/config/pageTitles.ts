@@ -9,6 +9,7 @@ export const pageTitleKeys: Record<string, MessageKey> = {
   "/approvals": "nav.approvals",
   "/audit-log": "nav.auditLog",
   "/knowledge": "nav.knowledge",
+  "/infrastructure": "nav.infrastructure",
   "/settings": "nav.settings",
   "/profile": "profile.title",
   "/design-system": "nav.designSystem",

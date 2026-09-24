@@ -403,6 +403,15 @@ test("query: tools view exposes policy metadata but no credentials", async () =>
   assert.ok(!JSON.stringify(tools).toLowerCase().includes("apikey"));
 });
 
+test("query: tools view never reveals project ids outside the operator's scope", async () => {
+  const h = harness();
+  const all = h.query.getTools(VIEWER);
+  assert.ok(all.some((t) => t.allowedProjects.includes(PROJECT)));
+  const scoped = h.query.getTools(SCOPED);
+  assert.equal(scoped.length, all.length);
+  assert.ok(scoped.every((t) => !t.allowedProjects.includes(PROJECT)));
+});
+
 test("query: audit events filter + paginate + redact", async () => {
   const h = harness();
   await seedTask(h);

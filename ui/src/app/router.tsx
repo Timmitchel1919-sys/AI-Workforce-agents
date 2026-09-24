@@ -29,6 +29,7 @@ const WorkflowDetailPage = fromChunk(loadControlCenterRoutes, "WorkflowDetailPag
 const DesignSystemPage = fromChunk(loadControlCenterRoutes, "DesignSystemPage");
 const SettingsPage = fromChunk(loadControlCenterRoutes, "SettingsPage");
 const ProfilePage = fromChunk(loadControlCenterRoutes, "ProfilePage");
+const InfrastructurePage = fromChunk(loadControlCenterRoutes, "InfrastructurePage");
 const UsersAccessPage = fromChunk(loadControlCenterRoutes, "UsersAccessPage");
 const ApprovalsPage = fromChunk(loadControlCenterRoutes, "ApprovalsPage");
 const AuditLogPage = fromChunk(loadControlCenterRoutes, "AuditLogPage");
@@ -100,6 +101,9 @@ export const router = createBrowserRouter([
       },
       { path: "approvals", element: withSuspense(<ApprovalsPage />) },
       { path: "audit-log", element: withSuspense(<AuditLogPage />) },
+      { path: "infrastructure", element: withSuspense(<InfrastructurePage />) },
+      { path: "infrastructure/hosts", element: withSuspense(<InfrastructurePage />) },
+      { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },
       { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
