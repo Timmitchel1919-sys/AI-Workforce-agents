@@ -10,7 +10,6 @@ import {
   type Approval,
   type AuditEvent,
   type EnvironmentInstance,
-  type ExecutionPlan,
   type Handoff,
   type HostInstance,
   type Task,
@@ -19,6 +18,8 @@ import {
 } from "../contracts/index.js";
 import {
   FirebaseOperatorDirectory,
+  FirestoreExecutionPlanStore,
+  isTransactionalFirestore,
   FirestoreEventPublisher,
   type FirebaseServices,
   createFirebaseServices,
@@ -42,7 +43,7 @@ import {
   WorkflowEngine,
   WorkflowSystem,
   ExecutionPlanningService,
-  ExecutionPlanRepository,
+  ValidationError,
 } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi, type ApiHandler } from "./http-api.js";
@@ -105,10 +106,6 @@ export async function createProductionControlPlaneRuntime(
   const hostRepository = repositories.repository<HostInstance>("hosts");
   const environmentInstanceRepository =
     repositories.repository<EnvironmentInstance>("environment_instances");
-  // Execution plans (EO-3.1) — written only by the planning service through
-  // the Control Plane. Never seeded: production starts with no plans.
-  const executionPlanRepository =
-    repositories.repository<ExecutionPlan>("execution_plans");
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
@@ -164,12 +161,23 @@ export async function createProductionControlPlaneRuntime(
   // Planning uses the REAL registries. Production declares no model
   // capability profiles yet, so model requirements are reported as missing
   // (MISSING_MODEL_CAPABILITY) rather than assumed.
+  const firestore = services.firestore;
+  if (!isTransactionalFirestore(firestore)) {
+    throw new ValidationError(
+      "execution planning requires a Firestore client with transactions",
+    );
+  }
+  const transactionalFirestore = firestore;
   const planning = new ExecutionPlanningService({
     environments: environmentRegistry,
     agents: bootstrap.agents,
     audit,
     approvals,
-    repository: new ExecutionPlanRepository(executionPlanRepository),
+    // Authoritative + transactional (EO-3.2): no write-through cache, so
+    // concurrent instances cannot fork or overwrite plan history.
+    store: new FirestoreExecutionPlanStore(transactionalFirestore, {
+      collectionPrefix: options.collectionPrefix,
+    }),
     isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
     projectExists: (projectId) => bootstrap.projects.has(projectId),
   });

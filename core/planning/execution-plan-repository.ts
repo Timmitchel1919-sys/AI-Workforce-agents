@@ -1,28 +1,32 @@
 /**
- * ExecutionPlanRepository — plan persistence over the provider-neutral
- * `Repository<ExecutionPlan>` port (in-memory by default; Firestore through
- * `FirebaseRepositoryProvider` → `CachedRepository` in production). The
- * planning domain never imports Firestore.
+ * ExecutionPlanRepository — the in-process view of execution plans plus the
+ * domain rules every revision must satisfy.
  *
- * Versions are separate documents (`${planId}@v${version}`) and are never
- * overwritten with different content: after creation a document may only
- * change its lifecycle fields (status, approval, blockers on rejection,
- * supersede links, updatedAt), and only along an allowed transition.
+ * Since EO-3.2 the AUTHORITATIVE copy lives in an `ExecutionPlanStore`
+ * (Firestore in production) and every write is an atomic store commit made by
+ * `ExecutionPlanningService`. This repository holds validated plans loaded
+ * from — or just committed to — that store, and enforces:
+ *
+ *   - versions are separate documents (`${planId}@v${version}`), numbered
+ *     1, 2, 3 … without gaps, never overwritten with different content;
+ *   - after creation only lifecycle fields (status, approval, blockers on
+ *     rejection, supersededBy, updatedAt) may change, along allowed
+ *     transitions only;
+ *   - the CURRENT revision is the highest version number — never a client
+ *     timestamp.
+ *
+ * It never imports Firestore.
  */
 import {
   canTransitionPlan,
   NotFoundError,
   StateTransitionError,
   ValidationError,
-  validateExecutionPlan,
   type ExecutionPlan,
   type Repository,
 } from "../../contracts/index.js";
 import { InMemoryRepository } from "../persistence/in-memory-repository.js";
-import { assertNoSecrets } from "./plan-secret-guard.js";
-
-/** Firestore documents are capped at 1 MiB; stay well below. */
-export const MAX_PLAN_BYTES = 200_000;
+import { serializeExecutionPlan } from "./execution-plan-serialization.js";
 
 const LIFECYCLE_FIELDS = new Set([
   "status",
@@ -37,9 +41,13 @@ export class ExecutionPlanRepository {
     private readonly repo: Repository<ExecutionPlan> = new InMemoryRepository<ExecutionPlan>(),
   ) {}
 
-  /** Store a NEW version. Refuses to overwrite an existing document. */
-  create(plan: ExecutionPlan): ExecutionPlan {
-    this.assertStorable(plan);
+  /* -------------------------------------------------------------- */
+  /* Rules                                                         */
+  /* -------------------------------------------------------------- */
+
+  /** A NEW version must be storable and continue its series without gaps. */
+  assertNewVersion(plan: ExecutionPlan): void {
+    serializeExecutionPlan(plan);
     if (this.repo.findById(plan.id)) {
       throw new ValidationError(`execution plan ${plan.id} already exists`);
     }
@@ -52,13 +60,13 @@ export class ExecutionPlanRepository {
     if (!latest && plan.version !== 1) {
       throw new ValidationError("a new execution plan starts at version 1");
     }
-    this.repo.upsert(plan);
-    return plan;
   }
 
-  /** Apply a lifecycle change to an existing version. */
-  transition(next: ExecutionPlan): ExecutionPlan {
-    const current = this.require(next.id);
+  /** A lifecycle change may only touch lifecycle fields, along the lifecycle. */
+  assertTransition(current: ExecutionPlan, next: ExecutionPlan): void {
+    if (current.id !== next.id) {
+      throw new ValidationError("a transition must target the same version");
+    }
     for (const key of Object.keys({
       ...current,
       ...next,
@@ -78,10 +86,35 @@ export class ExecutionPlanRepository {
         `execution plan ${next.id} cannot move from ${current.status} to ${next.status}`,
       );
     }
-    this.assertStorable(next);
+    serializeExecutionPlan(next);
+  }
+
+  /* -------------------------------------------------------------- */
+  /* Local writes (after a successful store commit, or in tests)   */
+  /* -------------------------------------------------------------- */
+
+  /** Cache a plan that is known to be valid and committed. */
+  load(plan: ExecutionPlan): void {
+    this.repo.upsert(plan);
+  }
+
+  /** Check + cache a new version (local-only use; production commits first). */
+  create(plan: ExecutionPlan): ExecutionPlan {
+    this.assertNewVersion(plan);
+    this.repo.upsert(plan);
+    return plan;
+  }
+
+  /** Check + cache a lifecycle change (local-only use). */
+  transition(next: ExecutionPlan): ExecutionPlan {
+    this.assertTransition(this.require(next.id), next);
     this.repo.upsert(next);
     return next;
   }
+
+  /* -------------------------------------------------------------- */
+  /* Reads                                                         */
+  /* -------------------------------------------------------------- */
 
   get(id: string): ExecutionPlan | undefined {
     return this.repo.findById(id);
@@ -101,14 +134,14 @@ export class ExecutionPlanRepository {
       .sort((a, b) => b.version - a.version);
   }
 
-  /** Current revision = highest version number (never a client timestamp). */
+  /** Current revision = highest version number. */
   latestVersion(planId: string): ExecutionPlan | undefined {
     return this.versions(planId)[0];
   }
 
   /**
-   * All plan documents of a project: newest series first (by creation of its
-   * first version), versions descending, id as final tie-break.
+   * All plan documents of a project in a deterministic order: newest first
+   * by `createdAt`, then version descending, then id descending.
    */
   listByProject(projectId: string): ExecutionPlan[] {
     return this.repo
@@ -120,16 +153,5 @@ export class ExecutionPlanRepository {
           b.version - a.version ||
           b.id.localeCompare(a.id),
       );
-  }
-
-  private assertStorable(plan: ExecutionPlan): void {
-    validateExecutionPlan(plan);
-    assertNoSecrets(plan);
-    const size = JSON.stringify(plan).length;
-    if (size > MAX_PLAN_BYTES) {
-      throw new ValidationError(
-        `execution plan is too large to store (${size} bytes)`,
-      );
-    }
   }
 }

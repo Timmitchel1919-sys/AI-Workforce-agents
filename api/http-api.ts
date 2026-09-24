@@ -263,17 +263,33 @@ export function createControlPlaneApi(
             res,
             200,
             notNull(
-              query.getExecutionPlans(principal, id!, parsePageQuery(params)),
+              await query.getExecutionPlans(
+                principal,
+                id!,
+                parsePageQuery(params),
+              ),
             ),
             correlationId,
           );
+        }
+        // `current` is reserved: plan ids are `plan_<uuid>`.
+        if (
+          segs[2] === "execution-plans" &&
+          segs.length === 4 &&
+          segs[3] === "current"
+        ) {
+          const current = await query.getCurrentExecutionPlan(principal, id!);
+          // undefined → 404 (unknown/foreign project); null → no plan yet.
+          if (current === undefined)
+            throw new NotFoundError("resource not found");
+          return send(res, 200, { plan: current }, correlationId);
         }
         if (segs[2] === "execution-plans" && segs.length === 4) {
           return send(
             res,
             200,
             notNull(
-              query.getExecutionPlan(
+              await query.getExecutionPlan(
                 principal,
                 id!,
                 segs[3]!,

@@ -459,14 +459,16 @@ export class WorkforceQueryService {
    * shared page-size bounds. `undefined` when the project does not exist or
    * the operator may not access it (→ 404, no existence leak).
    */
-  getExecutionPlans(
+  async getExecutionPlans(
     principal: OperatorPrincipal,
     projectId: string,
     query: ExecutionPlanQuery = {},
-  ): PageResult<ExecutionPlanSummaryView> | undefined {
+  ): Promise<PageResult<ExecutionPlanSummaryView> | undefined> {
     this.authorizeView(principal);
     if (!this.canSeeProject(principal, projectId)) return undefined;
     const planning = this.ctx.planning;
+    // Fresh from the authoritative store, scoped to this project only.
+    if (planning) await planning.refreshProject(projectId);
     const plans = planning ? planning.listByProject(projectId) : [];
     const latest = new Map<string, number>();
     for (const plan of plans) {
@@ -492,22 +494,44 @@ export class WorkforceQueryService {
    * specific `version`. Plans of other projects are indistinguishable from
    * missing ones.
    */
-  getExecutionPlan(
+  async getExecutionPlan(
     principal: OperatorPrincipal,
     projectId: string,
     planId: string,
     version?: number,
-  ): ExecutionPlanView | undefined {
+  ): Promise<ExecutionPlanView | undefined> {
     this.authorizeView(principal);
     if (!this.canSeeProject(principal, projectId)) return undefined;
     const planning = this.ctx.planning;
     if (!planning) return undefined;
+    await planning.refreshProject(projectId);
     const latest = planning.latest(planId);
     if (!latest || latest.projectId !== projectId) return undefined;
     const plan =
       version === undefined ? latest : planning.get(`${planId}@v${version}`);
     if (!plan || plan.projectId !== projectId) return undefined;
     return executionPlanView(plan, plan.version === latest.version);
+  }
+
+  /**
+   * The project's current plan: the current (highest) version of the most
+   * recently created plan series, or `null` when the project has no plan.
+   * `undefined` (→ 404) when the project is unknown or not accessible.
+   */
+  async getCurrentExecutionPlan(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ): Promise<ExecutionPlanView | null | undefined> {
+    this.authorizeView(principal);
+    if (!this.canSeeProject(principal, projectId)) return undefined;
+    const planning = this.ctx.planning;
+    if (!planning) return null;
+    await planning.refreshProject(projectId);
+    const newestSeries = planning
+      .listByProject(projectId)
+      .filter((plan) => plan.version === 1)[0];
+    const current = newestSeries && planning.latest(newestSeries.planId);
+    return current ? executionPlanView(current, true) : null;
   }
 
   /* -------------------------------------------------------------- */

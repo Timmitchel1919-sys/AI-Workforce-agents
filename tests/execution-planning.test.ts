@@ -49,13 +49,13 @@ function blockerCodes(plan: ExecutionPlan): string[] {
 /* React web                                                          */
 /* ------------------------------------------------------------------ */
 
-test("react web: requirements, environment, agent, dependency/build/test plan — ready, nothing executed", () => {
+test("react web: requirements, environment, agent, dependency/build/test plan — ready, nothing executed", async () => {
   const f = planningFixture({
     hosts: [WEB_HOST],
     instances: [WEB_INSTANCE],
     agents: [WEB_AGENT],
   });
-  const plan = f.planning.createPlan(webRequest(), ACTOR);
+  const plan = await f.planning.createPlan(webRequest(), ACTOR);
 
   assert.equal(plan.status, "ready");
   assert.deepEqual(plan.blockers, []);
@@ -134,13 +134,13 @@ test("react web: requirements, environment, agent, dependency/build/test plan �
 /* iOS                                                                */
 /* ------------------------------------------------------------------ */
 
-test("ios ready: a macOS host with Xcode + iOS SDK satisfies the requirement", () => {
+test("ios ready: a macOS host with Xcode + iOS SDK satisfies the requirement", async () => {
   const f = planningFixture({
     hosts: [MAC_HOST],
     instances: [XCODE_INSTANCE],
     agents: [IOS_AGENT],
   });
-  const plan = f.planning.createPlan(iosRequest(), ACTOR);
+  const plan = await f.planning.createPlan(iosRequest(), ACTOR);
   assert.equal(plan.status, "ready");
   const env = plan.environments[0]!;
   assert.deepEqual(env.requirement.os, { os: "macos" });
@@ -148,9 +148,9 @@ test("ios ready: a macOS host with Xcode + iOS SDK satisfies the requirement", (
   assert.equal(env.match.selectedInstanceId, "xcode-1");
 });
 
-test("ios blocked: no eligible Xcode instance is a valid BLOCKED plan, not an error", () => {
+test("ios blocked: no eligible Xcode instance is a valid BLOCKED plan, not an error", async () => {
   const f = planningFixture({ agents: [IOS_AGENT] });
-  const plan = f.planning.createPlan(iosRequest(), ACTOR);
+  const plan = await f.planning.createPlan(iosRequest(), ACTOR);
   assert.equal(plan.status, "blocked");
   assert.deepEqual(blockerCodes(plan), ["MISSING_ENVIRONMENT"]);
   const blocker = plan.blockers[0]!;
@@ -164,13 +164,13 @@ test("ios blocked: no eligible Xcode instance is a valid BLOCKED plan, not an er
   assert.equal(f.planning.get(plan.id)?.status, "blocked");
 });
 
-test("ios blocked: an Xcode instance on an unavailable host is never selected", () => {
+test("ios blocked: an Xcode instance on an unavailable host is never selected", async () => {
   const f = planningFixture({
     hosts: [host("mac-1", "macos", { availability: "unavailable" })],
     instances: [XCODE_INSTANCE],
     agents: [IOS_AGENT],
   });
-  const plan = f.planning.createPlan(iosRequest(), ACTOR);
+  const plan = await f.planning.createPlan(iosRequest(), ACTOR);
   assert.deepEqual(blockerCodes(plan), ["MISSING_ENVIRONMENT"]);
   assert.deepEqual(plan.environments[0]!.match.candidates[0]!.reasonCodes, [
     "host_unavailable",
@@ -196,7 +196,7 @@ function androidRequest(): Record<string, unknown> {
   };
 }
 
-test("android incomplete: Android Studio without the Android SDK toolchain is BLOCKED", () => {
+test("android incomplete: Android Studio without the Android SDK toolchain is BLOCKED", async () => {
   const f = planningFixture({
     hosts: [host("linux-a", "linux")],
     instances: [
@@ -207,13 +207,13 @@ test("android incomplete: Android Studio without the Android SDK toolchain is BL
     ],
     agents: [agent("android-agent", ["android_development"])],
   });
-  const plan = f.planning.createPlan(androidRequest(), ACTOR);
+  const plan = await f.planning.createPlan(androidRequest(), ACTOR);
   assert.equal(plan.status, "blocked");
   assert.deepEqual(blockerCodes(plan), ["MISSING_TOOLCHAIN"]);
   assert.ok(plan.blockers[0]!.missing.includes("android_sdk"));
 });
 
-test("android incomplete: an SDK without build tools is still BLOCKED", () => {
+test("android incomplete: an SDK without build tools is still BLOCKED", async () => {
   const f = planningFixture({
     hosts: [host("linux-a", "linux")],
     instances: [
@@ -227,7 +227,7 @@ test("android incomplete: an SDK without build tools is still BLOCKED", () => {
     ],
     agents: [agent("android-agent", ["android_development"])],
   });
-  const plan = f.planning.createPlan(androidRequest(), ACTOR);
+  const plan = await f.planning.createPlan(androidRequest(), ACTOR);
   assert.deepEqual(blockerCodes(plan), ["MISSING_TOOLCHAIN"]);
   assert.deepEqual(plan.blockers[0]!.missing, ["android_sdk:build_tools"]);
   // android_sdk depends on jdk_gradle → resolution order respects the edge.
@@ -259,7 +259,7 @@ function wpfRequest(): Record<string, unknown> {
 
 const DOTNET = toolchain("dotnet", "8.0.4");
 
-test("windows .NET: only a Windows host with .NET matches; a Linux .NET host is rejected", () => {
+test("windows .NET: only a Windows host with .NET matches; a Linux .NET host is rejected", async () => {
   const f = planningFixture({
     hosts: [host("linux-d", "linux"), host("win-d", "windows")],
     instances: [
@@ -276,14 +276,14 @@ test("windows .NET: only a Windows host with .NET matches; a Linux .NET host is 
       agent("dotnet-agent", ["dotnet_development", "desktop_development"]),
     ],
   });
-  const plan = f.planning.createPlan(wpfRequest(), ACTOR);
+  const plan = await f.planning.createPlan(wpfRequest(), ACTOR);
   assert.equal(plan.status, "ready");
   const match = plan.environments[0]!.match;
   assert.equal(match.selectedInstanceId, "desk-win");
   const linux = match.candidates.find((c) => c.instanceId === "desk-linux");
   assert.deepEqual(linux?.reasonCodes, ["os_mismatch"]);
 
-  const linuxOnly = planningFixture({
+  const linuxOnly = await planningFixture({
     hosts: [host("linux-d", "linux")],
     instances: [
       instance("desk-linux", "desktop-build", "linux-d", {
@@ -298,7 +298,7 @@ test("windows .NET: only a Windows host with .NET matches; a Linux .NET host is 
   assert.deepEqual(blockerCodes(linuxOnly), ["MISSING_ENVIRONMENT"]);
 });
 
-test("docker: Docker installed is not the same as a usable container runtime", () => {
+test("docker: Docker installed is not the same as a usable container runtime", async () => {
   const request = {
     projectId: "alpha",
     title: "Container service",
@@ -312,7 +312,7 @@ test("docker: Docker installed is not the same as a usable container runtime", (
     ],
   };
   const ops = agent("ops-agent", ["container_operations"]);
-  const installedOnly = planningFixture({
+  const installedOnly = await planningFixture({
     hosts: [host("linux-c", "linux")],
     instances: [
       instance("docker-1", "docker", "linux-c", {
@@ -326,7 +326,7 @@ test("docker: Docker installed is not the same as a usable container runtime", (
     "container_runtime_available",
   ]);
 
-  const running = planningFixture({
+  const running = await planningFixture({
     hosts: [host("linux-c", "linux")],
     instances: [
       instance("docker-1", "docker", "linux-c", {
@@ -353,9 +353,9 @@ function unityRequest(): Record<string, unknown> {
   };
 }
 
-test("unity: editor, version and per-target build modules are represented and enforced", () => {
+test("unity: editor, version and per-target build modules are represented and enforced", async () => {
   const game = agent("game-agent", ["game_development"]);
-  const plan = planningFixture({ agents: [game] }).planning.createPlan(
+  const plan = await planningFixture({ agents: [game] }).planning.createPlan(
     unityRequest(),
     ACTOR,
   );
@@ -367,7 +367,7 @@ test("unity: editor, version and per-target build modules are represented and en
     },
   ]);
 
-  const missingModule = planningFixture({
+  const missingModule = await planningFixture({
     hosts: [host("win-u", "windows")],
     instances: [
       instance("unity-1", "unity", "win-u", {
@@ -384,7 +384,7 @@ test("unity: editor, version and per-target build modules are represented and en
     "unity:module:android",
   ]);
 
-  const tooOld = planningFixture({
+  const tooOld = await planningFixture({
     hosts: [host("win-u", "windows")],
     instances: [
       instance("unity-1", "unity", "win-u", {
@@ -403,7 +403,7 @@ test("unity: editor, version and per-target build modules are represented and en
     "toolchain_version_too_low",
   ]);
 
-  const complete = planningFixture({
+  const complete = await planningFixture({
     hosts: [host("win-u", "windows")],
     instances: [
       instance("unity-1", "unity", "win-u", {
@@ -421,8 +421,8 @@ test("unity: editor, version and per-target build modules are represented and en
   assert.equal(complete.status, "ready");
 });
 
-test("unreal: engine, C++ toolchain and target-platform prerequisites are represented", () => {
-  const plan = planningFixture().planning.createPlan(
+test("unreal: engine, C++ toolchain and target-platform prerequisites are represented", async () => {
+  const plan = await planningFixture().planning.createPlan(
     {
       projectId: "alpha",
       title: "Unreal title",
@@ -459,8 +459,8 @@ test("unreal: engine, C++ toolchain and target-platform prerequisites are repres
 /* Multi-environment                                                  */
 /* ------------------------------------------------------------------ */
 
-test("multi-environment: React + .NET + Android produces three environment requirements", () => {
-  const plan = planningFixture().planning.createPlan(
+test("multi-environment: React + .NET + Android produces three environment requirements", async () => {
+  const plan = await planningFixture().planning.createPlan(
     {
       projectId: "alpha",
       title: "Banking platform",
@@ -511,7 +511,7 @@ test("multi-environment: React + .NET + Android produces three environment requi
 /* Agents and models                                                  */
 /* ------------------------------------------------------------------ */
 
-test("no qualified agent: valid environment + no qualified agent → BLOCKED, no closest match", () => {
+test("no qualified agent: valid environment + no qualified agent → BLOCKED, no closest match", async () => {
   const f = planningFixture({
     hosts: [WEB_HOST],
     instances: [WEB_INSTANCE],
@@ -524,7 +524,7 @@ test("no qualified agent: valid environment + no qualified agent → BLOCKED, no
     ],
   });
   f.disabled.add("disabled-web");
-  const plan = f.planning.createPlan(webRequest(), ACTOR);
+  const plan = await f.planning.createPlan(webRequest(), ACTOR);
   assert.equal(plan.status, "blocked");
   assert.deepEqual(blockerCodes(plan), ["NO_QUALIFIED_AGENT"]);
   const assignment = plan.agents[0]!;
@@ -541,8 +541,8 @@ test("no qualified agent: valid environment + no qualified agent → BLOCKED, no
   assert.equal(plan.models[0]!.status, "not_evaluated");
 });
 
-test("model requirements: an agent without a declared model profile → MISSING_MODEL_CAPABILITY", () => {
-  const plan = planningFixture({
+test("model requirements: an agent without a declared model profile → MISSING_MODEL_CAPABILITY", async () => {
+  const plan = await planningFixture({
     hosts: [WEB_HOST],
     instances: [WEB_INSTANCE],
     agents: [
@@ -562,8 +562,8 @@ test("model requirements: an agent without a declared model profile → MISSING_
 /* Unsupported technology, dependency graph                           */
 /* ------------------------------------------------------------------ */
 
-test("unsupported technology is a structured blocker, not an exception", () => {
-  const plan = planningFixture().planning.createPlan(
+test("unsupported technology is a structured blocker, not an exception", async () => {
+  const plan = await planningFixture().planning.createPlan(
     {
       projectId: "alpha",
       title: "Mixed",
@@ -594,7 +594,7 @@ test("unsupported technology is a structured blocker, not an exception", () => {
   assert.deepEqual(plan.environments, []);
 });
 
-test("dependency graph: cycles and unknown references are conflicts; order is deterministic", () => {
+test("dependency graph: cycles and unknown references are conflicts; order is deterministic", async () => {
   const base = {
     kind: "toolchain" as const,
     toolchainKind: "node" as const,
@@ -635,13 +635,13 @@ function productionWebRequest(): Record<string, unknown> {
   };
 }
 
-test("deployment + approvals: production needs approval and security review; approval never executes", () => {
+test("deployment + approvals: production needs approval and security review; approval never executes", async () => {
   const f = planningFixture({
     hosts: [WEB_HOST],
     instances: [WEB_INSTANCE],
     agents: [WEB_AGENT, agent("sec-agent", ["security_review"])],
   });
-  const plan = f.planning.createPlan(productionWebRequest(), ACTOR);
+  const plan = await f.planning.createPlan(productionWebRequest(), ACTOR);
   assert.equal(plan.status, "ready");
   const deploy = plan.deployment[0]!;
   assert.equal(deploy.status, "planned");
@@ -664,14 +664,16 @@ test("deployment + approvals: production needs approval and security review; app
     "sec-agent",
   );
 
-  const submitted = f.planning.submitForApproval(plan.planId, ACTOR);
+  const submitted = await f.planning.submitForApproval(plan.planId, ACTOR);
   assert.equal(submitted.status, "awaiting_approval");
   const approval = f.approvals.require(submitted.approval.approvalId!);
   assert.equal(approval.action, "execution_plan.approve");
   assert.equal(approval.status, "requested");
 
   const decided = f.approvals.decide(approval.id, "approved", "admin-1");
-  const approved = f.planning.applyApprovalDecision(decided, { id: "admin-1" });
+  const approved = await f.planning.applyApprovalDecision(decided, {
+    id: "admin-1",
+  });
   assert.equal(approved?.status, "approved");
   assert.equal(approved?.approval.state, "approved");
   // Approval is governance only: stages remain planned.
@@ -679,30 +681,32 @@ test("deployment + approvals: production needs approval and security review; app
   assert.ok(approved!.deployment.every((s) => s.status === "planned"));
 });
 
-test("approval rejection blocks the plan; a blocked plan cannot be submitted", () => {
+test("approval rejection blocks the plan; a blocked plan cannot be submitted", async () => {
   const f = planningFixture({
     hosts: [WEB_HOST],
     instances: [WEB_INSTANCE],
     agents: [WEB_AGENT, agent("sec-agent", ["security_review"])],
   });
-  const plan = f.planning.createPlan(productionWebRequest(), ACTOR);
-  const submitted = f.planning.submitForApproval(plan.planId, ACTOR);
+  const plan = await f.planning.createPlan(productionWebRequest(), ACTOR);
+  const submitted = await f.planning.submitForApproval(plan.planId, ACTOR);
   const decided = f.approvals.decide(
     submitted.approval.approvalId!,
     "rejected",
     "admin-1",
   );
-  const rejected = f.planning.applyApprovalDecision(decided, { id: "admin-1" });
+  const rejected = await f.planning.applyApprovalDecision(decided, {
+    id: "admin-1",
+  });
   assert.equal(rejected?.status, "blocked");
   assert.deepEqual(blockerCodes(rejected!), ["APPROVAL_REJECTED"]);
 
-  const blocked = f.planning.createPlan(iosRequest(), ACTOR);
-  assert.throws(
+  const blocked = await f.planning.createPlan(iosRequest(), ACTOR);
+  await assert.rejects(
     () => f.planning.submitForApproval(blocked.planId, ACTOR),
     StateTransitionError,
   );
-  const noApprovals = f.planning.createPlan(webRequest(), ACTOR);
-  assert.throws(
+  const noApprovals = await f.planning.createPlan(webRequest(), ACTOR);
+  await assert.rejects(
     () => f.planning.submitForApproval(noApprovals.planId, ACTOR),
     ValidationError,
   );
@@ -712,7 +716,7 @@ test("approval rejection blocks the plan; a blocked plan cannot be submitted", (
 /* Determinism and tie-breaking                                       */
 /* ------------------------------------------------------------------ */
 
-test("determinism: identical inputs yield identical evaluations and selections", () => {
+test("determinism: identical inputs yield identical evaluations and selections", async () => {
   const build = () =>
     planningFixture({
       hosts: [WEB_HOST, host("linux-2", "linux")],
@@ -738,7 +742,7 @@ test("determinism: identical inputs yield identical evaluations and selections",
   assert.equal(first.agents[0]!.agentId, "web-a");
 });
 
-test("tie-break: higher trust wins, then higher environment version", () => {
+test("tie-break: higher trust wins, then higher environment version", async () => {
   const f = planningFixture({
     hosts: [
       host("mac-1", "macos"),
@@ -767,7 +771,7 @@ test("tie-break: higher trust wins, then higher environment version", () => {
     ],
     agents: [IOS_AGENT],
   });
-  const plan = f.planning.createPlan(iosRequest(), ACTOR);
+  const plan = await f.planning.createPlan(iosRequest(), ACTOR);
   assert.equal(plan.environments[0]!.match.selectedInstanceId, "xcode-c");
 });
 
@@ -775,19 +779,19 @@ test("tie-break: higher trust wins, then higher environment version", () => {
 /* Versioning and replan                                              */
 /* ------------------------------------------------------------------ */
 
-test("replan: V1 blocked → Xcode registered → V2 ready; V1 superseded and preserved", () => {
+test("replan: V1 blocked → Xcode registered → V2 ready; V1 superseded and preserved", async () => {
   const f = planningFixture({ agents: [IOS_AGENT] });
-  const v1 = f.planning.createPlan(iosRequest(), ACTOR);
+  const v1 = await f.planning.createPlan(iosRequest(), ACTOR);
   assert.equal(v1.status, "blocked");
 
   // Unchanged inputs → no new version.
-  const same = f.planning.replan(v1.planId, ACTOR);
+  const same = await f.planning.replan(v1.planId, ACTOR);
   assert.equal(same.outcome, "unchanged");
   assert.equal(f.planning.versions(v1.planId).length, 1);
 
   f.registry.upsertHost(MAC_HOST);
   f.registry.upsertInstance(XCODE_INSTANCE);
-  const result = f.planning.replan(v1.planId, ACTOR);
+  const result = await f.planning.replan(v1.planId, ACTOR);
   assert.equal(result.outcome, "replanned");
   const v2 = result.plan;
   assert.equal(v2.id, `${v1.planId}@v2`);
@@ -820,16 +824,16 @@ test("replan: V1 blocked → Xcode registered → V2 ready; V1 superseded and pr
   ]);
 });
 
-test("replan of a plan awaiting approval expires the pending approval", () => {
+test("replan of a plan awaiting approval expires the pending approval", async () => {
   const f = planningFixture({
     hosts: [WEB_HOST],
     instances: [WEB_INSTANCE],
     agents: [WEB_AGENT, agent("sec-agent", ["security_review"])],
   });
-  const plan = f.planning.createPlan(productionWebRequest(), ACTOR);
-  const submitted = f.planning.submitForApproval(plan.planId, ACTOR);
+  const plan = await f.planning.createPlan(productionWebRequest(), ACTOR);
+  const submitted = await f.planning.submitForApproval(plan.planId, ACTOR);
   f.disabled.add("web-agent");
-  const { plan: v2, previous } = f.planning.replan(plan.planId, ACTOR);
+  const { plan: v2, previous } = await f.planning.replan(plan.planId, ACTOR);
   assert.equal(v2.status, "blocked");
   assert.equal(previous.status, "superseded");
   assert.equal(previous.approval.state, "expired");
@@ -839,13 +843,13 @@ test("replan of a plan awaiting approval expires the pending approval", () => {
   );
 });
 
-test("repository: versions are immutable; only lifecycle fields may change along allowed transitions", () => {
+test("repository: versions are immutable; only lifecycle fields may change along allowed transitions", async () => {
   const f = planningFixture({
     hosts: [WEB_HOST],
     instances: [WEB_INSTANCE],
     agents: [WEB_AGENT],
   });
-  const plan = f.planning.createPlan(webRequest(), ACTOR);
+  const plan = await f.planning.createPlan(webRequest(), ACTOR);
   const repo = f.planning.repository;
   assert.throws(() => repo.create(plan), ValidationError);
   assert.throws(
@@ -875,9 +879,9 @@ test("repository: versions are immutable; only lifecycle fields may change along
 /* Input trust, project existence, secret safety                      */
 /* ------------------------------------------------------------------ */
 
-test("client-supplied status, agents, environments and approvals are ignored", () => {
+test("client-supplied status, agents, environments and approvals are ignored", async () => {
   const f = planningFixture({ agents: [IOS_AGENT] });
-  const plan = f.planning.createPlan(
+  const plan = await f.planning.createPlan(
     {
       ...iosRequest(),
       status: "approved",
@@ -893,22 +897,22 @@ test("client-supplied status, agents, environments and approvals are ignored", (
   assert.equal("agentId" in plan.request, false);
 });
 
-test("unknown project: no orphan plan is created", () => {
+test("unknown project: no orphan plan is created", async () => {
   const f = planningFixture({ projects: ["alpha"] });
-  assert.throws(
+  await assert.rejects(
     () => f.planning.createPlan(webRequest("ghost"), ACTOR),
     NotFoundError,
   );
   assert.deepEqual(f.planning.listByProject("ghost"), []);
 });
 
-test("secret safety: plans hold references only; secret-looking values are refused", () => {
+test("secret safety: plans hold references only; secret-looking values are refused", async () => {
   const f = planningFixture({
     hosts: [WEB_HOST],
     instances: [WEB_INSTANCE],
     agents: [WEB_AGENT, agent("sec-agent", ["security_review"])],
   });
-  const plan = f.planning.createPlan(productionWebRequest(), ACTOR);
+  const plan = await f.planning.createPlan(productionWebRequest(), ACTOR);
   const json = JSON.stringify(plan);
   assert.doesNotMatch(
     json,
@@ -931,7 +935,10 @@ test("secret safety: plans hold references only; secret-looking values are refus
     ],
   };
   const before = f.planning.listByProject("alpha").length;
-  assert.throws(() => f.planning.createPlan(smuggled, ACTOR), ValidationError);
+  await assert.rejects(
+    () => f.planning.createPlan(smuggled, ACTOR),
+    ValidationError,
+  );
   assert.equal(f.planning.listByProject("alpha").length, before);
 
   assert.throws(
@@ -958,7 +965,7 @@ test("secret safety: plans hold references only; secret-looking values are refus
 /* EO-2A regression: router now enforces minimum toolchain versions   */
 /* ------------------------------------------------------------------ */
 
-test("router: toolchain minimum versions and components are enforced; route() matches evaluate()", () => {
+test("router: toolchain minimum versions and components are enforced; route() matches evaluate()", async () => {
   const f = planningFixture({ hosts: [WEB_HOST], instances: [WEB_INSTANCE] });
   const router = new EnvironmentRouter(f.registry);
   assert.equal(
@@ -985,7 +992,7 @@ test("router: toolchain minimum versions and components are enforced; route() ma
 /* Security gate                                                      */
 /* ------------------------------------------------------------------ */
 
-test("security gate: planning code has no process execution surface", () => {
+test("security gate: planning code has no process execution surface", async () => {
   const root = new URL("../../", import.meta.url);
   const files = [
     ...readdirSync(new URL("core/planning/", root)).map(

@@ -4,53 +4,8 @@ import type { AddressInfo } from "node:net";
 import test from "node:test";
 
 import { createProductionControlPlaneRuntime } from "../api/index.js";
-import type {
-  FirebaseAuthLike,
-  FirebaseServices,
-  FirestoreCollectionLike,
-  FirestoreDocRefLike,
-  FirestoreLike,
-} from "../adapters/index.js";
-
-class FakeCollection implements FirestoreCollectionLike {
-  private readonly values = new Map<string, Record<string, unknown>>();
-  doc(id: string): FirestoreDocRefLike {
-    return {
-      set: async (value) => void this.values.set(id, structuredClone(value)),
-      get: async () => {
-        const value = this.values.get(id);
-        return {
-          exists: value !== undefined,
-          data: () => value && structuredClone(value),
-        };
-      },
-      delete: async () => void this.values.delete(id),
-    };
-  }
-  async get() {
-    return {
-      docs: [...this.values.entries()].map(([id, value]) => ({
-        id,
-        data: () => structuredClone(value),
-      })),
-    };
-  }
-  async listDocuments() {
-    return [...this.values.keys()].map((id) => this.doc(id));
-  }
-}
-
-class FakeFirestore implements FirestoreLike {
-  private readonly collections = new Map<string, FakeCollection>();
-  collection(path: string): FakeCollection {
-    let collection = this.collections.get(path);
-    if (!collection) {
-      collection = new FakeCollection();
-      this.collections.set(path, collection);
-    }
-    return collection;
-  }
-}
+import type { FirebaseAuthLike, FirebaseServices } from "../adapters/index.js";
+import { FakeFirestore } from "./fixtures/fake-firestore.js";
 
 class FakeAuth implements FirebaseAuthLike {
   async verifyIdToken(token: string) {

@@ -5,7 +5,8 @@
  *   ProjectRequest → TaskAnalyzer → ProjectArchitect → TechnologySelector /
  *   EnvironmentRouter.evaluate → AgentQualificationRouter.evaluateCandidates →
  *   ModelCapabilityRegistry → dependency DAG → stage planner → blockers →
- *   ExecutionPlan → ExecutionPlanRepository (+ audit)
+ *   ExecutionPlan → ExecutionPlanStore (atomic commit) → repository view
+ *   (+ audit)
  *
  * EO-3.1 PLANS WORK. IT DOES NOT EXECUTE WORK. This service has no execution
  * path: it never runs a command, a probe, a build, a model, or a deployment.
@@ -17,6 +18,7 @@
  */
 import {
   NotFoundError,
+  PlanRevisionConflictError,
   StateTransitionError,
   ValidationError,
   normalizeProjectRequest,
@@ -26,7 +28,9 @@ import {
   type EnvironmentRejectionReason,
   type ExecutionBlocker,
   type ExecutionPlan,
+  type ExecutionPlanStore,
   type ModelRequirement,
+  type PlanRevisionChange,
   type PlanAgentAssignment,
   type PlannedEnvironmentRequirement,
   type ProjectRequest,
@@ -45,6 +49,12 @@ import {
   planDependencies,
 } from "./dependency-graph.js";
 import { ExecutionPlanRepository } from "./execution-plan-repository.js";
+import {
+  CorruptPlanRecordError,
+  deserializeExecutionPlan,
+  serializeExecutionPlan,
+} from "./execution-plan-serialization.js";
+import { InMemoryExecutionPlanStore } from "./execution-plan-store.js";
 import { ModelCapabilityRegistry } from "./model-capability-registry.js";
 import { ProjectArchitect, canonicalKey } from "./project-architect.js";
 import { planStages } from "./stage-planner.js";
@@ -60,6 +70,9 @@ export interface ExecutionPlanningServiceOptions {
   agents: Pick<AgentRegistry, "list" | "get">;
   audit: AuditLog;
   approvals: ApprovalSystem;
+  /** Authoritative, transactional plan storage (Firestore in production). */
+  store?: ExecutionPlanStore;
+  /** In-process view; defaults to an in-memory cache. */
   repository?: ExecutionPlanRepository;
   models?: ModelCapabilityRegistry;
   catalog?: TechnologyCatalog;
@@ -111,6 +124,7 @@ const PLACEMENT_REASONS: ReadonlySet<EnvironmentRejectionReason> = new Set([
 
 export class ExecutionPlanningService {
   readonly repository: ExecutionPlanRepository;
+  private readonly store: ExecutionPlanStore;
   private readonly analyzer: TaskAnalyzer;
   private readonly architect = new ProjectArchitect();
   private readonly selector: TechnologySelector;
@@ -123,6 +137,7 @@ export class ExecutionPlanningService {
 
   constructor(private readonly options: ExecutionPlanningServiceOptions) {
     this.repository = options.repository ?? new ExecutionPlanRepository();
+    this.store = options.store ?? new InMemoryExecutionPlanStore();
     this.catalog = options.catalog ?? new TechnologyCatalog();
     this.analyzer = new TaskAnalyzer(this.catalog);
     this.selector = new TechnologySelector(options.environments);
@@ -279,20 +294,24 @@ export class ExecutionPlanningService {
   }
 
   /* -------------------------------------------------------------- */
-  /* Plan lifecycle                                                */
+  /* Plan lifecycle — every write is an atomic store commit        */
   /* -------------------------------------------------------------- */
 
-  /** Validate an untrusted request, plan it, persist version 1, audit. */
-  createPlan(input: unknown, actor: PlanActor): ExecutionPlan {
+  /** Validate an untrusted request, plan it, commit version 1, audit. */
+  async createPlan(input: unknown, actor: PlanActor): Promise<ExecutionPlan> {
     const request = normalizeProjectRequest(input);
     this.assertProjectExists(request.projectId);
-    const planId = this.idFactory();
-    const plan = this.materialize(this.evaluate(request), {
-      planId,
+    const draft = this.materialize(this.evaluate(request), {
+      planId: this.idFactory(),
       version: 1,
       createdBy: actor.id,
     });
-    this.repository.create(plan);
+    this.repository.assertNewVersion(draft);
+    const record = serializeExecutionPlan(draft);
+    await this.store.commit({ kind: "create_series", record });
+    // Hand out exactly what was stored (canonical round-trip form).
+    const plan = deserializeExecutionPlan(record);
+    this.repository.load(plan);
     this.audit("created", plan, actor);
     this.audit(plan.status === "blocked" ? "blocked" : "ready", plan, actor);
     return plan;
@@ -300,14 +319,19 @@ export class ExecutionPlanningService {
 
   /**
    * Re-evaluate the current revision against today's registry, agents and
-   * policy. Unchanged inputs return the current revision; otherwise a new
-   * version is created and the previous one is superseded (never rewritten).
+   * policy. Unchanged inputs keep the current revision; otherwise version n+1
+   * is committed and version n superseded in ONE atomic commit. A concurrent
+   * replan loses with `PlanRevisionConflictError` instead of forking history.
    */
-  replan(
+  async replan(
     planId: string,
     actor: PlanActor,
-  ): { plan: ExecutionPlan; outcome: ReplanOutcome; previous: ExecutionPlan } {
-    const previous = this.requireLatest(planId);
+  ): Promise<{
+    plan: ExecutionPlan;
+    outcome: ReplanOutcome;
+    previous: ExecutionPlan;
+  }> {
+    const previous = await this.requireCurrent(planId);
     this.assertProjectExists(previous.projectId);
     const evaluation = this.evaluate(previous.request);
     if (evaluation.inputsFingerprint === previous.inputsFingerprint) {
@@ -315,30 +339,43 @@ export class ExecutionPlanningService {
       return { plan: previous, outcome: "unchanged", previous };
     }
 
-    const next = this.materialize(evaluation, {
+    const nextDraft = this.materialize(evaluation, {
       planId,
       version: previous.version + 1,
       createdBy: actor.id,
       supersedes: previous.id,
     });
-    this.repository.create(next);
-
-    let approval = previous.approval;
-    if (approval.state === "requested" && approval.approvalId) {
-      try {
-        this.options.approvals.expire(approval.approvalId);
-        approval = { ...approval, state: "expired" };
-      } catch (error) {
-        if (!(error instanceof StateTransitionError)) throw error;
-      }
-    }
-    const superseded = this.repository.transition({
+    const pendingApprovalId =
+      previous.approval.state === "requested"
+        ? previous.approval.approvalId
+        : undefined;
+    const supersededDraft: ExecutionPlan = {
       ...previous,
       status: "superseded",
-      approval,
-      supersededBy: next.id,
+      approval: pendingApprovalId
+        ? { ...previous.approval, state: "expired" }
+        : previous.approval,
+      supersededBy: nextDraft.id,
       updatedAt: this.clock(),
+    };
+    this.repository.assertNewVersion(nextDraft);
+    this.repository.assertTransition(previous, supersededDraft);
+    const record = serializeExecutionPlan(nextDraft);
+    const supersededRecord = serializeExecutionPlan(supersededDraft);
+
+    await this.commitOrRefresh(planId, {
+      kind: "new_revision",
+      record,
+      supersededRecord,
+      expectedCurrentVersion: previous.version,
+      expectedPreviousUpdatedAt: previous.updatedAt,
+      expectedPreviousStatus: previous.status,
     });
+    const next = deserializeExecutionPlan(record);
+    const superseded = deserializeExecutionPlan(supersededRecord);
+    this.repository.load(next);
+    this.repository.load(superseded);
+    if (pendingApprovalId) this.expireApproval(pendingApprovalId);
 
     this.audit("replanned", next, actor, { supersedes: previous.id });
     this.audit("superseded", superseded, actor, { supersededBy: next.id });
@@ -348,10 +385,15 @@ export class ExecutionPlanningService {
 
   /**
    * Ask for the human approval a READY plan with protected stages needs. Uses
-   * the existing ApprovalSystem; the plan never approves itself.
+   * the existing ApprovalSystem; the plan never approves itself. If the plan
+   * changed concurrently the new approval request is expired again, so no
+   * orphan approval remains.
    */
-  submitForApproval(planId: string, actor: PlanActor): ExecutionPlan {
-    const plan = this.requireLatest(planId);
+  async submitForApproval(
+    planId: string,
+    actor: PlanActor,
+  ): Promise<ExecutionPlan> {
+    const plan = await this.requireCurrent(planId);
     if (plan.status !== "ready") {
       throw new StateTransitionError(
         `execution plan ${plan.id} is ${plan.status}; only a ready plan can be submitted`,
@@ -374,27 +416,37 @@ export class ExecutionPlanningService {
         planVersion: plan.version,
       },
     });
-    const next = this.repository.transition({
+    const next: ExecutionPlan = {
       ...plan,
       status: "awaiting_approval",
       approval: { approvalId: approval.id, state: "requested" },
       updatedAt: this.clock(),
-    });
-    this.audit("approval_required", next, actor, { approvalId: approval.id });
-    return next;
+    };
+    let stored: ExecutionPlan;
+    try {
+      stored = await this.commitTransition(plan, next);
+    } catch (error) {
+      this.expireApproval(approval.id);
+      throw error;
+    }
+    this.audit("approval_required", stored, actor, { approvalId: approval.id });
+    return stored;
   }
 
   /**
    * Mirror an authoritative approval decision onto its plan. Returns the
    * updated plan, or `undefined` when the approval is not (or no longer) the
-   * pending approval of a current plan.
+   * pending approval of the current revision.
    */
-  applyApprovalDecision(
+  async applyApprovalDecision(
     approval: Approval,
     actor: PlanActor,
-  ): ExecutionPlan | undefined {
+  ): Promise<ExecutionPlan | undefined> {
     const planDocId = approval.decisionMetadata?.executionPlanId;
     if (typeof planDocId !== "string") return undefined;
+    const known = this.repository.get(planDocId);
+    if (!known) return undefined;
+    await this.refreshSeries(known.planId);
     const plan = this.repository.get(planDocId);
     if (
       !plan ||
@@ -403,18 +455,16 @@ export class ExecutionPlanningService {
     ) {
       return undefined;
     }
+    let next: ExecutionPlan | undefined;
     if (approval.status === "approved") {
-      const next = this.repository.transition({
+      next = {
         ...plan,
         status: "approved",
         approval: { approvalId: approval.id, state: "approved" },
         updatedAt: this.clock(),
-      });
-      this.audit("approved", next, actor, { approvalId: approval.id });
-      return next;
-    }
-    if (approval.status === "rejected") {
-      const next = this.repository.transition({
+      };
+    } else if (approval.status === "rejected") {
+      next = {
         ...plan,
         status: "blocked",
         approval: { approvalId: approval.id, state: "rejected" },
@@ -428,16 +478,46 @@ export class ExecutionPlanningService {
           },
         ],
         updatedAt: this.clock(),
-      });
-      this.audit("approval_rejected", next, actor, { approvalId: approval.id });
-      return next;
+      };
     }
-    return undefined;
+    if (!next) return undefined;
+    const stored = await this.commitTransition(plan, next);
+    this.audit(
+      stored.status === "approved" ? "approved" : "approval_rejected",
+      stored,
+      actor,
+      { approvalId: approval.id },
+    );
+    return stored;
   }
 
   /* -------------------------------------------------------------- */
   /* Reads                                                         */
   /* -------------------------------------------------------------- */
+
+  /** Reload one project's plans from the authoritative store (fail-closed). */
+  async refreshProject(projectId: string): Promise<void> {
+    const records = await this.store.listByProject(projectId);
+    for (const record of records) {
+      const plan = deserializeExecutionPlan(record);
+      if (plan.projectId !== projectId) {
+        throw new CorruptPlanRecordError(plan.id, "project mismatch");
+      }
+      this.repository.load(plan);
+    }
+  }
+
+  /** Reload one plan series from the authoritative store (fail-closed). */
+  async refreshSeries(planId: string): Promise<void> {
+    const records = await this.store.listSeries(planId);
+    for (const record of records) {
+      const plan = deserializeExecutionPlan(record);
+      if (plan.planId !== planId) {
+        throw new CorruptPlanRecordError(plan.id, "series mismatch");
+      }
+      this.repository.load(plan);
+    }
+  }
 
   get(id: string): ExecutionPlan | undefined {
     return this.repository.get(id);
@@ -459,10 +539,51 @@ export class ExecutionPlanningService {
   /* Internals                                                     */
   /* -------------------------------------------------------------- */
 
-  private requireLatest(planId: string): ExecutionPlan {
+  private async requireCurrent(planId: string): Promise<ExecutionPlan> {
+    await this.refreshSeries(planId);
     const plan = this.repository.latestVersion(planId);
     if (!plan) throw new NotFoundError(`unknown execution plan: ${planId}`);
     return plan;
+  }
+
+  private async commitTransition(
+    current: ExecutionPlan,
+    next: ExecutionPlan,
+  ): Promise<ExecutionPlan> {
+    this.repository.assertTransition(current, next);
+    const record = serializeExecutionPlan(next);
+    await this.commitOrRefresh(current.planId, {
+      kind: "transition",
+      record,
+      expectedUpdatedAt: current.updatedAt,
+      expectedStatus: current.status,
+    });
+    const stored = deserializeExecutionPlan(record);
+    this.repository.load(stored);
+    return stored;
+  }
+
+  /** Commit; on a conflict reload the series so the caller sees fresh state. */
+  private async commitOrRefresh(
+    planId: string,
+    change: PlanRevisionChange,
+  ): Promise<void> {
+    try {
+      await this.store.commit(change);
+    } catch (error) {
+      if (error instanceof PlanRevisionConflictError) {
+        await this.refreshSeries(planId).catch(() => undefined);
+      }
+      throw error;
+    }
+  }
+
+  private expireApproval(approvalId: string): void {
+    try {
+      this.options.approvals.expire(approvalId);
+    } catch (error) {
+      if (!(error instanceof StateTransitionError)) throw error;
+    }
   }
 
   private assertProjectExists(projectId: string): void {

@@ -441,6 +441,18 @@ export type AgentFailureReason =
 export class WorkforceError extends Error {}
 export class ValidationError extends WorkforceError {}
 export class StateTransitionError extends WorkforceError {}
+/**
+ * An execution plan changed concurrently: an optimistic precondition of a plan
+ * commit failed (EO-3.2). Nothing was written. HTTP 409.
+ */
+export class PlanRevisionConflictError extends StateTransitionError {
+  constructor(
+    message = "execution plan changed concurrently — reload and retry",
+  ) {
+    super(message);
+    this.name = "PlanRevisionConflictError";
+  }
+}
 export class PermissionDeniedError extends WorkforceError {}
 export class NotFoundError extends WorkforceError {}
 
