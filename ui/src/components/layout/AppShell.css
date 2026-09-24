@@ -32,6 +32,36 @@
   overflow: hidden;
 }
 
+/*
+ * Sidebar-edge notch: a triangular cutout in the sidebar's right edge,
+ * centred on the active module (--sidebar-notch-y is measured from the DOM by
+ * useSidebarNotch). Clipping the sidebar itself exposes the real page
+ * background — no extra element, border, seam or hard-coded colour — and it
+ * clips hit-testing too, so it can never intercept clicks.
+ */
+.app-shell__sidebar {
+  --sidebar-notch-depth: 11px;
+  --sidebar-notch-half: 10px;
+}
+
+.app-shell--sidebar-collapsed .app-shell__sidebar {
+  /* The rail's items sit closer to the edge; keep clear of the active icon. */
+  --sidebar-notch-depth: 7px;
+  --sidebar-notch-half: 8px;
+}
+
+.app-shell__sidebar[data-notch] {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(var(--sidebar-notch-y) - var(--sidebar-notch-half)),
+    calc(100% - var(--sidebar-notch-depth)) var(--sidebar-notch-y),
+    100% calc(var(--sidebar-notch-y) + var(--sidebar-notch-half)),
+    100% 100%,
+    0 100%
+  );
+}
+
 .app-shell__workspace {
   display: grid;
   grid-template-rows: var(--header-height) minmax(0, 1fr);

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
+import { useSidebarNotch } from "./useSidebarNotch";
 import { useI18n } from "../../i18n";
 import { InstallAppButton } from "../pwa/InstallAppButton";
 import "./AppShell.css";
@@ -18,6 +19,8 @@ function readSidebarCollapsed(): boolean {
 
 export default function AppShell() {
   const { t } = useI18n();
+  const { pathname } = useLocation();
+  const sidebarRef = useRef<HTMLElement | null>(null);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
 
@@ -71,9 +74,13 @@ export default function AppShell() {
     return undefined;
   }, [mobileNavigationOpen]);
 
+  // Sidebar-edge notch aligned with the active module (decorative geometry).
+  useSidebarNotch(sidebarRef, [pathname, sidebarCollapsed, mobileNavigationOpen, t]);
+
   return (
     <div className={`app-shell${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
       <aside
+        ref={sidebarRef}
         className="app-shell__sidebar"
         aria-label={t("shell.applicationSidebar")}
         hidden={mobileNavigationOpen}
