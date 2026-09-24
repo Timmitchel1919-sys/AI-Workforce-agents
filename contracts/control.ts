@@ -634,6 +634,12 @@ export interface AccessCommandInput {
 export interface ExecutionPlanCommandInput {
   /** Plan SERIES id — the command acts on its current (latest) version. */
   planId: string;
+  /**
+   * The version the operator reviewed. When given and the series has moved
+   * on (e.g. V2 superseded V1), the command is refused with 409 instead of
+   * silently acting on the newer version.
+   */
+  expectedVersion?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -674,6 +680,16 @@ export interface ExecutionPlanView extends Omit<ExecutionPlan, "deployment"> {
 export interface ExecutionPlanQuery {
   limit?: number;
   cursor?: string;
+  /** Restrict to one plan series (its version history). Server-side filter. */
+  planId?: string;
+}
+
+/** A technology the planner knows (read-only catalog for request forms). */
+export interface TechnologyCatalogEntryView {
+  id: string;
+  label: string;
+  componentKinds: readonly string[];
+  platforms: readonly string[];
 }
 
 export function requireId(value: unknown, field: string): string {

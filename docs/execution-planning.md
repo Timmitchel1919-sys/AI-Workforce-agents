@@ -281,3 +281,56 @@ The `ProjectRegistry` has no delete or archive operation today. Plans are never
 cascade-deleted: if a project is ever unregistered, its plans and audit
 history remain in storage but become unreachable through the API (404), until
 an explicit archive policy is designed.
+
+## EO-3.3 — Operator review UI
+
+**Projects → Project Detail → Execution plan** (`/projects/:projectId/execution-plan`)
+shows exactly what the Control Plane returned; the UI never derives a plan
+status, never approves locally and never executes.
+
+- **Summary**: status (icon + text, never color alone), version, current /
+  historical, architecture, environments selected vs required, agents
+  qualified vs required, blockers, approval state, timestamps — all counted
+  from the returned plan.
+- **Pipeline**: request → architecture → technology → environments → agents →
+  dependencies → build → test → security → deployment → approval. Stages are
+  _recorded / required / planned / satisfied / missing / blocked_ — never
+  "passed", "succeeded" or "deployed".
+- **Required vs available vs selected**: each environment requirement lists
+  what is required, how many registered instances are eligible, which one was
+  selected, and every evaluated instance with the backend's reason codes. A
+  registered descriptor is labelled "environment type is supported — this is
+  not a machine".
+- **Blockers panel**: one card per backend blocker with explanation, missing
+  requirement, reason codes and deterministic resolution guidance. No
+  override or "assign anyway".
+- **History**: the series' revisions via
+  `GET /api/projects/:projectId/execution-plans?planId=…` (server-filtered,
+  cursor-paginated, 10 per page). A historical revision
+  (`?plan=…&version=N`) shows a "superseded by version X" banner and offers no
+  actions. A simple comparison with the previous revision lists resolved/new
+  blockers and changed environment/agent selections.
+- **Actions** (current revision only, per capability — the backend decides):
+  create (`create_execution_plan`), re-evaluate (`replan_execution_plan`),
+  request approval (`submit_execution_plan`), approve/reject the plan's
+  approval (`approve`/`reject`). Each confirmation names the project, the plan
+  version and the protected stages. There is no execute or deploy action.
+- **Create plan** sends a planning _request_ built from
+  `GET /api/planning/technologies` (the planner's read-only catalog); the
+  server plans it.
+
+### Stale-plan protection
+
+`replan-execution-plan` and `submit-execution-plan` accept `expectedVersion`.
+The UI always sends the version the operator reviewed; if the series has moved
+on (V2 superseded V1) the command is refused with **409** and nothing is
+created or requested. The check runs inside the planning service after a fresh
+store read, so a concurrent replan cannot slip through. An approval belongs to
+one exact revision (`decisionMetadata.executionPlanId = planId@vN`); replanning
+expires it, so approving V1's request can never approve V2.
+
+### Error states
+
+401 (sign-in required), 403 (access denied — never shown as "empty"), 404
+(project/plan not found), 409 (plan changed — reload), 5xx (system error) are
+rendered distinctly.

@@ -58,12 +58,12 @@ export default function ProjectsPage() {
             <li key={project.projectId}>
               <Link
                 className="plan-project-link"
-                to={`/projects/${encodeURIComponent(project.projectId)}/execution-plan`}
+                to={`/projects/${encodeURIComponent(project.projectId)}`}
               >
                 <span className="plan-project-link__name">{project.displayName}</span>
                 <span className="plan-project-link__id">{project.projectId}</span>
                 <span className="plan-project-link__cta">
-                  {t("plans.openPlan")}
+                  {t("plans.openProject")}
                   <ArrowRight size={16} aria-hidden />
                 </span>
               </Link>

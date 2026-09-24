@@ -30,7 +30,7 @@ const DesignSystemPage = fromChunk(loadControlCenterRoutes, "DesignSystemPage");
 const SettingsPage = fromChunk(loadControlCenterRoutes, "SettingsPage");
 const UsersAccessPage = fromChunk(loadControlCenterRoutes, "UsersAccessPage");
 const ProjectsPage = fromChunk(loadControlCenterRoutes, "ProjectsPage");
-const ExecutionPlanPage = fromChunk(loadControlCenterRoutes, "ExecutionPlanPage");
+const ProjectDetailPage = fromChunk(loadControlCenterRoutes, "ProjectDetailPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -90,9 +90,10 @@ export const router = createBrowserRouter([
       { path: "workflows", element: withSuspense(<WorkflowsPage />) },
       { path: "workflows/:workflowId", element: withSuspense(<WorkflowDetailPage />) },
       { path: "projects", element: withSuspense(<ProjectsPage />) },
+      { path: "projects/:projectId", element: withSuspense(<ProjectDetailPage />) },
       {
         path: "projects/:projectId/execution-plan",
-        element: withSuspense(<ExecutionPlanPage />),
+        element: withSuspense(<ProjectDetailPage />),
       },
       { path: "approvals", element: <PlaceholderPage titleKey="nav.approvals" /> },
       { path: "audit-log", element: <PlaceholderPage titleKey="nav.auditLog" /> },

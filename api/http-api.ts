@@ -435,6 +435,22 @@ export function createControlPlaneApi(
             : query.getHosts(principal),
           correlationId,
         );
+      case "planning":
+        // GET /api/planning/technologies — read-only planner catalog.
+        if (segs.length === 2 && segs[1] === "technologies") {
+          return send(
+            res,
+            200,
+            query.getTechnologyCatalog(principal),
+            correlationId,
+          );
+        }
+        return send(
+          res,
+          404,
+          { error: { message: "not found" } },
+          correlationId,
+        );
       case "operators":
         // GET /api/operators — Users & Access (administrators only).
         if (segs.length !== 1) {
@@ -609,12 +625,15 @@ function parseTaskQuery(params: URLSearchParams): TaskQuery {
 function parsePageQuery(params: URLSearchParams): {
   limit?: number;
   cursor?: string;
+  planId?: string;
 } {
-  const q: { limit?: number; cursor?: string } = {};
+  const q: { limit?: number; cursor?: string; planId?: string } = {};
   const cursor = params.get("cursor");
   if (cursor !== null && cursor !== "") q.cursor = cursor;
   const limit = Number(params.get("limit"));
   if (Number.isFinite(limit) && limit > 0) q.limit = limit;
+  const planId = params.get("planId");
+  if (planId !== null && planId !== "") q.planId = planId;
   return q;
 }
 

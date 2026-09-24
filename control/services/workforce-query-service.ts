@@ -13,6 +13,7 @@ import {
   type DashboardSnapshot,
   type ExecutionPlanQuery,
   type OperatorAccountView,
+  type TechnologyCatalogEntryView,
   type ExecutionPlanSummaryView,
   type ExecutionPlanView,
   type HealthStatus,
@@ -38,7 +39,7 @@ import type {
   HostCapabilitySnapshot,
   HostInstance,
 } from "../../contracts/index.js";
-import { now } from "../../core/index.js";
+import { now, TechnologyCatalog } from "../../core/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import {
   deriveAgentView,
@@ -470,9 +471,12 @@ export class WorkforceQueryService {
     const planning = this.ctx.planning;
     // Fresh from the authoritative store, scoped to this project only.
     if (planning) await planning.refreshProject(projectId);
-    const plans = planning ? planning.listByProject(projectId) : [];
+    const all = planning ? planning.listByProject(projectId) : [];
+    const plans = query.planId
+      ? all.filter((plan) => plan.planId === query.planId)
+      : all;
     const latest = new Map<string, number>();
-    for (const plan of plans) {
+    for (const plan of all) {
       latest.set(
         plan.planId,
         Math.max(latest.get(plan.planId) ?? 0, plan.version),
@@ -533,6 +537,21 @@ export class WorkforceQueryService {
       .filter((plan) => plan.version === 1)[0];
     const current = newestSeries && planning.latest(newestSeries.planId);
     return current ? executionPlanView(current, true) : null;
+  }
+
+  /** The planner's technology catalog (read-only; for planning requests). */
+  getTechnologyCatalog(
+    principal: OperatorPrincipal,
+  ): TechnologyCatalogEntryView[] {
+    this.authorizeView(principal);
+    return (this.ctx.technologyCatalog ?? new TechnologyCatalog())
+      .list()
+      .map((profile) => ({
+        id: profile.id,
+        label: profile.label,
+        componentKinds: [...profile.componentKinds],
+        platforms: [...profile.platforms],
+      }));
   }
 
   /* -------------------------------------------------------------- */

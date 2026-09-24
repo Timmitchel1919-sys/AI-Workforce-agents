@@ -326,12 +326,14 @@ export class ExecutionPlanningService {
   async replan(
     planId: string,
     actor: PlanActor,
+    expectedVersion?: number,
   ): Promise<{
     plan: ExecutionPlan;
     outcome: ReplanOutcome;
     previous: ExecutionPlan;
   }> {
     const previous = await this.requireCurrent(planId);
+    this.assertExpectedVersion(previous, expectedVersion);
     this.assertProjectExists(previous.projectId);
     const evaluation = this.evaluate(previous.request);
     if (evaluation.inputsFingerprint === previous.inputsFingerprint) {
@@ -392,8 +394,10 @@ export class ExecutionPlanningService {
   async submitForApproval(
     planId: string,
     actor: PlanActor,
+    expectedVersion?: number,
   ): Promise<ExecutionPlan> {
     const plan = await this.requireCurrent(planId);
+    this.assertExpectedVersion(plan, expectedVersion);
     if (plan.status !== "ready") {
       throw new StateTransitionError(
         `execution plan ${plan.id} is ${plan.status}; only a ready plan can be submitted`,
@@ -583,6 +587,22 @@ export class ExecutionPlanningService {
       this.options.approvals.expire(approvalId);
     } catch (error) {
       if (!(error instanceof StateTransitionError)) throw error;
+    }
+  }
+
+  /** Stale-plan protection: never act on a version the operator did not see. */
+  private assertExpectedVersion(
+    current: ExecutionPlan,
+    expectedVersion: number | undefined,
+  ): void {
+    if (expectedVersion === undefined) return;
+    if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+      throw new ValidationError("expectedVersion must be a positive integer");
+    }
+    if (current.version !== expectedVersion) {
+      throw new PlanRevisionConflictError(
+        `execution plan is now at version ${current.version}; version ${expectedVersion} is no longer current`,
+      );
     }
   }
 
