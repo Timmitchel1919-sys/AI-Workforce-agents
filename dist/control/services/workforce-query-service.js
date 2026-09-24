@@ -5,7 +5,7 @@
  * capability, and returns only data for projects the operator may access.
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
-import { operatorCan, operatorCanAccessProject, PermissionDeniedError, validateOperatorPrincipal, } from "../../contracts/index.js";
+import { TOOL_WILDCARD, operatorCan, operatorCanAccessProject, PermissionDeniedError, validateOperatorPrincipal, } from "../../contracts/index.js";
 import { now, TechnologyCatalog } from "../../core/index.js";
 import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolView, deriveTaskView, deriveWorkflowView, MAX_PAGE_SIZE, paginate, } from "../derive.js";
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
@@ -308,7 +308,17 @@ export class WorkforceQueryService {
     getTools(principal) {
         this.authorizeView(principal);
         const audit = this.ctx.audit.list();
-        return this.ctx.tools.list().map((tool) => deriveToolView(tool, audit));
+        return this.ctx.tools.list().map((tool) => {
+            const view = deriveToolView(tool, audit);
+            // Project isolation: never reveal project ids outside the operator's scope.
+            return principal.allowedProjects === "*"
+                ? view
+                : {
+                    ...view,
+                    allowedProjects: view.allowedProjects.filter((projectId) => projectId === TOOL_WILDCARD ||
+                        this.canSeeProject(principal, projectId)),
+                };
+        });
     }
     getTool(principal, toolId) {
         return this.getTools(principal).find((t) => t.toolId === toolId);
