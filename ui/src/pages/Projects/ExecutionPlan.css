@@ -542,3 +542,42 @@
     scroll-behavior: auto;
   }
 }
+
+/* EO-4.1 execution readiness (pre-flight only; execute stays disabled). */
+.exec-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.exec-actions .ui-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.exec-outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.exec-reasons {
+  margin: 0;
+  padding-left: var(--space-5, 1.25rem);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+#plan-readiness .plan-row {
+  width: 100%;
+}
+
+#plan-readiness .exec-unavailable,
+#plan-readiness .exec-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

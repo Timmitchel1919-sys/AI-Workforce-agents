@@ -45,6 +45,12 @@ import {
   WorkflowEngine,
   WorkflowSystem,
   AccessService,
+  BASELINE_DENY_ALL_POLICY,
+  ExecutionManager,
+  ExecutionOperationRegistry,
+  ExecutionPolicyRegistry,
+  InMemoryExecutionSessionStore,
+  SandboxRegistry,
   ProfileService,
   ExecutionPlanningService,
   ValidationError,
@@ -207,6 +213,29 @@ export async function createProductionControlPlaneRuntime(
     services.auth,
     operatorAccounts,
   );
+  // EO-4.1: the execution CONTROL BOUNDARY only. A versioned baseline policy
+  // that permits nothing, no registered operations and no sandbox provider:
+  // every pre-flight is DENIED until a later EO registers real, bounded
+  // operations, a provider and an explicit project policy. Nothing executes.
+  const executionPolicies = new ExecutionPolicyRegistry({
+    policyId: BASELINE_DENY_ALL_POLICY.policyId,
+    version: BASELINE_DENY_ALL_POLICY.version,
+  });
+  executionPolicies.register(BASELINE_DENY_ALL_POLICY);
+  const execution = new ExecutionManager({
+    planning,
+    approvals,
+    agents: bootstrap.agents,
+    isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+    environments: environmentRegistry,
+    tools: bootstrap.tools,
+    projects: bootstrap.projects,
+    operations: new ExecutionOperationRegistry(),
+    policies: executionPolicies,
+    sandboxes: new SandboxRegistry(),
+    sessions: new InMemoryExecutionSessionStore(),
+    audit,
+  });
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
     tasks,
@@ -220,6 +249,7 @@ export async function createProductionControlPlaneRuntime(
     workflowControl,
     environments: environmentRegistry,
     planning,
+    execution,
     access,
     orchestrator,
     workflowEngine,

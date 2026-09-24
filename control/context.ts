@@ -11,6 +11,7 @@ import {
   EnvironmentRegistry,
   TechnologyCatalog,
   ExecutionPlanningService,
+  ExecutionManager,
   Orchestrator,
   PermissionSystem,
   ProjectRegistry,
@@ -46,6 +47,11 @@ export interface ControlPlaneContext {
    * Planning never executes anything.
    */
   planning?: ExecutionPlanningService;
+  /**
+   * EO-4.1 execution control boundary: pre-flight, session metadata,
+   * cancel/kill. Optional; absent → execution routes 404. Never executes.
+   */
+  execution?: ExecutionManager;
   /**
    * Operator access lifecycle (AUTHZ-1): pending → approve/reject →
    * suspend/reactivate/revoke. Optional; absent → access routes 404.

@@ -17,6 +17,7 @@
  */
 import {
   type AccessCommandInput,
+  type ExecutionCancelCommandInput,
   type AgentCommandInput,
   type ApprovalCommandInput,
   type CommandOptions,
@@ -766,6 +767,117 @@ export class WorkforceCommandService {
         {},
         run,
         kind,
+      );
+    }
+  }
+
+  /* -------------------------------------------------------------- */
+  /* execution sessions (EO-4.1) — cancel / kill only               */
+  /* -------------------------------------------------------------- */
+
+  /** Cancel one execution session (operators). Idempotent and audited. */
+  cancelExecution(
+    principal: OperatorPrincipal,
+    input: ExecutionCancelCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    return this.runExecutionCancel(
+      principal,
+      "cancel_execution",
+      "cancel",
+      input,
+      options,
+    );
+  }
+
+  /**
+   * Emergency kill switch for ONE session (administrators only). Not a shell
+   * kill: it asks the governed session to terminate, and is audited.
+   */
+  killExecution(
+    principal: OperatorPrincipal,
+    input: ExecutionCancelCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    return this.runExecutionCancel(
+      principal,
+      "kill_execution",
+      "kill",
+      input,
+      options,
+    );
+  }
+
+  private async runExecutionCancel(
+    principal: OperatorPrincipal,
+    command: "cancel_execution" | "kill_execution",
+    kind: "cancel" | "kill",
+    input: ExecutionCancelCommandInput,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    const sessionRef =
+      typeof input?.sessionId === "string" ? input.sessionId : undefined;
+    if (!operatorCan(principal, command)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        sessionRef,
+        `role "${principal.role}" may not ${kind} execution sessions`,
+        {},
+        run,
+      );
+    }
+    const execution = this.ctx.execution;
+    if (!execution) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        sessionRef,
+        "execution is not configured",
+        {},
+        run,
+        "invalid_state",
+      );
+    }
+    try {
+      const { outcome, session } = await execution.cancel(
+        principal,
+        sessionRef ?? "",
+        typeof input?.reason === "string" ? input.reason : "",
+        kind,
+      );
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        session.sessionId,
+        `execution ${outcome.replace(/_/g, " ")}`,
+        { projectId: session.projectId, outcome, status: session.status },
+        run,
+      );
+    } catch (error) {
+      const denied = error instanceof PermissionDeniedError;
+      const errorKind: ControlErrorKind = denied
+        ? "forbidden"
+        : error instanceof NotFoundError
+          ? "not_found"
+          : error instanceof StateTransitionError
+            ? "invalid_state"
+            : error instanceof ValidationError
+              ? "invalid_request"
+              : "command_failure";
+      return this.audited(
+        principal,
+        command,
+        denied ? "denied" : "rejected",
+        sessionRef,
+        message(error),
+        {},
+        run,
+        errorKind,
       );
     }
   }

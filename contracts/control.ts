@@ -53,6 +53,9 @@ export const CONTROL_CAPABILITIES = [
   "replan_execution_plan",
   "submit_execution_plan",
   "manage_access",
+  "prepare_execution",
+  "cancel_execution",
+  "kill_execution",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -74,6 +77,8 @@ export const ROLE_CAPABILITIES: Record<
     "create_execution_plan",
     "replan_execution_plan",
     "submit_execution_plan",
+    "prepare_execution",
+    "cancel_execution",
   ],
   admin: [
     "view",
@@ -90,6 +95,10 @@ export const ROLE_CAPABILITIES: Record<
     "replan_execution_plan",
     "submit_execution_plan",
     "manage_access",
+    "prepare_execution",
+    "cancel_execution",
+    // Emergency termination of a specific session: administrators only.
+    "kill_execution",
   ],
 };
 
@@ -160,6 +169,8 @@ export const CONTROL_COMMANDS = [
   "create_execution_plan",
   "replan_execution_plan",
   "submit_execution_plan",
+  "cancel_execution",
+  "kill_execution",
   "approve_access",
   "reject_access",
   "suspend_access",
@@ -641,6 +652,11 @@ export interface AccessCommandInput {
   /** `"*"` or registered project ids; defaults to the current value. */
   allowedProjects?: unknown;
   reason?: string;
+}
+/** `cancel-execution` / `kill-execution`: references the session only. */
+export interface ExecutionCancelCommandInput {
+  sessionId: string;
+  reason: string;
 }
 export interface ExecutionPlanCommandInput {
   /** Plan SERIES id — the command acts on its current (latest) version. */

@@ -6,6 +6,7 @@ import { useAuth } from "../../../auth/useAuth";
 import { useAgentNames, usePlan, type PlanUiState } from "../../../features/executionPlans";
 import { useI18n } from "../../../i18n";
 import { CreatePlanDialog } from "./CreatePlanDialog";
+import { ExecutionReadiness } from "./ExecutionReadiness";
 import { PlanActions, type ActionNotice } from "./PlanActions";
 import { PlanComparison, PlanHistory } from "./PlanHistory";
 import { PlanPipeline, PlanSummary } from "./PlanOverview";
@@ -101,6 +102,7 @@ export function ExecutionPlanTab({ projectId, projectName }: { projectId: string
       ) : null}
       <BlockersPanel plan={plan} />
       <PlanPipeline plan={plan} />
+      {!historical ? <ExecutionReadiness plan={plan} /> : null}
 
       <div className="plan-grid">
         <ArchitectureSection plan={plan} />

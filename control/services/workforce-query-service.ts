@@ -7,6 +7,9 @@
  */
 import {
   TOOL_WILDCARD,
+  type ExecutionOperationDefinition,
+  type ExecutionSession,
+  type PreflightResult,
   type Approval,
   type ApprovalQuery,
   type ApprovalView,
@@ -500,6 +503,45 @@ export class WorkforceQueryService {
     const host = this.ctx.environments?.getHost(hostId);
     if (!host) return undefined;
     return { hostId, host, capabilities: host.capabilities };
+  }
+
+  /* -------------------------------------------------------------- */
+  /* execution control boundary (EO-4.1) — never executes           */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Pre-flight for one plan stage: ELIGIBLE or DENIED with reason codes.
+   * Denials are data (200), not errors. `undefined` → execution not configured.
+   */
+  async executionPreflight(
+    principal: OperatorPrincipal,
+    request: unknown,
+  ): Promise<PreflightResult | undefined> {
+    validateOperatorPrincipal(principal);
+    return this.ctx.execution?.preflight(principal, request);
+  }
+
+  getExecutionOperations(
+    principal: OperatorPrincipal,
+  ): ExecutionOperationDefinition[] {
+    this.authorizeView(principal);
+    return this.ctx.execution?.listOperations(principal) ?? [];
+  }
+
+  async getExecutionSession(
+    principal: OperatorPrincipal,
+    sessionId: string,
+  ): Promise<ExecutionSession | undefined> {
+    this.authorizeView(principal);
+    return this.ctx.execution?.getSession(principal, sessionId);
+  }
+
+  async getExecutionSessions(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ): Promise<ExecutionSession[] | undefined> {
+    this.authorizeView(principal);
+    return this.ctx.execution?.listSessions(principal, projectId);
   }
 
   /* -------------------------------------------------------------- */

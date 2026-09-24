@@ -37,6 +37,7 @@ interface Api {
   versions?: Record<number, Fixture>;
   history?: Fixture[];
   commandStatus?: number;
+  preflight?: unknown;
 }
 
 function mockApi(api: Api) {
@@ -47,6 +48,7 @@ function mockApi(api: Api) {
       const url = String(input);
       const method = init?.method ?? "GET";
       calls.push({ method, url, body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined });
+      if (method === "POST" && url === "/api/execution/preflight") return respond(200, api.preflight);
       if (method === "POST") return respond(api.commandStatus ?? 200, { ok: api.commandStatus === undefined, reason: "x" });
       if (url === "/api/projects/alpha") return respond(200, PROJECT);
       if (url === "/api/agents") return respond(200, [{ agentId: "web-agent", name: "Web Builder" }]);
@@ -160,6 +162,47 @@ describe("Project Detail → Execution Plan", () => {
       .map((el) => el.textContent)
       .join(" ");
     expect(content).not.toMatch(/\b(passed|succeeded|success|deployed|completed)\b/i);
+  });
+
+  it("execution readiness: a pre-flight sends references only and shows the denial — nothing executes", async () => {
+    const user = userEvent.setup();
+    const calls = mockApi({
+      current: fixtures.ready,
+      history: [fixtures.ready],
+      preflight: {
+        decision: "DENIED",
+        reasons: [
+          { code: "POLICY_DENIED", detail: "no policy rule permits this operation (deny by default)" },
+          { code: "SANDBOX_UNAVAILABLE", detail: "no sandbox" },
+        ],
+        stageId: "build:web",
+        policy: { policyId: "baseline-deny-all", version: 1 },
+        requiredApprovals: [],
+        executionAvailable: false,
+      },
+    });
+    renderPage(PLAN_PATH, [...OPERATOR, "prepare_execution"]);
+
+    const readiness = await screen.findByRole("region", { name: "Execution readiness" });
+    const buttons = within(readiness).getAllByRole("button", { name: /Check readiness/ });
+    await user.click(buttons[0]!);
+    expect(await within(readiness).findByText("Denied")).toBeInTheDocument();
+    expect(within(readiness).getByText(/No execution policy permits this operation/)).toBeInTheDocument();
+    expect(within(readiness).getByText(/No sandbox can isolate and bound/)).toBeInTheDocument();
+    expect(within(readiness).getByText("Policy baseline-deny-all v1")).toBeInTheDocument();
+    const post = calls.find((c) => c.url === "/api/execution/preflight");
+    expect(Object.keys(post?.body as object).sort()).toEqual(["planId", "planVersion", "projectId", "stageId"]);
+    // Still no execute / run / deploy control anywhere.
+    expect(screen.queryByRole("button", { name: /deploy|execute|run/i })).toBeNull();
+    expect(within(readiness).getByText(/Controlled execution is not available yet/)).toBeInTheDocument();
+  });
+
+  it("execution readiness: without prepare_execution there is no check control", async () => {
+    mockApi({ current: fixtures.ready, history: [fixtures.ready] });
+    renderPage(PLAN_PATH, VIEWER);
+    const readiness = await screen.findByRole("region", { name: "Execution readiness" });
+    expect(within(readiness).queryByRole("button")).toBeNull();
+    expect(within(readiness).getByText("Your role cannot run readiness checks.")).toBeInTheDocument();
   });
 
   it("missing Xcode: required, unavailable and blocked — never 'Xcode available'", async () => {

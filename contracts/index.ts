@@ -279,6 +279,7 @@ export const AUDIT_EVENT_TYPES = [
   "environment_unavailable",
   "execution_plan_event",
   "access_event",
+  "execution_event",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -482,6 +483,22 @@ export class BootstrapLockedError extends PermissionDeniedError {
   }
 }
 export class NotFoundError extends WorkforceError {}
+
+/**
+ * EO-4.1: an EXPECTED execution security outcome (policy denial, workspace
+ * violation, …). A 403-class error if it ever escapes — never a 500.
+ */
+export class ExecutionDeniedError extends PermissionDeniedError {
+  readonly code: import("./execution.js").ExecutionErrorCode;
+  constructor(
+    code: import("./execution.js").ExecutionErrorCode,
+    detail: string,
+  ) {
+    super(detail);
+    this.name = "ExecutionDeniedError";
+    this.code = code;
+  }
+}
 
 /**
  * Structured failure from a General Agent execution. Carries a machine-readable
@@ -705,3 +722,4 @@ export * from "./environments.js";
 export * from "./planning.js";
 export * from "./access.js";
 export * from "./profile.js";
+export * from "./execution.js";
