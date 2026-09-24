@@ -8,13 +8,13 @@ import BrandedSplash from "../components/splash/BrandedSplash";
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
-  const splashInertProps = splashDone ? {} : { inert: "" };
 
   return (
     <ErrorBoundary>
       <>
-        {/* The router starts rendering underneath; it stays inert until the splash leaves. */}
-        <div className="app-root" {...splashInertProps}>
+        {/* The router starts rendering underneath; it stays inert until the splash leaves.
+            React 19 renders `inert={true}` as `inert=""` and omits it when undefined. */}
+        <div className="app-root" inert={splashDone ? undefined : true}>
           <RouterProvider router={router} />
         </div>
         {splashDone ? null : (

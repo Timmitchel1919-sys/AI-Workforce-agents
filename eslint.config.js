@@ -25,6 +25,13 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   prettier,
   {
+    // Build scripts run directly on Node (plain ESM, not TypeScript).
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: { process: "readonly", console: "readonly" },
+    },
+  },
+  {
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",
