@@ -148,7 +148,13 @@ export function createControlPlaneApi(options) {
                     ? notNull(query.getWorkflow(principal, id))
                     : query.getWorkflows(principal, parseWorkflowQuery(params)), correlationId);
             case "approvals":
-                return send(res, 200, query.getApprovals(principal, statusFilter(params)), correlationId);
+                return send(res, 200, query.getApprovalPage(principal, {
+                    ...statusFilter(params),
+                    ...parsePageQuery(params),
+                    ...(params.get("projectId")
+                        ? { projectId: params.get("projectId") }
+                        : {}),
+                }), correlationId);
             case "projects":
                 // `GET /projects/:projectId/agents` — nested project resource route.
                 if (segs.length === 3 && segs[2] === "agents") {

@@ -5,7 +5,7 @@
  * capability, and returns only data for projects the operator may access.
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
-import { type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
+import { type ApprovalQuery, type ApprovalView, type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
 import type { EnvironmentDescriptor, EnvironmentInstance, HostCapabilitySnapshot, HostInstance } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import { redact } from "../redaction.js";
@@ -30,7 +30,20 @@ export declare class WorkforceQueryService {
     getWorkflow(principal: OperatorPrincipal, workflowId: string): WorkflowView | undefined;
     getApprovals(principal: OperatorPrincipal, filter?: {
         status?: string;
-    }): import("../../contracts/control.js").ApprovalView[];
+    }): ApprovalView[];
+    /**
+     * The approval queue for the Approvals screen: status/project filters and
+     * the shared bounded cursor pagination. Project scope is enforced
+     * server-side (a foreign project filter simply yields nothing).
+     */
+    getApprovalPage(principal: OperatorPrincipal, query?: ApprovalQuery): PageResult<ApprovalView>;
+    /**
+     * Approval views with their project resolved: orchestrator/tool approvals
+     * only carry a `taskId`, so the project comes from the linked task — an
+     * approval must never escape project isolation because its metadata
+     * lacked a `projectId`.
+     */
+    private approvalViews;
     getProjects(principal: OperatorPrincipal): Promise<ProjectView[]>;
     getProject(principal: OperatorPrincipal, projectId: string): Promise<ProjectView | undefined>;
     /**

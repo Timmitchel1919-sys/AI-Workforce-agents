@@ -256,10 +256,20 @@ export interface ApprovalView {
     toolId?: string;
     agentId?: string;
     projectId?: string;
+    /** Set when the approval gates an execution plan revision (EO-3.x). */
+    executionPlanId?: string;
+    planVersion?: number;
     requestedAt: string;
     expiresAt?: string;
     decidedBy?: string;
     decidedAt?: string;
+}
+/** `GET /api/approvals` — newest first, server-filtered and paginated. */
+export interface ApprovalQuery {
+    status?: string;
+    projectId?: string;
+    limit?: number;
+    cursor?: string;
 }
 export interface ProjectCapabilityView {
     operation: string;
