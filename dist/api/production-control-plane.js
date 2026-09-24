@@ -1,6 +1,6 @@
-import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreOperatorAccountStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, ProfileService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
@@ -90,6 +90,13 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         audit,
         projects: bootstrap.projects,
     });
+    const profile = new ProfileService({
+        profiles: new FirestoreOperatorProfileStore(transactionalFirestore, {
+            collectionPrefix: options.collectionPrefix,
+        }),
+        accounts: operatorAccounts,
+        audit,
+    });
     const operatorDirectory = new FirebaseOperatorDirectory(services.auth, operatorAccounts);
     const context = {
         agents: bootstrap.agents,
@@ -117,6 +124,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         operatorDirectory,
         identityVerifier: operatorDirectory,
         access,
+        profile,
     });
     return Object.freeze({
         handler,

@@ -16,7 +16,7 @@
 import { type IncomingMessage, type ServerResponse } from "node:http";
 import { type IdentityVerifier, type OperatorDirectory } from "../contracts/index.js";
 import { type WorkforceCommandService, type WorkforceQueryService } from "../control/index.js";
-import type { AccessService } from "../core/index.js";
+import type { AccessService, ProfileService } from "../core/index.js";
 export interface ControlPlaneApiOptions {
     query: WorkforceQueryService;
     command: WorkforceCommandService;
@@ -28,6 +28,8 @@ export interface ControlPlaneApiOptions {
     identityVerifier?: IdentityVerifier;
     /** AUTHZ-1: serves `GET /me/access` (the caller's own access state). */
     access?: Pick<AccessService, "myAccess">;
+    /** The caller's own profile (`/me/profile`, photo upload/removal). */
+    profile?: Pick<ProfileService, "myProfile" | "setPhoto" | "removePhoto">;
     /** Path prefix for every route. Default `/api`. */
     basePath?: string;
     /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */

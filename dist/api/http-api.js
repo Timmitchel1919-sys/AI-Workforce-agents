@@ -98,6 +98,9 @@ export function createControlPlaneApi(options) {
             return send(res, 401, { error: { message: "authentication required" } }, correlationId);
         }
         try {
+            if (route === "/me/profile" || route === "/me/profile/photo") {
+                return await handleProfile(req, res, route, method, principal, correlationId);
+            }
             if (method === "GET") {
                 return await handleGet(res, segs, url.searchParams, principal, correlationId);
             }
@@ -226,6 +229,27 @@ export function createControlPlaneApi(options) {
             default:
                 return send(res, 404, { error: { message: "not found" } }, correlationId);
         }
+    }
+    /**
+     * `GET /me/profile`, `PUT /me/profile/photo` {dataUrl},
+     * `DELETE /me/profile/photo` — always the principal's own profile.
+     */
+    async function handleProfile(req, res, route, method, principal, correlationId) {
+        const profile = options.profile;
+        if (!profile) {
+            return send(res, 404, { error: { message: "not found" } }, correlationId);
+        }
+        if (route === "/me/profile" && method === "GET") {
+            return send(res, 200, await profile.myProfile(principal), correlationId);
+        }
+        if (route === "/me/profile/photo" && method === "PUT") {
+            const body = await readJsonBody(req, maxBody);
+            return send(res, 200, await profile.setPhoto(principal, body.dataUrl, correlationId), correlationId);
+        }
+        if (route === "/me/profile/photo" && method === "DELETE") {
+            return send(res, 200, await profile.removePhoto(principal, correlationId), correlationId);
+        }
+        return send(res, 405, { error: { message: "method not allowed" } }, correlationId);
     }
     async function handleCommand(req, res, name, principal, correlationId) {
         const methodName = COMMAND_METHODS[name];
