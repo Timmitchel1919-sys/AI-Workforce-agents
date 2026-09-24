@@ -77,6 +77,8 @@
 
   --color-nav-active-bg: linear-gradient(135deg, #2767df 0%, #2448bc 55%, #4a2da8 100%);
   --color-nav-active-text: #ffffff;
+  /* Notch cut into the active nav item: matches the sidebar surface. */
+  --color-nav-notch: #f4f8ff;
   --color-nav-hover: rgba(113, 55, 232, 0.07);
   --color-button-primary-bg: linear-gradient(135deg, var(--aw-blue-600), #2447b8);
   --color-button-primary-hover: linear-gradient(135deg, var(--aw-blue-700), #1d3a99);
@@ -185,6 +187,7 @@
 
   --color-nav-active-bg: linear-gradient(135deg, rgba(47, 123, 255, 0.28), rgba(74, 45, 168, 0.3));
   --color-nav-active-text: #ffffff;
+  --color-nav-notch: #111827;
   --color-nav-hover: rgba(122, 162, 255, 0.08);
   --color-button-primary-bg: linear-gradient(135deg, #2f6fe8, #2447b8);
   --color-button-primary-hover: linear-gradient(135deg, #3b7cf5, #2a52c9);

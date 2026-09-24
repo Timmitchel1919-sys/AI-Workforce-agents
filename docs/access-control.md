@@ -141,3 +141,21 @@ project access: review the `operators` and `access_control` documents in the
 Firebase Console, restore an administrator account and the
 `access_control/summary.activeAdmins` count, and record the intervention. The
 application deliberately offers no hidden backdoor for this.
+
+## Operator profile photo
+
+An ACTIVE operator can upload or remove their own profile photo on
+**Profile** (top-bar account menu → Profile):
+
+- `GET /api/me/profile` — own profile: display name and email from the
+  operator account, role from the principal, optional `avatarDataUrl`.
+- `PUT /api/me/profile/photo` `{ dataUrl }` / `DELETE /api/me/profile/photo`.
+
+The operator id always comes from the verified token, never from the request.
+The Control Plane accepts only a PNG, JPEG or WebP data URL whose bytes match
+the declared type, at most 256 KB decoded (the UI centre-crops and resizes to
+256 × 256 first). Photos live in `operator_profiles/{uid}`, separate from the
+authoritative `operators/{uid}` account, and are written only by the Control
+Plane. Changes are audited as `access_event` (`profile_photo_updated`,
+`profile_photo_removed`) without the image data. The display name is edited on
+the Firebase Auth profile; the refreshed ID token carries it to the account.

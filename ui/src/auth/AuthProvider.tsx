@@ -234,6 +234,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return DEFAULT_PASSWORD_POLICY;
         }
       },
+      updateDisplayName: async (displayName: string) => {
+        const current = requireAuth().currentUser;
+        if (!current) throw new AuthFlowError("unknown");
+        try {
+          // Firebase Auth profile only; the Control Plane copies the name from
+          // the refreshed ID token onto the operator account.
+          await updateProfile(current, { displayName: displayName.trim() || null });
+          setUser(mapFirebaseUser(current));
+          await readAccess(current, true);
+        } catch (error) {
+          throw AuthFlowError.from(error);
+        }
+      },
       signOut: async () => {
         if (!firebaseConfigured) {
           setUser(null);

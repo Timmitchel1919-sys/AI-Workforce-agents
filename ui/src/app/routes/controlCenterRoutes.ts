@@ -9,6 +9,7 @@ export { default as WorkflowsPage } from "../../pages/Workflows/WorkflowsPage";
 export { default as WorkflowDetailPage } from "../../pages/Workflows/WorkflowDetailPage";
 export { default as DesignSystemPage } from "../../pages/DesignSystem/DesignSystemPage";
 export { default as SettingsPage } from "../../pages/Settings/SettingsPage";
+export { default as ProfilePage } from "../../pages/Profile/ProfilePage";
 export { default as ProjectsPage } from "../../pages/Projects/ProjectsPage";
 export { default as ProjectDetailPage } from "../../pages/Projects/ProjectDetailPage";
 export { default as UsersAccessPage } from "../../pages/Settings/UsersAccessPage";

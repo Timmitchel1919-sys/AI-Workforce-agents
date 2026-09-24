@@ -1,5 +1,5 @@
-import { Link, NavLink, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Lock } from "lucide-react";
+import { NavLink, useLocation, useParams } from "react-router-dom";
+import { Lock } from "lucide-react";
 import { ErrorState, Skeleton } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
@@ -73,11 +73,9 @@ export default function ProjectDetailPage() {
         eyebrow={t("plans.projectsTitle")}
         title={project?.displayName ?? projectId ?? ""}
         description={tab === "execution-plan" ? t("plans.description") : undefined}
+        backTo="/projects"
+        backLabel={t("plans.backToProjects")}
       />
-      <Link to="/projects" className="task-detail-header__back-link plan-back">
-        <ArrowLeft size={16} aria-hidden />
-        <span>{t("plans.backToProjects")}</span>
-      </Link>
       {body}
     </PageContainer>
   );

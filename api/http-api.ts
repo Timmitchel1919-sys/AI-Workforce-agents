@@ -33,7 +33,7 @@ import {
   type WorkforceCommandService,
   type WorkforceQueryService,
 } from "../control/index.js";
-import type { AccessService } from "../core/index.js";
+import type { AccessService, ProfileService } from "../core/index.js";
 
 export interface ControlPlaneApiOptions {
   query: WorkforceQueryService;
@@ -46,6 +46,8 @@ export interface ControlPlaneApiOptions {
   identityVerifier?: IdentityVerifier;
   /** AUTHZ-1: serves `GET /me/access` (the caller's own access state). */
   access?: Pick<AccessService, "myAccess">;
+  /** The caller's own profile (`/me/profile`, photo upload/removal). */
+  profile?: Pick<ProfileService, "myProfile" | "setPhoto" | "removePhoto">;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -199,6 +201,16 @@ export function createControlPlaneApi(
     }
 
     try {
+      if (route === "/me/profile" || route === "/me/profile/photo") {
+        return await handleProfile(
+          req,
+          res,
+          route,
+          method,
+          principal,
+          correlationId,
+        );
+      }
       if (method === "GET") {
         return await handleGet(
           res,
@@ -488,6 +500,50 @@ export function createControlPlaneApi(
           correlationId,
         );
     }
+  }
+
+  /**
+   * `GET /me/profile`, `PUT /me/profile/photo` {dataUrl},
+   * `DELETE /me/profile/photo` — always the principal's own profile.
+   */
+  async function handleProfile(
+    req: IncomingMessage,
+    res: ServerResponse,
+    route: string,
+    method: string,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    const profile = options.profile;
+    if (!profile) {
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    }
+    if (route === "/me/profile" && method === "GET") {
+      return send(res, 200, await profile.myProfile(principal), correlationId);
+    }
+    if (route === "/me/profile/photo" && method === "PUT") {
+      const body = await readJsonBody(req, maxBody);
+      return send(
+        res,
+        200,
+        await profile.setPhoto(principal, body.dataUrl, correlationId),
+        correlationId,
+      );
+    }
+    if (route === "/me/profile/photo" && method === "DELETE") {
+      return send(
+        res,
+        200,
+        await profile.removePhoto(principal, correlationId),
+        correlationId,
+      );
+    }
+    return send(
+      res,
+      405,
+      { error: { message: "method not allowed" } },
+      correlationId,
+    );
   }
 
   async function handleCommand(

@@ -65,5 +65,10 @@ export interface AuthContextValue {
   /** Refreshes the ID token and asks the Control Plane for the current access state. */
   refreshAccess: () => Promise<AccessState>;
   getPasswordPolicy: () => Promise<PasswordPolicy>;
+  /**
+   * Updates the Firebase Auth display name and refreshes the ID token so the
+   * Control Plane picks up the new name. Optional: absent in test doubles.
+   */
+  updateDisplayName?: (displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
 }

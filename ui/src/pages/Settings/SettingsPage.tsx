@@ -1,31 +1,19 @@
-import { useContext, useId } from "react";
+import { useContext } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Monitor, Moon, ShieldCheck, Sun, type LucideIcon } from "lucide-react";
+import { ChevronRight, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { authContext } from "../../auth/authContext";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
-import { LANGUAGE_NATIVE_NAMES, SUPPORTED_LANGUAGES, isLanguage, useI18n, type MessageKey } from "../../i18n";
-import type { ThemeMode } from "../../themes/theme.types";
-import { useTheme } from "../../themes/useTheme";
+import { useI18n } from "../../i18n";
 import "./SettingsPage.css";
 import "./UsersAccess.css";
 
-const THEME_OPTIONS: Array<{ mode: ThemeMode; icon: LucideIcon; label: MessageKey; description: MessageKey }> = [
-  { mode: "light", icon: Sun, label: "settings.light", description: "settings.lightDescription" },
-  { mode: "dark", icon: Moon, label: "settings.dark", description: "settings.darkDescription" },
-  { mode: "system", icon: Monitor, label: "settings.system", description: "settings.systemDescription" },
-];
-
 /**
- * Settings → Appearance: the authoritative place for theme and language.
- * Both apply immediately, are independent of each other, and persist locally
- * (allowlisted values only). The top-bar controls are shortcuts to the same state.
+ * Settings hub. Theme and language live on the Profile → Preferences card;
+ * administrators also reach Users & Access from here.
  */
 export default function SettingsPage() {
-  const { t, language, setLanguage } = useI18n();
-  const { theme, setTheme } = useTheme();
-  const languageId = useId();
-  const languageHintId = useId();
+  const { t } = useI18n();
   // UX only: the link shows for administrators; the Control Plane enforces it.
   const canManageAccess =
     useContext(authContext)?.accessDetails.capabilities.includes("manage_access") ?? false;
@@ -34,70 +22,21 @@ export default function SettingsPage() {
     <PageContainer>
       <PageHeader eyebrow={t("common.brand")} title={t("settings.title")} description={t("settings.description")} />
 
-      <section className="settings-section" aria-labelledby="settings-appearance">
+      <section className="settings-section" aria-labelledby="settings-preferences">
         <header className="settings-section__header">
-          <h2 id="settings-appearance" className="settings-section__title">
+          <h2 id="settings-preferences" className="settings-section__title">
             {t("settings.appearance")}
           </h2>
-          <p className="settings-section__description">{t("settings.appearanceDescription")}</p>
         </header>
-
-        <fieldset className="settings-field">
-          <legend className="settings-field__label">{t("settings.theme")}</legend>
-          <p className="settings-field__hint">{t("settings.themeDescription")}</p>
-          <div className="settings-theme-grid">
-            {THEME_OPTIONS.map(({ mode, icon: Icon, label, description }) => (
-              <label key={mode} className={`settings-theme${theme === mode ? " is-selected" : ""}`}>
-                <input
-                  type="radio"
-                  name="theme"
-                  value={mode}
-                  checked={theme === mode}
-                  onChange={() => setTheme(mode)}
-                  className="settings-theme__input"
-                />
-                <span className={`settings-theme__preview settings-theme__preview--${mode}`} aria-hidden="true">
-                  <span className="settings-theme__preview-bar" />
-                  <span className="settings-theme__preview-card" />
-                  <span className="settings-theme__preview-card settings-theme__preview-card--short" />
-                </span>
-                <span className="settings-theme__text">
-                  <span className="settings-theme__name">
-                    <Icon size={16} aria-hidden="true" />
-                    {t(label)}
-                  </span>
-                  <span className="settings-theme__description">{t(description)}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <div className="settings-field">
-          <label htmlFor={languageId} className="settings-field__label">
-            {t("settings.language")}
-          </label>
-          <p id={languageHintId} className="settings-field__hint">
-            {t("settings.languageDescription")}
-          </p>
-          <select
-            id={languageId}
-            className="ui-select settings-language"
-            value={language}
-            aria-describedby={languageHintId}
-            onChange={(event) => {
-              if (isLanguage(event.target.value)) setLanguage(event.target.value);
-            }}
-          >
-            {SUPPORTED_LANGUAGES.map((code) => (
-              <option key={code} value={code} lang={code}>
-                {LANGUAGE_NATIVE_NAMES[code]}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <p className="settings-note">{t("settings.storageNote")}</p>
+        <Link to="/profile#preferences" className="settings-access-link">
+          <SlidersHorizontal size={20} aria-hidden />
+          <span>
+            <strong>{t("settings.preferencesLink")}</strong>
+            <br />
+            <span className="access-muted">{t("settings.preferencesLinkDescription")}</span>
+          </span>
+          <ChevronRight size={18} aria-hidden style={{ marginLeft: "auto" }} />
+        </Link>
       </section>
 
       {canManageAccess ? (

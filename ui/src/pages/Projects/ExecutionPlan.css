@@ -45,13 +45,6 @@
   font-size: var(--text-sm);
 }
 
-.plan-back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
 /* Tabs (real routes) */
 .plan-tabs {
   display: flex;

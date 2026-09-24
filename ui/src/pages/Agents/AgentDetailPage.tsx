@@ -41,6 +41,8 @@ export default function AgentDetailPage() {
           eyebrow={t("common.brand")}
           title={t("agents.detailTitle")}
           description={t("agents.detailDescription")}
+          backTo="/agents"
+          backLabel={t("agents.backToAgents")}
         />
         <AgentsLoadingState />
       </PageContainer>
@@ -54,6 +56,8 @@ export default function AgentDetailPage() {
           eyebrow={t("common.brand")}
           title={t("agents.detailTitle")}
           description={t("agents.detailDescription")}
+          backTo="/agents"
+          backLabel={t("agents.backToAgents")}
         />
         <ErrorState
           title={status === "unauthorized" ? t("agents.accessRestricted") : t("agents.errorTitle")}
@@ -77,6 +81,8 @@ export default function AgentDetailPage() {
           eyebrow={t("common.brand")}
           title={t("agents.detailTitle")}
           description={t("agents.detailDescription")}
+          backTo="/agents"
+          backLabel={t("agents.backToAgents")}
           breadcrumbs={[{ label: t("agents.title"), href: "/agents" }, { label: t("agents.notFound"), current: true }]}
         />
         <EmptyState
@@ -98,6 +104,8 @@ export default function AgentDetailPage() {
         eyebrow={t("common.brand")}
         title={agent.name}
         description={agent.description ?? t("agents.noDescription")}
+        backTo="/agents"
+        backLabel={t("agents.backToAgents")}
         breadcrumbs={[{ label: t("agents.title"), href: "/agents" }, { label: agent.name, current: true }]}
       />
 

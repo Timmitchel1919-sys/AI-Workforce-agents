@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Command, Menu, Moon, Search, Sun } from "lucide-react";
+import { Bell, Command, LogOut, Menu, Search, SlidersHorizontal, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
-import { IconButton } from "../ui";
+import { IconButton, UserAvatar } from "../ui";
 import { getPageTitleKey } from "../../config/pageTitles";
-import { LANGUAGE_NATIVE_NAMES, SUPPORTED_LANGUAGES, useI18n } from "../../i18n";
-import { useTheme } from "../../themes/useTheme";
+import { useMyProfile } from "../../features/profile";
+import { useI18n } from "../../i18n";
 import "./TopBar.css";
 
 interface TopBarProps {
@@ -22,10 +22,9 @@ export default function TopBar({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { t, language, setLanguage } = useI18n();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { t } = useI18n();
+  const { data: profile } = useMyProfile();
   const accountLabel = user?.displayName || user?.email || "Operator";
-  const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
   const searchRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -102,33 +101,6 @@ export default function TopBar({
         </div>
 
         <div className="topbar__right app-shell__topbar-actions" aria-label={t("shell.headerActions")}>
-          {/* Quick controls; the persistent preferences live in Settings → Appearance. */}
-          <div className="topbar__lang" role="group" aria-label={t("shell.languageQuick")}>
-            {SUPPORTED_LANGUAGES.map((code) => (
-              <button
-                key={code}
-                type="button"
-                lang={code}
-                className={`topbar__lang-option${language === code ? " is-active" : ""}`}
-                aria-pressed={language === code}
-                aria-label={LANGUAGE_NATIVE_NAMES[code]}
-                onClick={() => setLanguage(code)}
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          <IconButton
-            type="button"
-            label={nextTheme === "light" ? t("shell.switchToLight") : t("shell.switchToDark")}
-            aria-label={nextTheme === "light" ? t("shell.switchToLight") : t("shell.switchToDark")}
-            className="topbar__action-button"
-            onClick={() => setTheme(nextTheme)}
-          >
-            {nextTheme === "light" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
-          </IconButton>
-
           <IconButton
             type="button"
             label={t("shell.notifications")}
@@ -138,7 +110,7 @@ export default function TopBar({
             <Bell size={16} aria-hidden="true" />
           </IconButton>
 
-          <div style={{ position: "relative" }}>
+          <div className="topbar__account">
             <button
               type="button"
               className="topbar__account-button"
@@ -146,17 +118,24 @@ export default function TopBar({
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((open) => !open)}
             >
-              <span className="topbar__avatar" aria-hidden="true">
-                {accountLabel.charAt(0).toUpperCase()}
-              </span>
-              <span>{accountLabel}</span>
+              <UserAvatar name={accountLabel} src={profile?.avatarDataUrl} size={30} className="topbar__avatar" />
+              <span className="topbar__account-name">{accountLabel}</span>
             </button>
 
             {menuOpen ? (
               <div className="topbar__menu" role="menu" aria-label={t("shell.accountMenu")}>
                 <ul className="topbar__menu-list">
                   <li className="topbar__menu-item">
-                    <button type="button" className="topbar__menu-button" role="menuitem">
+                    <button
+                      type="button"
+                      className="topbar__menu-button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        navigate("/profile");
+                      }}
+                    >
+                      <UserRound size={15} aria-hidden="true" />
                       {t("shell.profile")}
                     </button>
                   </li>
@@ -167,16 +146,17 @@ export default function TopBar({
                       role="menuitem"
                       onClick={() => {
                         setMenuOpen(false);
-                        navigate("/settings");
+                        navigate("/profile#preferences");
                       }}
                     >
+                      <SlidersHorizontal size={15} aria-hidden="true" />
                       {t("shell.preferences")}
                     </button>
                   </li>
-                  <li className="topbar__menu-item">
+                  <li className="topbar__menu-item topbar__menu-item--separated">
                     <button
                       type="button"
-                      className="topbar__menu-button"
+                      className="topbar__menu-button topbar__menu-button--danger"
                       role="menuitem"
                       onClick={async () => {
                         setMenuOpen(false);
@@ -184,6 +164,7 @@ export default function TopBar({
                         navigate("/login", { replace: true });
                       }}
                     >
+                      <LogOut size={15} aria-hidden="true" />
                       {t("shell.signOut")}
                     </button>
                   </li>

@@ -10,6 +10,7 @@ export const pageTitleKeys: Record<string, MessageKey> = {
   "/audit-log": "nav.auditLog",
   "/knowledge": "nav.knowledge",
   "/settings": "nav.settings",
+  "/profile": "profile.title",
   "/design-system": "nav.designSystem",
 };
 

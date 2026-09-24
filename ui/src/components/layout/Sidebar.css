@@ -174,7 +174,7 @@
   align-items: center;
   gap: var(--space-3);
   width: 100%;
-  padding: var(--space-3) var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   background: transparent;
@@ -198,7 +198,8 @@
   outline-offset: 2px;
 }
 
-/* Active: royal blue → violet, with a small gold brand marker on the left edge. */
+/* Active: royal blue → violet, a gold outline around the icon, and a notch
+   cut into the right edge that points at the page content. */
 .sidebar__link.is-active {
   position: relative;
   border-color: transparent;
@@ -208,15 +209,18 @@
   box-shadow: 0 8px 18px rgba(36, 72, 188, 0.22);
 }
 
-.sidebar__link.is-active::before {
+.sidebar__link.is-active::after {
   content: "";
   position: absolute;
-  left: -1px;
-  top: 22%;
-  bottom: 22%;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--color-brand-gold);
+  top: 50%;
+  right: -1px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 7px 8px 7px 0;
+  border-color: transparent var(--color-nav-notch) transparent transparent;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .sidebar__icon {
@@ -224,7 +228,16 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  padding: 5px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm, 8px);
   color: inherit;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.sidebar__link.is-active .sidebar__icon {
+  border-color: var(--color-brand-gold);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-brand-gold) 35%, transparent);
 }
 
 .sidebar__label {
@@ -305,7 +318,7 @@
 
 .sidebar--collapsed .sidebar__link {
   justify-content: center;
-  padding: var(--space-3) 0;
+  padding: var(--space-2) 0;
 }
 
 .sidebar--collapsed .sidebar__label,

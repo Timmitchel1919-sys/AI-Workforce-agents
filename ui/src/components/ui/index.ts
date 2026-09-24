@@ -23,5 +23,6 @@ export { Alert } from './Alert';
 export { EmptyState } from '../states/EmptyState';
 export { ErrorState } from '../states/ErrorState';
 export { Breadcrumb } from './Breadcrumb';
+export { default as UserAvatar } from './UserAvatar';
 
 export * from './ui.css';

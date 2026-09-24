@@ -20,6 +20,7 @@ import {
   FirebaseOperatorDirectory,
   FirestoreExecutionPlanStore,
   FirestoreOperatorAccountStore,
+  FirestoreOperatorProfileStore,
   isTransactionalFirestore,
   FirestoreEventPublisher,
   type FirebaseServices,
@@ -44,6 +45,7 @@ import {
   WorkflowEngine,
   WorkflowSystem,
   AccessService,
+  ProfileService,
   ExecutionPlanningService,
   ValidationError,
 } from "../core/index.js";
@@ -194,6 +196,13 @@ export async function createProductionControlPlaneRuntime(
     audit,
     projects: bootstrap.projects,
   });
+  const profile = new ProfileService({
+    profiles: new FirestoreOperatorProfileStore(transactionalFirestore, {
+      collectionPrefix: options.collectionPrefix,
+    }),
+    accounts: operatorAccounts,
+    audit,
+  });
   const operatorDirectory = new FirebaseOperatorDirectory(
     services.auth,
     operatorAccounts,
@@ -226,6 +235,7 @@ export async function createProductionControlPlaneRuntime(
     operatorDirectory,
     identityVerifier: operatorDirectory,
     access,
+    profile,
   });
 
   return Object.freeze({

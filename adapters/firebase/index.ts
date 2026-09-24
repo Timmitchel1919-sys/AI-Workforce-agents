@@ -15,3 +15,4 @@ export * from "./firestore-event-publisher.js";
 export * from "./firebase-object-store.js";
 export * from "./firestore-execution-plan-store.js";
 export * from "./firestore-operator-account-store.js";
+export * from "./firestore-operator-profile-store.js";

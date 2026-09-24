@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 import { Dialog, EmptyState, ErrorState, Skeleton } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
@@ -84,11 +83,13 @@ export default function UsersAccessPage() {
 
   return (
     <PageContainer>
-      <PageHeader eyebrow={t("nav.settings")} title={t("access.title")} description={t("access.description")} />
-      <Link to="/settings" className="task-detail-header__back-link access-back">
-        <ArrowLeft size={16} aria-hidden />
-        <span>{t("nav.settings")}</span>
-      </Link>
+      <PageHeader
+        eyebrow={t("nav.settings")}
+        title={t("access.title")}
+        description={t("access.description")}
+        backTo="/settings"
+        backLabel={t("nav.settings")}
+      />
 
       {notice ? (
         <p className={`access-notice access-notice--${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { AuthProvider } from '../../../auth/AuthProvider';
@@ -8,7 +9,7 @@ import AppShell from '../AppShell';
 describe('AppShell', () => {
   it('renders shell landmarks and nested route content', () => {
     render(
-      <ThemeProvider><AuthProvider>
+      <QueryClientProvider client={new QueryClient()}><ThemeProvider><AuthProvider>
       <MemoryRouter initialEntries={['/']}>
         <Routes>
           <Route element={<AppShell />}>
@@ -16,7 +17,7 @@ describe('AppShell', () => {
           </Route>
         </Routes>
       </MemoryRouter>
-      </AuthProvider></ThemeProvider>,
+      </AuthProvider></ThemeProvider></QueryClientProvider>,
     );
 
     expect(screen.getByRole('navigation', { name: /primary navigation/i })).toBeInTheDocument();
@@ -27,7 +28,7 @@ describe('AppShell', () => {
 
   it('opens and closes the mobile drawer and restores focus', () => {
     render(
-      <ThemeProvider><AuthProvider>
+      <QueryClientProvider client={new QueryClient()}><ThemeProvider><AuthProvider>
       <MemoryRouter initialEntries={['/']}>
         <Routes>
           <Route element={<AppShell />}>
@@ -35,7 +36,7 @@ describe('AppShell', () => {
           </Route>
         </Routes>
       </MemoryRouter>
-      </AuthProvider></ThemeProvider>,
+      </AuthProvider></ThemeProvider></QueryClientProvider>,
     );
 
     const trigger = screen.getByRole('button', { name: /open navigation/i });
