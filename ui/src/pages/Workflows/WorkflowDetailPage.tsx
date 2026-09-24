@@ -18,8 +18,6 @@ function DetailHeader() {
       eyebrow={t("common.brand")}
       title={t("workflows.detailTitle")}
       description={t("workflows.detailDescription")}
-      backTo="/workflows"
-      backLabel={t("workflows.backToWorkflows")}
     />
   );
 }

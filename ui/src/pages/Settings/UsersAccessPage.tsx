@@ -87,8 +87,6 @@ export default function UsersAccessPage() {
         eyebrow={t("nav.settings")}
         title={t("access.title")}
         description={t("access.description")}
-        backTo="/settings"
-        backLabel={t("nav.settings")}
       />
 
       {notice ? (

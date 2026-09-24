@@ -25,8 +25,6 @@ export default function TaskDetailPage() {
           eyebrow={t("common.brand")}
           title={t("tasks.detailTitle")}
           description={t("tasks.detailDescription")}
-          backTo="/tasks"
-          backLabel={t("tasks.backToTasks")}
         />
         <TaskLoadingState />
       </PageContainer>
@@ -40,8 +38,6 @@ export default function TaskDetailPage() {
           eyebrow={t("common.brand")}
           title={t("tasks.detailTitle")}
           description={t("tasks.detailDescription")}
-          backTo="/tasks"
-          backLabel={t("tasks.backToTasks")}
         />
         <div className="task-not-found">
           <h2>{t("tasks.notFoundTitle")}</h2>
@@ -62,8 +58,6 @@ export default function TaskDetailPage() {
           eyebrow={t("common.brand")}
           title={t("tasks.detailTitle")}
           description={t("tasks.detailDescription")}
-          backTo="/tasks"
-          backLabel={t("tasks.backToTasks")}
         />
         <TaskErrorState
           title={status === "unauthorized" ? t("tasks.unauthorizedTitle") : t("tasks.detailErrorTitle")}
@@ -84,8 +78,6 @@ export default function TaskDetailPage() {
         eyebrow={t("common.brand")}
         title={t("tasks.detailTitle")}
         description={t("tasks.detailDescription")}
-        backTo="/tasks"
-        backLabel={t("tasks.backToTasks")}
       />
 
       <div className="task-detail-page">

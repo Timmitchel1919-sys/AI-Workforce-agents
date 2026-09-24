@@ -73,8 +73,6 @@ export default function ProjectDetailPage() {
         eyebrow={t("plans.projectsTitle")}
         title={project?.displayName ?? projectId ?? ""}
         description={tab === "execution-plan" ? t("plans.description") : undefined}
-        backTo="/projects"
-        backLabel={t("plans.backToProjects")}
       />
       {body}
     </PageContainer>

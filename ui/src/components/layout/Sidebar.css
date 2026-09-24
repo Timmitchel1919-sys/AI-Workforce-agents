@@ -1,4 +1,18 @@
 .sidebar {
+  /* The sidebar is dark in every theme: map the semantic tokens its
+     children use onto the sidebar's own palette (tokens.css). */
+  --color-text: var(--sidebar-ink);
+  --color-text-secondary: var(--sidebar-ink-secondary);
+  --color-text-muted: var(--sidebar-ink-muted);
+  --color-border: var(--sidebar-line);
+  --color-surface: var(--sidebar-surface-muted);
+  --color-surface-muted: var(--sidebar-surface-muted);
+  --color-nav-hover: var(--sidebar-hover);
+  --color-nav-active-bg: var(--sidebar-active-bg);
+  --color-nav-active-text: var(--sidebar-ink);
+  --color-focus: var(--sidebar-focus);
+  --color-scrollbar: var(--sidebar-scrollbar);
+  --color-scrollbar-hover: var(--sidebar-scrollbar-hover);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);

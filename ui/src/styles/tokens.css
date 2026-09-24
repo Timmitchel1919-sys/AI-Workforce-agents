@@ -45,7 +45,18 @@
   --color-surface-muted: rgba(228, 239, 255, 0.72);
   --color-surface-lavender: rgba(241, 237, 255, 0.72);
   --color-surface-hover: rgba(236, 243, 255, 0.92);
-  --color-sidebar: rgba(236, 242, 253, 0.88);
+  /* Sidebar: dark royal blue in the light theme (its own light ink below). */
+  --color-sidebar: linear-gradient(180deg, #1a3090 0%, #152678 55%, #1b1f6e 100%);
+  --sidebar-ink: #ffffff;
+  --sidebar-ink-secondary: rgba(226, 234, 255, 0.9);
+  --sidebar-ink-muted: rgba(196, 210, 250, 0.74);
+  --sidebar-line: rgba(255, 255, 255, 0.14);
+  --sidebar-surface-muted: rgba(255, 255, 255, 0.1);
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.16);
+  --sidebar-focus: #ffffff;
+  --sidebar-scrollbar: rgba(255, 255, 255, 0.18);
+  --sidebar-scrollbar-hover: rgba(255, 255, 255, 0.34);
   --color-topbar: rgba(244, 248, 255, 0.72);
 
   --color-border: rgba(45, 88, 165, 0.14);
@@ -155,7 +166,18 @@
   --color-surface-muted: #1a2334;
   --color-surface-lavender: rgba(40, 30, 80, 0.45);
   --color-surface-hover: rgba(26, 35, 52, 0.95);
-  --color-sidebar: rgba(17, 24, 39, 0.92);
+  /* Sidebar: black in the dark theme. */
+  --color-sidebar: #000000;
+  --sidebar-ink: #edf2ff;
+  --sidebar-ink-secondary: #d7def3;
+  --sidebar-ink-muted: #a8b4cd;
+  --sidebar-line: rgba(148, 163, 184, 0.16);
+  --sidebar-surface-muted: rgba(255, 255, 255, 0.06);
+  --sidebar-hover: rgba(122, 162, 255, 0.1);
+  --sidebar-active-bg: linear-gradient(135deg, rgba(47, 123, 255, 0.3), rgba(74, 45, 168, 0.32));
+  --sidebar-focus: #93c5fd;
+  --sidebar-scrollbar: rgba(148, 163, 184, 0.14);
+  --sidebar-scrollbar-hover: rgba(148, 163, 184, 0.32);
   --color-topbar: rgba(17, 24, 39, 0.82);
 
   --color-border: #2a374d;

@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Breadcrumb } from "../ui";
 import type { BreadcrumbItem } from "../ui/Breadcrumb";
-import BackButton from "./BackButton";
 import "./PageContainer.css";
 
 interface PageHeaderProps {
@@ -10,11 +9,6 @@ interface PageHeaderProps {
   description?: string;
   breadcrumbs?: BreadcrumbItem[];
   actions?: ReactNode;
-  /** Back button destination; default is browser history (parent route fallback). */
-  backTo?: string;
-  backLabel?: string;
-  /** Hide the back button (e.g. when the page renders its own). Default true. */
-  showBack?: boolean;
 }
 
 export default function PageHeader({
@@ -23,18 +17,9 @@ export default function PageHeader({
   description,
   breadcrumbs,
   actions,
-  backTo,
-  backLabel,
-  showBack = true,
 }: PageHeaderProps) {
   return (
     <header className="page-header">
-      {showBack ? (
-        <div className="page-header__back">
-          <BackButton to={backTo} label={backLabel} />
-        </div>
-      ) : null}
-
       {breadcrumbs && breadcrumbs.length > 0 ? (
         <div className="page-header__breadcrumbs">
           <Breadcrumb items={breadcrumbs} />

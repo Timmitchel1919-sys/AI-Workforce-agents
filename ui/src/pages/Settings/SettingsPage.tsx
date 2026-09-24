@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, ShieldCheck } from "lucide-react";
 import { authContext } from "../../auth/authContext";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
@@ -9,8 +9,8 @@ import "./SettingsPage.css";
 import "./UsersAccess.css";
 
 /**
- * Settings hub. Theme and language live on the Profile → Preferences card;
- * administrators also reach Users & Access from here.
+ * Settings hub. Theme, language and the profile photo live on the Profile
+ * page; administrators reach Users & Access from here.
  */
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -21,23 +21,6 @@ export default function SettingsPage() {
   return (
     <PageContainer>
       <PageHeader eyebrow={t("common.brand")} title={t("settings.title")} description={t("settings.description")} />
-
-      <section className="settings-section" aria-labelledby="settings-preferences">
-        <header className="settings-section__header">
-          <h2 id="settings-preferences" className="settings-section__title">
-            {t("settings.appearance")}
-          </h2>
-        </header>
-        <Link to="/profile#preferences" className="settings-access-link">
-          <SlidersHorizontal size={20} aria-hidden />
-          <span>
-            <strong>{t("settings.preferencesLink")}</strong>
-            <br />
-            <span className="access-muted">{t("settings.preferencesLinkDescription")}</span>
-          </span>
-          <ChevronRight size={18} aria-hidden style={{ marginLeft: "auto" }} />
-        </Link>
-      </section>
 
       {canManageAccess ? (
         <section className="settings-section" aria-labelledby="settings-access">

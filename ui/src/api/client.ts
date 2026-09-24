@@ -17,9 +17,61 @@ export interface ApiRequestOptions extends RequestInit {
   accessToken?: string | null;
 }
 
+/**
+ * Returns the signed-in user's CURRENT Firebase ID token (refreshed by the
+ * SDK when it has expired), or a force-refreshed one. Registered by the
+ * AuthProvider; absent when nobody is signed in or Firebase is not set up.
+ */
+export type AccessTokenProvider = (forceRefresh: boolean) => Promise<string | null>;
+
+let accessTokenProvider: AccessTokenProvider | null = null;
+
+export function setAccessTokenProvider(provider: AccessTokenProvider | null): void {
+  accessTokenProvider = provider;
+}
+
+async function currentToken(fallback: string | null | undefined, forceRefresh: boolean) {
+  if (!fallback) return fallback;
+  if (!accessTokenProvider) return fallback;
+  try {
+    return (await accessTokenProvider(forceRefresh)) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Authenticated requests never reuse a stale ID token: the token is read
+ * from Firebase at request time (ID tokens expire after an hour, and a
+ * sleeping machine or idle tab never refreshes a captured copy). A 401 is
+ * retried once with a force-refreshed token before it is surfaced.
+ */
 export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
+): Promise<T> {
+  const token = await currentToken(options.accessToken, false);
+  try {
+    return await sendRequest<T>(path, { ...options, accessToken: token });
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      error.status === 401 &&
+      options.accessToken &&
+      accessTokenProvider
+    ) {
+      const refreshed = await currentToken(options.accessToken, true);
+      if (refreshed && refreshed !== token) {
+        return sendRequest<T>(path, { ...options, accessToken: refreshed });
+      }
+    }
+    throw error;
+  }
+}
+
+async function sendRequest<T>(
+  path: string,
+  options: ApiRequestOptions,
 ): Promise<T> {
   const controller = new AbortController();
 

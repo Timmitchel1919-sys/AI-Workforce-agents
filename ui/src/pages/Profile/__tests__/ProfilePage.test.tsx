@@ -104,7 +104,7 @@ afterEach(() => {
 });
 
 describe("Profile", () => {
-  it("shows the profile and preferences as separate cards with a back button", async () => {
+  it("shows the profile and preferences as separate cards without a back button", async () => {
     mockApi();
     renderPage(<ProfilePage />);
     expect(screen.getByRole("heading", { level: 1, name: "Profile" })).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe("Profile", () => {
     expect(screen.getByRole("region", { name: "Language" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Preferences" })).toBeNull();
     expect(screen.getAllByRole("radio").map((r) => (r as HTMLInputElement).value)).toEqual(["light", "dark"]);
-    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
     const card = screen.getByRole("region", { name: "Profile" });
     expect(await within(card).findByText("Operator")).toBeInTheDocument();
     expect(within(card).getByText("ada@example.test")).toBeInTheDocument();
@@ -206,9 +206,10 @@ describe("Profile", () => {
 });
 
 describe("Settings", () => {
-  it("points to Profile → Preferences; Users & Access only for administrators", () => {
+  it("has no Appearance card; Users & Access only for administrators", () => {
     renderPage(<SettingsPage />, { path: "/settings" });
-    expect(screen.getByRole("link", { name: /Profile & preferences/ })).toHaveAttribute("href", "/profile#preferences");
+    expect(screen.queryByRole("heading", { name: /Appearance/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Profile & preferences/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Users & Access/i })).toBeNull();
     expect(screen.queryByRole("radio")).toBeNull();
   });

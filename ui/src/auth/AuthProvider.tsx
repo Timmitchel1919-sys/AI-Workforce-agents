@@ -15,7 +15,7 @@ import {
   type User,
 } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
-import { apiRequest } from "../api/client";
+import { apiRequest, setAccessTokenProvider } from "../api/client";
 import type {
   AccessDetails,
   AccessState,
@@ -115,6 +115,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [access, setAccess] = useState<AccessState>("none");
   const [accessDetails, setAccessDetails] = useState<AccessDetails>(NO_DETAILS);
   const [loading, setLoading] = useState(firebaseConfigured);
+
+  useEffect(() => {
+    if (!firebaseConfigured) {
+      return;
+    }
+    // Every Control Plane request asks Firebase for the current ID token, so
+    // a token captured before sleep/idle (expired after 1 h) is never reused.
+    setAccessTokenProvider(async (forceRefresh) => {
+      const current = getFirebaseAuth().currentUser;
+      return current ? current.getIdToken(forceRefresh) : null;
+    });
+    return () => setAccessTokenProvider(null);
+  }, []);
 
   useEffect(() => {
     if (!firebaseConfigured) {
