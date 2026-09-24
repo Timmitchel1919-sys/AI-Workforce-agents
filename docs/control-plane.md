@@ -214,6 +214,13 @@ another project's tasks, workflows, approvals, or audit events. This is the seam
 where a future auth layer supplies `identity + roles + project scopes`; it is not
 a full enterprise IAM.
 
+An approval whose metadata only names a task (orchestrator / tool approvals)
+inherits the task's project for visibility, so it never escapes project
+isolation. `GET /api/approvals?status=&projectId=&limit=&cursor=` returns a
+server-filtered, cursor-paginated `PageResult<ApprovalView>` (newest first);
+plan approvals carry `executionPlanId` + `planVersion` — the exact revision
+they gate. The Approvals and Audit log screens are built on these routes.
+
 ## 7. Audit
 
 Every command emits exactly one `control_command` audit event via the existing

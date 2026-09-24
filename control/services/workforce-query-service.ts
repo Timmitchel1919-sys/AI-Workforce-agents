@@ -7,6 +7,8 @@
  */
 import {
   type Approval,
+  type ApprovalQuery,
+  type ApprovalView,
   type AuditEventQuery,
   type AuditEventView,
   type AgentView,
@@ -307,12 +309,46 @@ export class WorkforceQueryService {
 
   getApprovals(principal: OperatorPrincipal, filter: { status?: string } = {}) {
     this.authorizeView(principal);
-    return this.ctx.approvals
-      .list()
-      .map(deriveApprovalView)
+    return this.approvalViews()
       .filter((view) => (filter.status ? view.status === filter.status : true))
       .filter((view) => this.approvalVisible(principal, view.projectId))
       .sort((a, b) => (a.requestedAt < b.requestedAt ? 1 : -1));
+  }
+
+  /**
+   * The approval queue for the Approvals screen: status/project filters and
+   * the shared bounded cursor pagination. Project scope is enforced
+   * server-side (a foreign project filter simply yields nothing).
+   */
+  getApprovalPage(
+    principal: OperatorPrincipal,
+    query: ApprovalQuery = {},
+  ): PageResult<ApprovalView> {
+    const views = this.getApprovals(principal, { status: query.status })
+      .filter((view) =>
+        query.projectId ? view.projectId === query.projectId : true,
+      )
+      .sort(
+        (a, b) =>
+          b.requestedAt.localeCompare(a.requestedAt) ||
+          b.approvalId.localeCompare(a.approvalId),
+      );
+    return paginate(views, query.limit, query.cursor);
+  }
+
+  /**
+   * Approval views with their project resolved: orchestrator/tool approvals
+   * only carry a `taskId`, so the project comes from the linked task — an
+   * approval must never escape project isolation because its metadata
+   * lacked a `projectId`.
+   */
+  private approvalViews(): ApprovalView[] {
+    return this.ctx.approvals.list().map((approval) => {
+      const view = deriveApprovalView(approval);
+      if (view.projectId || !view.taskId) return view;
+      const projectId = this.ctx.tasks.get(view.taskId)?.projectId;
+      return projectId ? { ...view, projectId } : view;
+    });
   }
 
   /* -------------------------------------------------------------- */

@@ -308,7 +308,13 @@ export function createControlPlaneApi(
         return send(
           res,
           200,
-          query.getApprovals(principal, statusFilter(params)),
+          query.getApprovalPage(principal, {
+            ...statusFilter(params),
+            ...parsePageQuery(params),
+            ...(params.get("projectId")
+              ? { projectId: params.get("projectId") as string }
+              : {}),
+          }),
           correlationId,
         );
       case "projects":

@@ -12,3 +12,5 @@ export { default as SettingsPage } from "../../pages/Settings/SettingsPage";
 export { default as ProjectsPage } from "../../pages/Projects/ProjectsPage";
 export { default as ProjectDetailPage } from "../../pages/Projects/ProjectDetailPage";
 export { default as UsersAccessPage } from "../../pages/Settings/UsersAccessPage";
+export { default as ApprovalsPage } from "../../pages/Approvals/ApprovalsPage";
+export { default as AuditLogPage } from "../../pages/AuditLog/AuditLogPage";

@@ -18,6 +18,8 @@ export default tseslint.config(
       "**/dist/**",
       "node_modules/**",
       "coverage/**",
+      // Local agent worktrees are separate checkouts, not part of this tree.
+      ".claude/**",
       "ui/**",
     ],
   },
