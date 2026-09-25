@@ -86,7 +86,15 @@ export function evaluatePolicy(policy, operation) {
         allowed: reasons.length === 0,
         reasons,
         ...(rule ? { rule } : {}),
-        capabilities: reasons.length === 0 ? [...operation.requiredCapabilities] : [],
+        capabilities: reasons.length === 0
+            ? [
+                ...operation.requiredCapabilities,
+                // Optional capabilities: only what the rule grants and no forbid.
+                ...(operation.optionalCapabilities ?? []).filter((c) => rule.capabilities.includes(c) &&
+                    !policy.forbiddenCapabilities.includes(c) &&
+                    !operation.requiredCapabilities.includes(c)),
+            ]
+            : [],
         limits,
         network: rule?.network ?? policy.network,
         filesystem: rule?.filesystem ?? [],

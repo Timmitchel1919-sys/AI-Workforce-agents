@@ -11,7 +11,7 @@
  * executable. AUTHENTICATED ≠ AUTHORIZED ≠ APPROVED ≠ EXECUTION-CAPABLE: each
  * is its own gate below.
  */
-import { type Agent, type ExecutionOperationDefinition, type ExecutionSession, type OperatorPrincipal, type PreflightResult } from "../../contracts/index.js";
+import { type Agent, type Environment, type InvocationResult, type ChangeSet, type RollbackReport, type WorkspaceControl, type ExecutionOperationDefinition, type ExecutionSession, type OperatorPrincipal, type PreflightResult } from "../../contracts/index.js";
 import type { ApprovalSystem } from "../approvals/approval-system.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { EnvironmentRegistry } from "../environments/environment-registry.js";
@@ -21,6 +21,10 @@ import { type ExecutionPolicyRegistry } from "./execution-policy.js";
 import { type ExecutionOperationRegistry } from "./execution-operations.js";
 import { type CancelOutcome, type ExecutionSessionStore } from "./execution-sessions.js";
 import { type SandboxRegistry } from "./sandbox.js";
+import { type InMemoryExecutionReceiptStore } from "./execution-receipts.js";
+import { type BoundedInvocationDispatcher, type ExecutionToolRegistry } from "./execution-tools.js";
+import type { ToolExecutionEngine } from "../tools/tool-execution-engine.js";
+import type { EnvironmentAdapterRegistry } from "./environment-adapters.js";
 export interface ExecutionManagerOptions {
     planning: Pick<ExecutionPlanningService, "get" | "latest" | "refreshSeries">;
     approvals: Pick<ApprovalSystem, "get">;
@@ -40,6 +44,27 @@ export interface ExecutionManagerOptions {
     audit: AuditLog;
     clock?: () => string;
     idFactory?: (prefix: string) => string;
+    /** Trusted, composition-registered execution tools. */
+    executionTools?: ExecutionToolRegistry;
+    /** The one bounded tool pipeline every invocation passes through. */
+    toolEngine?: ToolExecutionEngine;
+    dispatcher?: BoundedInvocationDispatcher;
+    receipts?: InMemoryExecutionReceiptStore;
+    /** Simultaneous invocations per environment instance. Default 2. */
+    maxConcurrentPerEnvironment?: number;
+    /** Deployment environment passed to the ToolExecutionEngine. Default local. */
+    deploymentEnvironment?: Environment;
+    /**
+     * EO-4.3 workspace control (ChangeSets, rollback, lease release), provided
+     * by the trusted workspace adapter. Reached only through this manager.
+     */
+    workspaceControl?: WorkspaceControl;
+    /**
+     * EO-4.5 environment execution adapters + runners (trusted composition).
+     * Operations that declare an `environment` requirement need a ready
+     * adapter + runner for the selected instance.
+     */
+    environmentAdapters?: EnvironmentAdapterRegistry;
 }
 export declare class ExecutionManager {
     private readonly options;
@@ -47,6 +72,10 @@ export declare class ExecutionManager {
     private readonly newId;
     private readonly router;
     private readonly qualification;
+    /** Running invocations, by session (cancel/kill aborts them). */
+    private readonly active;
+    /** Idempotency ledger: `${sessionId}\u0000${invocationId}`. */
+    private readonly invocations;
     constructor(options: ExecutionManagerOptions);
     /**
      * Evaluate every gate for one plan stage. Returns ELIGIBLE or DENIED with
@@ -85,5 +114,37 @@ export declare class ExecutionManager {
         outcome: CancelOutcome;
         session: ExecutionSession;
     }>;
+    /**
+     * Invoke ONE registered operation inside a governed session:
+     *
+     *   structured request → session state → registered tool + operation →
+     *   every pre-flight gate again (plan revision, agent, environment,
+     *   approval, policy, input, workspace, sandbox) → capability grants →
+     *   environment compatibility → limits + concurrency → ToolExecutionEngine
+     *   → sandbox provider (trusted executable, validated argv, no shell)
+     *   → output validation + redaction → receipt + audit.
+     *
+     * Any failed gate is a DENIAL (audited, receipted), never a tool failure.
+     * Idempotent per `(session, invocationId)`: a retry replays the result.
+     * The normal caller is the orchestrator; it is not exposed over HTTP.
+     */
+    invoke(principal: OperatorPrincipal, raw: unknown): Promise<InvocationResult>;
+    private performInvocation;
+    private scopedSession;
+    /**
+     * End a (persistent) session successfully and release its workspace lease.
+     * Idempotent for terminal sessions. Never commits or pushes anything.
+     */
+    completeSession(principal: OperatorPrincipal, sessionId: string): Promise<ExecutionSession>;
+    /** The session ChangeSet (metadata only: paths, hashes, sizes). */
+    getChangeSet(principal: OperatorPrincipal, sessionId: string): Promise<ChangeSet | undefined>;
+    /**
+     * Revert ONLY the mutations this session made (never pre-existing or
+     * foreign changes; never a global reset). Operators (`cancel_execution`).
+     */
+    rollbackWorkspace(principal: OperatorPrincipal, sessionId: string): Promise<RollbackReport>;
+    private releaseWorkspace;
+    /** A denied invocation: audited + receipted; the session is untouched. */
+    private denied;
     private record;
 }

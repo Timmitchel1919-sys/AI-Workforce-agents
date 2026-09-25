@@ -22,6 +22,8 @@
  * string, an executable path chosen by a caller, or a secret value.
  */
 import { ValidationError } from "./index.js";
+/** Hard ceiling for one structured text input (e.g. file content). */
+export const MAX_INVOCATION_TEXT_BYTES = 1024 * 1024;
 /* ------------------------------------------------------------------ */
 /* Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -82,6 +84,10 @@ export function toApprovalRisk(risk) {
 export const EXECUTION_CAPABILITIES = [
     "filesystem.read",
     "filesystem.write.workspace",
+    /** EO-4.3: deleting (or moving away) a file is its own capability. */
+    "filesystem.delete.workspace",
+    /** EO-4.3: writing protected paths (CI/CD, rules, infrastructure). */
+    "filesystem.write.protected",
     "repository.read",
     "repository.write",
     "repository.commit",
@@ -123,6 +129,53 @@ export const EXECUTION_ERROR_CODES = [
     "CANCELLED",
     "SANDBOX_FAILURE",
     "INTERNAL_ERROR",
+    /** EO-4.2: the session holds no valid grant for a required capability. */
+    "CAPABILITY_NOT_GRANTED",
+    /** EO-4.2: the operation output failed its declared output schema. */
+    "INVALID_OUTPUT",
+    /**
+     * EO-4.3: a write would overwrite content that changed (stale expected
+     * hash, existing file, pre-existing user change, workspace lease held).
+     */
+    "WORKSPACE_CONFLICT",
+    /** EO-4.4: a required toolchain is not present on the environment. */
+    "TOOLCHAIN_UNAVAILABLE",
+    /** EO-4.4: declared dependencies (e.g. installed packages) are missing. */
+    "DEPENDENCY_MISSING",
+    /* ---- EO-4.5 environment execution (normalized, adapter-neutral) ---- */
+    "ENVIRONMENT_OFFLINE",
+    "RUNNER_UNAVAILABLE",
+    "RUNNER_TIMEOUT",
+    "RUNNER_DISCONNECTED",
+    "RUNNER_IDENTITY_UNVERIFIED",
+    "ADAPTER_UNAVAILABLE",
+    "ADAPTER_ERROR",
+    "PLATFORM_MISMATCH",
+    "TOOLCHAIN_MISSING",
+    "TOOLCHAIN_VERSION_MISMATCH",
+    "MODULE_MISSING",
+    "GPU_UNAVAILABLE",
+    "RESOURCE_UNAVAILABLE",
+    "CONTAINER_POLICY_DENIED",
+    "SIGNING_NOT_AUTHORIZED",
+    "PUBLISHING_NOT_AUTHORIZED",
+    "SOURCE_MISMATCH",
+    "INTEGRITY_FAILED",
+    /* ---- EO-4.6 governed source control & deployment ---- */
+    "VERIFICATION_REQUIRED",
+    "REVERIFICATION_REQUIRED",
+    "REVIEW_REQUIRED",
+    "REVIEW_NOT_INDEPENDENT",
+    "STAGING_CONFLICT",
+    "COMMIT_FAILED",
+    "BRANCH_PROTECTED",
+    "REMOTE_CHANGED",
+    "PUSH_FAILED",
+    "TARGET_NOT_REGISTERED",
+    "STALE_CANDIDATE",
+    "DEPLOYMENT_LOCKED",
+    "DEPLOYMENT_FAILED",
+    "ROLLBACK_UNAVAILABLE",
 ];
 export const REQUIRED_LIMIT_KEYS = [
     "sessionTimeoutMs",
@@ -287,6 +340,39 @@ export const EXECUTION_STAGE_KINDS = [
     "security",
     "deployment",
 ];
+/** Workspace reach of an operation (explicit, else from its capabilities). */
+export function operationWorkspaceAccess(op) {
+    if (op.workspaceAccess)
+        return op.workspaceAccess;
+    if (op.requiredCapabilities.includes("filesystem.write.workspace")) {
+        return "write";
+    }
+    return op.requiredCapabilities.includes("filesystem.read") ? "read" : "none";
+}
+export function validateExecutionToolDefinition(def) {
+    requireExecutionId(def.toolId, "tool.toolId");
+    requireExecutionId(def.executable.executableId, "tool.executable.executableId");
+    if (typeof def.version !== "string" || def.version.trim() === "") {
+        throw new ValidationError("tool.version is required");
+    }
+    if (!def.requiredCapabilities.every(isExecutionCapability)) {
+        throw new ValidationError("tool.requiredCapabilities must be known");
+    }
+    if (def.operations.length === 0) {
+        throw new ValidationError("tool.operations must not be empty");
+    }
+    for (const op of def.operations) {
+        requireExecutionId(op, "tool.operations[]");
+        if (!def.executable.operations[op]) {
+            throw new ValidationError(`tool ${def.toolId} exposes ${op} without an argument template`);
+        }
+    }
+    for (const name of def.executable.environmentVariables) {
+        if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(name)) {
+            throw new ValidationError(`tool env var ${name} is not a valid name`);
+        }
+    }
+}
 export function validateOperationDefinition(def) {
     requireExecutionId(def.id, "operation.id");
     requireExecutionId(def.toolId, "operation.toolId");
@@ -300,12 +386,32 @@ export function validateOperationDefinition(def) {
         !def.requiredCapabilities.every(isExecutionCapability)) {
         throw new ValidationError("operation.requiredCapabilities must list known execution capabilities");
     }
+    if (def.optionalCapabilities &&
+        !def.optionalCapabilities.every(isExecutionCapability)) {
+        throw new ValidationError("operation.optionalCapabilities must be known");
+    }
+    if (def.timeoutMs !== undefined &&
+        (!Number.isInteger(def.timeoutMs) ||
+            def.timeoutMs <= 0 ||
+            def.timeoutMs > LIMIT_CEILINGS.operationTimeoutMs)) {
+        throw new ValidationError("operation.timeoutMs must be bounded");
+    }
+    if (def.networkAccess === "approved_hosts" &&
+        !def.requiredCapabilities.includes("network.outbound.allowed-host")) {
+        throw new ValidationError("network access requires the network.outbound.allowed-host capability");
+    }
     for (const [name, field] of Object.entries(def.input)) {
         if (!/^[a-zA-Z][a-zA-Z0-9]{0,39}$/.test(name)) {
             throw new ValidationError(`operation.input.${name} is not a valid name`);
         }
         if (field.kind === "enum" && field.values.length === 0) {
             throw new ValidationError(`operation.input.${name} needs enum values`);
+        }
+        if (field.kind === "text" &&
+            (!Number.isInteger(field.maxBytes) ||
+                field.maxBytes <= 0 ||
+                field.maxBytes > MAX_INVOCATION_TEXT_BYTES)) {
+            throw new ValidationError(`operation.input.${name} needs bounded maxBytes`);
         }
     }
 }
@@ -448,8 +554,19 @@ export const EXECUTION_REQUEST_KEYS = [
     "planVersion",
     "stageId",
     "operationId",
+    "operationIds",
     "input",
 ];
+function validateOperationIds(value) {
+    if (!Array.isArray(value) || value.length === 0 || value.length > 20) {
+        throw new ValidationError("operationIds must list 1-20 operations");
+    }
+    const ids = value.map((v, i) => requireExecutionId(v, `operationIds[${i}]`));
+    if (new Set(ids).size !== ids.length) {
+        throw new ValidationError("operationIds must not repeat");
+    }
+    return ids;
+}
 export function validateExecutionRequest(value) {
     if (!isRecord(value)) {
         throw new ValidationError("execution request must be an object");
@@ -482,6 +599,9 @@ export function validateExecutionRequest(value) {
         ...(value.operationId !== undefined
             ? { operationId: requireExecutionId(value.operationId, "operationId") }
             : {}),
+        ...(value.operationIds !== undefined
+            ? { operationIds: validateOperationIds(value.operationIds) }
+            : {}),
         ...(input !== undefined
             ? { input: input }
             : {}),
@@ -500,3 +620,39 @@ export const PREFLIGHT_CHECKS = [
     "workspace",
     "sandbox",
 ];
+export const INVOCATION_REQUEST_KEYS = [
+    "sessionId",
+    "invocationId",
+    "toolId",
+    "operationId",
+    "input",
+];
+export function validateInvocationRequest(value) {
+    if (!isRecord(value)) {
+        throw new ValidationError("invocation request must be an object");
+    }
+    rejectUnknownKeys(value, INVOCATION_REQUEST_KEYS, "invocation request");
+    const input = value.input;
+    if (input !== undefined) {
+        if (!isRecord(input))
+            throw new ValidationError("input must be an object");
+        for (const [key, v] of Object.entries(input)) {
+            if (typeof v !== "string" && typeof v !== "number") {
+                throw new ValidationError(`input.${key} must be a string or number`);
+            }
+            // Hard ceiling; each operation schema sets its own (smaller) bounds.
+            if (typeof v === "string" && v.length > MAX_INVOCATION_TEXT_BYTES) {
+                throw new ValidationError(`input.${key} is too long`);
+            }
+        }
+    }
+    return {
+        sessionId: requireExecutionId(value.sessionId, "sessionId"),
+        invocationId: requireExecutionId(value.invocationId, "invocationId"),
+        toolId: requireExecutionId(value.toolId, "toolId"),
+        operationId: requireExecutionId(value.operationId, "operationId"),
+        ...(input !== undefined
+            ? { input: input }
+            : {}),
+    };
+}

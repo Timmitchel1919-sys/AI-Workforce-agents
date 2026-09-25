@@ -12,10 +12,31 @@ export declare class SandboxRegistry {
     register(provider: SandboxProvider): void;
     get(providerId: string): SandboxProvider | undefined;
     /**
-     * First provider (by id) that can serve the instance, enforces every
-     * REQUIRED limit, isolates the filesystem and supports the network mode.
+     * First provider that can serve the instance, enforces every REQUIRED
+     * limit and supports the network mode — isolating providers first.
+     *
+     * Isolation is never assumed: an operation that reaches the workspace needs
+     * filesystem isolation; one that reaches the network (or a policy that
+     * allows hosts) needs enforced network isolation. A provider WITHOUT
+     * isolation (a host process) is only eligible when the policy rule opts in
+     * (`hostProcess`) AND the operation touches neither workspace nor network.
      */
-    select(environmentInstanceId: string, network: NetworkPolicy): SandboxProvider | undefined;
+    select(environmentInstanceId: string, network: NetworkPolicy, needs?: SandboxNeeds): SandboxProvider | undefined;
+}
+/** What an operation needs from a sandbox (all declared server-side). */
+export interface SandboxNeeds {
+    workspaceAccess: "none" | "read" | "write";
+    networkAccess: "none" | "approved_hosts";
+    /** Policy rule opted in to non-isolating host process providers. */
+    hostProcessAllowed: boolean;
+    /** EO-4.3: the executable the operation runs (provider must serve it). */
+    executableId?: string;
+    /** EO-4.4: what the operation executes. */
+    executionClass?: "diagnostic" | "project_code" | "adapter";
+    /** EO-4.4: policy rule accepted running project code on a host runner. */
+    trustedHostBuildAllowed?: boolean;
+    /** EO-4.5: the runner provider the adapter registry routed to (pinned). */
+    requiredProviderId?: string;
 }
 /** Per-limit truth: `enforced` only when the provider actually enforces it. */
 export declare function limitEnforcementFor(provider: SandboxProvider | undefined, limits: ExecutionResourceLimits): LimitEnforcementReport;

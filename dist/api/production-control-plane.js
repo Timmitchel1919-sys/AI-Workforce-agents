@@ -1,6 +1,7 @@
 import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionSessionStore, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionSessionStore, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
@@ -107,6 +108,16 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         version: BASELINE_DENY_ALL_POLICY.version,
     });
     executionPolicies.register(BASELINE_DENY_ALL_POLICY);
+    // EO-4.5/4.7: platform adapter CONTRACTS only — no runner is registered in
+    // production, so every family reports `not_configured` and nothing runs.
+    const environmentAdapters = new EnvironmentAdapterRegistry({
+        environments: environmentRegistry,
+        audit,
+    });
+    createPlatformAdapters({
+        containerPolicy: { approvedImages: [], requireDigest: true },
+    }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
+    const executionReceipts = new InMemoryExecutionReceiptStore();
     const execution = new ExecutionManager({
         planning,
         approvals,
@@ -120,6 +131,8 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         sandboxes: new SandboxRegistry(),
         sessions: new InMemoryExecutionSessionStore(),
         audit,
+        receipts: executionReceipts,
+        environmentAdapters,
     });
     const context = {
         agents: bootstrap.agents,
@@ -135,6 +148,8 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         environments: environmentRegistry,
         planning,
         execution,
+        executionReceipts,
+        environmentAdapters,
         access,
         orchestrator,
         workflowEngine,

@@ -268,3 +268,8 @@ export * from "./planning.js";
 export * from "./access.js";
 export * from "./profile.js";
 export * from "./execution.js";
+export * from "./workspace-paths.js";
+export * from "./workspace.js";
+export * from "./verification.js";
+export * from "./environment-adapters.js";
+export * from "./release.js";

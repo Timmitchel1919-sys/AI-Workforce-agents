@@ -11,6 +11,7 @@ import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolVi
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
 import { executionPlanSummaryView, executionPlanView } from "../plan-views.js";
 import { redact } from "../redaction.js";
+import { getExecutionOverview, getExecutionSessionDetail, getProjectReleases, getProjectVerifications, listExecutionSessions, } from "./execution-operations-views.js";
 export class WorkforceQueryService {
     ctx;
     constructor(ctx) {
@@ -379,6 +380,43 @@ export class WorkforceQueryService {
     async getExecutionSessions(principal, projectId) {
         this.authorizeView(principal);
         return this.ctx.execution?.listSessions(principal, projectId);
+    }
+    /* -------------------------------------------------------------- */
+    /* EO-4.7 Execution Control Center — authoritative, bounded       */
+    /* -------------------------------------------------------------- */
+    async getExecutionSessionPage(principal, projectId, query = {}) {
+        this.authorizeView(principal);
+        return listExecutionSessions(this.ctx, principal, projectId, query);
+    }
+    async getExecutionOverview(principal, projectId) {
+        this.authorizeView(principal);
+        return getExecutionOverview(this.ctx, principal, projectId);
+    }
+    async getExecutionSessionDetail(principal, projectId, sessionId, query = {}) {
+        this.authorizeView(principal);
+        return getExecutionSessionDetail(this.ctx, principal, projectId, sessionId, query);
+    }
+    async getProjectVerifications(principal, projectId) {
+        this.authorizeView(principal);
+        if (!this.ctx.projects.get(projectId) ||
+            !operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return getProjectVerifications(this.ctx, principal, projectId);
+    }
+    getProjectReleases(principal, projectId) {
+        this.authorizeView(principal);
+        if (!this.ctx.projects.get(projectId) ||
+            !operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return getProjectReleases(this.ctx, principal, projectId);
+    }
+    /** EO-4.5 environment execution status (real runners only count). */
+    getExecutionEnvironments(principal) {
+        this.authorizeView(principal);
+        return {
+            configured: Boolean(this.ctx.environmentAdapters),
+            families: this.ctx.environmentAdapters?.status() ?? [],
+        };
     }
     /* -------------------------------------------------------------- */
     /* execution plans (EO-3.1) — planning state only                */

@@ -3,7 +3,8 @@
  * services read from and act through. Everything is injected — the Control
  * Plane owns none of it and constructs none of it.
  */
-import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, TechnologyCatalog, ExecutionPlanningService, ExecutionManager, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
+import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, TechnologyCatalog, ExecutionPlanningService, ExecutionManager, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem, type DeploymentOrchestrator, type EnvironmentAdapterRegistry, type InMemoryExecutionReceiptStore, type SourceControlOrchestrator, type VerificationService } from "../core/index.js";
+import type { WorkspaceControl } from "../contracts/index.js";
 import { type HealthProbe } from "./health.js";
 import { type ControlEventPublisher } from "./ports.js";
 import { AgentOperationalStore, WorkflowControlStore } from "./stores.js";
@@ -35,6 +36,18 @@ export interface ControlPlaneContext {
      * cancel/kill. Optional; absent → execution routes 404. Never executes.
      */
     execution?: ExecutionManager;
+    /** Execution receipts (evidence per invocation). */
+    executionReceipts?: Pick<InMemoryExecutionReceiptStore, "forSession">;
+    /** EO-4.4 verification history. */
+    verification?: Pick<VerificationService, "history">;
+    /** Current source fingerprints (source-consistency display). */
+    workspaceControl?: Pick<WorkspaceControl, "sourceFingerprint">;
+    /** EO-4.6 governed source control (reviews, stage sets, commits, pushes). */
+    sourceControl?: Pick<SourceControlOrchestrator, "activity">;
+    /** EO-4.6 deployments (release receipts, registered targets). */
+    deployments?: Pick<DeploymentOrchestrator, "listReleases" | "listTargets">;
+    /** EO-4.5 environment execution adapter/runner status. */
+    environmentAdapters?: Pick<EnvironmentAdapterRegistry, "status">;
     /**
      * Operator access lifecycle (AUTHZ-1): pending → approve/reject →
      * suspend/reactivate/revoke. Optional; absent → access routes 404.

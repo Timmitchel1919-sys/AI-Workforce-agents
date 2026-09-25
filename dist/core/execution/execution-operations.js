@@ -59,6 +59,24 @@ export function validateOperationInput(operation, input) {
             }
             out[name] = value;
         }
+        else if (field.kind === "text") {
+            if (typeof value !== "string") {
+                throw invalid(`input.${name} must be text`);
+            }
+            if (Buffer.byteLength(value, "utf8") > field.maxBytes) {
+                throw new ExecutionDeniedError("RESOURCE_LIMIT", `input.${name} exceeds ${field.maxBytes} bytes`);
+            }
+            if (value.includes("\u0000")) {
+                throw invalid(`input.${name} must not contain NUL characters`);
+            }
+            out[name] = value;
+        }
+        else if (field.kind === "sha256") {
+            if (typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value)) {
+                throw invalid(`input.${name} must be a lowercase hex sha256`);
+            }
+            out[name] = value;
+        }
         else if (field.kind === "integer") {
             if (typeof value !== "number" ||
                 !Number.isInteger(value) ||
@@ -135,5 +153,13 @@ export function buildStructuredInvocation(executable, operationId, input, workin
             ...executable.environmentVariables,
         ]),
         timeoutMs,
+        input,
+        ...(executable.requiredPaths?.[operationId]
+            ? {
+                requiredPaths: Object.freeze([
+                    ...executable.requiredPaths[operationId],
+                ]),
+            }
+            : {}),
     });
 }

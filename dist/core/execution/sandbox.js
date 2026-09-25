@@ -19,18 +19,70 @@ export class SandboxRegistry {
         return this.providers.get(providerId);
     }
     /**
-     * First provider (by id) that can serve the instance, enforces every
-     * REQUIRED limit, isolates the filesystem and supports the network mode.
+     * First provider that can serve the instance, enforces every REQUIRED
+     * limit and supports the network mode — isolating providers first.
+     *
+     * Isolation is never assumed: an operation that reaches the workspace needs
+     * filesystem isolation; one that reaches the network (or a policy that
+     * allows hosts) needs enforced network isolation. A provider WITHOUT
+     * isolation (a host process) is only eligible when the policy rule opts in
+     * (`hostProcess`) AND the operation touches neither workspace nor network.
      */
-    select(environmentInstanceId, network) {
+    select(environmentInstanceId, network, needs = DEFAULT_NEEDS) {
+        const isolation = (p) => Number(p.capabilities.filesystemIsolation) +
+            Number(p.capabilities.networkIsolation);
         return [...this.providers.values()]
-            .sort((a, b) => a.providerId.localeCompare(b.providerId))
-            .find((p) => p.isAvailableFor(environmentInstanceId) &&
-            p.capabilities.filesystemIsolation &&
-            p.capabilities.networkModes.includes(network.mode) &&
-            REQUIRED_LIMIT_KEYS.every((k) => p.capabilities.enforcedLimits.includes(k)));
+            .sort((a, b) => isolation(b) - isolation(a) ||
+            a.providerId.localeCompare(b.providerId))
+            .find((p) => {
+            const caps = p.capabilities;
+            // EO-4.5: routed runner bridges are pinned; everything else is not.
+            if (needs.requiredProviderId !== undefined) {
+                if (p.providerId !== needs.requiredProviderId)
+                    return false;
+            }
+            else if (caps.requiresRouting) {
+                return false;
+            }
+            if (!p.isAvailableFor(environmentInstanceId))
+                return false;
+            if (needs.executableId !== undefined &&
+                caps.executables !== undefined &&
+                !caps.executables.includes(needs.executableId)) {
+                return false;
+            }
+            if (!caps.networkModes.includes(network.mode))
+                return false;
+            if (!REQUIRED_LIMIT_KEYS.every((k) => caps.enforcedLimits.includes(k))) {
+                return false;
+            }
+            const needsNetwork = network.mode !== "deny_all" || needs.networkAccess !== "none";
+            if (needsNetwork && !caps.networkIsolation)
+                return false;
+            if (caps.filesystemIsolation && caps.networkIsolation)
+                return true;
+            // Non-isolating providers — only with an explicit policy opt-in:
+            // (a) host diagnostics: no workspace, no network (EO-4.2);
+            if (needs.hostProcessAllowed &&
+                !caps.workspaceExecution &&
+                needs.workspaceAccess === "none" &&
+                needs.networkAccess === "none") {
+                return true;
+            }
+            // (b) EO-4.4 trusted host build: the project's own build/test code,
+            //     run inside the workspace root, no network access requested.
+            return (needs.trustedHostBuildAllowed === true &&
+                needs.executionClass === "project_code" &&
+                caps.workspaceExecution === true &&
+                needs.networkAccess === "none");
+        });
     }
 }
+const DEFAULT_NEEDS = {
+    workspaceAccess: "write",
+    networkAccess: "none",
+    hostProcessAllowed: false,
+};
 /** Per-limit truth: `enforced` only when the provider actually enforces it. */
 export function limitEnforcementFor(provider, limits) {
     const report = {};
