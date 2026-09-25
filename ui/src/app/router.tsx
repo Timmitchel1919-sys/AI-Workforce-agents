@@ -4,6 +4,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n, type MessageKey } from "../i18n";
+import RouteError from "./RouteError";
 import { loadAuthRoutes, loadControlCenterRoutes, loadLanding } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
@@ -65,7 +66,16 @@ function PlaceholderPage({ titleKey }: { titleKey: MessageKey }) {
   );
 }
 
-export const router = createBrowserRouter([
+/** Every page gets the in-app error state (the shell stays usable). */
+function withErrorElements<T extends { errorElement?: ReactNode; children?: T[] }>(routes: T[]): T[] {
+  return routes.map((route) => ({
+    ...route,
+    errorElement: route.errorElement ?? <RouteError />,
+    ...(route.children ? { children: withErrorElements(route.children) } : {}),
+  }));
+}
+
+export const router = createBrowserRouter(withErrorElements([
   {
     // Public landing experience; the Control Center lives under the AppShell routes below.
     path: "/",
@@ -113,4 +123,4 @@ export const router = createBrowserRouter([
       { path: "design-system", element: withSuspense(<DesignSystemPage />) },
     ],
   },
-]);
+]));
