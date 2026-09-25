@@ -1,15 +1,22 @@
+/* Initials avatar: solid royal blue disc with white bold initials (same in
+   every theme). A profile photo replaces the initials. */
 .user-avatar {
   display: inline-grid;
   flex-shrink: 0;
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent, var(--color-primary)));
-  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-border-strong);
-  color: #fff;
+  background: linear-gradient(180deg, #2f6bf2 0%, #1f5ae6 100%);
+  box-shadow: 0 2px 6px rgba(20, 60, 180, 0.28);
+  color: #ffffff;
   font-weight: 700;
+  letter-spacing: 0.02em;
   line-height: 1;
   user-select: none;
+}
+
+.user-avatar--photo {
+  background: var(--color-surface);
 }
 
 .user-avatar__image {
