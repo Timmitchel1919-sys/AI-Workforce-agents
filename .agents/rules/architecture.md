@@ -1,3 +1,4 @@
+# ARCHITECTURE
 # AI Workforce Agent Instructions
 
 This repository contains the AI Workforce platform.

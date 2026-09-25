@@ -1,7 +1,16 @@
-# Claude Code instructions — AI Workforce
+# Claude Code Instructions
 
-@AGENTS.md
+This repository contains the AI Workforce platform.
 
-The release rule in AGENTS.md is standing authorization from the repository
-owner: after every completed prompt, validate, commit, push to `origin main`,
-and deploy Firebase Hosting (`ai-workforce-agents`) without asking again.
+Follow the authoritative project documentation:
+
+- docs/development/architecture.md
+- docs/development/coding-standards.md
+- docs/development/parallel-development.md
+- docs/development/branching-strategy.md
+- docs/development/testing-strategy.md
+- docs/development/deployment-strategy.md
+
+Do not duplicate or override architecture defined in those documents.
+
+Respect module ownership and parallel development boundaries.
