@@ -112,6 +112,17 @@ export declare class ExecutionManager {
     getSession(principal: OperatorPrincipal, sessionId: string): Promise<ExecutionSession>;
     listSessions(principal: OperatorPrincipal, projectId: string): Promise<ExecutionSession[]>;
     /**
+     * EO-4.8 orphan reconciliation. A session must never stay RUNNING (or
+     * CANCELLING) forever because the instance / runner / process that owned
+     * its invocation disappeared. When no invocation is live in THIS instance
+     * and the open attempt is past its operation timeout (+ grace) — or the
+     * whole session budget is exhausted — the session is moved to a terminal
+     * state with an explicit reason, through the same compare-and-swap commit
+     * (safe across instances). Timestamps only bound liveness here; they
+     * never authorize anything.
+     */
+    private reconcile;
+    /**
      * Cancel (operators) or kill (administrators — the emergency switch for ONE
      * session). Idempotent, state-aware and always audited. Agents have no path
      * to this: it is a Control Plane operation authorized by operator role.

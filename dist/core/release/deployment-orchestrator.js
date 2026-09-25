@@ -303,6 +303,21 @@ export class DeploymentOrchestrator {
         if (reqs.requireRollbackPlan && !adapter.rollback) {
             deny("ROLLBACK_UNAVAILABLE", `${target.targetClass} requires a rollback-capable adapter`);
         }
+        // EO-4.8: artifacts are re-verified right before the provider sees them;
+        // a tampered or swapped artifact never reaches a deployment.
+        for (const a of candidate.artifacts) {
+            const record = this.options.artifacts.get(projectId, a.artifactId);
+            const integrity = await this.options.artifacts
+                .verify(projectId, a.artifactId)
+                .catch(() => undefined);
+            if (!record || record.digest.value !== a.sha256 || !integrity?.intact) {
+                this.record("deployment_integrity_failed", principal.id, projectId, {
+                    candidateId: candidate.candidateId,
+                    artifactId: a.artifactId,
+                });
+                deny("INTEGRITY_FAILED", `artifact ${a.path} failed its integrity check; deployment denied`);
+            }
+        }
         const releaseId = this.newId("rel");
         this.acquireLock(target.targetId, releaseId);
         const startedAt = this.clock();
@@ -364,8 +379,9 @@ export class DeploymentOrchestrator {
                 ...(credential ? { credential } : {}),
             });
             let providerReleaseId;
+            let failedResources = [];
             try {
-                ({ providerReleaseId } = await this.withTimeout(target.timeoutMs, (signal) => adapter.deploy(ctx(signal))));
+                ({ providerReleaseId, failedResources = [] } = await this.withTimeout(target.timeoutMs, (signal) => adapter.deploy(ctx(signal))));
             }
             catch (error) {
                 const timeout = error instanceof ExecutionDeniedError && error.code === "TIMEOUT";
@@ -378,10 +394,28 @@ export class DeploymentOrchestrator {
                     },
                 ]);
             }
+            if (failedResources.length > 0) {
+                // Partial deployment: some resources changed, others did not. The
+                // target is in a mixed state: FAILED, with explicit recovery needs.
+                const failed = target.resources.filter((r) => failedResources.includes(r));
+                return finish("failed", [
+                    {
+                        code: "DEPLOYMENT_FAILED",
+                        detail: `partial deployment: ${(failed.length > 0 ? failed : failedResources).join(", ")} failed; the target is mixed; roll back or redeploy with approval`,
+                    },
+                ], {
+                    providerReleaseId,
+                    resources: {
+                        completed: target.resources.filter((r) => !failedResources.includes(r)),
+                        failed: failed.length > 0 ? failed : [...failedResources],
+                    },
+                });
+            }
             receipt = await this.save({
                 ...receipt,
                 status: "deployed",
                 providerReleaseId,
+                resources: { completed: [...target.resources], failed: [] },
             });
             this.record("deployment_completed", principal.id, projectId, {
                 releaseId,
@@ -468,7 +502,28 @@ export class DeploymentOrchestrator {
                 toReleaseId: to.releaseId,
                 automatic,
             });
-            await this.withTimeout(target.timeoutMs, (signal) => adapter.rollback({ candidate: candidate, target, signal }, to.providerReleaseId));
+            try {
+                await this.withTimeout(target.timeoutMs, (signal) => adapter.rollback({ candidate: candidate, target, signal }, to.providerReleaseId));
+            }
+            catch {
+                // Never claim a recovery that did not happen.
+                await this.save({
+                    ...release,
+                    reasons: [
+                        ...release.reasons,
+                        {
+                            code: "ROLLBACK_FAILED",
+                            detail: `rollback to ${to.releaseId} failed; the target was NOT restored`,
+                        },
+                    ],
+                });
+                this.record("rollback_failed", principal.id, release.projectId, {
+                    releaseId: release.releaseId,
+                    toReleaseId: to.releaseId,
+                    automatic,
+                });
+                deny("ROLLBACK_FAILED", "the rollback failed; the target was not restored");
+            }
             const rolled = await this.save({
                 ...release,
                 status: "rolled_back",

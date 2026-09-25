@@ -15,7 +15,7 @@
  * - Rollback restores a KNOWN previous healthy release on the same target
  *   and is itself approved; automatic rollback only when policy says so.
  */
-import { type ArtifactRecord, type CommitReceipt, type ExecutionRecordStore, type DeploymentAdapter, type DeploymentCandidate, type DeploymentTarget, type OperatorPrincipal, type PushReceipt, type ReleasePolicy, type ReleaseReceipt, type VerificationResult } from "../../contracts/index.js";
+import { type ArtifactIntegrity, type ArtifactRecord, type CommitReceipt, type ExecutionRecordStore, type DeploymentAdapter, type DeploymentCandidate, type DeploymentTarget, type OperatorPrincipal, type PushReceipt, type ReleasePolicy, type ReleaseReceipt, type VerificationResult } from "../../contracts/index.js";
 import type { ApprovalSystem } from "../approvals/approval-system.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { SecretValueResolver } from "./source-control-orchestrator.js";
@@ -29,6 +29,8 @@ export interface DeploymentOrchestratorOptions {
     };
     artifacts: {
         get(projectId: string, artifactId: string): ArtifactRecord | undefined;
+        /** Re-digest an artifact (EO-4.8: checked again right before deploy). */
+        verify(projectId: string, artifactId: string): Promise<ArtifactIntegrity>;
     };
     approvals: Pick<ApprovalSystem, "get" | "request">;
     projects: {

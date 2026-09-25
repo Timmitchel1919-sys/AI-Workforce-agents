@@ -30,6 +30,13 @@ const FORBIDDEN_EXECUTABLES = new Set([
     "xargs",
     "npx",
     "bunx",
+    // EO-4.8: package managers run package.json scripts: project-controlled
+    // code executed through a shell. Build through the toolchain directly
+    // (node <file>, dotnet, gradle <known task>), never `npm run <script>`.
+    "npm",
+    "pnpm",
+    "yarn",
+    "bun",
 ]);
 /** Arguments that install, publish, deploy, push or evaluate code. */
 const FORBIDDEN_ARGUMENTS = new Set([

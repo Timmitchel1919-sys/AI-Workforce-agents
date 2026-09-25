@@ -213,6 +213,11 @@ export interface ReleaseReceipt {
         toReleaseId: string;
         automatic: boolean;
     };
+    /** Per-resource outcome (partial deployments are explicit). */
+    resources?: {
+        completed: readonly string[];
+        failed: readonly string[];
+    };
     /** Authoritative duration only — never a fabricated cost. */
     durationMs?: number;
     simulated: boolean;
@@ -286,8 +291,13 @@ export interface DeploymentAdapter {
     readonly version: string;
     /** Test/simulation adapter: receipts are labelled simulated. */
     readonly simulated?: boolean;
+    /**
+     * `failedResources`: resources the provider could NOT deploy (partial
+     * deployment). Any entry makes the release FAILED with recovery required.
+     */
     deploy(ctx: DeploymentContext): Promise<{
         providerReleaseId: string;
+        failedResources?: readonly string[];
     }>;
     /** Bounded post-deploy verification (health + version identity). */
     verify(ctx: DeploymentContext): Promise<{
