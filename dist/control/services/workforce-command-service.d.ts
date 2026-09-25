@@ -25,21 +25,28 @@ export declare class WorkforceCommandService {
     reject(principal: OperatorPrincipal, input: RejectCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     private decideApproval;
     createProgram(principal: OperatorPrincipal, input: {
+        projectId?: unknown;
         id?: unknown;
         name?: unknown;
         objective?: unknown;
     }, options?: CommandOptions): Promise<ControlCommandResult>;
     createWorkstream(principal: OperatorPrincipal, input: {
+        projectId?: unknown;
         programId?: unknown;
         id?: unknown;
         name?: unknown;
         objective?: unknown;
     }, options?: CommandOptions): Promise<ControlCommandResult>;
     addTaskToWorkstream(principal: OperatorPrincipal, input: {
+        projectId?: unknown;
+        programId?: unknown;
         workstreamId?: unknown;
         task?: unknown;
     }, options?: CommandOptions): Promise<ControlCommandResult>;
-    tickSoftwareFactory(principal: OperatorPrincipal, _input?: unknown, options?: CommandOptions): Promise<ControlCommandResult>;
+    tickSoftwareFactory(principal: OperatorPrincipal, input?: {
+        projectId?: unknown;
+        programId?: unknown;
+    }, options?: CommandOptions): Promise<ControlCommandResult>;
     /**
      * Create an execution plan from a planning request. The server derives
      * environments, agents, blockers and status; client-supplied values for

@@ -22,12 +22,12 @@ export class RoutingAgentExecutor {
     list() {
         return [...this.executors.keys()].sort();
     }
-    execute(agent, task, guard) {
+    execute(agent, task, guard, context) {
         const executor = this.executors.get(agent.id);
         if (!executor) {
             throw new NotFoundError(`no executor registered for agent "${agent.id}" ` +
                 `(registered: ${this.list().join(", ") || "none"})`);
         }
-        return executor.execute(agent, task, guard);
+        return executor.execute(agent, task, guard, context);
     }
 }

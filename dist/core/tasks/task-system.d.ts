@@ -6,9 +6,13 @@ export interface TransitionPatch {
     metadata?: Record<string, unknown>;
     error?: string;
 }
+export interface TaskSystemOptions {
+    newId?: () => string;
+}
 export declare class TaskSystem {
     private readonly repo;
-    constructor(repo?: Repository<Task>);
+    private readonly newId;
+    constructor(repo?: Repository<Task>, options?: TaskSystemOptions);
     create(draft: TaskDraft): Task;
     get(id: string): Task | undefined;
     require(id: string): Task;

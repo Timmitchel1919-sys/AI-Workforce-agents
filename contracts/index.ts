@@ -7,6 +7,7 @@
  * enters the system through the interfaces declared here and is implemented
  * under `adapters/`.
  */
+import { SOFTWARE_FACTORY_ENVIRONMENT_CODES } from "./environment-routing.js";
 
 /* ------------------------------------------------------------------ */
 /* Shared primitives                                                  */
@@ -142,6 +143,7 @@ export interface Task {
   modelRequirements?: Record<string, unknown>;
   completionCriteria?: readonly string[];
   riskClass?: string;
+  executionContext?: AgentExecutionContext;
 }
 
 export interface TaskDraft {
@@ -163,6 +165,7 @@ export interface TaskDraft {
   modelRequirements?: Record<string, unknown>;
   completionCriteria?: readonly string[];
   riskClass?: string;
+  executionContext?: AgentExecutionContext;
 }
 
 /* ------------------------------------------------------------------ */
@@ -422,12 +425,28 @@ export interface PermissionGuard {
   assert(action: PermissionAction, toolId?: string): void;
 }
 
+export interface EnvironmentExecutionContext {
+  code: string;
+  instanceId: string;
+  hostId: string;
+  descriptorId?: string;
+}
+
+export interface AgentExecutionContext {
+  environment?: EnvironmentExecutionContext;
+}
+
 /**
  * A pluggable unit of work the orchestrator dispatches a task to. A General
  * Agent is an `AgentExecutor` plus a declarative {@link Agent} definition.
  */
 export interface AgentExecutor {
-  execute(agent: Agent, task: Task, guard?: PermissionGuard): Promise<unknown>;
+  execute(
+    agent: Agent,
+    task: Task,
+    guard?: PermissionGuard,
+    context?: AgentExecutionContext,
+  ): Promise<unknown>;
 }
 
 /** Hard ceilings a General Agent enforces on a single execution. */
@@ -691,9 +710,90 @@ export function validateAgent(agent: Agent): void {
 }
 
 export function validateTaskDraft(draft: TaskDraft): void {
+  if (!draft || typeof draft !== "object" || Array.isArray(draft)) {
+    throw new ValidationError("task draft must be an object");
+  }
   requireText(draft.type, "task.type");
   requireText(draft.description, "task.description");
   requireText(draft.projectId, "task.projectId");
+  if (
+    draft.priority !== undefined &&
+    !["low", "normal", "high", "critical"].includes(draft.priority)
+  ) {
+    throw new ValidationError("task.priority must be a known priority");
+  }
+  if (draft.metadata !== undefined && !isRecord(draft.metadata)) {
+    throw new ValidationError("task.metadata must be an object");
+  }
+  for (const field of [
+    "dependencies",
+    "requirements",
+    "requiredCapabilities",
+    "environmentRequirements",
+    "completionCriteria",
+  ] as const) {
+    const value = draft[field];
+    if (value === undefined) continue;
+    for (const entry of requireStringArray(value, `task.${field}`)) {
+      if (entry.trim() === "") {
+        throw new ValidationError(
+          `task.${field} must not contain blank values`,
+        );
+      }
+    }
+  }
+  for (const code of draft.environmentRequirements ?? []) {
+    if (!SOFTWARE_FACTORY_ENVIRONMENT_CODES.includes(code as never)) {
+      throw new ValidationError(
+        `task.environmentRequirements contains unknown code: ${code}`,
+      );
+    }
+  }
+  if (draft.requiredPermissions !== undefined) {
+    const permissions = requireArray(
+      draft.requiredPermissions,
+      "task.requiredPermissions",
+    );
+    for (const permission of permissions) {
+      if (
+        !permission ||
+        typeof permission !== "object" ||
+        Array.isArray(permission)
+      ) {
+        throw new ValidationError(
+          "task.requiredPermissions must contain objects",
+        );
+      }
+      const action = (permission as RequiredPermission).action;
+      if (!PERMISSION_ACTIONS.includes(action)) {
+        throw new ValidationError(
+          "task.requiredPermissions contains an unknown action",
+        );
+      }
+      const toolId = (permission as RequiredPermission).toolId;
+      if (toolId !== undefined)
+        requireText(toolId, "task.requiredPermissions.toolId");
+    }
+  }
+  if (
+    draft.modelRequirements !== undefined &&
+    !isRecord(draft.modelRequirements)
+  ) {
+    throw new ValidationError("task.modelRequirements must be an object");
+  }
+}
+
+function requireStringArray(value: unknown, field: string): string[] {
+  return requireArray(value, field).map((entry, index) => {
+    if (typeof entry !== "string") {
+      throw new ValidationError(`${field}[${index}] must be a string`);
+    }
+    return entry;
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 export function validateHandoffDraft(draft: HandoffDraft): void {

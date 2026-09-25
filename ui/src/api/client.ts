@@ -13,6 +13,21 @@ function createCorrelationId(): string {
   return `ui-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function errorMessageFromBody(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  if ("message" in body && typeof body.message === "string") return body.message;
+  if (
+    "error" in body &&
+    body.error &&
+    typeof body.error === "object" &&
+    "message" in body.error &&
+    typeof body.error.message === "string"
+  ) {
+    return body.error.message;
+  }
+  return undefined;
+}
+
 export interface ApiRequestOptions extends RequestInit {
   accessToken?: string | null;
 }
@@ -103,13 +118,7 @@ async function sendRequest<T>(
       : await response.text();
 
     if (!response.ok) {
-      const message =
-        typeof body === "object" &&
-        body !== null &&
-        "message" in body &&
-        typeof body.message === "string"
-          ? body.message
-          : "The request could not be completed.";
+      const message = errorMessageFromBody(body) ?? "The request could not be completed.";
 
       throw new ApiError(message, {
         status: response.status,

@@ -31,6 +31,8 @@ const DesignSystemPage = fromChunk(loadControlCenterRoutes, "DesignSystemPage");
 const SettingsPage = fromChunk(loadControlCenterRoutes, "SettingsPage");
 const ProfilePage = fromChunk(loadControlCenterRoutes, "ProfilePage");
 const InfrastructurePage = fromChunk(loadControlCenterRoutes, "InfrastructurePage");
+const SoftwareFactoryPage = fromChunk(loadControlCenterRoutes, "SoftwareFactoryPage");
+const SoftwareFactoryProgramPage = fromChunk(loadControlCenterRoutes, "SoftwareFactoryProgramPage");
 const UsersAccessPage = fromChunk(loadControlCenterRoutes, "UsersAccessPage");
 const ApprovalsPage = fromChunk(loadControlCenterRoutes, "ApprovalsPage");
 const AuditLogPage = fromChunk(loadControlCenterRoutes, "AuditLogPage");
@@ -116,6 +118,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "infrastructure", element: withSuspense(<InfrastructurePage />) },
       { path: "infrastructure/hosts", element: withSuspense(<InfrastructurePage />) },
       { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },
+      { path: "software-factory", element: withSuspense(<SoftwareFactoryPage />) },
+      { path: "software-factory/:projectId/:programId", element: withSuspense(<SoftwareFactoryProgramPage />) },
       { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },

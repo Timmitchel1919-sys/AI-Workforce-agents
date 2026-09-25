@@ -46,4 +46,16 @@ describe("apiRequest ID tokens", () => {
     await expect(apiRequest("/api/status")).rejects.toBeInstanceOf(ApiError);
     expect((fetchMock.mock.calls[1]![1].headers as Headers).get("Authorization")).toBeNull();
   });
+
+  it("preserves the Control Plane error message from its response envelope", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(400, { error: { message: "objective must not be empty" } })));
+
+    const error = await apiRequest("/api/commands/create-program", { method: "POST" }).then(
+      () => null,
+      (reason: unknown) => reason,
+    );
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).message).toBe("objective must not be empty");
+  });
 });

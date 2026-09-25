@@ -1,12 +1,3 @@
-/**
- * AI Workforce — Core Contracts
- *
- * Shared type contracts and pure validators for the Workforce foundation.
- * This module has NO dependency on any model provider, tool vendor, project
- * repository, or infrastructure. Everything provider- or project-specific
- * enters the system through the interfaces declared here and is implemented
- * under `adapters/`.
- */
 export type Priority = "low" | "normal" | "high" | "critical";
 export declare const ENVIRONMENTS: readonly ["local", "test", "staging", "production"];
 export type Environment = (typeof ENVIRONMENTS)[number];
@@ -97,6 +88,7 @@ export interface Task {
     modelRequirements?: Record<string, unknown>;
     completionCriteria?: readonly string[];
     riskClass?: string;
+    executionContext?: AgentExecutionContext;
 }
 export interface TaskDraft {
     type: string;
@@ -116,6 +108,7 @@ export interface TaskDraft {
     modelRequirements?: Record<string, unknown>;
     completionCriteria?: readonly string[];
     riskClass?: string;
+    executionContext?: AgentExecutionContext;
 }
 export type HandoffStatus = "proposed" | "accepted" | "rejected";
 export interface Handoff {
@@ -290,12 +283,21 @@ export interface ProjectAdapter {
 export interface PermissionGuard {
     assert(action: PermissionAction, toolId?: string): void;
 }
+export interface EnvironmentExecutionContext {
+    code: string;
+    instanceId: string;
+    hostId: string;
+    descriptorId?: string;
+}
+export interface AgentExecutionContext {
+    environment?: EnvironmentExecutionContext;
+}
 /**
  * A pluggable unit of work the orchestrator dispatches a task to. A General
  * Agent is an `AgentExecutor` plus a declarative {@link Agent} definition.
  */
 export interface AgentExecutor {
-    execute(agent: Agent, task: Task, guard?: PermissionGuard): Promise<unknown>;
+    execute(agent: Agent, task: Task, guard?: PermissionGuard, context?: AgentExecutionContext): Promise<unknown>;
 }
 /** Hard ceilings a General Agent enforces on a single execution. */
 export interface AgentLimits {

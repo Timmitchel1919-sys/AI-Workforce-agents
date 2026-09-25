@@ -30,6 +30,7 @@ import {
   type ExecutionPlanCommandInput,
   type OperatorPrincipal,
   type RejectCommandInput,
+  type SoftwareFactoryTaskInput,
   type Task,
   type TaskCommandInput,
   type TaskDraft,
@@ -301,15 +302,22 @@ export class WorkforceCommandService {
 
   async createProgram(
     principal: OperatorPrincipal,
-    input: { id?: unknown; name?: unknown; objective?: unknown },
+    input: {
+      projectId?: unknown;
+      id?: unknown;
+      name?: unknown;
+      objective?: unknown;
+    },
     options?: CommandOptions,
   ): Promise<ControlCommandResult> {
     const run = { correlationId: resolveCorrelationId(options) };
     const command = "create_program";
+    let projectId: string;
     let id: string;
     let name: string;
     let objective: string;
     try {
+      projectId = requireId(input?.projectId, "create_program.projectId");
       id = requireId(input?.id, "create_program.id");
       name = requireText(input?.name, "create_program.name");
       objective = requireText(input?.objective, "create_program.objective");
@@ -331,8 +339,31 @@ export class WorkforceCommandService {
         "denied",
         id,
         `role "${principal.role}" may not create programs`,
-        {},
+        { projectId },
         run,
+      );
+    }
+    if (!operatorCanAccessProject(principal, projectId)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        id,
+        "project scope denied",
+        { projectId },
+        run,
+      );
+    }
+    if (!this.ctx.projects.has(projectId)) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        id,
+        `unknown project: ${projectId}`,
+        { projectId },
+        run,
+        "not_found",
       );
     }
     const factory = this.ctx.softwareFactory;
@@ -343,20 +374,20 @@ export class WorkforceCommandService {
         "rejected",
         id,
         "software factory is not configured",
-        {},
+        { projectId },
         run,
         "invalid_state",
       );
     }
     try {
-      const program = factory.createProgram(id, name, objective);
+      const program = factory.createProgram(id, name, objective, projectId);
       return this.audited(
         principal,
         command,
         "executed",
         program.id,
         "program created",
-        { program },
+        { projectId, program },
         run,
       );
     } catch (error) {
@@ -366,7 +397,7 @@ export class WorkforceCommandService {
         "rejected",
         id,
         message(error),
-        {},
+        { projectId },
         run,
         softwareFactoryKind(error),
       );
@@ -376,6 +407,7 @@ export class WorkforceCommandService {
   async createWorkstream(
     principal: OperatorPrincipal,
     input: {
+      projectId?: unknown;
       programId?: unknown;
       id?: unknown;
       name?: unknown;
@@ -385,11 +417,13 @@ export class WorkforceCommandService {
   ): Promise<ControlCommandResult> {
     const run = { correlationId: resolveCorrelationId(options) };
     const command = "create_workstream";
+    let projectId: string;
     let programId: string;
     let id: string;
     let name: string;
     let objective: string;
     try {
+      projectId = requireId(input?.projectId, "create_workstream.projectId");
       programId = requireId(input?.programId, "create_workstream.programId");
       id = requireId(input?.id, "create_workstream.id");
       name = requireText(input?.name, "create_workstream.name");
@@ -412,7 +446,18 @@ export class WorkforceCommandService {
         "denied",
         id,
         `role "${principal.role}" may not create workstreams`,
-        {},
+        { projectId },
+        run,
+      );
+    }
+    if (!operatorCanAccessProject(principal, projectId)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        id,
+        "project scope denied",
+        { projectId },
         run,
       );
     }
@@ -424,9 +469,21 @@ export class WorkforceCommandService {
         "rejected",
         id,
         "software factory is not configured",
-        {},
+        { projectId },
         run,
         "invalid_state",
+      );
+    }
+    if (!factory.findProgram(programId, projectId)) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        id,
+        `unknown program: ${programId}`,
+        { projectId },
+        run,
+        "not_found",
       );
     }
     try {
@@ -435,6 +492,7 @@ export class WorkforceCommandService {
         id,
         name,
         objective,
+        projectId,
       );
       return this.audited(
         principal,
@@ -442,7 +500,7 @@ export class WorkforceCommandService {
         "executed",
         workstream.id,
         "workstream created",
-        { workstream },
+        { projectId, programId, workstream },
         run,
       );
     } catch (error) {
@@ -452,7 +510,7 @@ export class WorkforceCommandService {
         "rejected",
         id,
         message(error),
-        {},
+        { projectId, programId },
         run,
         softwareFactoryKind(error),
       );
@@ -461,19 +519,34 @@ export class WorkforceCommandService {
 
   async addTaskToWorkstream(
     principal: OperatorPrincipal,
-    input: { workstreamId?: unknown; task?: unknown },
+    input: {
+      projectId?: unknown;
+      programId?: unknown;
+      workstreamId?: unknown;
+      task?: unknown;
+    },
     options?: CommandOptions,
   ): Promise<ControlCommandResult> {
     const run = { correlationId: resolveCorrelationId(options) };
     const command = "add_task_to_workstream";
+    let projectId: string;
+    let programId: string;
     let workstreamId: string;
-    let task: TaskDraft;
+    let task: SoftwareFactoryTaskInput;
     try {
+      projectId = requireId(
+        input?.projectId,
+        "add_task_to_workstream.projectId",
+      );
+      programId = requireId(
+        input?.programId,
+        "add_task_to_workstream.programId",
+      );
       workstreamId = requireId(
         input?.workstreamId,
         "add_task_to_workstream.workstreamId",
       );
-      task = requireSoftwareFactoryTaskDraft(input?.task);
+      task = requireSoftwareFactoryTaskInput(input?.task);
     } catch (error) {
       return this.audited(
         principal,
@@ -492,7 +565,18 @@ export class WorkforceCommandService {
         "denied",
         workstreamId,
         `role "${principal.role}" may not add workstream tasks`,
-        {},
+        { projectId },
+        run,
+      );
+    }
+    if (!operatorCanAccessProject(principal, projectId)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        workstreamId,
+        "project scope denied",
+        { projectId },
         run,
       );
     }
@@ -504,9 +588,21 @@ export class WorkforceCommandService {
         "rejected",
         workstreamId,
         "software factory is not configured",
-        {},
+        { projectId },
         run,
         "invalid_state",
+      );
+    }
+    if (!factory.findWorkstream(workstreamId, programId, projectId)) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        workstreamId,
+        `unknown workstream: ${workstreamId}`,
+        { projectId, programId },
+        run,
+        "not_found",
       );
     }
     try {
@@ -517,7 +613,13 @@ export class WorkforceCommandService {
         "executed",
         created.id,
         "task added to workstream",
-        { workstreamId, taskId: created.id, status: created.status },
+        {
+          projectId,
+          programId,
+          workstreamId,
+          taskId: created.id,
+          status: created.status,
+        },
         run,
       );
     } catch (error) {
@@ -527,7 +629,7 @@ export class WorkforceCommandService {
         "rejected",
         workstreamId,
         message(error),
-        {},
+        { projectId, programId },
         run,
         softwareFactoryKind(error),
       );
@@ -536,11 +638,33 @@ export class WorkforceCommandService {
 
   async tickSoftwareFactory(
     principal: OperatorPrincipal,
-    _input?: unknown,
+    input?: { projectId?: unknown; programId?: unknown },
     options?: CommandOptions,
   ): Promise<ControlCommandResult> {
     const run = { correlationId: resolveCorrelationId(options) };
     const command = "tick_software_factory";
+    let projectId: string;
+    let programId: string;
+    try {
+      projectId = requireId(
+        input?.projectId,
+        "tick_software_factory.projectId",
+      );
+      programId = requireId(
+        input?.programId,
+        "tick_software_factory.programId",
+      );
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        message(error),
+        {},
+        run,
+      );
+    }
     if (!operatorCan(principal, command)) {
       return this.audited(
         principal,
@@ -548,7 +672,18 @@ export class WorkforceCommandService {
         "denied",
         undefined,
         `role "${principal.role}" may not advance the software factory`,
-        {},
+        { projectId },
+        run,
+      );
+    }
+    if (!operatorCanAccessProject(principal, projectId)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        undefined,
+        "project scope denied",
+        { projectId },
         run,
       );
     }
@@ -560,20 +695,32 @@ export class WorkforceCommandService {
         "rejected",
         undefined,
         "software factory is not configured",
-        {},
+        { projectId },
         run,
         "invalid_state",
       );
     }
+    if (!factory.findProgram(programId, projectId)) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        `unknown program: ${programId}`,
+        { projectId },
+        run,
+        "not_found",
+      );
+    }
     try {
-      await factory.tick();
+      await factory.tick(programId);
       return this.audited(
         principal,
         command,
         "executed",
-        undefined,
+        programId,
         "software factory advanced one tick",
-        {},
+        { projectId, programId },
         run,
       );
     } catch (error) {
@@ -581,9 +728,9 @@ export class WorkforceCommandService {
         principal,
         command,
         "rejected",
-        undefined,
+        programId,
         message(error),
-        {},
+        { projectId, programId },
         run,
         softwareFactoryKind(error),
       );
@@ -1860,12 +2007,22 @@ function softwareFactoryKind(error: unknown): ControlErrorKind {
         : "command_failure";
 }
 
-/** Coerce an untrusted `add-workstream-task` body's `task` into a `TaskDraft`. */
-function requireSoftwareFactoryTaskDraft(value: unknown): TaskDraft {
+function requireSoftwareFactoryTaskInput(
+  value: unknown,
+): SoftwareFactoryTaskInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new ValidationError("add_task_to_workstream.task must be an object");
   }
-  const draft = value as TaskDraft;
+  const record = value as Record<string, unknown>;
+  for (const field of ["projectId", "programId", "workstreamId"]) {
+    if (field in record) {
+      throw new ValidationError(
+        `add_task_to_workstream.task.${field} is server-derived`,
+      );
+    }
+  }
+  const draft = { ...record, projectId: "software-factory" } as TaskDraft;
   validateTaskDraft(draft);
-  return { ...draft };
+  const input = { ...record } as Record<string, unknown>;
+  return input as SoftwareFactoryTaskInput;
 }

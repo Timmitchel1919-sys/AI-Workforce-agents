@@ -288,10 +288,18 @@ export function createControlPlaneApi(options) {
             case "software-factory":
                 // GET /api/software-factory, GET /api/software-factory/programs/:programId
                 if (segs[1] === "programs" && segs.length === 3) {
-                    return send(res, 200, query.getSoftwareFactoryProgramDetail(principal, segs[2]), correlationId);
+                    const projectId = params.get("projectId");
+                    if (!projectId || projectId.trim() === "") {
+                        return send(res, 400, { error: { message: "projectId is required" } }, correlationId);
+                    }
+                    return send(res, 200, query.getSoftwareFactoryProgramDetail(principal, projectId, segs[2]), correlationId);
                 }
                 if (segs.length === 1) {
-                    return send(res, 200, query.getSoftwareFactoryOverview(principal), correlationId);
+                    const projectId = params.get("projectId");
+                    if (projectId !== null && projectId.trim() === "") {
+                        return send(res, 400, { error: { message: "projectId must not be blank" } }, correlationId);
+                    }
+                    return send(res, 200, query.getSoftwareFactoryOverview(principal, projectId ?? undefined), correlationId);
                 }
                 return send(res, 404, { error: { message: "not found" } }, correlationId);
             default:

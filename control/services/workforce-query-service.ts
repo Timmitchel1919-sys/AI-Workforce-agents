@@ -121,11 +121,13 @@ export class WorkforceQueryService {
 
   getGraphProjection(
     principal: OperatorPrincipal,
+    projectId: string,
     programId: string,
   ): import("../../contracts/index.js").GraphProjection | undefined {
     this.authorizeView(principal);
     if (!this.ctx.softwareFactory) return undefined;
-    return this.ctx.softwareFactory.getGraphProjection(programId);
+    if (!operatorCanAccessProject(principal, projectId)) return undefined;
+    return this.ctx.softwareFactory.getGraphProjection(programId, projectId);
   }
 
   /* -------------------------------------------------------------- */
@@ -134,19 +136,39 @@ export class WorkforceQueryService {
 
   getSoftwareFactoryOverview(
     principal: OperatorPrincipal,
+    projectId?: string,
   ): SoftwareFactoryOverview {
     this.authorizeView(principal);
     if (!this.ctx.softwareFactory) return { programs: [] };
-    return this.ctx.softwareFactory.overview();
+    if (
+      projectId !== undefined &&
+      !operatorCanAccessProject(principal, projectId)
+    ) {
+      return { programs: [] };
+    }
+    const projectIds =
+      projectId !== undefined
+        ? new Set([projectId])
+        : principal.allowedProjects === "*"
+          ? undefined
+          : new Set(principal.allowedProjects);
+    return this.ctx.softwareFactory.overview(projectIds);
   }
 
   getSoftwareFactoryProgramDetail(
     principal: OperatorPrincipal,
+    projectId: string,
     programId: string,
   ): SoftwareFactoryProgramDetail {
     this.authorizeView(principal);
-    const detail = this.ctx.softwareFactory?.programDetail(programId);
-    if (!detail) throw new NotFoundError(`unknown program: ${programId}`);
+    if (!operatorCanAccessProject(principal, projectId)) {
+      throw new NotFoundError("unknown program");
+    }
+    const detail = this.ctx.softwareFactory?.programDetail(
+      programId,
+      projectId,
+    );
+    if (!detail) throw new NotFoundError("unknown program");
     return detail;
   }
 

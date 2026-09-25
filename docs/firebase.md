@@ -57,6 +57,13 @@ hydrate() once  →  reads served from an in-memory copy  →  writes: cache now
 **single writer** — one process owns the cache; see ADR-0011 for the
 multi-instance caveat.
 
+Every repository a runtime needs is allocated **before** `hydrateAll()` so a
+single pass loads it. The Software Factory (EO-5.1) adds three collections
+this way — `software_factory_programs`, `software_factory_workstreams` and
+`software_factory_task_aliases` — and the deployed Function pins
+`maxInstances: 1` / `concurrency: 1` and memoizes one runtime per warm
+instance, because these cached repositories assume a single writer.
+
 ## Environment
 
 Read by the API composition root only (see `.env.example`):
@@ -151,8 +158,10 @@ in-memory fakes and stay fully offline.
 `GET /api/health` (no auth) · `GET /api/status` · `/api/system-health` ·
 `/api/dashboard` · `/api/agents[/:id]` · `/api/tasks[/:id]` (query filters) ·
 `/api/workflows[/:id]` · `/api/approvals` · `/api/projects[/:id]` ·
-`/api/tools[/:id]` · `/api/audit` (query filters).
-`POST /api/commands/{approve|reject|cancel-task|retry-task|pause-workflow|resume-workflow|cancel-workflow|disable-agent|enable-agent}`.
+`/api/tools[/:id]` · `/api/audit` (query filters) ·
+`/api/software-factory[?projectId=…]` ·
+`/api/software-factory/programs/:programId?projectId=…`.
+`POST /api/commands/{approve|reject|cancel-task|retry-task|pause-workflow|resume-workflow|cancel-workflow|disable-agent|enable-agent|create-program|create-workstream|add-workstream-task|tick-software-factory}`.
 
 Every non-health request needs `Authorization: Bearer <Firebase ID token>`.
 `x-correlation-id` is honoured inbound and echoed outbound. Errors are

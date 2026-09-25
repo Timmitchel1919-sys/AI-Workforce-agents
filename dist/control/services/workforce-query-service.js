@@ -53,26 +53,40 @@ export class WorkforceQueryService {
             recentActivity: this.recentAudit(principal, 15),
         };
     }
-    getGraphProjection(principal, programId) {
+    getGraphProjection(principal, projectId, programId) {
         this.authorizeView(principal);
         if (!this.ctx.softwareFactory)
             return undefined;
-        return this.ctx.softwareFactory.getGraphProjection(programId);
+        if (!operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return this.ctx.softwareFactory.getGraphProjection(programId, projectId);
     }
     /* -------------------------------------------------------------- */
     /* software factory (EO-5.1) — read-only views                    */
     /* -------------------------------------------------------------- */
-    getSoftwareFactoryOverview(principal) {
+    getSoftwareFactoryOverview(principal, projectId) {
         this.authorizeView(principal);
         if (!this.ctx.softwareFactory)
             return { programs: [] };
-        return this.ctx.softwareFactory.overview();
+        if (projectId !== undefined &&
+            !operatorCanAccessProject(principal, projectId)) {
+            return { programs: [] };
+        }
+        const projectIds = projectId !== undefined
+            ? new Set([projectId])
+            : principal.allowedProjects === "*"
+                ? undefined
+                : new Set(principal.allowedProjects);
+        return this.ctx.softwareFactory.overview(projectIds);
     }
-    getSoftwareFactoryProgramDetail(principal, programId) {
+    getSoftwareFactoryProgramDetail(principal, projectId, programId) {
         this.authorizeView(principal);
-        const detail = this.ctx.softwareFactory?.programDetail(programId);
+        if (!operatorCanAccessProject(principal, projectId)) {
+            throw new NotFoundError("unknown program");
+        }
+        const detail = this.ctx.softwareFactory?.programDetail(programId, projectId);
         if (!detail)
-            throw new NotFoundError(`unknown program: ${programId}`);
+            throw new NotFoundError("unknown program");
         return detail;
     }
     /** @deprecated since Phase 7A — use {@link getSystemHealth}. */

@@ -162,10 +162,12 @@ export class WorkforceCommandService {
     async createProgram(principal, input, options) {
         const run = { correlationId: resolveCorrelationId(options) };
         const command = "create_program";
+        let projectId;
         let id;
         let name;
         let objective;
         try {
+            projectId = requireId(input?.projectId, "create_program.projectId");
             id = requireId(input?.id, "create_program.id");
             name = requireText(input?.name, "create_program.name");
             objective = requireText(input?.objective, "create_program.objective");
@@ -174,28 +176,36 @@ export class WorkforceCommandService {
             return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
         }
         if (!operatorCan(principal, command)) {
-            return this.audited(principal, command, "denied", id, `role "${principal.role}" may not create programs`, {}, run);
+            return this.audited(principal, command, "denied", id, `role "${principal.role}" may not create programs`, { projectId }, run);
+        }
+        if (!operatorCanAccessProject(principal, projectId)) {
+            return this.audited(principal, command, "denied", id, "project scope denied", { projectId }, run);
+        }
+        if (!this.ctx.projects.has(projectId)) {
+            return this.audited(principal, command, "rejected", id, `unknown project: ${projectId}`, { projectId }, run, "not_found");
         }
         const factory = this.ctx.softwareFactory;
         if (!factory) {
-            return this.audited(principal, command, "rejected", id, "software factory is not configured", {}, run, "invalid_state");
+            return this.audited(principal, command, "rejected", id, "software factory is not configured", { projectId }, run, "invalid_state");
         }
         try {
-            const program = factory.createProgram(id, name, objective);
-            return this.audited(principal, command, "executed", program.id, "program created", { program }, run);
+            const program = factory.createProgram(id, name, objective, projectId);
+            return this.audited(principal, command, "executed", program.id, "program created", { projectId, program }, run);
         }
         catch (error) {
-            return this.audited(principal, command, "rejected", id, message(error), {}, run, softwareFactoryKind(error));
+            return this.audited(principal, command, "rejected", id, message(error), { projectId }, run, softwareFactoryKind(error));
         }
     }
     async createWorkstream(principal, input, options) {
         const run = { correlationId: resolveCorrelationId(options) };
         const command = "create_workstream";
+        let projectId;
         let programId;
         let id;
         let name;
         let objective;
         try {
+            projectId = requireId(input?.projectId, "create_workstream.projectId");
             programId = requireId(input?.programId, "create_workstream.programId");
             id = requireId(input?.id, "create_workstream.id");
             name = requireText(input?.name, "create_workstream.name");
@@ -205,63 +215,100 @@ export class WorkforceCommandService {
             return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
         }
         if (!operatorCan(principal, command)) {
-            return this.audited(principal, command, "denied", id, `role "${principal.role}" may not create workstreams`, {}, run);
+            return this.audited(principal, command, "denied", id, `role "${principal.role}" may not create workstreams`, { projectId }, run);
+        }
+        if (!operatorCanAccessProject(principal, projectId)) {
+            return this.audited(principal, command, "denied", id, "project scope denied", { projectId }, run);
         }
         const factory = this.ctx.softwareFactory;
         if (!factory) {
-            return this.audited(principal, command, "rejected", id, "software factory is not configured", {}, run, "invalid_state");
+            return this.audited(principal, command, "rejected", id, "software factory is not configured", { projectId }, run, "invalid_state");
+        }
+        if (!factory.findProgram(programId, projectId)) {
+            return this.audited(principal, command, "rejected", id, `unknown program: ${programId}`, { projectId }, run, "not_found");
         }
         try {
-            const workstream = factory.createWorkstream(programId, id, name, objective);
-            return this.audited(principal, command, "executed", workstream.id, "workstream created", { workstream }, run);
+            const workstream = factory.createWorkstream(programId, id, name, objective, projectId);
+            return this.audited(principal, command, "executed", workstream.id, "workstream created", { projectId, programId, workstream }, run);
         }
         catch (error) {
-            return this.audited(principal, command, "rejected", id, message(error), {}, run, softwareFactoryKind(error));
+            return this.audited(principal, command, "rejected", id, message(error), { projectId, programId }, run, softwareFactoryKind(error));
         }
     }
     async addTaskToWorkstream(principal, input, options) {
         const run = { correlationId: resolveCorrelationId(options) };
         const command = "add_task_to_workstream";
+        let projectId;
+        let programId;
         let workstreamId;
         let task;
         try {
+            projectId = requireId(input?.projectId, "add_task_to_workstream.projectId");
+            programId = requireId(input?.programId, "add_task_to_workstream.programId");
             workstreamId = requireId(input?.workstreamId, "add_task_to_workstream.workstreamId");
-            task = requireSoftwareFactoryTaskDraft(input?.task);
+            task = requireSoftwareFactoryTaskInput(input?.task);
         }
         catch (error) {
             return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
         }
         if (!operatorCan(principal, command)) {
-            return this.audited(principal, command, "denied", workstreamId, `role "${principal.role}" may not add workstream tasks`, {}, run);
+            return this.audited(principal, command, "denied", workstreamId, `role "${principal.role}" may not add workstream tasks`, { projectId }, run);
+        }
+        if (!operatorCanAccessProject(principal, projectId)) {
+            return this.audited(principal, command, "denied", workstreamId, "project scope denied", { projectId }, run);
         }
         const factory = this.ctx.softwareFactory;
         if (!factory) {
-            return this.audited(principal, command, "rejected", workstreamId, "software factory is not configured", {}, run, "invalid_state");
+            return this.audited(principal, command, "rejected", workstreamId, "software factory is not configured", { projectId }, run, "invalid_state");
+        }
+        if (!factory.findWorkstream(workstreamId, programId, projectId)) {
+            return this.audited(principal, command, "rejected", workstreamId, `unknown workstream: ${workstreamId}`, { projectId, programId }, run, "not_found");
         }
         try {
             const created = factory.addTask(workstreamId, task);
-            return this.audited(principal, command, "executed", created.id, "task added to workstream", { workstreamId, taskId: created.id, status: created.status }, run);
+            return this.audited(principal, command, "executed", created.id, "task added to workstream", {
+                projectId,
+                programId,
+                workstreamId,
+                taskId: created.id,
+                status: created.status,
+            }, run);
         }
         catch (error) {
-            return this.audited(principal, command, "rejected", workstreamId, message(error), {}, run, softwareFactoryKind(error));
+            return this.audited(principal, command, "rejected", workstreamId, message(error), { projectId, programId }, run, softwareFactoryKind(error));
         }
     }
-    async tickSoftwareFactory(principal, _input, options) {
+    async tickSoftwareFactory(principal, input, options) {
         const run = { correlationId: resolveCorrelationId(options) };
         const command = "tick_software_factory";
+        let projectId;
+        let programId;
+        try {
+            projectId = requireId(input?.projectId, "tick_software_factory.projectId");
+            programId = requireId(input?.programId, "tick_software_factory.programId");
+        }
+        catch (error) {
+            return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+        }
         if (!operatorCan(principal, command)) {
-            return this.audited(principal, command, "denied", undefined, `role "${principal.role}" may not advance the software factory`, {}, run);
+            return this.audited(principal, command, "denied", undefined, `role "${principal.role}" may not advance the software factory`, { projectId }, run);
+        }
+        if (!operatorCanAccessProject(principal, projectId)) {
+            return this.audited(principal, command, "denied", undefined, "project scope denied", { projectId }, run);
         }
         const factory = this.ctx.softwareFactory;
         if (!factory) {
-            return this.audited(principal, command, "rejected", undefined, "software factory is not configured", {}, run, "invalid_state");
+            return this.audited(principal, command, "rejected", undefined, "software factory is not configured", { projectId }, run, "invalid_state");
+        }
+        if (!factory.findProgram(programId, projectId)) {
+            return this.audited(principal, command, "rejected", undefined, `unknown program: ${programId}`, { projectId }, run, "not_found");
         }
         try {
-            await factory.tick();
-            return this.audited(principal, command, "executed", undefined, "software factory advanced one tick", {}, run);
+            await factory.tick(programId);
+            return this.audited(principal, command, "executed", programId, "software factory advanced one tick", { projectId, programId }, run);
         }
         catch (error) {
-            return this.audited(principal, command, "rejected", undefined, message(error), {}, run, softwareFactoryKind(error));
+            return this.audited(principal, command, "rejected", programId, message(error), { projectId, programId }, run, softwareFactoryKind(error));
         }
     }
     /* -------------------------------------------------------------- */
@@ -822,12 +869,18 @@ function softwareFactoryKind(error) {
                 ? "invalid_request"
                 : "command_failure";
 }
-/** Coerce an untrusted `add-workstream-task` body's `task` into a `TaskDraft`. */
-function requireSoftwareFactoryTaskDraft(value) {
+function requireSoftwareFactoryTaskInput(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
         throw new ValidationError("add_task_to_workstream.task must be an object");
     }
-    const draft = value;
+    const record = value;
+    for (const field of ["projectId", "programId", "workstreamId"]) {
+        if (field in record) {
+            throw new ValidationError(`add_task_to_workstream.task.${field} is server-derived`);
+        }
+    }
+    const draft = { ...record, projectId: "software-factory" };
     validateTaskDraft(draft);
-    return { ...draft };
+    const input = { ...record };
+    return input;
 }

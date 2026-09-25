@@ -6,6 +6,7 @@ import {
   type TaskStatus,
   NotFoundError,
   StateTransitionError,
+  ValidationError,
   validateTaskDraft,
 } from "../../contracts/index.js";
 import { InMemoryRepository } from "../persistence/in-memory-repository.js";
@@ -41,19 +42,35 @@ export interface TransitionPatch {
   error?: string;
 }
 
+export interface TaskSystemOptions {
+  newId?: () => string;
+}
+
 export class TaskSystem {
+  private readonly newId: () => string;
+
   constructor(
     private readonly repo: Repository<Task> = new InMemoryRepository<Task>(),
-  ) {}
+    options: TaskSystemOptions = {},
+  ) {
+    this.newId = options.newId ?? (() => createId("task"));
+  }
 
   create(draft: TaskDraft): Task {
     validateTaskDraft(draft);
     const timestamp = now();
+    const taskId = this.newId();
+    if (typeof taskId !== "string" || taskId.trim() === "") {
+      throw new ValidationError("task.id factory returned an empty id");
+    }
+    if (this.repo.findById(taskId)) {
+      throw new StateTransitionError(`task id collision: ${taskId}`);
+    }
     const requiredPermissions: RequiredPermission[] = (
       draft.requiredPermissions ?? []
     ).map((entry) => ({ ...entry }));
     const task: Task = {
-      id: createId("task"),
+      id: taskId,
       type: draft.type,
       description: draft.description,
       projectId: draft.projectId,
@@ -81,6 +98,9 @@ export class TaskSystem {
         : {}),
       completionCriteria: draft.completionCriteria ?? [],
       ...(draft.riskClass !== undefined ? { riskClass: draft.riskClass } : {}),
+      ...(draft.executionContext !== undefined
+        ? { executionContext: structuredClone(draft.executionContext) }
+        : {}),
     };
     this.repo.upsert(task);
     return task;

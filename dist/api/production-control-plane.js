@@ -1,3 +1,11 @@
+/**
+ * The single production Control Plane composition root.
+ *
+ * It deliberately returns a Node-compatible HTTP handler rather than a
+ * Firebase Functions object. DEPLOY-1B can add that thin hosting adapter
+ * without changing this authoritative runtime graph.
+ */
+import { randomUUID } from "node:crypto";
 import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
@@ -23,6 +31,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const auditRepository = repositories.repository("audit_events");
     const agentOpsRepository = repositories.repository("agent_operations");
     const workflowControlRepository = repositories.repository("workflow_control");
+    const softwareFactoryProgramRepository = repositories.repository("software_factory_programs");
+    const softwareFactoryWorkstreamRepository = repositories.repository("software_factory_workstreams");
+    const softwareFactoryAliasRepository = repositories.repository("software_factory_task_aliases");
     // Environment orchestration collections — empty until live discovery (EO-2B+)
     // registers real hosts/environments. No fake hosts are ever seeded.
     const hostRepository = repositories.repository("hosts");
@@ -41,7 +52,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     // probes only. The detector is built now to prove the production graph.
     const environmentDetector = new EnvironmentDetector(environmentRegistry, new ProbeRegistry(), audit);
     const bootstrap = createProductionWorkforceBootstrap(options.configuration ?? PRODUCTION_WORKFORCE_CONFIGURATION, audit);
-    const tasks = new TaskSystem(taskRepository);
+    const tasks = new TaskSystem(taskRepository, {
+        newId: () => `task_${randomUUID()}`,
+    });
     const workflows = new WorkflowSystem(workflowRepository);
     const approvals = new ApprovalSystem(approvalRepository);
     const handoffs = new HandoffSystem(handoffRepository);
@@ -159,7 +172,14 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         environmentAdapters,
         access,
         orchestrator,
-        softwareFactory: new SoftwareFactoryOrchestrator(orchestrator, tasks, await buildSoftwareFactoryEnvironmentProvider(environmentRegistry)),
+        softwareFactory: new SoftwareFactoryOrchestrator(orchestrator, tasks, await buildSoftwareFactoryEnvironmentProvider(environmentRegistry), {
+            persistence: {
+                programs: softwareFactoryProgramRepository,
+                workstreams: softwareFactoryWorkstreamRepository,
+                executionAliases: softwareFactoryAliasRepository,
+            },
+            projectExists: (projectId) => bootstrap.projects.has(projectId),
+        }),
         workflowEngine,
         events: new FirestoreEventPublisher(services.firestore.collection("control_events")),
     };

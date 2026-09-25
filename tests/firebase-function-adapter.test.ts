@@ -3,6 +3,7 @@ import { createServer, request as requestFromHttp } from "node:http";
 import test from "node:test";
 import {
   createControlPlaneHttpsAdapter,
+  createRuntimeSingleton,
   type ControlPlaneHttpRuntime,
 } from "../functions/control-plane-function.js";
 
@@ -172,4 +173,31 @@ test("Firebase HTTPS adapter returns a safe error when runtime initialization fa
     JSON.stringify(response.body),
     /OPENAI_API_KEY|should-never/,
   );
+});
+
+test("runtime singleton loads once and reuses the memoized runtime", async () => {
+  let initializations = 0;
+  const singleton = createRuntimeSingleton(async () => {
+    initializations += 1;
+    return { handler: async () => {} };
+  });
+
+  const [first, second] = await Promise.all([singleton.get(), singleton.get()]);
+  const third = await singleton.get();
+
+  assert.equal(initializations, 1, "concurrent cold starts share one load");
+  assert.equal(first, second);
+  assert.equal(second, third);
+});
+
+test("a failed cold start stays failed for that instance, with no fake fallback", async () => {
+  let attempts = 0;
+  const singleton = createRuntimeSingleton(async () => {
+    attempts += 1;
+    throw new Error("OPENAI_API_KEY=missing");
+  });
+
+  await assert.rejects(() => singleton.get());
+  await assert.rejects(() => singleton.get());
+  assert.equal(attempts, 1);
 });

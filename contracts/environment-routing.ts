@@ -29,7 +29,12 @@ export type SoftwareFactoryEnvironmentCode =
   (typeof SOFTWARE_FACTORY_ENVIRONMENT_CODES)[number];
 
 export interface EnvironmentCodeRoute {
-  /** The code as declared on the task (may be an unknown/non-allowlisted string). */
+  /**
+   * The code as declared on the task. Task drafts submitted through the
+   * Control Plane are restricted to {@link SOFTWARE_FACTORY_ENVIRONMENT_CODES};
+   * internal callers may still pass any string, which resolves to
+   * `UNSUPPORTED` rather than throwing.
+   */
   code: string;
   /** The resolved, validated requirement; `null` when the code is unsupported. */
   requirement: EnvironmentRequirement | null;
@@ -38,7 +43,8 @@ export interface EnvironmentCodeRoute {
    * right now; `REQUIRES_PROVISIONING` means support exists but nothing is
    * usable yet; `NO_AVAILABLE_ENVIRONMENT` means no descriptor supports it.
    */
-  outcome: EnvironmentRoutingOutcome | { outcome: "UNSUPPORTED"; reason: string };
+  outcome:
+    EnvironmentRoutingOutcome | { outcome: "UNSUPPORTED"; reason: string };
 }
 
 /**

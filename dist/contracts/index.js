@@ -7,6 +7,7 @@
  * enters the system through the interfaces declared here and is implemented
  * under `adapters/`.
  */
+import { SOFTWARE_FACTORY_ENVIRONMENT_CODES } from "./environment-routing.js";
 export const ENVIRONMENTS = ["local", "test", "staging", "production"];
 /* ------------------------------------------------------------------ */
 /* Tasks                                                              */
@@ -231,9 +232,72 @@ export function validateAgent(agent) {
     }
 }
 export function validateTaskDraft(draft) {
+    if (!draft || typeof draft !== "object" || Array.isArray(draft)) {
+        throw new ValidationError("task draft must be an object");
+    }
     requireText(draft.type, "task.type");
     requireText(draft.description, "task.description");
     requireText(draft.projectId, "task.projectId");
+    if (draft.priority !== undefined &&
+        !["low", "normal", "high", "critical"].includes(draft.priority)) {
+        throw new ValidationError("task.priority must be a known priority");
+    }
+    if (draft.metadata !== undefined && !isRecord(draft.metadata)) {
+        throw new ValidationError("task.metadata must be an object");
+    }
+    for (const field of [
+        "dependencies",
+        "requirements",
+        "requiredCapabilities",
+        "environmentRequirements",
+        "completionCriteria",
+    ]) {
+        const value = draft[field];
+        if (value === undefined)
+            continue;
+        for (const entry of requireStringArray(value, `task.${field}`)) {
+            if (entry.trim() === "") {
+                throw new ValidationError(`task.${field} must not contain blank values`);
+            }
+        }
+    }
+    for (const code of draft.environmentRequirements ?? []) {
+        if (!SOFTWARE_FACTORY_ENVIRONMENT_CODES.includes(code)) {
+            throw new ValidationError(`task.environmentRequirements contains unknown code: ${code}`);
+        }
+    }
+    if (draft.requiredPermissions !== undefined) {
+        const permissions = requireArray(draft.requiredPermissions, "task.requiredPermissions");
+        for (const permission of permissions) {
+            if (!permission ||
+                typeof permission !== "object" ||
+                Array.isArray(permission)) {
+                throw new ValidationError("task.requiredPermissions must contain objects");
+            }
+            const action = permission.action;
+            if (!PERMISSION_ACTIONS.includes(action)) {
+                throw new ValidationError("task.requiredPermissions contains an unknown action");
+            }
+            const toolId = permission.toolId;
+            if (toolId !== undefined)
+                requireText(toolId, "task.requiredPermissions.toolId");
+        }
+    }
+    if (draft.modelRequirements !== undefined &&
+        !isRecord(draft.modelRequirements)) {
+        throw new ValidationError("task.modelRequirements must be an object");
+    }
+}
+function requireStringArray(value, field) {
+    return requireArray(value, field).map((entry, index) => {
+        if (typeof entry !== "string") {
+            throw new ValidationError(`${field}[${index}] must be a string`);
+        }
+        return entry;
+    });
+}
+function isRecord(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 export function validateHandoffDraft(draft) {
     requireText(draft.taskId, "handoff.taskId");

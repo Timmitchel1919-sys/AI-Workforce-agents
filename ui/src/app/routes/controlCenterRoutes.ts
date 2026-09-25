@@ -11,6 +11,8 @@ export { default as DesignSystemPage } from "../../pages/DesignSystem/DesignSyst
 export { default as SettingsPage } from "../../pages/Settings/SettingsPage";
 export { default as ProfilePage } from "../../pages/Profile/ProfilePage";
 export { default as InfrastructurePage } from "../../pages/Infrastructure/InfrastructurePage";
+export { default as SoftwareFactoryPage } from "../../pages/SoftwareFactory/SoftwareFactoryPage";
+export { default as SoftwareFactoryProgramPage } from "../../pages/SoftwareFactory/SoftwareFactoryProgramPage";
 export { default as ProjectsPage } from "../../pages/Projects/ProjectsPage";
 export { default as ProjectDetailPage } from "../../pages/Projects/ProjectDetailPage";
 export { default as UsersAccessPage } from "../../pages/Settings/UsersAccessPage";

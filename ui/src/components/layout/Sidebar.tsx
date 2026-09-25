@@ -2,6 +2,7 @@ import {
   BookOpen,
   Bot,
   ClipboardCheck,
+  Factory,
   FolderKanban,
   GitBranch,
   LayoutDashboard,
@@ -32,6 +33,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   "audit-log": ScrollText,
   knowledge: BookOpen,
   infrastructure: Server,
+  "software-factory": Factory,
   settings: Settings,
 };
 

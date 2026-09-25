@@ -13,9 +13,9 @@ export declare class WorkforceQueryService {
     private readonly ctx;
     constructor(ctx: ControlPlaneContext);
     getWorkforceStatus(principal: OperatorPrincipal): WorkforceStatus;
-    getGraphProjection(principal: OperatorPrincipal, programId: string): import("../../contracts/index.js").GraphProjection | undefined;
-    getSoftwareFactoryOverview(principal: OperatorPrincipal): SoftwareFactoryOverview;
-    getSoftwareFactoryProgramDetail(principal: OperatorPrincipal, programId: string): SoftwareFactoryProgramDetail;
+    getGraphProjection(principal: OperatorPrincipal, projectId: string, programId: string): import("../../contracts/index.js").GraphProjection | undefined;
+    getSoftwareFactoryOverview(principal: OperatorPrincipal, projectId?: string): SoftwareFactoryOverview;
+    getSoftwareFactoryProgramDetail(principal: OperatorPrincipal, projectId: string, programId: string): SoftwareFactoryProgramDetail;
     /** @deprecated since Phase 7A — use {@link getSystemHealth}. */
     getHealth(principal: OperatorPrincipal): SystemHealth;
     getSystemHealth(principal: OperatorPrincipal): SystemHealth;

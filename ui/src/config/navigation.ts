@@ -12,6 +12,7 @@ export type NavigationIconId =
   | "audit-log"
   | "knowledge"
   | "infrastructure"
+  | "software-factory"
   | "settings";
 
 export type NavigationBadge = number | string;
@@ -41,6 +42,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.projects", route: "/projects", icon: "projects", section: "workspace" },
   { labelKey: "nav.approvals", route: "/approvals", icon: "approvals", section: "workspace" },
   { labelKey: "nav.infrastructure", route: "/infrastructure", icon: "infrastructure", section: "workspace" },
+  { labelKey: "nav.softwareFactory", route: "/software-factory", icon: "software-factory", section: "workspace" },
   { labelKey: "nav.knowledge", route: "/knowledge", icon: "knowledge", section: "intelligence" },
   { labelKey: "nav.auditLog", route: "/audit-log", icon: "audit-log", section: "governance" },
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },

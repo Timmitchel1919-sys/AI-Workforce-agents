@@ -5,6 +5,7 @@
  * Firebase Functions object. DEPLOY-1B can add that thin hosting adapter
  * without changing this authoritative runtime graph.
  */
+import { randomUUID } from "node:crypto";
 import {
   type AgentOperationalRecord,
   type Approval,
@@ -15,6 +16,9 @@ import {
   type Handoff,
   type HostInstance,
   type SoftwareFactoryEnvironmentProvider,
+  type SoftwareFactoryProgram,
+  type SoftwareFactoryTaskAlias,
+  type Workstream,
   type Task,
   type Workflow,
   type WorkflowControlRecord,
@@ -120,6 +124,16 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<AgentOperationalRecord>("agent_operations");
   const workflowControlRepository =
     repositories.repository<WorkflowControlRecord>("workflow_control");
+  const softwareFactoryProgramRepository =
+    repositories.repository<SoftwareFactoryProgram>(
+      "software_factory_programs",
+    );
+  const softwareFactoryWorkstreamRepository =
+    repositories.repository<Workstream>("software_factory_workstreams");
+  const softwareFactoryAliasRepository =
+    repositories.repository<SoftwareFactoryTaskAlias>(
+      "software_factory_task_aliases",
+    );
   // Environment orchestration collections — empty until live discovery (EO-2B+)
   // registers real hosts/environments. No fake hosts are ever seeded.
   const hostRepository = repositories.repository<HostInstance>("hosts");
@@ -147,7 +161,9 @@ export async function createProductionControlPlaneRuntime(
     options.configuration ?? PRODUCTION_WORKFORCE_CONFIGURATION,
     audit,
   );
-  const tasks = new TaskSystem(taskRepository);
+  const tasks = new TaskSystem(taskRepository, {
+    newId: () => `task_${randomUUID()}`,
+  });
   const workflows = new WorkflowSystem(workflowRepository);
   const approvals = new ApprovalSystem(approvalRepository);
   const handoffs = new HandoffSystem(handoffRepository);
@@ -289,6 +305,14 @@ export async function createProductionControlPlaneRuntime(
       orchestrator,
       tasks,
       await buildSoftwareFactoryEnvironmentProvider(environmentRegistry),
+      {
+        persistence: {
+          programs: softwareFactoryProgramRepository,
+          workstreams: softwareFactoryWorkstreamRepository,
+          executionAliases: softwareFactoryAliasRepository,
+        },
+        projectExists: (projectId) => bootstrap.projects.has(projectId),
+      },
     ),
     workflowEngine,
     events: new FirestoreEventPublisher(

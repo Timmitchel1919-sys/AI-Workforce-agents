@@ -1,5 +1,6 @@
 import {
   type Agent,
+  type AgentExecutionContext,
   type AgentExecutor,
   type PermissionGuard,
   type Task,
@@ -35,7 +36,12 @@ export class RoutingAgentExecutor implements AgentExecutor {
     return [...this.executors.keys()].sort();
   }
 
-  execute(agent: Agent, task: Task, guard?: PermissionGuard): Promise<unknown> {
+  execute(
+    agent: Agent,
+    task: Task,
+    guard?: PermissionGuard,
+    context?: AgentExecutionContext,
+  ): Promise<unknown> {
     const executor = this.executors.get(agent.id);
     if (!executor) {
       throw new NotFoundError(
@@ -43,6 +49,6 @@ export class RoutingAgentExecutor implements AgentExecutor {
           `(registered: ${this.list().join(", ") || "none"})`,
       );
     }
-    return executor.execute(agent, task, guard);
+    return executor.execute(agent, task, guard, context);
   }
 }
