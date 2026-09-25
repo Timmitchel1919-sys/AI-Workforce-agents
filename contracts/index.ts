@@ -131,6 +131,17 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   metadata: Record<string, unknown>;
+  // EO-5.1 Orchestration extensions
+  programId?: string;
+  workstreamId?: string;
+  objective?: string;
+  requirements?: readonly string[];
+  dependencies?: readonly string[];
+  requiredCapabilities?: readonly string[];
+  environmentRequirements?: readonly string[];
+  modelRequirements?: Record<string, unknown>;
+  completionCriteria?: readonly string[];
+  riskClass?: string;
 }
 
 export interface TaskDraft {
@@ -141,6 +152,17 @@ export interface TaskDraft {
   priority?: Priority;
   requiredPermissions?: readonly RequiredPermission[];
   metadata?: Record<string, unknown>;
+  // EO-5.1 Orchestration extensions
+  programId?: string;
+  workstreamId?: string;
+  objective?: string;
+  requirements?: readonly string[];
+  dependencies?: readonly string[];
+  requiredCapabilities?: readonly string[];
+  environmentRequirements?: readonly string[];
+  modelRequirements?: Record<string, unknown>;
+  completionCriteria?: readonly string[];
+  riskClass?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -729,3 +751,5 @@ export * from "./verification.js";
 export * from "./environment-adapters.js";
 export * from "./release.js";
 export * from "./execution-records.js";
+export * from "./orchestration.js";
+export * from "./environment-routing.js";
