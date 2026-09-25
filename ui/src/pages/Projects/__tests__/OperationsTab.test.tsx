@@ -263,6 +263,39 @@ describe("Execution Control Center (EO-4.7)", () => {
     expect(screen.queryByText(/Healthy/)).toBeNull();
   });
 
+  it("shows recovery states honestly: partial deployment and failed rollback are never shown as healthy", async () => {
+    const commitSha = "d".repeat(40);
+    const release = (over: Record<string, unknown>) => ({
+      candidateId: "dcn_1",
+      commitSha,
+      targetId: "alpha-preview",
+      targetClass: "preview",
+      adapterId: "x",
+      reasons: [],
+      simulated: true,
+      startedAt: "2026-09-24T10:06:00.000Z",
+      ...over,
+    });
+    mockApi({
+      releases: {
+        sourceControl: { configured: false },
+        deployments: {
+          configured: true,
+          targets: [],
+          releases: [
+            release({ releaseId: "rel_partial", status: "failed", resources: { completed: ["hosting"], failed: ["functions"] } }),
+            release({ releaseId: "rel_rb", status: "degraded", reasons: [{ code: "ROLLBACK_FAILED", detail: "x" }] }),
+          ],
+        },
+      },
+    });
+    renderPage("/projects/alpha/operations");
+    expect(await screen.findByText(/Partial deployment — failed: functions/)).toBeInTheDocument();
+    expect(screen.getByText("Rollback failed — the target was NOT restored.")).toBeInTheDocument();
+    expect(screen.queryByText(/Healthy/)).toBeNull();
+    expect(screen.queryByText(/Rolled back/)).toBeNull();
+  });
+
   it.each([
     ["dark", "en", "Execution sessions"],
     ["dark", "nl", "Uitvoeringssessies"],

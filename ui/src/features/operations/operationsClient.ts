@@ -176,6 +176,8 @@ export interface ReleaseReceipt {
   reasons: readonly Reason[];
   postDeploy?: { reachable: boolean; reportedVersion?: string; versionMatches: boolean; checkedAt: string; detail: string };
   rollback?: { fromReleaseId: string; toReleaseId: string; automatic: boolean };
+  /** Per-resource outcome; a non-empty `failed` = partial deployment. */
+  resources?: { completed: readonly string[]; failed: readonly string[] };
   simulated: boolean;
   startedAt: string;
   endedAt?: string;

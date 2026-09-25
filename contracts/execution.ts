@@ -215,6 +215,7 @@ export const EXECUTION_ERROR_CODES = [
   "DEPLOYMENT_LOCKED",
   "DEPLOYMENT_FAILED",
   "ROLLBACK_UNAVAILABLE",
+  "ROLLBACK_FAILED",
 ] as const;
 export type ExecutionErrorCode = (typeof EXECUTION_ERROR_CODES)[number];
 
@@ -371,6 +372,15 @@ const FORBIDDEN_HOST_SUFFIXES = [
   ".intranet",
   ".lan",
 ];
+/** Wildcard DNS services that resolve names to embedded IPs (SSRF). */
+const FORBIDDEN_IP_DNS_SUFFIXES = [
+  ".nip.io",
+  ".sslip.io",
+  ".xip.io",
+  ".localtest.me",
+  ".lvh.me",
+  ".traefik.me",
+];
 const FORBIDDEN_HOSTS = new Set([
   "metadata",
   "metadata.google.internal",
@@ -412,6 +422,25 @@ export function validateNetworkDestination(
   if (!HOST_NAME.test(host)) {
     throw new ValidationError(
       `${field}.host must be a fully qualified host name`,
+    );
+  }
+  // EO-4.8: a real TLD is alphabetic. Numeric / hex-looking hosts such as
+  // `0x7f.1` or `127.1` can be parsed as IP addresses by resolvers.
+  const labels = host.split(".");
+  const numeric = (label: string) => /^(0x[0-9a-f]+|[0-9]+)$/.test(label);
+  if (
+    !/^[a-z][a-z0-9-]*$/.test(labels[labels.length - 1]!) ||
+    labels.every(numeric)
+  ) {
+    throw new ValidationError(`${field}.host must not encode an IP address`);
+  }
+  if (
+    FORBIDDEN_IP_DNS_SUFFIXES.some(
+      (s) => host.endsWith(s) || host === s.slice(1),
+    )
+  ) {
+    throw new ValidationError(
+      `${field}.host resolves to embedded IP addresses (not allowed)`,
     );
   }
   if (value.scheme !== "https") {

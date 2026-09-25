@@ -906,3 +906,10 @@ evidence.
 the hydrate-once cached repositories stale across the two Function instances,
 so it needs its own change: either move those collections to read-through
 stores, or accept the staleness explicitly.
+
+# EO-4 Production Release Gate (EO-4.8)
+
+The complete threat model (threat → control → proving test), the
+failure-recovery model, platform honesty matrix and accepted residual risks
+are in [security/eo4-threat-model.md](security/eo4-threat-model.md). The
+attack and failure-injection suite is `tests/eo48-security-gate.test.ts`.

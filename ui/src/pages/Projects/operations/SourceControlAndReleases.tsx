@@ -124,6 +124,16 @@ export function SourceControlAndReleases({ data }: { data: ProjectReleases }) {
                     <AlertTriangle size={14} aria-hidden /> {t("operations.versionMismatch")}
                   </p>
                 ) : null}
+                {r.resources && r.resources.failed.length > 0 ? (
+                  <p className="ops-warning">
+                    <AlertTriangle size={14} aria-hidden /> {t("operations.partialDeployment", { resources: r.resources.failed.join(", ") })}
+                  </p>
+                ) : null}
+                {r.reasons.some((x) => x.code === "ROLLBACK_FAILED") ? (
+                  <p className="ops-warning" role="status">
+                    <AlertTriangle size={14} aria-hidden /> {t("operations.rollbackFailed")}
+                  </p>
+                ) : null}
                 {r.rollback ? <p className="plan-muted">{t("operations.rolledBackTo", { id: r.rollback.toReleaseId })}</p> : null}
               </li>
             ))}

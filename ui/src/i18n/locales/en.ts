@@ -1439,6 +1439,8 @@ export const en = {
     releaseRolledBack: "Rolled back",
     versionMismatch: "The deployed version does not match the release commit.",
     rolledBackTo: "Rolled back to release {id}",
+    partialDeployment: "Partial deployment — failed: {resources}. The target is in a mixed state.",
+    rollbackFailed: "Rollback failed — the target was NOT restored.",
     classDevelopment: "Development",
     classPreview: "Preview",
     classStaging: "Staging",

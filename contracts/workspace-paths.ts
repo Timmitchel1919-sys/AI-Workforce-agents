@@ -58,6 +58,11 @@ export function resolveWorkspacePath(requested: unknown): string {
   if (requested.includes(":")) {
     throw violation("alternate data streams and URLs are not allowed");
   }
+  // EO-4.8: percent-encoded dots/separators (`%2e%2e%2f`, `..%5c`) could turn
+  // into traversal in any layer that URL-decodes later — refuse them outright.
+  if (/%(2e|2f|5c)/i.test(requested)) {
+    throw violation("percent-encoded dots or separators are not allowed");
+  }
 
   const segments = requested.split(/[\\/]+/);
   if (segments.length > MAX_SEGMENTS) throw violation("path is too deep");

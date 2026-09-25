@@ -158,6 +158,9 @@ interface StageInfo {
 
 type Checks = Record<PreflightCheck, "pass" | "fail" | "skipped">;
 
+/** Extra time an orphaned attempt gets past its operation timeout. */
+const ORPHAN_GRACE_MS = 60_000;
+
 function freshChecks(): Checks {
   return {
     authorization: "skipped",
@@ -958,7 +961,7 @@ export class ExecutionManager {
     );
     if (!session) throw new NotFoundError("resource not found");
     this.authorize(principal, session.projectId, "view");
-    return session;
+    return this.reconcile(session, principal.id);
   }
 
   async listSessions(
@@ -970,7 +973,87 @@ export class ExecutionManager {
       requireExecutionId(projectId, "projectId"),
       "view",
     );
-    return this.options.sessions.listByProject(projectId);
+    const sessions = await this.options.sessions.listByProject(projectId);
+    return Promise.all(sessions.map((s) => this.reconcile(s, principal.id)));
+  }
+
+  /**
+   * EO-4.8 orphan reconciliation. A session must never stay RUNNING (or
+   * CANCELLING) forever because the instance / runner / process that owned
+   * its invocation disappeared. When no invocation is live in THIS instance
+   * and the open attempt is past its operation timeout (+ grace) — or the
+   * whole session budget is exhausted — the session is moved to a terminal
+   * state with an explicit reason, through the same compare-and-swap commit
+   * (safe across instances). Timestamps only bound liveness here; they
+   * never authorize anything.
+   */
+  private async reconcile(
+    session: ExecutionSession,
+    actor: string,
+  ): Promise<ExecutionSession> {
+    if (isTerminalSession(session.status)) return session;
+    if (session.status !== "running" && session.status !== "cancelling") {
+      return session;
+    }
+    if (this.active.has(session.sessionId)) return session;
+    const now = Date.parse(this.clock());
+    const budgetExhausted =
+      now >= Date.parse(session.createdAt) + session.limits.sessionTimeoutMs;
+    const open = session.attempts.find(
+      (a) => a.status === "running" || a.status === "pending",
+    );
+    const orphaned =
+      open?.startedAt !== undefined &&
+      now >
+        Date.parse(open.startedAt) +
+          session.limits.operationTimeoutMs +
+          ORPHAN_GRACE_MS;
+    if (!budgetExhausted && !orphaned) return session;
+    const at = this.clock();
+    let next = session;
+    if (open) {
+      next = finishAttempt(
+        next,
+        open.attemptId,
+        orphaned && !budgetExhausted ? "failed" : "timed_out",
+        at,
+      );
+    }
+    const reason: ExecutionReason = budgetExhausted
+      ? {
+          code: "TIMEOUT",
+          detail:
+            "the session time budget was exhausted without a live invocation",
+        }
+      : {
+          code: "SANDBOX_FAILURE",
+          detail:
+            "interrupted: the invocation's owner is gone (orphaned); outcome unknown, not successful",
+        };
+    const target: ExecutionSession["status"] =
+      next.status === "cancelling"
+        ? "cancelled"
+        : budgetExhausted
+          ? "timed_out"
+          : "failed";
+    next = transitionSession(next, target, at, {
+      reasons: [...next.reasons, reason],
+    });
+    if (
+      (await this.options.sessions.commit(next, session.revision)) !==
+      "committed"
+    ) {
+      // Someone else moved it; the stored state is authoritative.
+      return (await this.options.sessions.get(session.sessionId)) ?? session;
+    }
+    this.record("session_reconciled", actor, session.projectId, {
+      execution: session.sessionId,
+      from: session.status,
+      to: target,
+      reasonCode: reason.code,
+    });
+    await this.releaseWorkspace(actor, next);
+    return next;
   }
 
   /**
@@ -991,10 +1074,17 @@ export class ExecutionManager {
     ) {
       throw new ValidationError("a reason (1-500 characters) is required");
     }
-    const current = await this.options.sessions.get(
+    const stored = await this.options.sessions.get(
       requireExecutionId(sessionId, "sessionId"),
     );
-    if (!current) throw new NotFoundError("resource not found");
+    if (!stored) throw new NotFoundError("resource not found");
+    if (
+      !operatorCanAccessProject(principal, stored.projectId) ||
+      !this.options.projects.has(stored.projectId)
+    ) {
+      throw new NotFoundError("resource not found");
+    }
+    const current = await this.reconcile(stored, principal.id);
     // Scope first (404 for invisible sessions), then capability (403).
     if (
       !operatorCanAccessProject(principal, current.projectId) ||

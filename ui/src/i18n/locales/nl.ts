@@ -1438,6 +1438,8 @@ export const nl: Messages = {
     releaseRolledBack: "Teruggedraaid",
     versionMismatch: "De uitgerolde versie komt niet overeen met de release-commit.",
     rolledBackTo: "Teruggedraaid naar release {id}",
+    partialDeployment: "Gedeeltelijke deployment — mislukt: {resources}. Het doel is in een gemengde toestand.",
+    rollbackFailed: "Terugdraaien mislukt — het doel is NIET hersteld.",
     classDevelopment: "Ontwikkeling",
     classPreview: "Preview",
     classStaging: "Staging",
