@@ -95,6 +95,8 @@ export const router = createBrowserRouter([
       { path: "workflows/:workflowId", element: withSuspense(<WorkflowDetailPage />) },
       { path: "projects", element: withSuspense(<ProjectsPage />) },
       { path: "projects/:projectId", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/operations", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/operations/:sessionId", element: withSuspense(<ProjectDetailPage />) },
       {
         path: "projects/:projectId/execution-plan",
         element: withSuspense(<ProjectDetailPage />),

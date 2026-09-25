@@ -26,6 +26,7 @@ import {
   type FirebaseServices,
   createFirebaseServices,
 } from "../adapters/firebase/index.js";
+import { createPlatformAdapters } from "../adapters/environments/index.js";
 import {
   AgentOperationalStore,
   WorkflowControlStore,
@@ -50,6 +51,8 @@ import {
   ExecutionOperationRegistry,
   ExecutionPolicyRegistry,
   InMemoryExecutionSessionStore,
+  InMemoryExecutionReceiptStore,
+  EnvironmentAdapterRegistry,
   SandboxRegistry,
   ProfileService,
   ExecutionPlanningService,
@@ -222,6 +225,16 @@ export async function createProductionControlPlaneRuntime(
     version: BASELINE_DENY_ALL_POLICY.version,
   });
   executionPolicies.register(BASELINE_DENY_ALL_POLICY);
+  // EO-4.5/4.7: platform adapter CONTRACTS only — no runner is registered in
+  // production, so every family reports `not_configured` and nothing runs.
+  const environmentAdapters = new EnvironmentAdapterRegistry({
+    environments: environmentRegistry,
+    audit,
+  });
+  createPlatformAdapters({
+    containerPolicy: { approvedImages: [], requireDigest: true },
+  }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
+  const executionReceipts = new InMemoryExecutionReceiptStore();
   const execution = new ExecutionManager({
     planning,
     approvals,
@@ -235,6 +248,8 @@ export async function createProductionControlPlaneRuntime(
     sandboxes: new SandboxRegistry(),
     sessions: new InMemoryExecutionSessionStore(),
     audit,
+    receipts: executionReceipts,
+    environmentAdapters,
   });
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
@@ -250,6 +265,8 @@ export async function createProductionControlPlaneRuntime(
     environments: environmentRegistry,
     planning,
     execution,
+    executionReceipts,
+    environmentAdapters,
     access,
     orchestrator,
     workflowEngine,

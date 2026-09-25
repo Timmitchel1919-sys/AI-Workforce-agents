@@ -361,6 +361,65 @@ export function createControlPlaneApi(
             correlationId,
           );
         }
+        // EO-4.7 Execution Control Center (project-scoped, bounded).
+        if (segs[2] === "executions" && segs.length === 3) {
+          return send(
+            res,
+            200,
+            notNull(
+              await query.getExecutionSessionPage(principal, id!, {
+                ...(params.get("status")
+                  ? { status: params.get("status")! }
+                  : {}),
+                ...boundedInts(params, ["limit", "offset"]),
+              }),
+            ),
+            correlationId,
+          );
+        }
+        if (segs[2] === "executions" && segs.length === 4) {
+          const bounds = boundedInts(params, [
+            "timelineLimit",
+            "timelineOffset",
+          ]);
+          return send(
+            res,
+            200,
+            notNull(
+              await query.getExecutionSessionDetail(
+                principal,
+                id!,
+                segs[3]!,
+                bounds,
+              ),
+            ),
+            correlationId,
+          );
+        }
+        if (segs.length === 3 && segs[2] === "execution-overview") {
+          return send(
+            res,
+            200,
+            notNull(await query.getExecutionOverview(principal, id!)),
+            correlationId,
+          );
+        }
+        if (segs.length === 3 && segs[2] === "verifications") {
+          return send(
+            res,
+            200,
+            notNull(await query.getProjectVerifications(principal, id!)),
+            correlationId,
+          );
+        }
+        if (segs.length === 3 && segs[2] === "releases") {
+          return send(
+            res,
+            200,
+            notNull(query.getProjectReleases(principal, id!)),
+            correlationId,
+          );
+        }
         // `GET /projects/:projectId/execution-sessions` (EO-4.1, metadata only)
         if (segs.length === 3 && segs[2] === "execution-sessions") {
           return send(
@@ -486,6 +545,14 @@ export function createControlPlaneApi(
         );
       case "execution":
         // GET /api/execution/operations, GET /api/execution/sessions/:sessionId
+        if (segs.length === 2 && segs[1] === "environments") {
+          return send(
+            res,
+            200,
+            query.getExecutionEnvironments(principal),
+            correlationId,
+          );
+        }
         if (segs.length === 2 && segs[1] === "operations") {
           return send(
             res,
@@ -714,6 +781,24 @@ async function readJsonBody(
     throw new ValidationError("request body must be a JSON object");
   }
   return parsed as Record<string, unknown>;
+}
+
+/** Non-negative integers from the query string (invalid → ValidationError). */
+function boundedInts<K extends string>(
+  params: URLSearchParams,
+  keys: readonly K[],
+): Partial<Record<K, number>> {
+  const out: Partial<Record<K, number>> = {};
+  for (const key of keys) {
+    const raw = params.get(key);
+    if (raw === null) continue;
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 0 || value > 100_000) {
+      throw new ValidationError(`${key} must be a non-negative integer`);
+    }
+    out[key] = value;
+  }
+  return out;
 }
 
 function parseTaskQuery(params: URLSearchParams): TaskQuery {

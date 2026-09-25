@@ -7,16 +7,23 @@ import { useAuth } from "../../auth/useAuth";
 import { useProject, type ProjectDetail } from "../../features/executionPlans";
 import { useI18n } from "../../i18n";
 import { ExecutionPlanTab } from "./plan/ExecutionPlanTab";
+import { OperationsTab } from "./operations/OperationsTab";
+import { SessionDetail } from "./operations/SessionDetail";
 import "./ExecutionPlan.css";
 
 /**
  * Projects → Project Detail. Tabs are real routes, so a plan view (and a
- * historical revision) is linkable. The Execution Plan tab is shown to users
+ * historical revision) and every execution session (Operations) is linkable. The Execution Plan tab is shown to users
  * whose role may view planning data — UX only; the Control Plane decides.
  */
 export default function ProjectDetailPage() {
-  const { projectId } = useParams<{ projectId: string }>();
-  const tab = useLocation().pathname.endsWith("/execution-plan") ? "execution-plan" : "overview";
+  const { projectId, sessionId } = useParams<{ projectId: string; sessionId?: string }>();
+  const pathname = useLocation().pathname;
+  const tab = pathname.endsWith("/execution-plan")
+    ? "execution-plan"
+    : pathname.includes("/operations")
+      ? "operations"
+      : "overview";
   const { t } = useI18n();
   const { accessDetails } = useAuth();
   const { status, project, refetch } = useProject(projectId);
@@ -57,9 +64,20 @@ export default function ProjectDetailPage() {
               {t("plans.tabPlan")}
             </NavLink>
           ) : null}
+          {canViewPlans ? (
+            <NavLink to={`${base}/operations`} className="plan-tab">
+              {t("operations.tab")}
+            </NavLink>
+          ) : null}
         </nav>
         {tab === "execution-plan" && canViewPlans ? (
           <ExecutionPlanTab projectId={project.projectId} projectName={project.displayName} />
+        ) : tab === "operations" && canViewPlans ? (
+          sessionId ? (
+            <SessionDetail projectId={project.projectId} sessionId={sessionId} />
+          ) : (
+            <OperationsTab projectId={project.projectId} />
+          )
         ) : (
           <ProjectOverview project={project} />
         )}
