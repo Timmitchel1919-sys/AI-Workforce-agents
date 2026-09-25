@@ -245,7 +245,7 @@ export declare function getProjectVerifications(ctx: ControlPlaneContext, princi
         completedAt?: string;
     }[];
 }>;
-export declare function getProjectReleases(ctx: ControlPlaneContext, principal: OperatorPrincipal, projectId: string): {
+export declare function getProjectReleases(ctx: ControlPlaneContext, principal: OperatorPrincipal, projectId: string): Promise<{
     sourceControl: {
         reviews: import("../../contracts/release.js").ReviewRecord[];
         stageSets: import("../../contracts/release.js").StageSet[];
@@ -273,4 +273,4 @@ export declare function getProjectReleases(ctx: ControlPlaneContext, principal: 
         releases?: undefined;
         targets?: undefined;
     };
-};
+}>;

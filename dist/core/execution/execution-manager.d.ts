@@ -11,7 +11,7 @@
  * executable. AUTHENTICATED ≠ AUTHORIZED ≠ APPROVED ≠ EXECUTION-CAPABLE: each
  * is its own gate below.
  */
-import { type Agent, type Environment, type InvocationResult, type ChangeSet, type RollbackReport, type WorkspaceControl, type ExecutionOperationDefinition, type ExecutionSession, type OperatorPrincipal, type PreflightResult } from "../../contracts/index.js";
+import { type Agent, type Environment, type InvocationResult, type ChangeSet, type RollbackReport, type WorkspaceControl, type ExecutionOperationDefinition, type ExecutionSession, type OperatorPrincipal, type PreflightResult, type ExecutionRecordStore } from "../../contracts/index.js";
 import type { ApprovalSystem } from "../approvals/approval-system.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { EnvironmentRegistry } from "../environments/environment-registry.js";
@@ -59,6 +59,12 @@ export interface ExecutionManagerOptions {
      * by the trusted workspace adapter. Reached only through this manager.
      */
     workspaceControl?: WorkspaceControl;
+    /**
+     * EO-4.8 durable evidence: every receipt is also written (create-only,
+     * awaited) to this store, so receipts survive restarts and are visible
+     * across Control Plane instances.
+     */
+    receiptStore?: ExecutionRecordStore;
     /**
      * EO-4.5 environment execution adapters + runners (trusted composition).
      * Operations that declare an `environment` requirement need a ready
@@ -143,6 +149,8 @@ export declare class ExecutionManager {
      * foreign changes; never a global reset). Operators (`cancel_execution`).
      */
     rollbackWorkspace(principal: OperatorPrincipal, sessionId: string): Promise<RollbackReport>;
+    /** In-memory index + durable, create-only evidence (EO-4.8). */
+    private persistReceipt;
     private releaseWorkspace;
     /** A denied invocation: audited + receipted; the session is untouched. */
     private denied;

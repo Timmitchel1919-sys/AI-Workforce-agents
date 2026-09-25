@@ -291,7 +291,7 @@ export declare class WorkforceQueryService {
             completedAt?: string;
         }[];
     } | undefined>;
-    getProjectReleases(principal: OperatorPrincipal, projectId: string): {
+    getProjectReleases(principal: OperatorPrincipal, projectId: string): Promise<{
         sourceControl: {
             reviews: import("../../contracts/release.js").ReviewRecord[];
             stageSets: import("../../contracts/release.js").StageSet[];
@@ -319,7 +319,7 @@ export declare class WorkforceQueryService {
             releases?: undefined;
             targets?: undefined;
         };
-    } | undefined;
+    } | undefined>;
     /** EO-4.5 environment execution status (real runners only count). */
     getExecutionEnvironments(principal: OperatorPrincipal): {
         configured: boolean;

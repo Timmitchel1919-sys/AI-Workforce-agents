@@ -18,6 +18,7 @@
 import { DEPLOYMENT_TARGET_CLASSES, ExecutionDeniedError, NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, operatorCan, operatorCanAccessProject, requireExecutionId, } from "../../contracts/index.js";
 import { createId, now } from "../shared.js";
 import { checkBoundApproval, requestBoundApproval, } from "./approval-binding.js";
+import { DurableLedger } from "./durable-ledger.js";
 const deny = (code, detail) => {
     throw new ExecutionDeniedError(code, detail);
 };
@@ -38,14 +39,13 @@ export class DeploymentOrchestrator {
     targets = new Map();
     adapters = new Map();
     policies = new Map();
-    candidates = new Map();
-    releases = new Map();
     locks = new Map();
-    idempotency = new Map();
+    ledger;
     constructor(options) {
         this.options = options;
         this.clock = options.clock ?? now;
         this.newId = options.idFactory ?? createId;
+        this.ledger = new DurableLedger(options.store, this.clock);
     }
     /* ---- trusted composition ------------------------------------- */
     registerAdapter(adapter) {
@@ -109,7 +109,7 @@ export class DeploymentOrchestrator {
             deny("POLICY_DENIED", "no release policy governs this project"));
     }
     /* ---- candidate ----------------------------------------------- */
-    createCandidate(principal, raw) {
+    async createCandidate(principal, raw) {
         const body = onlyKeys(raw, [
             "projectId",
             "pushReceiptId",
@@ -118,11 +118,11 @@ export class DeploymentOrchestrator {
         ]);
         const projectId = requireExecutionId(body.projectId, "projectId");
         this.authorize(principal, projectId, "deploy_release");
-        const push = this.options.sourceControl.getPushReceipt(principal, projectId, requireExecutionId(body.pushReceiptId, "pushReceiptId"));
+        const push = await this.options.sourceControl.getPushReceipt(principal, projectId, requireExecutionId(body.pushReceiptId, "pushReceiptId"));
         const target = this.target(projectId, requireExecutionId(body.targetId, "targetId"));
         const policy = this.policy(projectId);
         // Provenance: the commit receipt behind the push (verification, source).
-        const provenance = this.options.sourceControl.getCommitReceipt(principal, projectId, push.commitReceiptId);
+        const provenance = await this.options.sourceControl.getCommitReceipt(principal, projectId, push.commitReceiptId);
         const artifactIds = Array.isArray(body.artifactIds)
             ? body.artifactIds.map((a, i) => requireExecutionId(a, `artifactIds[${i}]`))
             : [];
@@ -133,7 +133,7 @@ export class DeploymentOrchestrator {
         if (sources.size > 1 || verificationIds.size > 1) {
             deny("STALE_CANDIDATE", "artifacts come from different source states");
         }
-        const verification = this.options.verification.get(principal, provenance.verificationId);
+        const verification = await this.options.verification.load(principal, provenance.verificationId);
         if (verification.status !== "passed" ||
             verification.sourceFingerprint !== provenance.sourceFingerprint) {
             deny("STALE_CANDIDATE", "the verification behind this commit is not a pass for its source");
@@ -164,7 +164,7 @@ export class DeploymentOrchestrator {
             createdBy: principal.id,
             createdAt: this.clock(),
         });
-        this.candidates.set(candidate.candidateId, candidate);
+        await this.ledger.save("candidate", candidate.candidateId, projectId, candidate.createdAt, candidate);
         this.record("deployment_candidate_created", principal.id, projectId, {
             candidateId: candidate.candidateId,
             commitSha: candidate.commitSha,
@@ -173,7 +173,7 @@ export class DeploymentOrchestrator {
         });
         return candidate;
     }
-    requestApproval(principal, raw) {
+    async requestApproval(principal, raw) {
         const body = onlyKeys(raw, [
             "projectId",
             "operation",
@@ -184,7 +184,7 @@ export class DeploymentOrchestrator {
         const subjectId = requireExecutionId(body.subjectId, "subjectId");
         if (body.operation === "deploy") {
             this.authorize(principal, projectId, "deploy_release");
-            const c = this.candidates.get(subjectId);
+            const c = await this.ledger.find("candidate", subjectId);
             if (!c || c.projectId !== projectId)
                 throw new NotFoundError("resource not found");
             return requestBoundApproval(this.options.approvals, {
@@ -197,7 +197,7 @@ export class DeploymentOrchestrator {
         }
         if (body.operation === "rollback") {
             this.authorize(principal, projectId, "rollback_release");
-            const r = this.releases.get(subjectId);
+            const r = await this.ledger.find("release", subjectId);
             if (!r || r.projectId !== projectId)
                 throw new NotFoundError("resource not found");
             return requestBoundApproval(this.options.approvals, {
@@ -242,20 +242,33 @@ export class DeploymentOrchestrator {
             clearTimeout(timer);
         }
     }
-    save(receipt) {
+    /** Release status advances (deploying → … → healthy): durable `put`. */
+    async save(receipt) {
         const frozen = Object.freeze({ ...receipt });
-        this.releases.set(frozen.releaseId, frozen);
-        return frozen;
+        return this.ledger.save("release", frozen.releaseId, frozen.projectId, frozen.startedAt, frozen, "put");
     }
     async deploy(principal, raw, idempotencyKey) {
         const body = onlyKeys(raw, ["projectId", "candidateId", "approvalId"]);
         const projectId = requireExecutionId(body.projectId, "projectId");
         this.authorize(principal, projectId, "deploy_release");
-        const key = `${principal.id}\u0000${requireExecutionId(idempotencyKey, "idempotencyKey")}`;
-        const previous = this.idempotency.get(key);
-        if (previous)
-            return this.releases.get(previous);
-        const candidate = this.candidates.get(requireExecutionId(body.candidateId, "candidateId"));
+        const replayId = await this.ledger.claim("deploy", principal.id, idempotencyKey, projectId);
+        if (replayId) {
+            const replayed = await this.ledger.find("release", replayId);
+            if (replayed)
+                return replayed;
+        }
+        try {
+            const release = await this.performDeploy(principal, projectId, body);
+            await this.ledger.settle("deploy", principal.id, idempotencyKey, projectId, release.releaseId);
+            return release;
+        }
+        catch (error) {
+            await this.ledger.settle("deploy", principal.id, idempotencyKey, projectId);
+            throw error;
+        }
+    }
+    async performDeploy(principal, projectId, body) {
+        const candidate = await this.ledger.find("candidate", requireExecutionId(body.candidateId, "candidateId"));
         if (!candidate || candidate.projectId !== projectId)
             throw new NotFoundError("resource not found");
         const target = this.target(projectId, candidate.targetId);
@@ -264,7 +277,7 @@ export class DeploymentOrchestrator {
         // Stale candidate: policy changed, or its verification no longer passes.
         if (policy.version !== candidate.releasePolicyVersion)
             deny("STALE_CANDIDATE", "the release policy changed; create a new candidate");
-        const verification = this.options.verification.get(principal, candidate.verificationId);
+        const verification = await this.options.verification.load(principal, candidate.verificationId);
         if (verification.status !== "passed" ||
             verification.sourceFingerprint !== candidate.sourceFingerprint) {
             deny("STALE_CANDIDATE", "the candidate no longer matches a passed verification");
@@ -312,16 +325,15 @@ export class DeploymentOrchestrator {
             actor: principal.id,
             startedAt,
         };
-        this.idempotency.set(key, releaseId);
-        this.save(receipt);
+        await this.save(receipt);
         this.record("deployment_started", principal.id, projectId, {
             releaseId,
             candidateId: candidate.candidateId,
             targetId: target.targetId,
             targetClass: target.targetClass,
         });
-        const finish = (status, reasons, extra = {}) => {
-            receipt = this.save({
+        const finish = async (status, reasons, extra = {}) => {
+            receipt = await this.save({
                 ...receipt,
                 ...extra,
                 status,
@@ -366,7 +378,7 @@ export class DeploymentOrchestrator {
                     },
                 ]);
             }
-            receipt = this.save({
+            receipt = await this.save({
                 ...receipt,
                 status: "deployed",
                 providerReleaseId,
@@ -377,7 +389,7 @@ export class DeploymentOrchestrator {
             });
             if (!reqs.requirePostDeployVerification)
                 return finish("deployed", [], { providerReleaseId });
-            receipt = this.save({ ...receipt, status: "verifying" });
+            receipt = await this.save({ ...receipt, status: "verifying" });
             let check;
             try {
                 check = await this.withTimeout(Math.min(target.timeoutMs, 120_000), (signal) => adapter.verify(ctx(signal)));
@@ -403,7 +415,7 @@ export class DeploymentOrchestrator {
                 versionMatches: postDeploy.versionMatches,
             });
             if (!postDeploy.reachable) {
-                const degraded = finish("degraded", [
+                const degraded = await finish("degraded", [
                     {
                         code: "DEPLOYMENT_FAILED",
                         detail: "the target is not healthy after deployment",
@@ -414,7 +426,7 @@ export class DeploymentOrchestrator {
                     : degraded;
             }
             if (!postDeploy.versionMatches) {
-                const failed = finish("failed", [
+                const failed = await finish("failed", [
                     {
                         code: "DEPLOYMENT_FAILED",
                         detail: "the target reports a different version than the candidate",
@@ -431,8 +443,9 @@ export class DeploymentOrchestrator {
         }
     }
     /* ---- rollback ------------------------------------------------ */
-    lastHealthyBefore(release) {
-        return [...this.releases.values()]
+    async lastHealthyBefore(release) {
+        const history = await this.ledger.list("release", release.projectId, 200, (r) => r.releaseId, (r) => r.startedAt);
+        return history
             .filter((r) => r.targetId === release.targetId &&
             r.status === "healthy" &&
             r.releaseId !== release.releaseId &&
@@ -445,7 +458,9 @@ export class DeploymentOrchestrator {
         const adapter = this.adapters.get(target.adapterId);
         if (!adapter?.rollback)
             deny("ROLLBACK_UNAVAILABLE", "the target adapter cannot roll back");
-        const candidate = this.candidates.get(to.candidateId);
+        const candidate = await this.ledger.find("candidate", to.candidateId);
+        if (!candidate)
+            deny("ROLLBACK_UNAVAILABLE", "the previous release's candidate is unknown");
         this.acquireLock(target.targetId, release.releaseId);
         try {
             this.record("rollback_started", principal.id, release.projectId, {
@@ -453,8 +468,8 @@ export class DeploymentOrchestrator {
                 toReleaseId: to.releaseId,
                 automatic,
             });
-            await this.withTimeout(target.timeoutMs, (signal) => adapter.rollback({ candidate, target, signal }, to.providerReleaseId));
-            const rolled = this.save({
+            await this.withTimeout(target.timeoutMs, (signal) => adapter.rollback({ candidate: candidate, target, signal }, to.providerReleaseId));
+            const rolled = await this.save({
                 ...release,
                 status: "rolled_back",
                 rollback: {
@@ -476,7 +491,7 @@ export class DeploymentOrchestrator {
         }
     }
     async autoRollback(principal, release) {
-        const to = this.lastHealthyBefore(release);
+        const to = await this.lastHealthyBefore(release);
         if (!to)
             return release;
         return this.restore(principal, release, to, true);
@@ -485,7 +500,7 @@ export class DeploymentOrchestrator {
         const body = onlyKeys(raw, ["projectId", "releaseId", "approvalId"]);
         const projectId = requireExecutionId(body.projectId, "projectId");
         this.authorize(principal, projectId, "rollback_release");
-        const release = this.releases.get(requireExecutionId(body.releaseId, "releaseId"));
+        const release = await this.ledger.find("release", requireExecutionId(body.releaseId, "releaseId"));
         if (!release || release.projectId !== projectId)
             throw new NotFoundError("resource not found");
         if (release.status === "rolled_back" ||
@@ -505,17 +520,14 @@ export class DeploymentOrchestrator {
             if (reason)
                 deny(reason.code, reason.detail);
         }
-        const to = this.lastHealthyBefore(release) ??
+        const to = (await this.lastHealthyBefore(release)) ??
             deny("ROLLBACK_UNAVAILABLE", "no known previous healthy release exists for this target");
         return this.restore(principal, release, to, false);
     }
     /* ---- reads --------------------------------------------------- */
-    listReleases(principal, projectId, limit = 50) {
+    async listReleases(principal, projectId, limit = 50) {
         this.authorize(principal, requireExecutionId(projectId, "projectId"), "view");
-        return [...this.releases.values()]
-            .filter((r) => r.projectId === projectId)
-            .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-            .slice(0, Math.min(Math.max(1, limit), 200));
+        return this.ledger.list("release", projectId, limit, (r) => r.releaseId, (r) => r.startedAt);
     }
     listTargets(principal, projectId) {
         this.authorize(principal, requireExecutionId(projectId, "projectId"), "view");

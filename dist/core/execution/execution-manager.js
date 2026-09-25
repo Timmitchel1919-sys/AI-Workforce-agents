@@ -1189,7 +1189,7 @@ export class ExecutionManager {
             ...(outcome?.changeSetId ? { changeSetId: outcome.changeSetId } : {}),
             ...(outcome?.environment ? { environment: outcome.environment } : {}),
         });
-        this.options.receipts?.record(receipt);
+        await this.persistReceipt(receipt, principal.id);
         this.record(exitClass === "success"
             ? "operation_completed"
             : exitClass === "timeout"
@@ -1300,6 +1300,27 @@ export class ExecutionManager {
         });
         return report;
     }
+    /** In-memory index + durable, create-only evidence (EO-4.8). */
+    async persistReceipt(receipt, actor) {
+        this.options.receipts?.record(receipt);
+        if (!this.options.receiptStore)
+            return;
+        try {
+            await this.options.receiptStore.create(receipt.receiptId, {
+                projectId: receipt.projectId,
+                kind: "receipt",
+                createdAt: receipt.endedAt,
+                sessionId: receipt.sessionId,
+            }, receipt);
+        }
+        catch {
+            // Execution already happened: never hide it — record the evidence gap.
+            this.record("receipt_persistence_failed", actor, receipt.projectId, {
+                execution: receipt.sessionId,
+                receiptId: receipt.receiptId,
+            });
+        }
+    }
     async releaseWorkspace(actor, session) {
         const control = this.options.workspaceControl;
         if (!control)
@@ -1321,7 +1342,7 @@ export class ExecutionManager {
         });
     }
     /** A denied invocation: audited + receipted; the session is untouched. */
-    denied(principal, session, request, reasons) {
+    async denied(principal, session, request, reasons) {
         const at = this.clock();
         const receiptId = this.newId("rcp");
         const receipt = createExecutionReceipt({
@@ -1348,7 +1369,7 @@ export class ExecutionManager {
             invocationId: request.invocationId,
             reasons,
         });
-        this.options.receipts?.record(receipt);
+        await this.persistReceipt(receipt, principal.id);
         this.record("invocation_denied", principal.id, session.projectId, {
             execution: session.sessionId,
             invocationId: request.invocationId,

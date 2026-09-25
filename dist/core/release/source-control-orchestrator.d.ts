@@ -11,7 +11,7 @@
  * Git itself is behind a bounded port: there is no raw git, no remote URL,
  * no refspec and no force flag anywhere in this API.
  */
-import { type CommitReceipt, type GovernedGitPort, type OperatorPrincipal, type PullRequestPort, type PullRequestRecord, type PushReceipt, type RepositoryPolicy, type ReviewRecord, type ReviewStatus, type SecretReference, type StageSet, type WorkspaceControl, type WorkspaceFilePolicy } from "../../contracts/index.js";
+import { type CommitReceipt, type ExecutionRecordStore, type GovernedGitPort, type OperatorPrincipal, type PullRequestPort, type PullRequestRecord, type PushReceipt, type RepositoryPolicy, type ReviewRecord, type ReviewStatus, type SecretReference, type StageSet, type WorkspaceControl, type WorkspaceFilePolicy } from "../../contracts/index.js";
 import type { ApprovalSystem } from "../approvals/approval-system.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { ExecutionManager } from "../execution/execution-manager.js";
@@ -22,7 +22,7 @@ export interface SecretValueResolver {
 }
 export interface SourceControlOrchestratorOptions {
     git: GovernedGitPort;
-    verification: Pick<VerificationService, "get">;
+    verification: Pick<VerificationService, "load">;
     manager: Pick<ExecutionManager, "getSession" | "getChangeSet">;
     workspaceControl: Pick<WorkspaceControl, "sourceFingerprint">;
     approvals: Pick<ApprovalSystem, "get" | "request">;
@@ -35,6 +35,8 @@ export interface SourceControlOrchestratorOptions {
     filePolicy?: WorkspaceFilePolicy;
     clock?: () => string;
     idFactory?: (prefix: string) => string;
+    /** EO-4.8 durable records + idempotency reservations. */
+    store?: ExecutionRecordStore;
 }
 /** Commit summaries are data: one bounded line, no control characters. */
 export declare function sanitizeSummary(value: unknown): string;
@@ -43,20 +45,13 @@ export declare class SourceControlOrchestrator {
     private readonly clock;
     private readonly newId;
     private readonly policies;
-    private readonly reviews;
-    private readonly stageSets;
-    private readonly commits;
-    private readonly pushes;
-    private readonly pullRequests;
-    private readonly idempotency;
+    private readonly ledger;
     constructor(options: SourceControlOrchestratorOptions);
     /** Trusted composition only. */
     setRepositoryPolicy(policy: RepositoryPolicy): void;
     private policy;
     private authorize;
     private record;
-    private replay;
-    private remember;
     /** Verification must have PASSED, be terminal and carry a ChangeSet. */
     private passedVerification;
     /** The CURRENT source must equal the verified source. */
@@ -78,18 +73,21 @@ export declare class SourceControlOrchestrator {
     }): Promise<ReviewRecord>;
     prepareStageSet(principal: OperatorPrincipal, raw: unknown): Promise<StageSet>;
     /** Request an approval bound to one stage set / commit (operators decide it). */
-    requestApproval(principal: OperatorPrincipal, raw: unknown): ReturnType<typeof requestBoundApproval>;
+    requestApproval(principal: OperatorPrincipal, raw: unknown): Promise<ReturnType<typeof requestBoundApproval>>;
     commit(principal: OperatorPrincipal, raw: unknown, idempotencyKey: string): Promise<CommitReceipt>;
+    private performCommit;
     /** Branch policy decides where a commit may go (never the caller). */
     private pushBranch;
     push(principal: OperatorPrincipal, raw: unknown, idempotencyKey: string): Promise<PushReceipt>;
-    getCommitReceipt(principal: OperatorPrincipal, projectId: string, receiptId: string): CommitReceipt;
-    getPushReceipt(principal: OperatorPrincipal, projectId: string, receiptId: string): PushReceipt;
-    activity(principal: OperatorPrincipal, projectId: string, limit?: number): {
+    private performPush;
+    getCommitReceipt(principal: OperatorPrincipal, projectId: string, receiptId: string): Promise<CommitReceipt>;
+    getPushReceipt(principal: OperatorPrincipal, projectId: string, receiptId: string): Promise<PushReceipt>;
+    /** Live + durable source-control activity for one project, bounded. */
+    activity(principal: OperatorPrincipal, projectId: string, limit?: number): Promise<{
         reviews: ReviewRecord[];
         stageSets: StageSet[];
         commits: CommitReceipt[];
         pushes: PushReceipt[];
         pullRequests: PullRequestRecord[];
-    };
+    }>;
 }

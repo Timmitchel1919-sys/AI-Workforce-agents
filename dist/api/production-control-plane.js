@@ -1,7 +1,7 @@
-import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionSessionStore, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
@@ -118,6 +118,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         containerPolicy: { approvedImages: [], requireDigest: true },
     }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
     const executionReceipts = new InMemoryExecutionReceiptStore();
+    const executionRecords = new FirestoreExecutionRecordStore(transactionalFirestore, { collectionPrefix: options.collectionPrefix });
     const execution = new ExecutionManager({
         planning,
         approvals,
@@ -129,9 +130,14 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         operations: new ExecutionOperationRegistry(),
         policies: executionPolicies,
         sandboxes: new SandboxRegistry(),
-        sessions: new InMemoryExecutionSessionStore(),
+        // EO-4.8: sessions are transactional in Firestore (CAS across instances);
+        // every receipt is also written create-only before a response returns.
+        sessions: new FirestoreExecutionSessionStore(transactionalFirestore, {
+            collectionPrefix: options.collectionPrefix,
+        }),
         audit,
         receipts: executionReceipts,
+        receiptStore: executionRecords,
         environmentAdapters,
     });
     const context = {
@@ -149,6 +155,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         planning,
         execution,
         executionReceipts,
+        executionRecords,
         environmentAdapters,
         access,
         orchestrator,

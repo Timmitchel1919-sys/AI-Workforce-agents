@@ -403,7 +403,7 @@ export class WorkforceQueryService {
             return undefined;
         return getProjectVerifications(this.ctx, principal, projectId);
     }
-    getProjectReleases(principal, projectId) {
+    async getProjectReleases(principal, projectId) {
         this.authorizeView(principal);
         if (!this.ctx.projects.get(projectId) ||
             !operatorCanAccessProject(principal, projectId))

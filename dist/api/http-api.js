@@ -199,7 +199,7 @@ export function createControlPlaneApi(options) {
                     return send(res, 200, notNull(await query.getProjectVerifications(principal, id)), correlationId);
                 }
                 if (segs.length === 3 && segs[2] === "releases") {
-                    return send(res, 200, notNull(query.getProjectReleases(principal, id)), correlationId);
+                    return send(res, 200, notNull(await query.getProjectReleases(principal, id)), correlationId);
                 }
                 // `GET /projects/:projectId/execution-sessions` (EO-4.1, metadata only)
                 if (segs.length === 3 && segs[2] === "execution-sessions") {

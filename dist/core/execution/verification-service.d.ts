@@ -13,7 +13,7 @@
  * fingerprinting, artifact integrity and an immutable result. It never
  * commits, pushes, merges or deploys, and deployment stages are never run.
  */
-import { type OperatorPrincipal, type VerificationProfile, type VerificationResult, type WorkspaceControl } from "../../contracts/index.js";
+import { type OperatorPrincipal, type VerificationProfile, type VerificationResult, type WorkspaceControl, type ExecutionRecordStore } from "../../contracts/index.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { EnvironmentRegistry } from "../environments/environment-registry.js";
 import type { ExecutionPlanningService } from "../planning/execution-planning-service.js";
@@ -37,6 +37,11 @@ export interface VerificationServiceOptions {
     maxConcurrentPerProject?: number;
     /** Bounded, redacted log excerpt kept per stage. Default 16 KiB. */
     maxLogBytes?: number;
+    /**
+     * EO-4.8: terminal results are written here (awaited) so verification
+     * history and the evidence behind commits survive restarts.
+     */
+    store?: ExecutionRecordStore;
     clock?: () => string;
     idFactory?: (prefix: string) => string;
 }
@@ -90,6 +95,14 @@ export declare class VerificationService {
     get(principal: OperatorPrincipal, verificationId: string): VerificationResult;
     /** Resolves with the terminal, immutable result. */
     wait(principal: OperatorPrincipal, verificationId: string): Promise<VerificationResult>;
+    private persist;
+    /**
+     * A verification by id — live runs first, then durable history (EO-4.8),
+     * so evidence from before a restart still backs commits and releases.
+     */
+    load(principal: OperatorPrincipal, verificationId: string): Promise<VerificationResult>;
+    /** Live + durable history for one project, newest first, bounded. */
+    listHistory(principal: OperatorPrincipal, projectId: string, limit?: number): Promise<VerificationResult[]>;
     /** Immutable history for one project, newest first. */
     history(principal: OperatorPrincipal, projectId: string): VerificationResult[];
     private scoped;

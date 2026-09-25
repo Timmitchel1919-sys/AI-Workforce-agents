@@ -1,3 +1,5 @@
+/** Upper bound for flushing writes before a response is released. */
+export const FLUSH_BEFORE_RESPONSE_MS = 5_000;
 /**
  * Memoizes both the successful runtime and an in-flight initialization.
  * A failed cold start remains failed for that container; a new function
@@ -23,13 +25,48 @@ export function createControlPlaneHttpsAdapter(factory) {
     return async (request, response) => {
         try {
             const runtime = await singleton.get();
-            runtime.handler(request, response);
+            if (runtime.flush)
+                holdResponseUntilFlushed(response, runtime.flush);
+            await Promise.resolve(runtime.handler(request, response));
         }
         catch (error) {
             logInitializationFailure(error);
             sendUnavailable(response);
         }
     };
+}
+/**
+ * EO-4.8: the response is only released after pending Firestore writes
+ * (audit, approvals, …) are flushed, bounded by FLUSH_BEFORE_RESPONSE_MS.
+ * A serverless instance may freeze right after the response; nothing that
+ * the response already reported may still be in flight at that moment.
+ */
+export function holdResponseUntilFlushed(response, flush, timeoutMs = FLUSH_BEFORE_RESPONSE_MS) {
+    const end = response.end.bind(response);
+    let ending = false;
+    response.end =
+        (...args) => {
+            if (ending)
+                return response;
+            ending = true;
+            let timer;
+            void Promise.race([
+                flush(),
+                new Promise((resolve) => {
+                    timer = setTimeout(resolve, timeoutMs);
+                }),
+            ])
+                .catch(() => {
+                console.error("Control Plane durable flush failed", {
+                    phase: "flush_before_response",
+                });
+            })
+                .finally(() => {
+                clearTimeout(timer);
+                end(...args);
+            });
+            return response;
+        };
 }
 function logInitializationFailure(error) {
     // Error messages may carry provider or platform details. Log only the

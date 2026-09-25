@@ -15,17 +15,17 @@
  * - Rollback restores a KNOWN previous healthy release on the same target
  *   and is itself approved; automatic rollback only when policy says so.
  */
-import { type ArtifactRecord, type CommitReceipt, type DeploymentAdapter, type DeploymentCandidate, type DeploymentTarget, type OperatorPrincipal, type PushReceipt, type ReleasePolicy, type ReleaseReceipt, type VerificationResult } from "../../contracts/index.js";
+import { type ArtifactRecord, type CommitReceipt, type ExecutionRecordStore, type DeploymentAdapter, type DeploymentCandidate, type DeploymentTarget, type OperatorPrincipal, type PushReceipt, type ReleasePolicy, type ReleaseReceipt, type VerificationResult } from "../../contracts/index.js";
 import type { ApprovalSystem } from "../approvals/approval-system.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { SecretValueResolver } from "./source-control-orchestrator.js";
 export interface DeploymentOrchestratorOptions {
     sourceControl: {
-        getPushReceipt(principal: OperatorPrincipal, projectId: string, receiptId: string): PushReceipt;
-        getCommitReceipt(principal: OperatorPrincipal, projectId: string, receiptId: string): CommitReceipt;
+        getPushReceipt(principal: OperatorPrincipal, projectId: string, receiptId: string): Promise<PushReceipt>;
+        getCommitReceipt(principal: OperatorPrincipal, projectId: string, receiptId: string): Promise<CommitReceipt>;
     };
     verification: {
-        get(principal: OperatorPrincipal, verificationId: string): VerificationResult;
+        load(principal: OperatorPrincipal, verificationId: string): Promise<VerificationResult>;
     };
     artifacts: {
         get(projectId: string, artifactId: string): ArtifactRecord | undefined;
@@ -40,6 +40,8 @@ export interface DeploymentOrchestratorOptions {
     lockTtlMs?: number;
     clock?: () => string;
     idFactory?: (prefix: string) => string;
+    /** EO-4.8 durable candidates, releases and idempotency reservations. */
+    store?: ExecutionRecordStore;
 }
 export declare class DeploymentOrchestrator {
     private readonly options;
@@ -48,10 +50,8 @@ export declare class DeploymentOrchestrator {
     private readonly targets;
     private readonly adapters;
     private readonly policies;
-    private readonly candidates;
-    private readonly releases;
     private readonly locks;
-    private readonly idempotency;
+    private readonly ledger;
     constructor(options: DeploymentOrchestratorOptions);
     registerAdapter(adapter: DeploymentAdapter): void;
     registerTarget(target: DeploymentTarget): void;
@@ -60,18 +60,20 @@ export declare class DeploymentOrchestrator {
     private record;
     private target;
     private policy;
-    createCandidate(principal: OperatorPrincipal, raw: unknown): DeploymentCandidate;
-    requestApproval(principal: OperatorPrincipal, raw: unknown): import("../../contracts/index.js").Approval;
+    createCandidate(principal: OperatorPrincipal, raw: unknown): Promise<DeploymentCandidate>;
+    requestApproval(principal: OperatorPrincipal, raw: unknown): Promise<import("../../contracts/index.js").Approval>;
     private acquireLock;
     private releaseLock;
     private withTimeout;
+    /** Release status advances (deploying → … → healthy): durable `put`. */
     private save;
     deploy(principal: OperatorPrincipal, raw: unknown, idempotencyKey: string): Promise<ReleaseReceipt>;
+    private performDeploy;
     private lastHealthyBefore;
     private restore;
     private autoRollback;
     rollback(principal: OperatorPrincipal, raw: unknown): Promise<ReleaseReceipt>;
-    listReleases(principal: OperatorPrincipal, projectId: string, limit?: number): ReleaseReceipt[];
+    listReleases(principal: OperatorPrincipal, projectId: string, limit?: number): Promise<ReleaseReceipt[]>;
     listTargets(principal: OperatorPrincipal, projectId: string): {
         targetId: string;
         projectId: string;

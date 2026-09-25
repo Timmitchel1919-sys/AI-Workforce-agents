@@ -203,12 +203,17 @@ export class VerificationService {
             planVersion: plan.version,
             ...(changeSet ? { changeSetId: changeSet.changeSetId } : {}),
         });
-        state.done = this.run(state, planned, graph, profile, changeSet).catch((error) => this.finish(state, "failed", [
+        state.done = this.run(state, planned, graph, profile, changeSet)
+            .catch((error) => this.finish(state, "failed", [
             {
                 code: "EXECUTION_ERROR",
                 detail: error instanceof Error ? error.message : "verification crashed",
             },
-        ]));
+        ]))
+            .then(async (terminal) => {
+            await this.persist(terminal);
+            return terminal;
+        });
         return result;
     }
     validateStart(raw) {
@@ -821,6 +826,47 @@ export class VerificationService {
     /** Resolves with the terminal, immutable result. */
     async wait(principal, verificationId) {
         return this.scoped(principal, verificationId, "view").done;
+    }
+    async persist(result) {
+        if (!this.options.store)
+            return;
+        try {
+            await this.options.store.create(result.verificationId, {
+                projectId: result.projectId,
+                kind: "verification",
+                createdAt: result.createdAt,
+            }, result);
+        }
+        catch {
+            this.record("verification_persistence_failed", result.requestedBy, result.projectId, {
+                verification: result.verificationId,
+            });
+        }
+    }
+    /**
+     * A verification by id — live runs first, then durable history (EO-4.8),
+     * so evidence from before a restart still backs commits and releases.
+     */
+    async load(principal, verificationId) {
+        const id = requireExecutionId(verificationId, "verificationId");
+        if (this.runs.has(id))
+            return this.get(principal, id);
+        const stored = await this.options.store?.get(id);
+        if (!stored)
+            throw new NotFoundError("resource not found");
+        this.authorize(principal, stored.projectId, "view");
+        return deepFreeze(stored);
+    }
+    /** Live + durable history for one project, newest first, bounded. */
+    async listHistory(principal, projectId, limit = 50) {
+        const live = this.history(principal, projectId);
+        const stored = this.options.store
+            ? await this.options.store.listBy("projectId", projectId, { kind: "verification", limit })
+            : [];
+        const seen = new Set(live.map((r) => r.verificationId));
+        return [...live, ...stored.filter((r) => !seen.has(r.verificationId))]
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            .slice(0, Math.min(Math.max(1, limit), 200));
     }
     /** Immutable history for one project, newest first. */
     history(principal, projectId) {
