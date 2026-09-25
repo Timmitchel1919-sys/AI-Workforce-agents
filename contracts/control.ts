@@ -62,6 +62,11 @@ export const CONTROL_CAPABILITIES = [
   "push_source",
   "deploy_release",
   "rollback_release",
+  /* EO-5.1 — Software Factory orchestration. */
+  "create_program",
+  "create_workstream",
+  "add_task_to_workstream",
+  "tick_software_factory",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -88,6 +93,12 @@ export const ROLE_CAPABILITIES: Record<
     // Operators review changes; committing, pushing and deploying are
     // administrator-only protected actions.
     "review_change",
+    // EO-5.1 Software Factory: operators author programs/workstreams/tasks and
+    // advance ready work through the governed orchestrator.
+    "create_program",
+    "create_workstream",
+    "add_task_to_workstream",
+    "tick_software_factory",
   ],
   admin: [
     "view",
@@ -113,6 +124,11 @@ export const ROLE_CAPABILITIES: Record<
     "push_source",
     "deploy_release",
     "rollback_release",
+    // EO-5.1 Software Factory orchestrates the governed Orchestrator.
+    "create_program",
+    "create_workstream",
+    "add_task_to_workstream",
+    "tick_software_factory",
   ],
 };
 
@@ -191,6 +207,11 @@ export const CONTROL_COMMANDS = [
   "reactivate_access",
   "revoke_access",
   "change_operator_role",
+  // EO-5.1 — Software Factory orchestration command names.
+  "create_program",
+  "create_workstream",
+  "add_task_to_workstream",
+  "tick_software_factory",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 

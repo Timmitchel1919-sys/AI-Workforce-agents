@@ -32,6 +32,7 @@ import {
   type RejectCommandInput,
   type Task,
   type TaskCommandInput,
+  type TaskDraft,
   type Workflow,
   type WorkflowCommandInput,
   DEFAULT_RETRY_POLICY,
@@ -42,7 +43,9 @@ import {
   operatorCan,
   operatorCanAccessProject,
   requireId,
+  requireText,
   validateOperatorPrincipal,
+  validateTaskDraft,
 } from "../../contracts/index.js";
 import {
   extractFailureReason,
@@ -290,6 +293,301 @@ export class WorkforceCommandService {
       { decision: opts.decision, taskId, workflowId, ...enacted },
       run,
     );
+  }
+
+  /* -------------------------------------------------------------- */
+  /* software factory (EO-5.1)                                      */
+  /* -------------------------------------------------------------- */
+
+  async createProgram(
+    principal: OperatorPrincipal,
+    input: { id?: unknown; name?: unknown; objective?: unknown },
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run = { correlationId: resolveCorrelationId(options) };
+    const command = "create_program";
+    let id: string;
+    let name: string;
+    let objective: string;
+    try {
+      id = requireId(input?.id, "create_program.id");
+      name = requireText(input?.name, "create_program.name");
+      objective = requireText(input?.objective, "create_program.objective");
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        message(error),
+        {},
+        run,
+      );
+    }
+    if (!operatorCan(principal, command)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        id,
+        `role "${principal.role}" may not create programs`,
+        {},
+        run,
+      );
+    }
+    const factory = this.ctx.softwareFactory;
+    if (!factory) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        id,
+        "software factory is not configured",
+        {},
+        run,
+        "invalid_state",
+      );
+    }
+    try {
+      const program = factory.createProgram(id, name, objective);
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        program.id,
+        "program created",
+        { program },
+        run,
+      );
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        id,
+        message(error),
+        {},
+        run,
+        softwareFactoryKind(error),
+      );
+    }
+  }
+
+  async createWorkstream(
+    principal: OperatorPrincipal,
+    input: {
+      programId?: unknown;
+      id?: unknown;
+      name?: unknown;
+      objective?: unknown;
+    },
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run = { correlationId: resolveCorrelationId(options) };
+    const command = "create_workstream";
+    let programId: string;
+    let id: string;
+    let name: string;
+    let objective: string;
+    try {
+      programId = requireId(input?.programId, "create_workstream.programId");
+      id = requireId(input?.id, "create_workstream.id");
+      name = requireText(input?.name, "create_workstream.name");
+      objective = requireText(input?.objective, "create_workstream.objective");
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        message(error),
+        {},
+        run,
+      );
+    }
+    if (!operatorCan(principal, command)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        id,
+        `role "${principal.role}" may not create workstreams`,
+        {},
+        run,
+      );
+    }
+    const factory = this.ctx.softwareFactory;
+    if (!factory) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        id,
+        "software factory is not configured",
+        {},
+        run,
+        "invalid_state",
+      );
+    }
+    try {
+      const workstream = factory.createWorkstream(
+        programId,
+        id,
+        name,
+        objective,
+      );
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        workstream.id,
+        "workstream created",
+        { workstream },
+        run,
+      );
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        id,
+        message(error),
+        {},
+        run,
+        softwareFactoryKind(error),
+      );
+    }
+  }
+
+  async addTaskToWorkstream(
+    principal: OperatorPrincipal,
+    input: { workstreamId?: unknown; task?: unknown },
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run = { correlationId: resolveCorrelationId(options) };
+    const command = "add_task_to_workstream";
+    let workstreamId: string;
+    let task: TaskDraft;
+    try {
+      workstreamId = requireId(
+        input?.workstreamId,
+        "add_task_to_workstream.workstreamId",
+      );
+      task = requireSoftwareFactoryTaskDraft(input?.task);
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        message(error),
+        {},
+        run,
+      );
+    }
+    if (!operatorCan(principal, command)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        workstreamId,
+        `role "${principal.role}" may not add workstream tasks`,
+        {},
+        run,
+      );
+    }
+    const factory = this.ctx.softwareFactory;
+    if (!factory) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        workstreamId,
+        "software factory is not configured",
+        {},
+        run,
+        "invalid_state",
+      );
+    }
+    try {
+      const created = factory.addTask(workstreamId, task);
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        created.id,
+        "task added to workstream",
+        { workstreamId, taskId: created.id, status: created.status },
+        run,
+      );
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        workstreamId,
+        message(error),
+        {},
+        run,
+        softwareFactoryKind(error),
+      );
+    }
+  }
+
+  async tickSoftwareFactory(
+    principal: OperatorPrincipal,
+    _input?: unknown,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run = { correlationId: resolveCorrelationId(options) };
+    const command = "tick_software_factory";
+    if (!operatorCan(principal, command)) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        undefined,
+        `role "${principal.role}" may not advance the software factory`,
+        {},
+        run,
+      );
+    }
+    const factory = this.ctx.softwareFactory;
+    if (!factory) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        "software factory is not configured",
+        {},
+        run,
+        "invalid_state",
+      );
+    }
+    try {
+      await factory.tick();
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        undefined,
+        "software factory advanced one tick",
+        {},
+        run,
+      );
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        message(error),
+        {},
+        run,
+        softwareFactoryKind(error),
+      );
+    }
   }
 
   /* -------------------------------------------------------------- */
@@ -1549,4 +1847,25 @@ function expectedVersionOf(
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** Domain error → `ControlErrorKind` for the software-factory commands. */
+function softwareFactoryKind(error: unknown): ControlErrorKind {
+  return error instanceof NotFoundError
+    ? "not_found"
+    : error instanceof StateTransitionError
+      ? "invalid_state"
+      : error instanceof ValidationError
+        ? "invalid_request"
+        : "command_failure";
+}
+
+/** Coerce an untrusted `add-workstream-task` body's `task` into a `TaskDraft`. */
+function requireSoftwareFactoryTaskDraft(value: unknown): TaskDraft {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ValidationError("add_task_to_workstream.task must be an object");
+  }
+  const draft = value as TaskDraft;
+  validateTaskDraft(draft);
+  return { ...draft };
 }

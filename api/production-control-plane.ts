@@ -9,9 +9,12 @@ import {
   type AgentOperationalRecord,
   type Approval,
   type AuditEvent,
+  type EnvironmentCodeRoute,
   type EnvironmentInstance,
+  type EnvironmentRequirement,
   type Handoff,
   type HostInstance,
+  type SoftwareFactoryEnvironmentProvider,
   type Task,
   type Workflow,
   type WorkflowControlRecord,
@@ -41,9 +44,11 @@ import {
   AuditLog,
   EnvironmentDetector,
   EnvironmentRegistry,
+  EnvironmentRouter,
   HandoffSystem,
   Orchestrator,
   ProbeRegistry,
+  SoftwareFactoryOrchestrator,
   TaskSystem,
   WorkflowEngine,
   WorkflowSystem,
@@ -280,6 +285,11 @@ export async function createProductionControlPlaneRuntime(
     environmentAdapters,
     access,
     orchestrator,
+    softwareFactory: new SoftwareFactoryOrchestrator(
+      orchestrator,
+      tasks,
+      await buildSoftwareFactoryEnvironmentProvider(environmentRegistry),
+    ),
     workflowEngine,
     events: new FirestoreEventPublisher(
       services.firestore.collection("control_events"),
@@ -307,4 +317,45 @@ export async function createProductionControlPlaneRuntime(
     environmentDetector,
     flush: () => repositories.flushAll(),
   });
+}
+
+/**
+ * EO-5.1 software-factory environment provider, built from the production
+ * `EnvironmentRouter` (derived from the `EnvironmentRegistry` in this
+ * composition root). The environment stack owns
+ * `core/environments/software-factory-router.ts`; if that module (or a router)
+ * is not usable at runtime, we deny every environment code (`UNSUPPORTED`)
+ * rather than crash startup — a software-factory task that needs an environment
+ * simply stays `created`, never auto-executes.
+ */
+async function buildSoftwareFactoryEnvironmentProvider(
+  environmentRegistry: EnvironmentRegistry,
+): Promise<SoftwareFactoryEnvironmentProvider> {
+  try {
+    const router = new EnvironmentRouter(environmentRegistry);
+    const { createSoftwareFactoryEnvironmentProvider } =
+      await import("../core/environments/software-factory-router.js");
+    return createSoftwareFactoryEnvironmentProvider(router);
+  } catch (error) {
+    void error;
+    return denyByDefaultEnvironmentProvider();
+  }
+}
+
+/** Deny-by-default provider: every code is unsupported; nothing routes. */
+function denyByDefaultEnvironmentProvider(): SoftwareFactoryEnvironmentProvider {
+  const reason =
+    "no environment router available — this environment code is unsupported";
+  return {
+    requirementFor(): EnvironmentRequirement | null {
+      return null;
+    },
+    route(codes: readonly string[]): readonly EnvironmentCodeRoute[] {
+      return codes.map((code) => ({
+        code,
+        requirement: null,
+        outcome: { outcome: "UNSUPPORTED", reason },
+      }));
+    },
+  };
 }

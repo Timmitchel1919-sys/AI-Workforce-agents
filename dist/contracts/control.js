@@ -46,6 +46,11 @@ export const CONTROL_CAPABILITIES = [
     "push_source",
     "deploy_release",
     "rollback_release",
+    /* EO-5.1 — Software Factory orchestration. */
+    "create_program",
+    "create_workstream",
+    "add_task_to_workstream",
+    "tick_software_factory",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -67,6 +72,12 @@ export const ROLE_CAPABILITIES = {
         // Operators review changes; committing, pushing and deploying are
         // administrator-only protected actions.
         "review_change",
+        // EO-5.1 Software Factory: operators author programs/workstreams/tasks and
+        // advance ready work through the governed orchestrator.
+        "create_program",
+        "create_workstream",
+        "add_task_to_workstream",
+        "tick_software_factory",
     ],
     admin: [
         "view",
@@ -92,6 +103,11 @@ export const ROLE_CAPABILITIES = {
         "push_source",
         "deploy_release",
         "rollback_release",
+        // EO-5.1 Software Factory orchestrates the governed Orchestrator.
+        "create_program",
+        "create_workstream",
+        "add_task_to_workstream",
+        "tick_software_factory",
     ],
 };
 export function validateOperatorPrincipal(principal) {
@@ -138,6 +154,11 @@ export const CONTROL_COMMANDS = [
     "reactivate_access",
     "revoke_access",
     "change_operator_role",
+    // EO-5.1 — Software Factory orchestration command names.
+    "create_program",
+    "create_workstream",
+    "add_task_to_workstream",
+    "tick_software_factory",
 ];
 /**
  * A refinement of a non-`executed` outcome, aligned with the `WorkforceError`

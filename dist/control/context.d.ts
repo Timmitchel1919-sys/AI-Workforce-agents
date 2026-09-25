@@ -62,6 +62,7 @@ export interface ControlPlaneContext {
      * methods are used, so a test can pass a stub.
      */
     orchestrator?: Pick<Orchestrator, "recordApprovalDecision" | "resume">;
+    softwareFactory?: import("../core/orchestrator/software-factory-orchestrator.js").SoftwareFactoryOrchestrator;
     workflowEngine?: Pick<WorkflowEngine, "resume">;
     /** Health probes. Anything not listed is reported as `unknown` (unmeasured). */
     healthProbes?: readonly HealthProbe[];

@@ -1,7 +1,7 @@
 import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, HandoffSystem, Orchestrator, ProbeRegistry, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
@@ -159,6 +159,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         environmentAdapters,
         access,
         orchestrator,
+        softwareFactory: new SoftwareFactoryOrchestrator(orchestrator, tasks, await buildSoftwareFactoryEnvironmentProvider(environmentRegistry)),
         workflowEngine,
         events: new FirestoreEventPublisher(services.firestore.collection("control_events")),
     };
@@ -183,4 +184,40 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         environmentDetector,
         flush: () => repositories.flushAll(),
     });
+}
+/**
+ * EO-5.1 software-factory environment provider, built from the production
+ * `EnvironmentRouter` (derived from the `EnvironmentRegistry` in this
+ * composition root). The environment stack owns
+ * `core/environments/software-factory-router.ts`; if that module (or a router)
+ * is not usable at runtime, we deny every environment code (`UNSUPPORTED`)
+ * rather than crash startup — a software-factory task that needs an environment
+ * simply stays `created`, never auto-executes.
+ */
+async function buildSoftwareFactoryEnvironmentProvider(environmentRegistry) {
+    try {
+        const router = new EnvironmentRouter(environmentRegistry);
+        const { createSoftwareFactoryEnvironmentProvider } = await import("../core/environments/software-factory-router.js");
+        return createSoftwareFactoryEnvironmentProvider(router);
+    }
+    catch (error) {
+        void error;
+        return denyByDefaultEnvironmentProvider();
+    }
+}
+/** Deny-by-default provider: every code is unsupported; nothing routes. */
+function denyByDefaultEnvironmentProvider() {
+    const reason = "no environment router available — this environment code is unsupported";
+    return {
+        requirementFor() {
+            return null;
+        },
+        route(codes) {
+            return codes.map((code) => ({
+                code,
+                requirement: null,
+                outcome: { outcome: "UNSUPPORTED", reason },
+            }));
+        },
+    };
 }

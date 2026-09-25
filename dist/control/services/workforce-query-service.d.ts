@@ -5,7 +5,7 @@
  * capability, and returns only data for projects the operator may access.
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
-import { type ExecutionOperationDefinition, type ExecutionSession, type PreflightResult, type ApprovalQuery, type ApprovalView, type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus } from "../../contracts/index.js";
+import { type ExecutionOperationDefinition, type ExecutionSession, type PreflightResult, type ApprovalQuery, type ApprovalView, type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus, type SoftwareFactoryOverview, type SoftwareFactoryProgramDetail } from "../../contracts/index.js";
 import type { EnvironmentDescriptor, EnvironmentInstance, HostCapabilitySnapshot, HostInstance } from "../../contracts/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import { redact } from "../redaction.js";
@@ -13,6 +13,9 @@ export declare class WorkforceQueryService {
     private readonly ctx;
     constructor(ctx: ControlPlaneContext);
     getWorkforceStatus(principal: OperatorPrincipal): WorkforceStatus;
+    getGraphProjection(principal: OperatorPrincipal, programId: string): import("../../contracts/index.js").GraphProjection | undefined;
+    getSoftwareFactoryOverview(principal: OperatorPrincipal): SoftwareFactoryOverview;
+    getSoftwareFactoryProgramDetail(principal: OperatorPrincipal, programId: string): SoftwareFactoryProgramDetail;
     /** @deprecated since Phase 7A — use {@link getSystemHealth}. */
     getHealth(principal: OperatorPrincipal): SystemHealth;
     getSystemHealth(principal: OperatorPrincipal): SystemHealth;

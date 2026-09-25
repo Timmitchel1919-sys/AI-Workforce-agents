@@ -29,6 +29,11 @@ const COMMAND_METHODS = {
     "cancel-execution": "cancelExecution",
     "kill-execution": "killExecution",
     "change-operator-role": "changeOperatorRole",
+    // EO-5.1 — Software Factory orchestration.
+    "create-program": "createProgram",
+    "create-workstream": "createWorkstream",
+    "add-workstream-task": "addTaskToWorkstream",
+    "tick-software-factory": "tickSoftwareFactory",
 };
 function defaultCorrelationId() {
     const c = globalThis.crypto;
@@ -280,6 +285,15 @@ export function createControlPlaneApi(options) {
                 return send(res, 200, notNull(await query.getOperatorAccounts(principal)), correlationId);
             case "audit":
                 return send(res, 200, query.getAuditEvents(principal, parseAuditQuery(params)), correlationId);
+            case "software-factory":
+                // GET /api/software-factory, GET /api/software-factory/programs/:programId
+                if (segs[1] === "programs" && segs.length === 3) {
+                    return send(res, 200, query.getSoftwareFactoryProgramDetail(principal, segs[2]), correlationId);
+                }
+                if (segs.length === 1) {
+                    return send(res, 200, query.getSoftwareFactoryOverview(principal), correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
             default:
                 return send(res, 404, { error: { message: "not found" } }, correlationId);
         }

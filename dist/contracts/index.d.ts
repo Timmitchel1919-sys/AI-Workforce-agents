@@ -87,6 +87,16 @@ export interface Task {
     createdAt: string;
     updatedAt: string;
     metadata: Record<string, unknown>;
+    programId?: string;
+    workstreamId?: string;
+    objective?: string;
+    requirements?: readonly string[];
+    dependencies?: readonly string[];
+    requiredCapabilities?: readonly string[];
+    environmentRequirements?: readonly string[];
+    modelRequirements?: Record<string, unknown>;
+    completionCriteria?: readonly string[];
+    riskClass?: string;
 }
 export interface TaskDraft {
     type: string;
@@ -96,6 +106,16 @@ export interface TaskDraft {
     priority?: Priority;
     requiredPermissions?: readonly RequiredPermission[];
     metadata?: Record<string, unknown>;
+    programId?: string;
+    workstreamId?: string;
+    objective?: string;
+    requirements?: readonly string[];
+    dependencies?: readonly string[];
+    requiredCapabilities?: readonly string[];
+    environmentRequirements?: readonly string[];
+    modelRequirements?: Record<string, unknown>;
+    completionCriteria?: readonly string[];
+    riskClass?: string;
 }
 export type HandoffStatus = "proposed" | "accepted" | "rejected";
 export interface Handoff {
@@ -405,3 +425,5 @@ export * from "./verification.js";
 export * from "./environment-adapters.js";
 export * from "./release.js";
 export * from "./execution-records.js";
+export * from "./orchestration.js";
+export * from "./environment-routing.js";

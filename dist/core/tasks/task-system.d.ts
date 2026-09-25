@@ -13,6 +13,8 @@ export declare class TaskSystem {
     get(id: string): Task | undefined;
     require(id: string): Task;
     list(): Task[];
+    /** Remove a task outright (used by the software factory for planned-placeholder cleanup). */
+    delete(id: string): boolean;
     canTransition(from: TaskStatus, to: TaskStatus): boolean;
     transition(id: string, to: TaskStatus, patch?: TransitionPatch): Task;
     assign(id: string, agentId: string): Task;

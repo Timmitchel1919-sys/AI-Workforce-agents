@@ -20,6 +20,7 @@ export * from "./tools/tool-policy.js";
 export * from "./tools/tool-registry.js";
 export * from "./tools/tool-execution-engine.js";
 export * from "./orchestrator/orchestrator.js";
+export * from "./orchestrator/software-factory-orchestrator.js";
 export * from "./workflows/workflow-graph.js";
 export * from "./workflows/workflow-system.js";
 export * from "./workflows/workflow-engine.js";

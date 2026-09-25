@@ -65,6 +65,22 @@ export class TaskSystem {
       createdAt: timestamp,
       updatedAt: timestamp,
       metadata: { ...(draft.metadata ?? {}) },
+      // EO-5.1 orchestration extensions — carried through so the software
+      // factory can plan, gate and dispatch without losing task authorship.
+      ...(draft.programId !== undefined ? { programId: draft.programId } : {}),
+      ...(draft.workstreamId !== undefined
+        ? { workstreamId: draft.workstreamId }
+        : {}),
+      ...(draft.objective !== undefined ? { objective: draft.objective } : {}),
+      requirements: draft.requirements ?? [],
+      dependencies: draft.dependencies ?? [],
+      requiredCapabilities: draft.requiredCapabilities ?? [],
+      environmentRequirements: draft.environmentRequirements ?? [],
+      ...(draft.modelRequirements !== undefined
+        ? { modelRequirements: draft.modelRequirements }
+        : {}),
+      completionCriteria: draft.completionCriteria ?? [],
+      ...(draft.riskClass !== undefined ? { riskClass: draft.riskClass } : {}),
     };
     this.repo.upsert(task);
     return task;
@@ -82,6 +98,11 @@ export class TaskSystem {
 
   list(): Task[] {
     return this.repo.list();
+  }
+
+  /** Remove a task outright (used by the software factory for planned-placeholder cleanup). */
+  delete(id: string): boolean {
+    return this.repo.delete(id);
   }
 
   canTransition(from: TaskStatus, to: TaskStatus): boolean {

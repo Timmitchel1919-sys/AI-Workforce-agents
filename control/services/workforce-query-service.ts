@@ -34,6 +34,9 @@ import {
   type WorkflowQuery,
   type WorkflowView,
   type WorkforceStatus,
+  type SoftwareFactoryOverview,
+  type SoftwareFactoryProgramDetail,
+  NotFoundError,
   operatorCan,
   operatorCanAccessProject,
   PermissionDeniedError,
@@ -114,6 +117,37 @@ export class WorkforceQueryService {
       },
       recentActivity: this.recentAudit(principal, 15),
     };
+  }
+
+  getGraphProjection(
+    principal: OperatorPrincipal,
+    programId: string,
+  ): import("../../contracts/index.js").GraphProjection | undefined {
+    this.authorizeView(principal);
+    if (!this.ctx.softwareFactory) return undefined;
+    return this.ctx.softwareFactory.getGraphProjection(programId);
+  }
+
+  /* -------------------------------------------------------------- */
+  /* software factory (EO-5.1) — read-only views                    */
+  /* -------------------------------------------------------------- */
+
+  getSoftwareFactoryOverview(
+    principal: OperatorPrincipal,
+  ): SoftwareFactoryOverview {
+    this.authorizeView(principal);
+    if (!this.ctx.softwareFactory) return { programs: [] };
+    return this.ctx.softwareFactory.overview();
+  }
+
+  getSoftwareFactoryProgramDetail(
+    principal: OperatorPrincipal,
+    programId: string,
+  ): SoftwareFactoryProgramDetail {
+    this.authorizeView(principal);
+    const detail = this.ctx.softwareFactory?.programDetail(programId);
+    if (!detail) throw new NotFoundError(`unknown program: ${programId}`);
+    return detail;
   }
 
   /** @deprecated since Phase 7A — use {@link getSystemHealth}. */

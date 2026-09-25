@@ -5,7 +5,7 @@
  * capability, and returns only data for projects the operator may access.
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
-import { TOOL_WILDCARD, operatorCan, operatorCanAccessProject, PermissionDeniedError, validateOperatorPrincipal, } from "../../contracts/index.js";
+import { TOOL_WILDCARD, NotFoundError, operatorCan, operatorCanAccessProject, PermissionDeniedError, validateOperatorPrincipal, } from "../../contracts/index.js";
 import { now, TechnologyCatalog } from "../../core/index.js";
 import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolView, deriveTaskView, deriveWorkflowView, MAX_PAGE_SIZE, paginate, } from "../derive.js";
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
@@ -52,6 +52,28 @@ export class WorkforceQueryService {
             },
             recentActivity: this.recentAudit(principal, 15),
         };
+    }
+    getGraphProjection(principal, programId) {
+        this.authorizeView(principal);
+        if (!this.ctx.softwareFactory)
+            return undefined;
+        return this.ctx.softwareFactory.getGraphProjection(programId);
+    }
+    /* -------------------------------------------------------------- */
+    /* software factory (EO-5.1) — read-only views                    */
+    /* -------------------------------------------------------------- */
+    getSoftwareFactoryOverview(principal) {
+        this.authorizeView(principal);
+        if (!this.ctx.softwareFactory)
+            return { programs: [] };
+        return this.ctx.softwareFactory.overview();
+    }
+    getSoftwareFactoryProgramDetail(principal, programId) {
+        this.authorizeView(principal);
+        const detail = this.ctx.softwareFactory?.programDetail(programId);
+        if (!detail)
+            throw new NotFoundError(`unknown program: ${programId}`);
+        return detail;
     }
     /** @deprecated since Phase 7A — use {@link getSystemHealth}. */
     getHealth(principal) {

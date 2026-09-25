@@ -21,7 +21,7 @@ import { type Entity, type Repository } from "./index.js";
 import type { CredentialReference, DeploymentRequirement, ExecutionPlan, PlanApprovalState, PlanStatus } from "./planning.js";
 export declare const OPERATOR_ROLES: readonly ["viewer", "operator", "admin"];
 export type OperatorRole = (typeof OPERATOR_ROLES)[number];
-export declare const CONTROL_CAPABILITIES: readonly ["view", "approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent", "create_execution_plan", "replan_execution_plan", "submit_execution_plan", "manage_access", "prepare_execution", "cancel_execution", "kill_execution", "review_change", "commit_source", "push_source", "deploy_release", "rollback_release"];
+export declare const CONTROL_CAPABILITIES: readonly ["view", "approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent", "create_execution_plan", "replan_execution_plan", "submit_execution_plan", "manage_access", "prepare_execution", "cancel_execution", "kill_execution", "review_change", "commit_source", "push_source", "deploy_release", "rollback_release", "create_program", "create_workstream", "add_task_to_workstream", "tick_software_factory"];
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export declare const ROLE_CAPABILITIES: Record<OperatorRole, readonly ControlCapability[]>;
@@ -40,7 +40,7 @@ export interface OperatorPrincipal {
 export declare function validateOperatorPrincipal(principal: OperatorPrincipal): void;
 export declare function operatorCan(principal: OperatorPrincipal, capability: ControlCapability): boolean;
 export declare function operatorCanAccessProject(principal: OperatorPrincipal, projectId: string): boolean;
-export declare const CONTROL_COMMANDS: readonly ["approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent", "create_execution_plan", "replan_execution_plan", "submit_execution_plan", "cancel_execution", "kill_execution", "approve_access", "reject_access", "suspend_access", "reactivate_access", "revoke_access", "change_operator_role"];
+export declare const CONTROL_COMMANDS: readonly ["approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent", "create_execution_plan", "replan_execution_plan", "submit_execution_plan", "cancel_execution", "kill_execution", "approve_access", "reject_access", "suspend_access", "reactivate_access", "revoke_access", "change_operator_role", "create_program", "create_workstream", "add_task_to_workstream", "tick_software_factory"];
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 /**
  * `executed` — the command ran and changed state.
