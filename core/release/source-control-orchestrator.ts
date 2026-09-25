@@ -26,6 +26,7 @@ import {
   validateBranchName,
   validateRepositoryPolicy,
   type CommitReceipt,
+  type ExecutionRecordStore,
   type ControlCapability,
   type GovernedGitPort,
   type OperatorPrincipal,
@@ -51,6 +52,7 @@ import {
   checkBoundApproval,
   requestBoundApproval,
 } from "./approval-binding.js";
+import { DurableLedger } from "./durable-ledger.js";
 
 export interface SecretValueResolver {
   resolve(ref: SecretReference): Promise<string>;
@@ -58,7 +60,7 @@ export interface SecretValueResolver {
 
 export interface SourceControlOrchestratorOptions {
   git: GovernedGitPort;
-  verification: Pick<VerificationService, "get">;
+  verification: Pick<VerificationService, "load">;
   manager: Pick<ExecutionManager, "getSession" | "getChangeSet">;
   workspaceControl: Pick<WorkspaceControl, "sourceFingerprint">;
   approvals: Pick<ApprovalSystem, "get" | "request">;
@@ -69,6 +71,8 @@ export interface SourceControlOrchestratorOptions {
   filePolicy?: WorkspaceFilePolicy;
   clock?: () => string;
   idFactory?: (prefix: string) => string;
+  /** EO-4.8 durable records + idempotency reservations. */
+  store?: ExecutionRecordStore;
 }
 
 const deny = (code: ExecutionDeniedError["code"], detail: string): never => {
@@ -113,16 +117,12 @@ export class SourceControlOrchestrator {
   private readonly clock: () => string;
   private readonly newId: (prefix: string) => string;
   private readonly policies = new Map<string, RepositoryPolicy>();
-  private readonly reviews = new Map<string, ReviewRecord>();
-  private readonly stageSets = new Map<string, StageSet>();
-  private readonly commits = new Map<string, CommitReceipt>();
-  private readonly pushes = new Map<string, PushReceipt>();
-  private readonly pullRequests = new Map<string, PullRequestRecord>();
-  private readonly idempotency = new Map<string, string>();
+  private readonly ledger: DurableLedger;
 
   constructor(private readonly options: SourceControlOrchestratorOptions) {
     this.clock = options.clock ?? now;
     this.newId = options.idFactory ?? createId;
+    this.ledger = new DurableLedger(options.store, this.clock);
   }
 
   /** Trusted composition only. */
@@ -168,36 +168,17 @@ export class SourceControlOrchestrator {
     });
   }
 
-  private replay<T>(
-    principal: OperatorPrincipal,
-    key: string,
-    store: Map<string, T>,
-  ): T | undefined {
-    const id = this.idempotency.get(
-      `${principal.id}\u0000${requireExecutionId(key, "idempotencyKey")}`,
-    );
-    return id ? store.get(id) : undefined;
-  }
-
-  private remember(
-    principal: OperatorPrincipal,
-    key: string,
-    id: string,
-  ): void {
-    this.idempotency.set(`${principal.id}\u0000${key}`, id);
-  }
-
   /* -------------------------------------------------------------- */
   /* Gates                                                          */
   /* -------------------------------------------------------------- */
 
   /** Verification must have PASSED, be terminal and carry a ChangeSet. */
-  private passedVerification(
+  private async passedVerification(
     principal: OperatorPrincipal,
     projectId: string,
     verificationId: string,
-  ): VerificationResult {
-    const v = this.options.verification.get(principal, verificationId);
+  ): Promise<VerificationResult> {
+    const v = await this.options.verification.load(principal, verificationId);
     if (v.projectId !== projectId)
       throw new NotFoundError("resource not found");
     if (v.status !== "passed" || !v.changeSetId || !v.sourceSessionId) {
@@ -253,7 +234,13 @@ export class SourceControlOrchestrator {
       ...(summary ? { summary } : {}),
       createdAt: this.clock(),
     });
-    this.reviews.set(review.reviewId, review);
+    await this.ledger.save(
+      "review",
+      review.reviewId,
+      projectId,
+      review.createdAt,
+      review,
+    );
     this.record("review_recorded", reviewerId, projectId, {
       reviewId: review.reviewId,
       changeSetId: review.changeSetId,
@@ -293,7 +280,7 @@ export class SourceControlOrchestrator {
         "status must be approved, changes_requested or rejected",
       );
     }
-    const verification = this.passedVerification(
+    const verification = await this.passedVerification(
       principal,
       projectId,
       requireExecutionId(body.verificationId, "verificationId"),
@@ -326,7 +313,7 @@ export class SourceControlOrchestrator {
     },
   ): Promise<ReviewRecord> {
     this.authorize(principal, input.projectId, "view");
-    const verification = this.passedVerification(
+    const verification = await this.passedVerification(
       principal,
       input.projectId,
       input.verificationId,
@@ -358,13 +345,15 @@ export class SourceControlOrchestrator {
     const projectId = requireExecutionId(body.projectId, "projectId");
     this.authorize(principal, projectId, "commit_source");
     const policy = this.policy(projectId);
-    const verification = this.passedVerification(
+    const verification = await this.passedVerification(
       principal,
       projectId,
       requireExecutionId(body.verificationId, "verificationId"),
     );
     const reviewId = optionalId(body.reviewId, "reviewId");
-    const review = reviewId ? this.reviews.get(reviewId) : undefined;
+    const review = reviewId
+      ? await this.ledger.find<ReviewRecord>("review", reviewId)
+      : undefined;
     if (policy.requireReview) {
       if (!review || review.projectId !== projectId)
         deny("REVIEW_REQUIRED", "an approved review is required");
@@ -439,7 +428,13 @@ export class SourceControlOrchestrator {
       createdBy: principal.id,
       createdAt: this.clock(),
     });
-    this.stageSets.set(stageSet.stageSetId, stageSet);
+    await this.ledger.save(
+      "stage_set",
+      stageSet.stageSetId,
+      projectId,
+      stageSet.createdAt,
+      stageSet,
+    );
     this.record("stage_set_created", principal.id, projectId, {
       stageSetId: stageSet.stageSetId,
       changeSetId: stageSet.changeSetId,
@@ -450,10 +445,10 @@ export class SourceControlOrchestrator {
   }
 
   /** Request an approval bound to one stage set / commit (operators decide it). */
-  requestApproval(
+  async requestApproval(
     principal: OperatorPrincipal,
     raw: unknown,
-  ): ReturnType<typeof requestBoundApproval> {
+  ): Promise<ReturnType<typeof requestBoundApproval>> {
     const body = onlyKeys(
       raw,
       ["projectId", "operation", "subjectId", "reason"],
@@ -463,7 +458,7 @@ export class SourceControlOrchestrator {
     const subjectId = requireExecutionId(body.subjectId, "subjectId");
     if (body.operation === "commit") {
       this.authorize(principal, projectId, "commit_source");
-      const stage = this.stageSets.get(subjectId);
+      const stage = await this.ledger.find<StageSet>("stage_set", subjectId);
       if (!stage || stage.projectId !== projectId)
         throw new NotFoundError("resource not found");
       return requestBoundApproval(
@@ -480,7 +475,7 @@ export class SourceControlOrchestrator {
     }
     if (body.operation === "push") {
       this.authorize(principal, projectId, "push_source");
-      const commit = this.commits.get(subjectId);
+      const commit = await this.ledger.find<CommitReceipt>("commit", subjectId);
       if (!commit || commit.projectId !== projectId)
         throw new NotFoundError("resource not found");
       return requestBoundApproval(
@@ -515,19 +510,52 @@ export class SourceControlOrchestrator {
     );
     const projectId = requireExecutionId(body.projectId, "projectId");
     this.authorize(principal, projectId, "commit_source");
-    const replayed = this.replay(principal, idempotencyKey, this.commits);
-    if (replayed) return replayed;
+    const replayId = await this.ledger.claim(
+      "commit",
+      principal.id,
+      idempotencyKey,
+      projectId,
+    );
+    if (replayId) {
+      const replayed = await this.ledger.find<CommitReceipt>(
+        "commit",
+        replayId,
+      );
+      if (replayed) return replayed;
+    }
+    try {
+      const receipt = await this.performCommit(principal, projectId, body);
+      await this.ledger.settle(
+        "commit",
+        principal.id,
+        idempotencyKey,
+        projectId,
+        receipt.receiptId,
+      );
+      return receipt;
+    } catch (error) {
+      await this.ledger.settle(
+        "commit",
+        principal.id,
+        idempotencyKey,
+        projectId,
+      );
+      throw error;
+    }
+  }
+
+  private async performCommit(
+    principal: OperatorPrincipal,
+    projectId: string,
+    body: Record<string, unknown>,
+  ): Promise<CommitReceipt> {
     const policy = this.policy(projectId);
-    const stage = this.stageSets.get(
+    const stage = await this.ledger.find<StageSet>(
+      "stage_set",
       requireExecutionId(body.stageSetId, "stageSetId"),
     );
     if (!stage || stage.projectId !== projectId)
       throw new NotFoundError("resource not found");
-    if (
-      [...this.commits.values()].some((c) => c.stageSetId === stage.stageSetId)
-    ) {
-      throw new StateTransitionError("this stage set was already committed");
-    }
     const type = body.type === undefined ? "feat" : body.type;
     if (
       !["feat", "fix", "refactor", "test", "docs", "chore"].includes(
@@ -538,7 +566,7 @@ export class SourceControlOrchestrator {
     }
     const summary = sanitizeSummary(body.summary);
     // Every gate again, at commit time.
-    const verification = this.passedVerification(
+    const verification = await this.passedVerification(
       principal,
       projectId,
       stage.verificationId,
@@ -548,7 +576,7 @@ export class SourceControlOrchestrator {
     await this.assertSourceUnchanged(projectId, stage.sourceFingerprint);
     if (policy.requireReview) {
       const review = stage.reviewId
-        ? this.reviews.get(stage.reviewId)
+        ? await this.ledger.find<ReviewRecord>("review", stage.reviewId)
         : undefined;
       if (
         !review ||
@@ -590,6 +618,15 @@ export class SourceControlOrchestrator {
       ...(stage.reviewId ? [`AI-Workforce-Review: ${stage.reviewId}`] : []),
       `AI-Workforce-Session: ${stage.sessionId}`,
     ].join("\n");
+    // One commit per stage set — across instances (create-only marker),
+    // taken only after every gate passed, right before the git mutation. If
+    // git then fails the stage set stays consumed: prepare a fresh one.
+    await this.ledger.reserveUnique(
+      "commit_of_stage_set",
+      stage.stageSetId,
+      projectId,
+      "this stage set was already committed",
+    );
     this.record("commit_requested", principal.id, projectId, {
       stageSetId: stage.stageSetId,
     });
@@ -648,8 +685,13 @@ export class SourceControlOrchestrator {
       actor: principal.id,
       createdAt: this.clock(),
     });
-    this.commits.set(receipt.receiptId, receipt);
-    this.remember(principal, idempotencyKey, receipt.receiptId);
+    await this.ledger.save(
+      "commit",
+      receipt.receiptId,
+      projectId,
+      receipt.createdAt,
+      receipt,
+    );
     this.record("commit_completed", principal.id, projectId, {
       receiptId: receipt.receiptId,
       commitSha: receipt.commitSha,
@@ -701,10 +743,40 @@ export class SourceControlOrchestrator {
     );
     const projectId = requireExecutionId(body.projectId, "projectId");
     this.authorize(principal, projectId, "push_source");
-    const replayed = this.replay(principal, idempotencyKey, this.pushes);
-    if (replayed) return replayed;
+    const replayId = await this.ledger.claim(
+      "push",
+      principal.id,
+      idempotencyKey,
+      projectId,
+    );
+    if (replayId) {
+      const replayed = await this.ledger.find<PushReceipt>("push", replayId);
+      if (replayed) return replayed;
+    }
+    try {
+      const receipt = await this.performPush(principal, projectId, body);
+      await this.ledger.settle(
+        "push",
+        principal.id,
+        idempotencyKey,
+        projectId,
+        receipt.receiptId,
+      );
+      return receipt;
+    } catch (error) {
+      await this.ledger.settle("push", principal.id, idempotencyKey, projectId);
+      throw error;
+    }
+  }
+
+  private async performPush(
+    principal: OperatorPrincipal,
+    projectId: string,
+    body: Record<string, unknown>,
+  ): Promise<PushReceipt> {
     const policy = this.policy(projectId);
-    const commit = this.commits.get(
+    const commit = await this.ledger.find<CommitReceipt>(
+      "commit",
       requireExecutionId(body.commitReceiptId, "commitReceiptId"),
     );
     if (!commit || commit.projectId !== projectId)
@@ -784,8 +856,13 @@ export class SourceControlOrchestrator {
       actor: principal.id,
       createdAt: this.clock(),
     });
-    this.pushes.set(receipt.receiptId, receipt);
-    this.remember(principal, idempotencyKey, receipt.receiptId);
+    await this.ledger.save(
+      "push",
+      receipt.receiptId,
+      projectId,
+      receipt.createdAt,
+      receipt,
+    );
     this.record("push_completed", principal.id, projectId, {
       receiptId: receipt.receiptId,
       commitSha: receipt.commitSha,
@@ -813,7 +890,13 @@ export class SourceControlOrchestrator {
         checks: "unknown",
         createdAt: this.clock(),
       });
-      this.pullRequests.set(record.pullRequestId, record);
+      await this.ledger.save(
+        "pull_request",
+        record.pullRequestId,
+        projectId,
+        record.createdAt,
+        record,
+      );
       this.record("pull_request_created", principal.id, projectId, {
         pullRequestId: record.pullRequestId,
         number: pr.number,
@@ -827,50 +910,70 @@ export class SourceControlOrchestrator {
   /* Reads (project-scoped, bounded)                                */
   /* -------------------------------------------------------------- */
 
-  getCommitReceipt(
+  async getCommitReceipt(
     principal: OperatorPrincipal,
     projectId: string,
     receiptId: string,
-  ): CommitReceipt {
+  ): Promise<CommitReceipt> {
     this.authorize(principal, projectId, "view");
-    const commit = this.commits.get(receiptId);
+    const commit = await this.ledger.find<CommitReceipt>("commit", receiptId);
     if (!commit || commit.projectId !== projectId)
       throw new NotFoundError("resource not found");
     return commit;
   }
 
-  getPushReceipt(
+  async getPushReceipt(
     principal: OperatorPrincipal,
     projectId: string,
     receiptId: string,
-  ): PushReceipt {
+  ): Promise<PushReceipt> {
     this.authorize(principal, projectId, "view");
-    const push = this.pushes.get(receiptId);
+    const push = await this.ledger.find<PushReceipt>("push", receiptId);
     if (!push || push.projectId !== projectId)
       throw new NotFoundError("resource not found");
     return push;
   }
 
-  activity(principal: OperatorPrincipal, projectId: string, limit = 50) {
+  /** Live + durable source-control activity for one project, bounded. */
+  async activity(principal: OperatorPrincipal, projectId: string, limit = 50) {
     this.authorize(
       principal,
       requireExecutionId(projectId, "projectId"),
       "view",
     );
-    const bound = Math.min(Math.max(1, limit), 200);
-    const mine = <T extends { projectId: string; createdAt: string }>(
-      m: Map<string, T>,
-    ) =>
-      [...m.values()]
-        .filter((r) => r.projectId === projectId)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, bound);
-    return {
-      reviews: mine(this.reviews),
-      stageSets: mine(this.stageSets),
-      commits: mine(this.commits),
-      pushes: mine(this.pushes),
-      pullRequests: mine(this.pullRequests),
-    };
+    const [reviews, stageSets, commits, pushes, pullRequests] =
+      await Promise.all([
+        this.ledger.list<ReviewRecord>(
+          "review",
+          projectId,
+          limit,
+          (r) => r.reviewId,
+        ),
+        this.ledger.list<StageSet>(
+          "stage_set",
+          projectId,
+          limit,
+          (r) => r.stageSetId,
+        ),
+        this.ledger.list<CommitReceipt>(
+          "commit",
+          projectId,
+          limit,
+          (r) => r.receiptId,
+        ),
+        this.ledger.list<PushReceipt>(
+          "push",
+          projectId,
+          limit,
+          (r) => r.receiptId,
+        ),
+        this.ledger.list<PullRequestRecord>(
+          "pull_request",
+          projectId,
+          limit,
+          (r) => r.pullRequestId,
+        ),
+      ]);
+    return { reviews, stageSets, commits, pushes, pullRequests };
   }
 }

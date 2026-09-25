@@ -27,6 +27,7 @@ import {
   requireExecutionId,
   type ArtifactRecord,
   type CommitReceipt,
+  type ExecutionRecordStore,
   type ControlCapability,
   type DeploymentAdapter,
   type DeploymentCandidate,
@@ -46,6 +47,7 @@ import {
   checkBoundApproval,
   requestBoundApproval,
 } from "./approval-binding.js";
+import { DurableLedger } from "./durable-ledger.js";
 import type { SecretValueResolver } from "./source-control-orchestrator.js";
 
 export interface DeploymentOrchestratorOptions {
@@ -54,18 +56,18 @@ export interface DeploymentOrchestratorOptions {
       principal: OperatorPrincipal,
       projectId: string,
       receiptId: string,
-    ): PushReceipt;
+    ): Promise<PushReceipt>;
     getCommitReceipt(
       principal: OperatorPrincipal,
       projectId: string,
       receiptId: string,
-    ): CommitReceipt;
+    ): Promise<CommitReceipt>;
   };
   verification: {
-    get(
+    load(
       principal: OperatorPrincipal,
       verificationId: string,
-    ): VerificationResult;
+    ): Promise<VerificationResult>;
   };
   artifacts: {
     get(projectId: string, artifactId: string): ArtifactRecord | undefined;
@@ -78,6 +80,8 @@ export interface DeploymentOrchestratorOptions {
   lockTtlMs?: number;
   clock?: () => string;
   idFactory?: (prefix: string) => string;
+  /** EO-4.8 durable candidates, releases and idempotency reservations. */
+  store?: ExecutionRecordStore;
 }
 
 const deny = (code: ExecutionDeniedError["code"], detail: string): never => {
@@ -103,17 +107,16 @@ export class DeploymentOrchestrator {
   private readonly targets = new Map<string, DeploymentTarget>();
   private readonly adapters = new Map<string, DeploymentAdapter>();
   private readonly policies = new Map<string, ReleasePolicy>();
-  private readonly candidates = new Map<string, DeploymentCandidate>();
-  private readonly releases = new Map<string, ReleaseReceipt>();
   private readonly locks = new Map<
     string,
     { releaseId: string; expiresAt: string }
   >();
-  private readonly idempotency = new Map<string, string>();
+  private readonly ledger: DurableLedger;
 
   constructor(private readonly options: DeploymentOrchestratorOptions) {
     this.clock = options.clock ?? now;
     this.newId = options.idFactory ?? createId;
+    this.ledger = new DurableLedger(options.store, this.clock);
   }
 
   /* ---- trusted composition ------------------------------------- */
@@ -211,10 +214,10 @@ export class DeploymentOrchestrator {
 
   /* ---- candidate ----------------------------------------------- */
 
-  createCandidate(
+  async createCandidate(
     principal: OperatorPrincipal,
     raw: unknown,
-  ): DeploymentCandidate {
+  ): Promise<DeploymentCandidate> {
     const body = onlyKeys(raw, [
       "projectId",
       "pushReceiptId",
@@ -223,7 +226,7 @@ export class DeploymentOrchestrator {
     ]);
     const projectId = requireExecutionId(body.projectId, "projectId");
     this.authorize(principal, projectId, "deploy_release");
-    const push = this.options.sourceControl.getPushReceipt(
+    const push = await this.options.sourceControl.getPushReceipt(
       principal,
       projectId,
       requireExecutionId(body.pushReceiptId, "pushReceiptId"),
@@ -234,7 +237,7 @@ export class DeploymentOrchestrator {
     );
     const policy = this.policy(projectId);
     // Provenance: the commit receipt behind the push (verification, source).
-    const provenance = this.options.sourceControl.getCommitReceipt(
+    const provenance = await this.options.sourceControl.getCommitReceipt(
       principal,
       projectId,
       push.commitReceiptId,
@@ -257,7 +260,7 @@ export class DeploymentOrchestrator {
     if (sources.size > 1 || verificationIds.size > 1) {
       deny("STALE_CANDIDATE", "artifacts come from different source states");
     }
-    const verification = this.options.verification.get(
+    const verification = await this.options.verification.load(
       principal,
       provenance.verificationId,
     );
@@ -303,7 +306,13 @@ export class DeploymentOrchestrator {
       createdBy: principal.id,
       createdAt: this.clock(),
     });
-    this.candidates.set(candidate.candidateId, candidate);
+    await this.ledger.save(
+      "candidate",
+      candidate.candidateId,
+      projectId,
+      candidate.createdAt,
+      candidate,
+    );
     this.record("deployment_candidate_created", principal.id, projectId, {
       candidateId: candidate.candidateId,
       commitSha: candidate.commitSha,
@@ -313,7 +322,7 @@ export class DeploymentOrchestrator {
     return candidate;
   }
 
-  requestApproval(principal: OperatorPrincipal, raw: unknown) {
+  async requestApproval(principal: OperatorPrincipal, raw: unknown) {
     const body = onlyKeys(raw, [
       "projectId",
       "operation",
@@ -324,7 +333,10 @@ export class DeploymentOrchestrator {
     const subjectId = requireExecutionId(body.subjectId, "subjectId");
     if (body.operation === "deploy") {
       this.authorize(principal, projectId, "deploy_release");
-      const c = this.candidates.get(subjectId);
+      const c = await this.ledger.find<DeploymentCandidate>(
+        "candidate",
+        subjectId,
+      );
       if (!c || c.projectId !== projectId)
         throw new NotFoundError("resource not found");
       return requestBoundApproval(
@@ -342,7 +354,7 @@ export class DeploymentOrchestrator {
     }
     if (body.operation === "rollback") {
       this.authorize(principal, projectId, "rollback_release");
-      const r = this.releases.get(subjectId);
+      const r = await this.ledger.find<ReleaseReceipt>("release", subjectId);
       if (!r || r.projectId !== projectId)
         throw new NotFoundError("resource not found");
       return requestBoundApproval(
@@ -409,10 +421,17 @@ export class DeploymentOrchestrator {
     }
   }
 
-  private save(receipt: ReleaseReceipt): ReleaseReceipt {
+  /** Release status advances (deploying → … → healthy): durable `put`. */
+  private async save(receipt: ReleaseReceipt): Promise<ReleaseReceipt> {
     const frozen = Object.freeze({ ...receipt });
-    this.releases.set(frozen.releaseId, frozen);
-    return frozen;
+    return this.ledger.save(
+      "release",
+      frozen.releaseId,
+      frozen.projectId,
+      frozen.startedAt,
+      frozen,
+      "put",
+    );
   }
 
   async deploy(
@@ -423,10 +442,47 @@ export class DeploymentOrchestrator {
     const body = onlyKeys(raw, ["projectId", "candidateId", "approvalId"]);
     const projectId = requireExecutionId(body.projectId, "projectId");
     this.authorize(principal, projectId, "deploy_release");
-    const key = `${principal.id}\u0000${requireExecutionId(idempotencyKey, "idempotencyKey")}`;
-    const previous = this.idempotency.get(key);
-    if (previous) return this.releases.get(previous)!;
-    const candidate = this.candidates.get(
+    const replayId = await this.ledger.claim(
+      "deploy",
+      principal.id,
+      idempotencyKey,
+      projectId,
+    );
+    if (replayId) {
+      const replayed = await this.ledger.find<ReleaseReceipt>(
+        "release",
+        replayId,
+      );
+      if (replayed) return replayed;
+    }
+    try {
+      const release = await this.performDeploy(principal, projectId, body);
+      await this.ledger.settle(
+        "deploy",
+        principal.id,
+        idempotencyKey,
+        projectId,
+        release.releaseId,
+      );
+      return release;
+    } catch (error) {
+      await this.ledger.settle(
+        "deploy",
+        principal.id,
+        idempotencyKey,
+        projectId,
+      );
+      throw error;
+    }
+  }
+
+  private async performDeploy(
+    principal: OperatorPrincipal,
+    projectId: string,
+    body: Record<string, unknown>,
+  ): Promise<ReleaseReceipt> {
+    const candidate = await this.ledger.find<DeploymentCandidate>(
+      "candidate",
       requireExecutionId(body.candidateId, "candidateId"),
     );
     if (!candidate || candidate.projectId !== projectId)
@@ -440,7 +496,7 @@ export class DeploymentOrchestrator {
         "STALE_CANDIDATE",
         "the release policy changed; create a new candidate",
       );
-    const verification = this.options.verification.get(
+    const verification = await this.options.verification.load(
       principal,
       candidate.verificationId,
     );
@@ -508,20 +564,19 @@ export class DeploymentOrchestrator {
       actor: principal.id,
       startedAt,
     };
-    this.idempotency.set(key, releaseId);
-    this.save(receipt);
+    await this.save(receipt);
     this.record("deployment_started", principal.id, projectId, {
       releaseId,
       candidateId: candidate.candidateId,
       targetId: target.targetId,
       targetClass: target.targetClass,
     });
-    const finish = (
+    const finish = async (
       status: ReleaseStatus,
       reasons: ReleaseReceipt["reasons"],
       extra: Partial<ReleaseReceipt> = {},
     ) => {
-      receipt = this.save({
+      receipt = await this.save({
         ...receipt,
         ...extra,
         status,
@@ -579,7 +634,7 @@ export class DeploymentOrchestrator {
           },
         ]);
       }
-      receipt = this.save({
+      receipt = await this.save({
         ...receipt,
         status: "deployed",
         providerReleaseId,
@@ -590,7 +645,7 @@ export class DeploymentOrchestrator {
       });
       if (!reqs.requirePostDeployVerification)
         return finish("deployed", [], { providerReleaseId });
-      receipt = this.save({ ...receipt, status: "verifying" });
+      receipt = await this.save({ ...receipt, status: "verifying" });
       let check;
       try {
         check = await this.withTimeout(
@@ -618,7 +673,7 @@ export class DeploymentOrchestrator {
         versionMatches: postDeploy.versionMatches,
       });
       if (!postDeploy.reachable) {
-        const degraded = finish(
+        const degraded = await finish(
           "degraded",
           [
             {
@@ -633,7 +688,7 @@ export class DeploymentOrchestrator {
           : degraded;
       }
       if (!postDeploy.versionMatches) {
-        const failed = finish(
+        const failed = await finish(
           "failed",
           [
             {
@@ -656,10 +711,17 @@ export class DeploymentOrchestrator {
 
   /* ---- rollback ------------------------------------------------ */
 
-  private lastHealthyBefore(
+  private async lastHealthyBefore(
     release: ReleaseReceipt,
-  ): ReleaseReceipt | undefined {
-    return [...this.releases.values()]
+  ): Promise<ReleaseReceipt | undefined> {
+    const history = await this.ledger.list<ReleaseReceipt>(
+      "release",
+      release.projectId,
+      200,
+      (r) => r.releaseId,
+      (r) => r.startedAt,
+    );
+    return history
       .filter(
         (r) =>
           r.targetId === release.targetId &&
@@ -681,7 +743,15 @@ export class DeploymentOrchestrator {
     const adapter = this.adapters.get(target.adapterId);
     if (!adapter?.rollback)
       deny("ROLLBACK_UNAVAILABLE", "the target adapter cannot roll back");
-    const candidate = this.candidates.get(to.candidateId)!;
+    const candidate = await this.ledger.find<DeploymentCandidate>(
+      "candidate",
+      to.candidateId,
+    );
+    if (!candidate)
+      deny(
+        "ROLLBACK_UNAVAILABLE",
+        "the previous release's candidate is unknown",
+      );
     this.acquireLock(target.targetId, release.releaseId);
     try {
       this.record("rollback_started", principal.id, release.projectId, {
@@ -691,11 +761,11 @@ export class DeploymentOrchestrator {
       });
       await this.withTimeout(target.timeoutMs, (signal) =>
         adapter!.rollback!(
-          { candidate, target, signal },
+          { candidate: candidate!, target, signal },
           to.providerReleaseId!,
         ),
       );
-      const rolled = this.save({
+      const rolled = await this.save({
         ...release,
         status: "rolled_back",
         rollback: {
@@ -720,7 +790,7 @@ export class DeploymentOrchestrator {
     principal: OperatorPrincipal,
     release: ReleaseReceipt,
   ): Promise<ReleaseReceipt> {
-    const to = this.lastHealthyBefore(release);
+    const to = await this.lastHealthyBefore(release);
     if (!to) return release;
     return this.restore(principal, release, to, true);
   }
@@ -732,7 +802,8 @@ export class DeploymentOrchestrator {
     const body = onlyKeys(raw, ["projectId", "releaseId", "approvalId"]);
     const projectId = requireExecutionId(body.projectId, "projectId");
     this.authorize(principal, projectId, "rollback_release");
-    const release = this.releases.get(
+    const release = await this.ledger.find<ReleaseReceipt>(
+      "release",
       requireExecutionId(body.releaseId, "releaseId"),
     );
     if (!release || release.projectId !== projectId)
@@ -764,7 +835,7 @@ export class DeploymentOrchestrator {
       if (reason) deny(reason.code, reason.detail);
     }
     const to =
-      this.lastHealthyBefore(release) ??
+      (await this.lastHealthyBefore(release)) ??
       deny(
         "ROLLBACK_UNAVAILABLE",
         "no known previous healthy release exists for this target",
@@ -774,20 +845,23 @@ export class DeploymentOrchestrator {
 
   /* ---- reads --------------------------------------------------- */
 
-  listReleases(
+  async listReleases(
     principal: OperatorPrincipal,
     projectId: string,
     limit = 50,
-  ): ReleaseReceipt[] {
+  ): Promise<ReleaseReceipt[]> {
     this.authorize(
       principal,
       requireExecutionId(projectId, "projectId"),
       "view",
     );
-    return [...this.releases.values()]
-      .filter((r) => r.projectId === projectId)
-      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-      .slice(0, Math.min(Math.max(1, limit), 200));
+    return this.ledger.list<ReleaseReceipt>(
+      "release",
+      projectId,
+      limit,
+      (r) => r.releaseId,
+      (r) => r.startedAt,
+    );
   }
 
   listTargets(principal: OperatorPrincipal, projectId: string) {

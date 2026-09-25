@@ -115,10 +115,10 @@ export async function getExecutionOverview(
     s.reasons.some((r) => r.code === "APPROVAL_REQUIRED"),
   ).length;
   const verifications = ctx.verification
-    ? ctx.verification.history(principal, projectId)
+    ? await ctx.verification.listHistory(principal, projectId, 200)
     : undefined;
   const releases = ctx.deployments
-    ? ctx.deployments.listReleases(principal, projectId, 200)
+    ? await ctx.deployments.listReleases(principal, projectId, 200)
     : undefined;
   const count = <T extends { status: string }>(items: readonly T[]) =>
     items.reduce<Record<string, number>>(
@@ -211,7 +211,19 @@ export async function getExecutionSessionDetail(
     MAX_TIMELINE,
   );
   const tOffset = Math.max(0, query.timelineOffset ?? 0);
-  const receipts = (ctx.executionReceipts?.forSession(sessionId) ?? [])
+  // EO-4.8: durable receipts (every instance, survives restarts) when configured.
+  const receipts = (
+    ctx.executionRecords
+      ? await ctx.executionRecords.listBy<ExecutionReceipt>(
+          "sessionId",
+          sessionId,
+          {
+            kind: "receipt",
+            limit: MAX_RECEIPTS,
+          },
+        )
+      : (ctx.executionReceipts?.forSession(sessionId) ?? [])
+  )
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
     .slice(0, MAX_RECEIPTS)
     .map(receiptView);
@@ -221,8 +233,7 @@ export async function getExecutionSessionDetail(
   const agent = ctx.agents.get(session.agentId);
   const instance = ctx.environments?.getInstance(session.environmentInstanceId);
   const verifications: VerificationResult[] = ctx.verification
-    ? ctx.verification
-        .history(principal, projectId)
+    ? (await ctx.verification.listHistory(principal, projectId, 200))
         .filter((v) => v.sourceSessionId === sessionId)
         .slice(0, 20)
     : [];
@@ -328,7 +339,7 @@ export async function getProjectVerifications(
 ) {
   requireExecutionId(projectId, "projectId");
   if (!ctx.verification) return { configured: false as const, items: [] };
-  const items = ctx.verification.history(principal, projectId).slice(0, 50);
+  const items = await ctx.verification.listHistory(principal, projectId, 50);
   // Source consistency: a passed verification is CURRENT only if the
   // project's source still has the verified fingerprint.
   const current = await ctx.workspaceControl
@@ -346,17 +357,17 @@ export async function getProjectVerifications(
   };
 }
 
-export function getProjectReleases(
+export async function getProjectReleases(
   ctx: ControlPlaneContext,
   principal: OperatorPrincipal,
   projectId: string,
 ) {
   requireExecutionId(projectId, "projectId");
   const sourceControl = ctx.sourceControl
-    ? ctx.sourceControl.activity(principal, projectId, 50)
+    ? await ctx.sourceControl.activity(principal, projectId, 50)
     : undefined;
   const releases: ReleaseReceipt[] | undefined = ctx.deployments
-    ? ctx.deployments.listReleases(principal, projectId, 50)
+    ? await ctx.deployments.listReleases(principal, projectId, 50)
     : undefined;
   const targets = ctx.deployments
     ? ctx.deployments.listTargets(principal, projectId)

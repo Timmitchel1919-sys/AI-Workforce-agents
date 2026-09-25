@@ -598,7 +598,7 @@ export class WorkforceQueryService {
     return getProjectVerifications(this.ctx, principal, projectId);
   }
 
-  getProjectReleases(principal: OperatorPrincipal, projectId: string) {
+  async getProjectReleases(principal: OperatorPrincipal, projectId: string) {
     this.authorizeView(principal);
     if (
       !this.ctx.projects.get(projectId) ||

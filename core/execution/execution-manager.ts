@@ -47,6 +47,8 @@ import {
   type PreflightCheck,
   type PreflightResult,
   type SandboxProvider,
+  type ExecutionReceipt,
+  type ExecutionRecordStore,
 } from "../../contracts/index.js";
 import type { ApprovalSystem } from "../approvals/approval-system.js";
 import type { AuditLog } from "../audit/audit-log.js";
@@ -125,6 +127,12 @@ export interface ExecutionManagerOptions {
    * by the trusted workspace adapter. Reached only through this manager.
    */
   workspaceControl?: WorkspaceControl;
+  /**
+   * EO-4.8 durable evidence: every receipt is also written (create-only,
+   * awaited) to this store, so receipts survive restarts and are visible
+   * across Control Plane instances.
+   */
+  receiptStore?: ExecutionRecordStore;
   /**
    * EO-4.5 environment execution adapters + runners (trusted composition).
    * Operations that declare an `environment` requirement need a ready
@@ -1593,7 +1601,7 @@ export class ExecutionManager {
       ...(outcome?.changeSetId ? { changeSetId: outcome.changeSetId } : {}),
       ...(outcome?.environment ? { environment: outcome.environment } : {}),
     });
-    this.options.receipts?.record(receipt);
+    await this.persistReceipt(receipt, principal.id);
     this.record(
       exitClass === "success"
         ? "operation_completed"
@@ -1750,6 +1758,33 @@ export class ExecutionManager {
     return report;
   }
 
+  /** In-memory index + durable, create-only evidence (EO-4.8). */
+  private async persistReceipt(
+    receipt: ExecutionReceipt,
+    actor: string,
+  ): Promise<void> {
+    this.options.receipts?.record(receipt);
+    if (!this.options.receiptStore) return;
+    try {
+      await this.options.receiptStore.create(
+        receipt.receiptId,
+        {
+          projectId: receipt.projectId,
+          kind: "receipt",
+          createdAt: receipt.endedAt,
+          sessionId: receipt.sessionId,
+        },
+        receipt,
+      );
+    } catch {
+      // Execution already happened: never hide it — record the evidence gap.
+      this.record("receipt_persistence_failed", actor, receipt.projectId, {
+        execution: receipt.sessionId,
+        receiptId: receipt.receiptId,
+      });
+    }
+  }
+
   private async releaseWorkspace(
     actor: string,
     session: ExecutionSession,
@@ -1774,12 +1809,12 @@ export class ExecutionManager {
   }
 
   /** A denied invocation: audited + receipted; the session is untouched. */
-  private denied(
+  private async denied(
     principal: OperatorPrincipal,
     session: ExecutionSession,
     request: InvocationRequest,
     reasons: readonly ExecutionReason[],
-  ): InvocationResult {
+  ): Promise<InvocationResult> {
     const at = this.clock();
     const receiptId = this.newId("rcp");
     const receipt = createExecutionReceipt({
@@ -1806,7 +1841,7 @@ export class ExecutionManager {
       invocationId: request.invocationId,
       reasons,
     });
-    this.options.receipts?.record(receipt);
+    await this.persistReceipt(receipt, principal.id);
     this.record("invocation_denied", principal.id, session.projectId, {
       execution: session.sessionId,
       invocationId: request.invocationId,

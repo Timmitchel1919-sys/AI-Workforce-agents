@@ -25,7 +25,10 @@ import {
   type SourceControlOrchestrator,
   type VerificationService,
 } from "../core/index.js";
-import type { WorkspaceControl } from "../contracts/index.js";
+import type {
+  ExecutionRecordStore,
+  WorkspaceControl,
+} from "../contracts/index.js";
 import { type HealthProbe } from "./health.js";
 import { type ControlEventPublisher } from "./ports.js";
 import { AgentOperationalStore, WorkflowControlStore } from "./stores.js";
@@ -62,7 +65,9 @@ export interface ControlPlaneContext {
   /** Execution receipts (evidence per invocation). */
   executionReceipts?: Pick<InMemoryExecutionReceiptStore, "forSession">;
   /** EO-4.4 verification history. */
-  verification?: Pick<VerificationService, "history">;
+  verification?: Pick<VerificationService, "listHistory">;
+  /** EO-4.8 durable execution records (receipts, verifications, releases). */
+  executionRecords?: ExecutionRecordStore;
   /** Current source fingerprints (source-consistency display). */
   workspaceControl?: Pick<WorkspaceControl, "sourceFingerprint">;
   /** EO-4.6 governed source control (reviews, stage sets, commits, pushes). */

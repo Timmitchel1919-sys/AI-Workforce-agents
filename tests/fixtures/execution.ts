@@ -8,6 +8,7 @@ import {
   REQUIRED_LIMIT_KEYS,
   type ExecutionOperationDefinition,
   type ExecutionPolicy,
+  type ExecutionRecordStore,
   type OperatorPrincipal,
   type SandboxProvider,
   type Tool,
@@ -20,6 +21,8 @@ import {
   InMemoryExecutionSessionStore,
   SandboxRegistry,
   ToolRegistry,
+  type ExecutionManagerOptions,
+  type ExecutionSessionStore,
 } from "../../core/index.js";
 import {
   WEB_AGENT,
@@ -225,7 +228,13 @@ export class NonExecutingTestSandbox implements SandboxProvider {
 }
 
 export async function harness(
-  options: { sandbox?: boolean; production?: boolean } = {},
+  options: {
+    sandbox?: boolean;
+    production?: boolean;
+    /** EO-4.8: inject durable stores (e.g. Firestore over a fake). */
+    sessions?: ExecutionSessionStore;
+    receiptStore?: ExecutionRecordStore;
+  } = {},
 ) {
   const fixture = planningFixture({
     hosts: [WEB_HOST],
@@ -248,9 +257,9 @@ export async function harness(
   const sandboxes = new SandboxRegistry();
   const sandbox = new NonExecutingTestSandbox(new Set(["web-1"]));
   if (options.sandbox !== false) sandboxes.register(sandbox);
-  const sessions = new InMemoryExecutionSessionStore();
+  const sessions = options.sessions ?? new InMemoryExecutionSessionStore();
   let seq = 0;
-  const manager = new ExecutionManager({
+  const managerOptions: ExecutionManagerOptions = {
     planning: fixture.planning,
     approvals: fixture.approvals,
     agents: fixture.agents,
@@ -265,7 +274,9 @@ export async function harness(
     audit: fixture.audit,
     clock: () => "2026-09-24T12:00:00.000Z",
     idFactory: (prefix) => `${prefix}_${++seq}`,
-  });
+    ...(options.receiptStore ? { receiptStore: options.receiptStore } : {}),
+  };
+  const manager = new ExecutionManager(managerOptions);
   const plan = await fixture.planning.createPlan(webRequest("alpha"), {
     id: "op-1",
   });
@@ -287,5 +298,6 @@ export async function harness(
     request,
     tools,
     policies,
+    managerOptions,
   };
 }

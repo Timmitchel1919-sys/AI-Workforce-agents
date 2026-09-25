@@ -19,6 +19,8 @@ import {
 import {
   FirebaseOperatorDirectory,
   FirestoreExecutionPlanStore,
+  FirestoreExecutionRecordStore,
+  FirestoreExecutionSessionStore,
   FirestoreOperatorAccountStore,
   FirestoreOperatorProfileStore,
   isTransactionalFirestore,
@@ -50,7 +52,6 @@ import {
   ExecutionManager,
   ExecutionOperationRegistry,
   ExecutionPolicyRegistry,
-  InMemoryExecutionSessionStore,
   InMemoryExecutionReceiptStore,
   EnvironmentAdapterRegistry,
   SandboxRegistry,
@@ -235,6 +236,10 @@ export async function createProductionControlPlaneRuntime(
     containerPolicy: { approvedImages: [], requireDigest: true },
   }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
   const executionReceipts = new InMemoryExecutionReceiptStore();
+  const executionRecords = new FirestoreExecutionRecordStore(
+    transactionalFirestore,
+    { collectionPrefix: options.collectionPrefix },
+  );
   const execution = new ExecutionManager({
     planning,
     approvals,
@@ -246,9 +251,14 @@ export async function createProductionControlPlaneRuntime(
     operations: new ExecutionOperationRegistry(),
     policies: executionPolicies,
     sandboxes: new SandboxRegistry(),
-    sessions: new InMemoryExecutionSessionStore(),
+    // EO-4.8: sessions are transactional in Firestore (CAS across instances);
+    // every receipt is also written create-only before a response returns.
+    sessions: new FirestoreExecutionSessionStore(transactionalFirestore, {
+      collectionPrefix: options.collectionPrefix,
+    }),
     audit,
     receipts: executionReceipts,
+    receiptStore: executionRecords,
     environmentAdapters,
   });
   const context: ControlPlaneContext = {
@@ -266,6 +276,7 @@ export async function createProductionControlPlaneRuntime(
     planning,
     execution,
     executionReceipts,
+    executionRecords,
     environmentAdapters,
     access,
     orchestrator,

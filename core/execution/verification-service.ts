@@ -39,6 +39,7 @@ import {
   type VerificationResult,
   type VerificationStatus,
   type WorkspaceControl,
+  type ExecutionRecordStore,
 } from "../../contracts/index.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { EnvironmentRegistry } from "../environments/environment-registry.js";
@@ -66,6 +67,11 @@ export interface VerificationServiceOptions {
   maxConcurrentPerProject?: number;
   /** Bounded, redacted log excerpt kept per stage. Default 16 KiB. */
   maxLogBytes?: number;
+  /**
+   * EO-4.8: terminal results are written here (awaited) so verification
+   * history and the evidence behind commits survive restarts.
+   */
+  store?: ExecutionRecordStore;
   clock?: () => string;
   idFactory?: (prefix: string) => string;
 }
@@ -332,8 +338,8 @@ export class VerificationService {
       planVersion: plan.version,
       ...(changeSet ? { changeSetId: changeSet.changeSetId } : {}),
     });
-    state.done = this.run(state, planned, graph, profile, changeSet).catch(
-      (error: unknown) =>
+    state.done = this.run(state, planned, graph, profile, changeSet)
+      .catch((error: unknown) =>
         this.finish(state, "failed", [
           {
             code: "EXECUTION_ERROR",
@@ -341,7 +347,11 @@ export class VerificationService {
               error instanceof Error ? error.message : "verification crashed",
           },
         ]),
-    );
+      )
+      .then(async (terminal) => {
+        await this.persist(terminal);
+        return terminal;
+      });
     return result;
   }
 
@@ -1069,6 +1079,66 @@ export class VerificationService {
     verificationId: string,
   ): Promise<VerificationResult> {
     return this.scoped(principal, verificationId, "view").done;
+  }
+
+  private async persist(result: VerificationResult): Promise<void> {
+    if (!this.options.store) return;
+    try {
+      await this.options.store.create(
+        result.verificationId,
+        {
+          projectId: result.projectId,
+          kind: "verification",
+          createdAt: result.createdAt,
+        },
+        result,
+      );
+    } catch {
+      this.record(
+        "verification_persistence_failed",
+        result.requestedBy,
+        result.projectId,
+        {
+          verification: result.verificationId,
+        },
+      );
+    }
+  }
+
+  /**
+   * A verification by id — live runs first, then durable history (EO-4.8),
+   * so evidence from before a restart still backs commits and releases.
+   */
+  async load(
+    principal: OperatorPrincipal,
+    verificationId: string,
+  ): Promise<VerificationResult> {
+    const id = requireExecutionId(verificationId, "verificationId");
+    if (this.runs.has(id)) return this.get(principal, id);
+    const stored = await this.options.store?.get<VerificationResult>(id);
+    if (!stored) throw new NotFoundError("resource not found");
+    this.authorize(principal, stored.projectId, "view");
+    return deepFreeze(stored);
+  }
+
+  /** Live + durable history for one project, newest first, bounded. */
+  async listHistory(
+    principal: OperatorPrincipal,
+    projectId: string,
+    limit = 50,
+  ): Promise<VerificationResult[]> {
+    const live = this.history(principal, projectId);
+    const stored = this.options.store
+      ? await this.options.store.listBy<VerificationResult>(
+          "projectId",
+          projectId,
+          { kind: "verification", limit },
+        )
+      : [];
+    const seen = new Set(live.map((r) => r.verificationId));
+    return [...live, ...stored.filter((r) => !seen.has(r.verificationId))]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, Math.min(Math.max(1, limit), 200));
   }
 
   /** Immutable history for one project, newest first. */

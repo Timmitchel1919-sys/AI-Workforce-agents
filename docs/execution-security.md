@@ -850,3 +850,59 @@ credential.
 - EO-4.1's deny-all policy is unchanged, so nothing executes.
 - Verification, source control and deployments are not configured in
   production, and the UI says so.
+
+# Durable Execution State (EO-4.8)
+
+Execution state is written to Firestore by the Control Plane (Admin SDK)
+only. Client rules stay deny-all, and the browser still reads everything
+through the Control Plane API.
+
+| Collection                                       | Contents                                                                                                                                                                | Semantics                                                                                                                                                     |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `execution_sessions/{sha256(sessionId)}`         | Execution sessions                                                                                                                                                      | Read from Firestore on every access; every update is a **transaction** comparing the stored revision (CAS) — two instances can never both win a transition    |
+| `execution_session_keys/{sha256(operator, key)}` | Idempotency key → session                                                                                                                                               | Created atomically with the session; a retried `createSession` replays after restarts                                                                         |
+| `execution_records/{sha256(recordId)}`           | Receipts, verification results, reviews, stage sets, commit/push receipts, pull requests, deployment candidates, releases, idempotency reservations, uniqueness markers | Evidence is **create-only**; releases advance with `put`; lookups are single-field equality queries (`projectId`, `sessionId`), newest first, bounded (≤ 500) |
+
+Each document stores a few index fields plus a JSON payload. This keeps
+Firestore type limits (undefined values, nested arrays) from corrupting
+evidence.
+
+## Guarantees
+
+- **Nothing reported that isn't stored.** Every write is awaited before a
+  command returns: a receipt before `invoke` returns, a verification before
+  `wait` resolves, a commit, push or release before its command returns.
+  - If a receipt cannot be written after an execution already happened, this
+    is recorded as a `receipt_persistence_failed` audit event, never hidden.
+- **Idempotency holds across instances.** Commit, push and deploy take a
+  create-only reservation before the mutation.
+  - A second instance with the same key is refused while the first is in
+    progress, and replays the original result once it is done.
+  - A failed request can be retried; an abandoned reservation expires after
+    10 minutes.
+- **Uniqueness:** one commit per stage set is enforced by a create-only
+  marker, taken only after every gate has passed.
+- **Restart survival:** verification history, release history and the
+  evidence behind commits and candidates survive restarts
+  (`VerificationService.load/listHistory`, `DurableLedger`), and rollback
+  finds the last healthy release from durable history.
+- **Flush before response:** the Functions adapter releases a response only
+  after pending cached-repository writes (audit, approvals, tasks) are
+  flushed, bounded to 5 s, so a frozen serverless instance cannot drop them.
+
+## Production
+
+- `ExecutionManager` uses `FirestoreExecutionSessionStore` and writes
+  receipts to `FirestoreExecutionRecordStore`.
+- The Control Center reads receipts from Firestore.
+- Verification, source control and deployments accept the same `store` and
+  become durable as soon as they are composed. They are not composed in
+  production yet.
+
+## Known follow-up
+
+`functions/index.ts` builds a new Control Plane runtime for every request
+(the handler is not memoized). It is correct but slow. Memoizing it would make
+the hydrate-once cached repositories stale across the two Function instances,
+so it needs its own change: either move those collections to read-through
+stores, or accept the staleness explicitly.

@@ -11,7 +11,12 @@ import { type ApiHandler } from "../api/http-api.js";
 
 export interface ControlPlaneHttpRuntime {
   readonly handler: ApiHandler;
+  /** Await pending durable writes (EO-4.8: flushed before a response ends). */
+  flush?(): Promise<void>;
 }
+
+/** Upper bound for flushing writes before a response is released. */
+export const FLUSH_BEFORE_RESPONSE_MS = 5_000;
 
 export type ControlPlaneRuntimeFactory = () => Promise<ControlPlaneHttpRuntime>;
 
@@ -57,12 +62,52 @@ export function createControlPlaneHttpsAdapter(
   return async (request, response): Promise<void> => {
     try {
       const runtime = await singleton.get();
-      runtime.handler(request, response);
+      if (runtime.flush) holdResponseUntilFlushed(response, runtime.flush);
+      await Promise.resolve(runtime.handler(request, response));
     } catch (error) {
       logInitializationFailure(error);
       sendUnavailable(response);
     }
   };
+}
+
+/**
+ * EO-4.8: the response is only released after pending Firestore writes
+ * (audit, approvals, …) are flushed, bounded by FLUSH_BEFORE_RESPONSE_MS.
+ * A serverless instance may freeze right after the response; nothing that
+ * the response already reported may still be in flight at that moment.
+ */
+export function holdResponseUntilFlushed(
+  response: ServerResponse,
+  flush: () => Promise<void>,
+  timeoutMs = FLUSH_BEFORE_RESPONSE_MS,
+): void {
+  const end = response.end.bind(response) as (
+    ...args: unknown[]
+  ) => ServerResponse;
+  let ending = false;
+  (response as unknown as { end: (...args: unknown[]) => ServerResponse }).end =
+    (...args: unknown[]) => {
+      if (ending) return response;
+      ending = true;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      void Promise.race([
+        flush(),
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, timeoutMs);
+        }),
+      ])
+        .catch(() => {
+          console.error("Control Plane durable flush failed", {
+            phase: "flush_before_response",
+          });
+        })
+        .finally(() => {
+          clearTimeout(timer);
+          end(...args);
+        });
+      return response;
+    };
 }
 
 function logInitializationFailure(error: unknown): void {

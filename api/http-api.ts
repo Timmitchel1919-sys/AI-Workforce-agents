@@ -416,7 +416,7 @@ export function createControlPlaneApi(
           return send(
             res,
             200,
-            notNull(query.getProjectReleases(principal, id!)),
+            notNull(await query.getProjectReleases(principal, id!)),
             correlationId,
           );
         }

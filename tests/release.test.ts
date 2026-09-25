@@ -26,6 +26,7 @@ import {
   ValidationError,
   type DeploymentAdapter,
   type DeploymentContext,
+  type ExecutionRecordStore,
   type ExecutionPolicy,
   type ReleasePolicy,
   type RepositoryPolicy,
@@ -41,6 +42,7 @@ import {
   ExecutionPolicyRegistry,
   ExecutionToolRegistry,
   InMemoryExecutionReceiptStore,
+  InMemoryExecutionRecordStore,
   InMemoryExecutionSessionStore,
   PermissionSystem,
   SandboxRegistry,
@@ -168,7 +170,12 @@ const GATES = (
 });
 
 async function harness(
-  options: { protectedMain?: boolean; requireReview?: boolean } = {},
+  options: {
+    protectedMain?: boolean;
+    requireReview?: boolean;
+    /** EO-4.8 durable release records (restart simulation). */
+    store?: ExecutionRecordStore;
+  } = {},
 ) {
   const tmp = mkdtempSync(path.join(os.tmpdir(), "aiw-eo46-"));
   const remote = path.join(tmp, "remote.git");
@@ -348,116 +355,123 @@ async function harness(
   });
   const prs: { sourceBranch: string; targetBranch: string }[] = [];
   const credentialLookups: string[] = [];
-  const sc = new SourceControlOrchestrator({
-    git: gitAdapter,
-    verification,
-    manager,
-    workspaceControl: workspace,
-    approvals: fixture.approvals,
-    projects,
-    audit: fixture.audit,
-    credentials: {
-      resolve: async (ref) => {
-        credentialLookups.push(ref);
-        return ref === "secret://deploy-alpha" ? DEPLOY_SECRET : TOKEN;
-      },
-    },
-    pullRequests: {
-      provider: "test-provider",
-      create: async (input) => {
-        prs.push(input);
-        return { number: prs.length };
-      },
-    },
-    idFactory,
-  });
-  const repoPolicy: RepositoryPolicy = {
-    projectId: "alpha",
-    repositoryId: "repo-alpha",
-    version: 1,
-    branch: options.protectedMain
-      ? {
-          defaultBranch: "main",
-          protectedBranches: ["main"],
-          directPushBranches: [],
-          workingBranchPrefix: "aiw/",
-          pullRequestRequired: true,
-        }
-      : {
-          defaultBranch: "main",
-          protectedBranches: [],
-          directPushBranches: ["main"],
-          workingBranchPrefix: "aiw/",
-          pullRequestRequired: false,
-        },
-    requireReview: options.requireReview ?? true,
-    requireIndependentReview: true,
-    requireCommitApproval: true,
-    requirePushApproval: true,
-    commitIdentity: {
-      name: "AI Workforce Automation",
-      email: "automation@aiworkforce.test",
-    },
-    credentialRef: "secret://github-alpha",
-  };
-  sc.setRepositoryPolicy(repoPolicy);
-
   const deployAdapter = new FakeDeploymentAdapter();
-  const deploy = new DeploymentOrchestrator({
-    sourceControl: sc,
-    verification,
-    artifacts,
-    approvals: fixture.approvals,
-    projects,
-    audit: fixture.audit,
-    credentials: { resolve: async () => DEPLOY_SECRET },
-    idFactory,
-  });
-  deploy.registerAdapter(deployAdapter);
-  deploy.registerTarget({
-    targetId: "alpha-preview",
-    projectId: "alpha",
-    targetClass: "preview",
-    adapterId: deployAdapter.adapterId,
-    resources: ["hosting"],
-    providerRef: "alpha-preview-site",
-    timeoutMs: 2_000,
-  });
-  deploy.registerTarget({
-    targetId: "alpha-prod",
-    projectId: "alpha",
-    targetClass: "production",
-    adapterId: deployAdapter.adapterId,
-    resources: ["hosting"],
-    providerRef: "alpha-prod-site",
-    credentialRef: "secret://deploy-alpha",
-    timeoutMs: 2_000,
-  });
-  deploy.registerTarget({
-    targetId: "beta-prod",
-    projectId: "beta",
-    targetClass: "production",
-    adapterId: deployAdapter.adapterId,
-    resources: ["hosting"],
-    providerRef: "beta-site",
-    timeoutMs: 2_000,
-  });
-  const releasePolicy: ReleasePolicy = {
-    projectId: "alpha",
-    version: 1,
-    targets: {
-      development: GATES(),
-      preview: GATES(),
-      staging: GATES({ requireReview: true }),
-      production: GATES({
-        requireReview: true,
-        requireApproval: true,
-        requireRollbackPlan: true,
-        requireRollbackApproval: true,
-      }),
-    },
+  /** Builds the release services; called again to simulate a restart. */
+  const buildReleaseServices = () => {
+    const sc = new SourceControlOrchestrator({
+      git: gitAdapter,
+      verification,
+      manager,
+      workspaceControl: workspace,
+      approvals: fixture.approvals,
+      projects,
+      audit: fixture.audit,
+      credentials: {
+        resolve: async (ref) => {
+          credentialLookups.push(ref);
+          return ref === "secret://deploy-alpha" ? DEPLOY_SECRET : TOKEN;
+        },
+      },
+      pullRequests: {
+        provider: "test-provider",
+        create: async (input) => {
+          prs.push(input);
+          return { number: prs.length };
+        },
+      },
+      idFactory,
+      ...(options.store ? { store: options.store } : {}),
+    });
+    const repoPolicy: RepositoryPolicy = {
+      projectId: "alpha",
+      repositoryId: "repo-alpha",
+      version: 1,
+      branch: options.protectedMain
+        ? {
+            defaultBranch: "main",
+            protectedBranches: ["main"],
+            directPushBranches: [],
+            workingBranchPrefix: "aiw/",
+            pullRequestRequired: true,
+          }
+        : {
+            defaultBranch: "main",
+            protectedBranches: [],
+            directPushBranches: ["main"],
+            workingBranchPrefix: "aiw/",
+            pullRequestRequired: false,
+          },
+      requireReview: options.requireReview ?? true,
+      requireIndependentReview: true,
+      requireCommitApproval: true,
+      requirePushApproval: true,
+      commitIdentity: {
+        name: "AI Workforce Automation",
+        email: "automation@aiworkforce.test",
+      },
+      credentialRef: "secret://github-alpha",
+    };
+    sc.setRepositoryPolicy(repoPolicy);
+
+    const deploy = new DeploymentOrchestrator({
+      sourceControl: sc,
+      verification,
+      artifacts,
+      approvals: fixture.approvals,
+      projects,
+      audit: fixture.audit,
+      credentials: { resolve: async () => DEPLOY_SECRET },
+      idFactory,
+      ...(options.store ? { store: options.store } : {}),
+    });
+    deploy.registerAdapter(deployAdapter);
+    deploy.registerTarget({
+      targetId: "alpha-preview",
+      projectId: "alpha",
+      targetClass: "preview",
+      adapterId: deployAdapter.adapterId,
+      resources: ["hosting"],
+      providerRef: "alpha-preview-site",
+      timeoutMs: 2_000,
+    });
+    deploy.registerTarget({
+      targetId: "alpha-prod",
+      projectId: "alpha",
+      targetClass: "production",
+      adapterId: deployAdapter.adapterId,
+      resources: ["hosting"],
+      providerRef: "alpha-prod-site",
+      credentialRef: "secret://deploy-alpha",
+      timeoutMs: 2_000,
+    });
+    deploy.registerTarget({
+      targetId: "beta-prod",
+      projectId: "beta",
+      targetClass: "production",
+      adapterId: deployAdapter.adapterId,
+      resources: ["hosting"],
+      providerRef: "beta-site",
+      timeoutMs: 2_000,
+    });
+    const releasePolicy: ReleasePolicy = {
+      projectId: "alpha",
+      version: 1,
+      targets: {
+        development: GATES(),
+        preview: GATES(),
+        staging: GATES({ requireReview: true }),
+        production: GATES({
+          requireReview: true,
+          requireApproval: true,
+          requireRollbackPlan: true,
+          requireRollbackApproval: true,
+        }),
+      },
+    };
+    deploy.setReleasePolicy(releasePolicy);
+    return { sc, deploy, repoPolicy, releasePolicy };
   };
-  deploy.setReleasePolicy(releasePolicy);
+  const { sc, deploy, repoPolicy, releasePolicy } = buildReleaseServices();
 
   const plan = await fixture.planning.createPlan(webRequest("alpha"), {
     id: "op-1",
@@ -532,7 +546,7 @@ async function harness(
       verificationId: v.verificationId,
       reviewId: review.reviewId,
     });
-    const ca = sc.requestApproval(ADMIN, {
+    const ca = await sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "commit",
       subjectId: stage.stageSetId,
@@ -549,7 +563,7 @@ async function harness(
       },
       `c-${++keys}`,
     );
-    const pa = sc.requestApproval(ADMIN, {
+    const pa = await sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "push",
       subjectId: commit.receiptId,
@@ -588,6 +602,7 @@ async function harness(
     toPushed,
     repoPolicy,
     releasePolicy,
+    restart: buildReleaseServices,
     nextKey: () => `k-${++keys}`,
     cleanup: () => rmSync(tmp, { recursive: true, force: true }),
   };
@@ -619,7 +634,7 @@ test("EO-4.6 79/84/86 VERIFIED + REVIEWED: bounded stage set, commit with receip
       ["README.md", "src/feature.js"],
     );
     assert.equal(stage.sourceFingerprint, v.sourceFingerprint);
-    const approval = h.sc.requestApproval(ADMIN, {
+    const approval = await h.sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "commit",
       subjectId: stage.stageSetId,
@@ -736,7 +751,7 @@ test("EO-4.6 81 SOURCE CHANGED after verification: REVERIFICATION_REQUIRED at st
       path.join(h.repo, "src", "feature.js"),
       "export const feature = false; // changed after verify\n",
     );
-    const approval = h.sc.requestApproval(ADMIN, {
+    const approval = await h.sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "commit",
       subjectId: stage.stageSetId,
@@ -902,7 +917,7 @@ test("EO-4.6 91/92/93 PUSH: commit exists unpushed until an approved push; push 
       verificationId: v.verificationId,
       reviewId: review.reviewId,
     });
-    const ca = h.sc.requestApproval(ADMIN, {
+    const ca = await h.sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "commit",
       subjectId: stage.stageSetId,
@@ -941,7 +956,7 @@ test("EO-4.6 91/92/93 PUSH: commit exists unpushed until an approved push; push 
       ),
       denied("APPROVAL_REQUIRED"),
     );
-    const pa = h.sc.requestApproval(ADMIN, {
+    const pa = await h.sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "push",
       subjectId: commit.receiptId,
@@ -978,7 +993,7 @@ test("EO-4.6 91/92/93 PUSH: commit exists unpushed until an approved push; push 
       push.receiptId,
     );
     assert.equal(
-      h.deploy.listReleases(ADMIN, "alpha").length,
+      (await h.deploy.listReleases(ADMIN, "alpha")).length,
       0,
       "PUSHED ≠ DEPLOYED",
     );
@@ -1003,7 +1018,7 @@ test("EO-4.6 90 REMOTE CHANGED: push blocked, nothing overwritten", async () => 
       verificationId: v.verificationId,
       reviewId: review.reviewId,
     });
-    const ca = h.sc.requestApproval(ADMIN, {
+    const ca = await h.sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "commit",
       subjectId: stage.stageSetId,
@@ -1028,7 +1043,7 @@ test("EO-4.6 90 REMOTE CHANGED: push blocked, nothing overwritten", async () => 
     git(other, "commit", "-q", "-m", "concurrent change");
     git(other, "push", "-q", "origin", "main");
     const theirs = remoteHead(h.remote);
-    const pa = h.sc.requestApproval(ADMIN, {
+    const pa = await h.sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "push",
       subjectId: commit.receiptId,
@@ -1070,7 +1085,7 @@ test("EO-4.6 26/35 PROTECTED MAIN: pushes to a working branch and opens a PR; ma
       h.prs.map((p) => [p.sourceBranch, p.targetBranch]),
       [[push.branch, "main"]],
     );
-    const activity = h.sc.activity(ADMIN, "alpha");
+    const activity = await h.sc.activity(ADMIN, "alpha");
     assert.equal(
       activity.pullRequests[0]!.checks,
       "unknown",
@@ -1085,7 +1100,7 @@ test("EO-4.6 94/99 DEPLOYMENT CANDIDATE → preview deploy → verify → HEALTH
   const h = await harness();
   try {
     const { push, verification: v } = await h.toPushed();
-    const candidate = h.deploy.createCandidate(ADMIN, {
+    const candidate = await h.deploy.createCandidate(ADMIN, {
       projectId: "alpha",
       pushReceiptId: push.receiptId,
       targetId: "alpha-preview",
@@ -1137,35 +1152,32 @@ test("EO-4.6 95/96/97/98 STALE candidate, WRONG target, PRODUCTION approval, pre
   const h = await harness();
   try {
     const { push } = await h.toPushed();
-    assert.throws(
-      () =>
-        h.deploy.createCandidate(ADMIN, {
-          projectId: "alpha",
-          pushReceiptId: push.receiptId,
-          targetId: "beta-prod",
-        }),
+    await assert.rejects(
+      h.deploy.createCandidate(ADMIN, {
+        projectId: "alpha",
+        pushReceiptId: push.receiptId,
+        targetId: "beta-prod",
+      }),
       denied("TARGET_NOT_REGISTERED"),
     );
-    assert.throws(
-      () =>
-        h.deploy.createCandidate(ADMIN, {
-          projectId: "alpha",
-          pushReceiptId: push.receiptId,
-          targetId: "firebase:someone-elses-project",
-        }),
+    await assert.rejects(
+      h.deploy.createCandidate(ADMIN, {
+        projectId: "alpha",
+        pushReceiptId: push.receiptId,
+        targetId: "firebase:someone-elses-project",
+      }),
       denied("TARGET_NOT_REGISTERED"),
     );
-    assert.throws(
-      () =>
-        h.deploy.createCandidate(ADMIN, {
-          projectId: "alpha",
-          pushReceiptId: push.receiptId,
-          targetId: "alpha-prod",
-          destination: "prod",
-        }),
+    await assert.rejects(
+      h.deploy.createCandidate(ADMIN, {
+        projectId: "alpha",
+        pushReceiptId: push.receiptId,
+        targetId: "alpha-prod",
+        destination: "prod",
+      }),
       ValidationError,
     );
-    const prod = h.deploy.createCandidate(ADMIN, {
+    const prod = await h.deploy.createCandidate(ADMIN, {
       projectId: "alpha",
       pushReceiptId: push.receiptId,
       targetId: "alpha-prod",
@@ -1192,7 +1204,7 @@ test("EO-4.6 95/96/97/98 STALE candidate, WRONG target, PRODUCTION approval, pre
       ),
       denied("APPROVAL_REQUIRED"),
     );
-    const preview = h.deploy.createCandidate(ADMIN, {
+    const preview = await h.deploy.createCandidate(ADMIN, {
       projectId: "alpha",
       pushReceiptId: push.receiptId,
       targetId: "alpha-preview",
@@ -1227,18 +1239,20 @@ test("EO-4.6 100/101/102 DEPLOY FAILURE, HEALTH FAILURE, VERSION MISMATCH: never
   const h = await harness();
   try {
     const { push } = await h.toPushed();
-    const c = () =>
-      h.deploy.createCandidate(ADMIN, {
-        projectId: "alpha",
-        pushReceiptId: push.receiptId,
-        targetId: "alpha-preview",
-      }).candidateId;
+    const c = async () =>
+      (
+        await h.deploy.createCandidate(ADMIN, {
+          projectId: "alpha",
+          pushReceiptId: push.receiptId,
+          targetId: "alpha-preview",
+        })
+      ).candidateId;
     h.deployAdapter.fail = true;
     assert.equal(
       (
         await h.deploy.deploy(
           ADMIN,
-          { projectId: "alpha", candidateId: c() },
+          { projectId: "alpha", candidateId: await c() },
           "f1",
         )
       ).status,
@@ -1248,7 +1262,7 @@ test("EO-4.6 100/101/102 DEPLOY FAILURE, HEALTH FAILURE, VERSION MISMATCH: never
     h.deployAdapter.reachable = false;
     const degraded = await h.deploy.deploy(
       ADMIN,
-      { projectId: "alpha", candidateId: c() },
+      { projectId: "alpha", candidateId: await c() },
       "f2",
     );
     assert.equal(degraded.status, "degraded");
@@ -1256,7 +1270,7 @@ test("EO-4.6 100/101/102 DEPLOY FAILURE, HEALTH FAILURE, VERSION MISMATCH: never
     h.deployAdapter.reportVersion = "0".repeat(40);
     const mismatch = await h.deploy.deploy(
       ADMIN,
-      { projectId: "alpha", candidateId: c() },
+      { projectId: "alpha", candidateId: await c() },
       "f3",
     );
     assert.equal(mismatch.status, "failed");
@@ -1265,7 +1279,7 @@ test("EO-4.6 100/101/102 DEPLOY FAILURE, HEALTH FAILURE, VERSION MISMATCH: never
     h.deployAdapter.hangMs = 3_000;
     const slow = await h.deploy.deploy(
       ADMIN,
-      { projectId: "alpha", candidateId: c() },
+      { projectId: "alpha", candidateId: await c() },
       "f4",
     );
     assert.equal(slow.status, "failed");
@@ -1280,12 +1294,12 @@ test("EO-4.6 103/110 ROLLBACK to a known healthy release (approved); concurrent 
   try {
     const { push } = await h.toPushed();
     const prodDeploy = async (key: string) => {
-      const cand = h.deploy.createCandidate(ADMIN, {
+      const cand = await h.deploy.createCandidate(ADMIN, {
         projectId: "alpha",
         pushReceiptId: push.receiptId,
         targetId: "alpha-prod",
       });
-      const a = h.deploy.requestApproval(ADMIN, {
+      const a = await h.deploy.requestApproval(ADMIN, {
         projectId: "alpha",
         operation: "deploy",
         subjectId: cand.candidateId,
@@ -1330,7 +1344,7 @@ test("EO-4.6 103/110 ROLLBACK to a known healthy release (approved); concurrent 
       }),
       denied("APPROVAL_REQUIRED"),
     );
-    const ra = h.deploy.requestApproval(ADMIN, {
+    const ra = await h.deploy.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "rollback",
       subjectId: bad.releaseId,
@@ -1344,9 +1358,9 @@ test("EO-4.6 103/110 ROLLBACK to a known healthy release (approved); concurrent 
     });
     assert.equal(rolled.status, "rolled_back");
     assert.equal(rolled.rollback!.automatic, false);
-    const target = h.deploy
-      .listReleases(ADMIN, "alpha")
-      .find((r) => r.releaseId === rolled.rollback!.toReleaseId)!;
+    const target = (await h.deploy.listReleases(ADMIN, "alpha")).find(
+      (r) => r.releaseId === rolled.rollback!.toReleaseId,
+    )!;
     assert.equal(target.status, "healthy");
     assert.equal(
       h.deployAdapter.rollbacks.at(-1),
@@ -1370,24 +1384,23 @@ test("EO-4.6 104/106 CROSS PROJECT + AUTHORIZATION: other project's objects are 
       ),
       PermissionDeniedError,
     );
-    assert.throws(
-      () =>
-        h.deploy.createCandidate(OPERATOR, {
-          projectId: "alpha",
-          pushReceiptId: push.receiptId,
-          targetId: "alpha-preview",
-        }),
+    await assert.rejects(
+      h.deploy.createCandidate(OPERATOR, {
+        projectId: "alpha",
+        pushReceiptId: push.receiptId,
+        targetId: "alpha-preview",
+      }),
       PermissionDeniedError,
     );
-    assert.throws(
-      () => h.sc.getPushReceipt(BETA_OPERATOR, "alpha", push.receiptId),
+    await assert.rejects(
+      h.sc.getPushReceipt(BETA_OPERATOR, "alpha", push.receiptId),
       NotFoundError,
     );
-    assert.throws(
-      () => h.deploy.listReleases(BETA_OPERATOR, "alpha"),
+    await assert.rejects(
+      h.deploy.listReleases(BETA_OPERATOR, "alpha"),
       NotFoundError,
     );
-    assert.throws(() => h.sc.activity(BETA_OPERATOR, "alpha"), NotFoundError);
+    await assert.rejects(h.sc.activity(BETA_OPERATOR, "alpha"), NotFoundError);
   } finally {
     h.cleanup();
   }
@@ -1397,7 +1410,7 @@ test("EO-4.6 108 SECRET REDACTION: repository/deploy credentials never appear in
   const h = await harness();
   try {
     const { push, commit } = await h.toPushed();
-    const cand = h.deploy.createCandidate(ADMIN, {
+    const cand = await h.deploy.createCandidate(ADMIN, {
       projectId: "alpha",
       pushReceiptId: push.receiptId,
       targetId: "alpha-preview",
@@ -1416,7 +1429,7 @@ test("EO-4.6 108 SECRET REDACTION: repository/deploy credentials never appear in
       commit,
       cand,
       release,
-      h.sc.activity(ADMIN, "alpha"),
+      await h.sc.activity(ADMIN, "alpha"),
       h.deploy.listTargets(ADMIN, "alpha"),
       h.fixture.audit.query({}),
     ]);
@@ -1451,7 +1464,7 @@ test("EO-4.6 19/109 COMMIT MESSAGE is data; commit idempotency", async () => {
       verificationId: v.verificationId,
       reviewId: review.reviewId,
     });
-    const ca = h.sc.requestApproval(ADMIN, {
+    const ca = await h.sc.requestApproval(ADMIN, {
       projectId: "alpha",
       operation: "commit",
       subjectId: stage.stageSetId,
@@ -1501,6 +1514,102 @@ test("EO-4.6 19/109 COMMIT MESSAGE is data; commit idempotency", async () => {
       git(h.repo, "rev-list", "--count", "HEAD").trim(),
       "2",
       "no duplicate commit",
+    );
+  } finally {
+    h.cleanup();
+  }
+});
+
+test("EO-4.8 RELEASE RESTART: records, idempotency and candidates survive a new Control Plane instance", async () => {
+  const store = new InMemoryExecutionRecordStore();
+  const h = await harness({ store });
+  try {
+    const { push, commit } = await h.toPushed();
+    // First instance: a push with a KNOWN idempotency key (already up to date).
+    const keyed = await h.sc.push(
+      ADMIN,
+      {
+        projectId: "alpha",
+        commitReceiptId: commit.receiptId,
+        approvalId: push.approvalIds[0],
+      },
+      "same-key",
+    );
+    const pushesBefore = git(h.remote, "rev-list", "--count", "main").trim();
+    // A second instance with fresh memory over the same durable store.
+    const next = h.restart();
+    const activity = await next.sc.activity(ADMIN, "alpha");
+    assert.deepEqual(
+      activity.commits.map((c) => c.receiptId),
+      [commit.receiptId],
+    );
+    assert.deepEqual(
+      activity.pushes.map((p) => p.receiptId).sort(),
+      [push.receiptId, keyed.receiptId].sort(),
+    );
+    assert.equal(
+      (await next.sc.getPushReceipt(ADMIN, "alpha", push.receiptId)).commitSha,
+      push.commitSha,
+    );
+    // The same push key replays on the new instance: no second remote mutation.
+    const replay = await next.sc.push(
+      ADMIN,
+      {
+        projectId: "alpha",
+        commitReceiptId: commit.receiptId,
+        approvalId: push.approvalIds[0],
+      },
+      "same-key",
+    );
+    assert.equal(
+      replay.receiptId,
+      keyed.receiptId,
+      "the new instance replays the original receipt",
+    );
+    assert.equal(
+      git(h.remote, "rev-list", "--count", "main").trim(),
+      pushesBefore,
+    );
+    // Deploy from the push made by the previous instance; releases are durable.
+    const candidate = await next.deploy.createCandidate(ADMIN, {
+      projectId: "alpha",
+      pushReceiptId: push.receiptId,
+      targetId: "alpha-preview",
+    });
+    const release = await next.deploy.deploy(
+      ADMIN,
+      { projectId: "alpha", candidateId: candidate.candidateId },
+      "d-restart",
+    );
+    assert.equal(release.status, "healthy");
+    const third = h.restart();
+    assert.deepEqual(
+      (await third.deploy.listReleases(ADMIN, "alpha")).map((r) => [
+        r.releaseId,
+        r.status,
+      ]),
+      [[release.releaseId, "healthy"]],
+    );
+    assert.equal(
+      (
+        await third.deploy.deploy(
+          ADMIN,
+          { projectId: "alpha", candidateId: candidate.candidateId },
+          "d-restart",
+        )
+      ).releaseId,
+      release.releaseId,
+      "deploy idempotency survives restarts",
+    );
+    // Re-committing the stage set is refused on any instance (the source
+    // moved on with the commit; the create-only marker also guards it).
+    await assert.rejects(
+      third.sc.commit(
+        ADMIN,
+        { projectId: "alpha", stageSetId: commit.stageSetId, summary: "again" },
+        "c-again",
+      ),
+      /already committed|verify it again/,
     );
   } finally {
     h.cleanup();
