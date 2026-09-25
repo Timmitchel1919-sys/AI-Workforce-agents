@@ -24,6 +24,14 @@
 import { ValidationError } from "./index.js";
 import type { ApprovalRiskLevel } from "./control.js";
 import type { CapabilityId } from "./environments.js";
+import type { FileChangeEvidence } from "./workspace.js";
+import type {
+  EnvironmentExecutionEvidence,
+  EnvironmentOperationRequirement,
+} from "./environment-adapters.js";
+
+/** Hard ceiling for one structured text input (e.g. file content). */
+export const MAX_INVOCATION_TEXT_BYTES = 1024 * 1024;
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                            */
@@ -109,6 +117,10 @@ export function toApprovalRisk(risk: ExecutionRiskLevel): ApprovalRiskLevel {
 export const EXECUTION_CAPABILITIES = [
   "filesystem.read",
   "filesystem.write.workspace",
+  /** EO-4.3: deleting (or moving away) a file is its own capability. */
+  "filesystem.delete.workspace",
+  /** EO-4.3: writing protected paths (CI/CD, rules, infrastructure). */
+  "filesystem.write.protected",
   "repository.read",
   "repository.write",
   "repository.commit",
@@ -156,6 +168,53 @@ export const EXECUTION_ERROR_CODES = [
   "CANCELLED",
   "SANDBOX_FAILURE",
   "INTERNAL_ERROR",
+  /** EO-4.2: the session holds no valid grant for a required capability. */
+  "CAPABILITY_NOT_GRANTED",
+  /** EO-4.2: the operation output failed its declared output schema. */
+  "INVALID_OUTPUT",
+  /**
+   * EO-4.3: a write would overwrite content that changed (stale expected
+   * hash, existing file, pre-existing user change, workspace lease held).
+   */
+  "WORKSPACE_CONFLICT",
+  /** EO-4.4: a required toolchain is not present on the environment. */
+  "TOOLCHAIN_UNAVAILABLE",
+  /** EO-4.4: declared dependencies (e.g. installed packages) are missing. */
+  "DEPENDENCY_MISSING",
+  /* ---- EO-4.5 environment execution (normalized, adapter-neutral) ---- */
+  "ENVIRONMENT_OFFLINE",
+  "RUNNER_UNAVAILABLE",
+  "RUNNER_TIMEOUT",
+  "RUNNER_DISCONNECTED",
+  "RUNNER_IDENTITY_UNVERIFIED",
+  "ADAPTER_UNAVAILABLE",
+  "ADAPTER_ERROR",
+  "PLATFORM_MISMATCH",
+  "TOOLCHAIN_MISSING",
+  "TOOLCHAIN_VERSION_MISMATCH",
+  "MODULE_MISSING",
+  "GPU_UNAVAILABLE",
+  "RESOURCE_UNAVAILABLE",
+  "CONTAINER_POLICY_DENIED",
+  "SIGNING_NOT_AUTHORIZED",
+  "PUBLISHING_NOT_AUTHORIZED",
+  "SOURCE_MISMATCH",
+  "INTEGRITY_FAILED",
+  /* ---- EO-4.6 governed source control & deployment ---- */
+  "VERIFICATION_REQUIRED",
+  "REVERIFICATION_REQUIRED",
+  "REVIEW_REQUIRED",
+  "REVIEW_NOT_INDEPENDENT",
+  "STAGING_CONFLICT",
+  "COMMIT_FAILED",
+  "BRANCH_PROTECTED",
+  "REMOTE_CHANGED",
+  "PUSH_FAILED",
+  "TARGET_NOT_REGISTERED",
+  "STALE_CANDIDATE",
+  "DEPLOYMENT_LOCKED",
+  "DEPLOYMENT_FAILED",
+  "ROLLBACK_UNAVAILABLE",
 ] as const;
 export type ExecutionErrorCode = (typeof EXECUTION_ERROR_CODES)[number];
 
@@ -466,7 +525,11 @@ export type OperationInputField =
   | { kind: "enum"; values: readonly string[]; required?: boolean }
   | { kind: "integer"; min: number; max: number; required?: boolean }
   /** A path RELATIVE to the session workspace; validated, never absolute. */
-  | { kind: "workspace_path"; required?: boolean };
+  | { kind: "workspace_path"; required?: boolean }
+  /** EO-4.3: bounded UTF-8 text (file content, search query). */
+  | { kind: "text"; maxBytes: number; required?: boolean }
+  /** EO-4.3: a lowercase hex SHA-256 (expected content hash). */
+  | { kind: "sha256"; required?: boolean };
 
 /**
  * A registered, server-side execution operation. The agent-facing boundary is
@@ -480,8 +543,108 @@ export interface ExecutionOperationDefinition {
   stageKind: ExecutionStageKind;
   description: string;
   requiredCapabilities: readonly ExecutionCapability[];
+  /**
+   * EO-4.3: capabilities the operation can USE when the policy rule grants
+   * them (e.g. `filesystem.write.protected`). Never requested by a caller.
+   */
+  optionalCapabilities?: readonly ExecutionCapability[];
   risk: ExecutionRiskLevel;
   input: Readonly<Record<string, OperationInputField>>;
+  /* ---- EO-4.2 invocation requirements (all declared, never requested) ---- */
+  /** Output schema; output failing it is `INVALID_OUTPUT`. Default: text. */
+  output?: OperationOutputSpec;
+  /** Toolchain kinds the environment instance must have (e.g. `node`). */
+  requiredToolchains?: readonly string[];
+  /** Filesystem reach. Default derived from capabilities (none/read/write). */
+  workspaceAccess?: "none" | "read" | "write";
+  /** Network reach. Default `none`; a tool cannot widen session policy. */
+  networkAccess?: "none" | "approved_hosts";
+  /** Per-operation timeout (ms); the effective timeout is the minimum. */
+  timeoutMs?: number;
+  /**
+   * EO-4.4: `project_code` = the operation executes the project's own code
+   * (builds, tests). It can only run on a provider that isolates the
+   * workspace, or on a host build runner when the policy rule explicitly
+   * opts in with `trustedHostBuild`.
+   */
+  executionClass?: "diagnostic" | "project_code" | "adapter";
+  /**
+   * EO-4.5: what the operation needs from an execution environment. When
+   * present, an EnvironmentExecutionAdapter + runner must be ready for the
+   * selected instance (resolved from authoritative metadata only).
+   */
+  environment?: EnvironmentOperationRequirement;
+}
+
+/** How operation stdout is validated before anyone sees it. */
+export type OperationOutputSpec =
+  | { kind: "text" }
+  /** EO-4.3: a single JSON object (structured workspace/repository result). */
+  | { kind: "json" }
+  /** Exactly one semantic version, e.g. `v20.11.1` / `20.11.1`. */
+  | { kind: "semver" };
+
+/** Workspace reach of an operation (explicit, else from its capabilities). */
+export function operationWorkspaceAccess(
+  op: ExecutionOperationDefinition,
+): "none" | "read" | "write" {
+  if (op.workspaceAccess) return op.workspaceAccess;
+  if (op.requiredCapabilities.includes("filesystem.write.workspace")) {
+    return "write";
+  }
+  return op.requiredCapabilities.includes("filesystem.read") ? "read" : "none";
+}
+
+/**
+ * EO-4.2 execution tool: a trusted, composition-registered bundle of typed
+ * operations over ONE server-controlled executable. Identity is `toolId`
+ * (never `displayName`). A tool cannot grant itself capabilities: policy
+ * authority stays outside the tool.
+ */
+export interface ExecutionToolDefinition {
+  toolId: string;
+  version: string;
+  displayName: string;
+  description: string;
+  /** Capabilities any operation of this tool needs (on top of its own). */
+  requiredCapabilities: readonly ExecutionCapability[];
+  /** Environment capabilities an instance must provide to host this tool. */
+  supportedEnvironmentCapabilities: readonly CapabilityId[];
+  executable: ExecutableDefinition;
+  /** Registered operation ids exposed by this tool. Nothing else. */
+  operations: readonly string[];
+}
+
+export function validateExecutionToolDefinition(
+  def: ExecutionToolDefinition,
+): void {
+  requireExecutionId(def.toolId, "tool.toolId");
+  requireExecutionId(
+    def.executable.executableId,
+    "tool.executable.executableId",
+  );
+  if (typeof def.version !== "string" || def.version.trim() === "") {
+    throw new ValidationError("tool.version is required");
+  }
+  if (!def.requiredCapabilities.every(isExecutionCapability)) {
+    throw new ValidationError("tool.requiredCapabilities must be known");
+  }
+  if (def.operations.length === 0) {
+    throw new ValidationError("tool.operations must not be empty");
+  }
+  for (const op of def.operations) {
+    requireExecutionId(op, "tool.operations[]");
+    if (!def.executable.operations[op]) {
+      throw new ValidationError(
+        `tool ${def.toolId} exposes ${op} without an argument template`,
+      );
+    }
+  }
+  for (const name of def.executable.environmentVariables) {
+    if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(name)) {
+      throw new ValidationError(`tool env var ${name} is not a valid name`);
+    }
+  }
 }
 
 export function validateOperationDefinition(
@@ -503,12 +666,44 @@ export function validateOperationDefinition(
       "operation.requiredCapabilities must list known execution capabilities",
     );
   }
+  if (
+    def.optionalCapabilities &&
+    !def.optionalCapabilities.every(isExecutionCapability)
+  ) {
+    throw new ValidationError("operation.optionalCapabilities must be known");
+  }
+  if (
+    def.timeoutMs !== undefined &&
+    (!Number.isInteger(def.timeoutMs) ||
+      def.timeoutMs <= 0 ||
+      def.timeoutMs > LIMIT_CEILINGS.operationTimeoutMs)
+  ) {
+    throw new ValidationError("operation.timeoutMs must be bounded");
+  }
+  if (
+    def.networkAccess === "approved_hosts" &&
+    !def.requiredCapabilities.includes("network.outbound.allowed-host")
+  ) {
+    throw new ValidationError(
+      "network access requires the network.outbound.allowed-host capability",
+    );
+  }
   for (const [name, field] of Object.entries(def.input)) {
     if (!/^[a-zA-Z][a-zA-Z0-9]{0,39}$/.test(name)) {
       throw new ValidationError(`operation.input.${name} is not a valid name`);
     }
     if (field.kind === "enum" && field.values.length === 0) {
       throw new ValidationError(`operation.input.${name} needs enum values`);
+    }
+    if (
+      field.kind === "text" &&
+      (!Number.isInteger(field.maxBytes) ||
+        field.maxBytes <= 0 ||
+        field.maxBytes > MAX_INVOCATION_TEXT_BYTES)
+    ) {
+      throw new ValidationError(
+        `operation.input.${name} needs bounded maxBytes`,
+      );
     }
   }
 }
@@ -534,6 +729,12 @@ export interface ExecutableDefinition {
   operations: Readonly<Record<string, readonly ArgumentSlot[]>>;
   /** Names of controlled env vars; values come from config or secret handles. */
   environmentVariables: readonly string[];
+  /**
+   * EO-4.4: workspace-relative paths an operation needs before it can run
+   * (e.g. installed dependencies). Missing → DEPENDENCY_MISSING; nothing is
+   * installed automatically.
+   */
+  requiredPaths?: Readonly<Record<string, readonly string[]>>;
 }
 
 /**
@@ -547,6 +748,13 @@ export interface StructuredInvocation {
   workingDirectoryRef: string;
   environmentVariableRefs: readonly string[];
   timeoutMs: number;
+  /**
+   * EO-4.3: the validated structured input, for in-process adapters
+   * (workspace file operations). Process adapters use `argv` only.
+   */
+  input?: Readonly<Record<string, string | number>>;
+  /** EO-4.4: dependency paths that must exist in the workspace. */
+  requiredPaths?: readonly string[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -573,6 +781,18 @@ export interface ExecutionPolicyRule {
   secretRefs?: readonly SecretReference[];
   /** Can only TIGHTEN the policy defaults. */
   limits?: Partial<ExecutionResourceLimits>;
+  /**
+   * EO-4.2: permit running on a HOST process provider that does not isolate
+   * filesystem or network. Only ever applies to operations that touch no
+   * workspace and no network (e.g. a registered version query). Default false.
+   */
+  hostProcess?: boolean;
+  /**
+   * EO-4.4: explicit, per-project risk acceptance to run the project's own
+   * build/test code on a HOST build runner that does not isolate filesystem
+   * or network. Only for trusted repositories. Default false.
+   */
+  trustedHostBuild?: boolean;
 }
 
 /**
@@ -746,14 +966,36 @@ export const SANDBOX_KINDS = [
 export type SandboxKind = (typeof SANDBOX_KINDS)[number];
 
 /**
- * What a provider can ACTUALLY enforce. A limit or network mode not listed
- * here is reported as `unsupported` — never silently claimed.
+ * What a provider can ACTUALLY enforce. A limit not listed in
+ * `enforcedLimits` is reported as `unsupported`, never silently claimed.
  */
 export interface SandboxProviderCapabilities {
   enforcedLimits: readonly ResourceLimitKey[];
+  /** Network policy modes the provider can run under. */
   networkModes: readonly NetworkPolicy["mode"][];
+  /** Whether the provider actually ENFORCES the network policy. */
+  networkIsolation: boolean;
   filesystemIsolation: boolean;
   supportsKill: boolean;
+  /** Max simultaneous invocations this provider accepts. */
+  maxConcurrentInvocations: number;
+  /**
+   * EO-4.3: executable ids this provider can serve. Absent = any. A provider
+   * is never selected for an operation whose executable it cannot run.
+   */
+  executables?: readonly string[];
+  /**
+   * EO-4.4: the provider runs processes INSIDE the workspace root (build
+   * runner). Required for `project_code` operations on a host runner.
+   */
+  workspaceExecution?: boolean;
+  /** Test/simulation provider: receipts are labelled `simulated: true`. */
+  simulated?: boolean;
+  /**
+   * EO-4.5: a runner bridge. Only eligible when the ExecutionManager routed
+   * the operation to this exact provider through the adapter registry.
+   */
+  requiresRouting?: boolean;
 }
 
 export interface SandboxSpec {
@@ -764,6 +1006,30 @@ export interface SandboxSpec {
   limits: ExecutionResourceLimits;
   network: NetworkPolicy;
   grants: readonly CapabilityGrant[];
+}
+
+export interface SandboxInvokeOptions {
+  signal: AbortSignal;
+  maxOutputBytes: number;
+  /** Values that must never appear in output (e.g. issued secret values). */
+  knownSecrets?: readonly string[];
+}
+
+/** Sanitized result of one invocation: no pid, env or raw process state. */
+export interface SandboxInvocationOutcome {
+  exitClass: ExitClassification;
+  exitCode: number | null;
+  stdout: BoundedOutput;
+  stderr: BoundedOutput;
+  durationMs: number;
+  redactions: number;
+  /** EO-4.3: an expected refusal inside the adapter (not a tool failure). */
+  denial?: ExecutionReason;
+  /** EO-4.3: mutation evidence (hashes/sizes only, never content). */
+  changes?: readonly FileChangeEvidence[];
+  changeSetId?: string;
+  /** EO-4.5: environment/adapter/runner evidence (no secrets). */
+  environment?: EnvironmentExecutionEvidence;
 }
 
 export interface SandboxHandle {
@@ -787,10 +1053,17 @@ export interface SandboxProvider {
   isAvailableFor(environmentInstanceId: string): boolean;
   prepareWorkspace(spec: SandboxSpec): Promise<ExecutionWorkspace>;
   start(spec: SandboxSpec): Promise<SandboxHandle>;
+  /**
+   * Run ONE structured invocation: a trusted executable resolved from
+   * `executableId`, a validated argv, a controlled environment, a bounded
+   * timeout and output. Never a shell. Honors `signal` (cancel/kill) by
+   * terminating the process tree where the platform allows it.
+   */
   invoke(
     handle: SandboxHandle,
     invocation: StructuredInvocation,
-  ): Promise<{ exitClass: ExitClassification; output: BoundedOutput }>;
+    options: SandboxInvokeOptions,
+  ): Promise<SandboxInvocationOutcome>;
   terminate(handle: SandboxHandle, reason: string): Promise<void>;
   collectOutputs(handle: SandboxHandle): Promise<readonly ArtifactReference[]>;
   cleanup(handle: SandboxHandle): Promise<void>;
@@ -872,6 +1145,13 @@ export interface ExecutionSession {
   stageKind: ExecutionStageKind;
   operationId: string;
   toolId: string;
+  /**
+   * EO-4.3: every operation this session may invoke (primary first). A
+   * multi-operation session is PERSISTENT: invocations do not end it; it ends
+   * with an explicit completion, cancellation or its time budget.
+   */
+  operationIds?: readonly string[];
+  persistent?: boolean;
   workflowId?: string;
   taskId?: string;
   agentId: string;
@@ -1000,6 +1280,16 @@ export interface ExecutionReceipt {
   };
   redaction: { applied: true; redactedValues: number };
   simulated: boolean;
+  /** EO-4.2: the idempotency key of the invocation this receipt records. */
+  invocationId?: string;
+  /** EO-4.2: denial / failure reasons (codes + safe details). */
+  reasons?: readonly ExecutionReason[];
+  /** EO-4.3: file mutation evidence (no content). */
+  changes?: readonly FileChangeEvidence[];
+  changeSetId?: string;
+  workspaceId?: string;
+  /** EO-4.5: environment/adapter/runner evidence (no secrets). */
+  environment?: EnvironmentExecutionEvidence;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1017,6 +1307,8 @@ export interface ExecutionRequest {
   planVersion: number;
   stageId: string;
   operationId?: string;
+  /** EO-4.3: further registered operations for a persistent session. */
+  operationIds?: readonly string[];
   input?: Record<string, string | number>;
 }
 
@@ -1026,8 +1318,20 @@ export const EXECUTION_REQUEST_KEYS = [
   "planVersion",
   "stageId",
   "operationId",
+  "operationIds",
   "input",
 ] as const;
+
+function validateOperationIds(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 20) {
+    throw new ValidationError("operationIds must list 1-20 operations");
+  }
+  const ids = value.map((v, i) => requireExecutionId(v, `operationIds[${i}]`));
+  if (new Set(ids).size !== ids.length) {
+    throw new ValidationError("operationIds must not repeat");
+  }
+  return ids;
+}
 
 export function validateExecutionRequest(value: unknown): ExecutionRequest {
   if (!isRecord(value)) {
@@ -1061,6 +1365,9 @@ export function validateExecutionRequest(value: unknown): ExecutionRequest {
     stageId: requireExecutionId(value.stageId, "stageId"),
     ...(value.operationId !== undefined
       ? { operationId: requireExecutionId(value.operationId, "operationId") }
+      : {}),
+    ...(value.operationIds !== undefined
+      ? { operationIds: validateOperationIds(value.operationIds) }
       : {}),
     ...(input !== undefined
       ? { input: input as Record<string, string | number> }
@@ -1108,6 +1415,83 @@ export interface PreflightResult {
   limitEnforcement?: LimitEnforcementReport;
   network?: NetworkPolicy;
   sandbox?: { providerId: string; kind: SandboxKind };
-  /** Execution itself is not available in EO-4.1. */
+  /** What the selected sandbox actually isolates (never claimed otherwise). */
+  isolation?: { filesystem: boolean; network: boolean };
+  /** Operators cannot execute from the UI; invocation is orchestrator-only. */
   executionAvailable: false;
+}
+
+/* ------------------------------------------------------------------ */
+/* EO-4.2 structured invocation (orchestrator to ExecutionManager)    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The ONLY invocation shape: a registered tool + operation with structured
+ * input, bound to a governed session and an idempotency key. There is no
+ * command, executable, working directory, environment or network field;
+ * unknown properties are rejected.
+ */
+export interface InvocationRequest {
+  sessionId: string;
+  invocationId: string;
+  toolId: string;
+  operationId: string;
+  input?: Record<string, string | number>;
+}
+
+export const INVOCATION_REQUEST_KEYS = [
+  "sessionId",
+  "invocationId",
+  "toolId",
+  "operationId",
+  "input",
+] as const;
+
+export function validateInvocationRequest(value: unknown): InvocationRequest {
+  if (!isRecord(value)) {
+    throw new ValidationError("invocation request must be an object");
+  }
+  rejectUnknownKeys(value, INVOCATION_REQUEST_KEYS, "invocation request");
+  const input = value.input;
+  if (input !== undefined) {
+    if (!isRecord(input)) throw new ValidationError("input must be an object");
+    for (const [key, v] of Object.entries(input)) {
+      if (typeof v !== "string" && typeof v !== "number") {
+        throw new ValidationError(`input.${key} must be a string or number`);
+      }
+      // Hard ceiling; each operation schema sets its own (smaller) bounds.
+      if (typeof v === "string" && v.length > MAX_INVOCATION_TEXT_BYTES) {
+        throw new ValidationError(`input.${key} is too long`);
+      }
+    }
+  }
+  return {
+    sessionId: requireExecutionId(value.sessionId, "sessionId"),
+    invocationId: requireExecutionId(value.invocationId, "invocationId"),
+    toolId: requireExecutionId(value.toolId, "toolId"),
+    operationId: requireExecutionId(value.operationId, "operationId"),
+    ...(input !== undefined
+      ? { input: input as Record<string, string | number> }
+      : {}),
+  };
+}
+
+/** What the orchestrator/agent gets back. Sanitized; no raw process state. */
+export interface InvocationResult {
+  invocationId: string;
+  sessionId: string;
+  outcome: ExecutionReceipt["outcome"];
+  exitClass: ExitClassification;
+  reasons: readonly ExecutionReason[];
+  output?: { text: string; truncated: boolean };
+  /** Structured result from the operation output schema. */
+  result?: Record<string, unknown>;
+  /** EO-4.3: file mutation evidence and the session ChangeSet. */
+  changes?: readonly FileChangeEvidence[];
+  changeSetId?: string;
+  /** EO-4.5: environment/adapter/runner evidence (no secrets). */
+  environment?: EnvironmentExecutionEvidence;
+  receiptId: string;
+  /** True when this is a replay of an earlier identical invocation. */
+  replayed: boolean;
 }

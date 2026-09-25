@@ -56,6 +56,12 @@ export const CONTROL_CAPABILITIES = [
   "prepare_execution",
   "cancel_execution",
   "kill_execution",
+  /* EO-4.6 — each release transition is its own capability. */
+  "review_change",
+  "commit_source",
+  "push_source",
+  "deploy_release",
+  "rollback_release",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -79,6 +85,9 @@ export const ROLE_CAPABILITIES: Record<
     "submit_execution_plan",
     "prepare_execution",
     "cancel_execution",
+    // Operators review changes; committing, pushing and deploying are
+    // administrator-only protected actions.
+    "review_change",
   ],
   admin: [
     "view",
@@ -99,6 +108,11 @@ export const ROLE_CAPABILITIES: Record<
     "cancel_execution",
     // Emergency termination of a specific session: administrators only.
     "kill_execution",
+    "review_change",
+    "commit_source",
+    "push_source",
+    "deploy_release",
+    "rollback_release",
   ],
 };
 

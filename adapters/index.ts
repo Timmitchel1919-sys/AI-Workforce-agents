@@ -11,3 +11,4 @@ export * from "./persistence/json-file-persistence.js";
 export * from "./firebase/index.js";
 export * from "./environments/index.js";
 export * from "./execution/index.js";
+export * from "./workspace/index.js";

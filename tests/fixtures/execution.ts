@@ -189,8 +189,11 @@ export class NonExecutingTestSandbox implements SandboxProvider {
   readonly capabilities = {
     enforcedLimits: [...REQUIRED_LIMIT_KEYS],
     networkModes: ["deny_all" as const],
+    networkIsolation: true,
     filesystemIsolation: true,
     supportsKill: true,
+    maxConcurrentInvocations: 4,
+    simulated: true,
   };
   calls = 0;
   constructor(private readonly available: Set<string>) {}
