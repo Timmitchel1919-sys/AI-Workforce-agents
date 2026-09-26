@@ -1,5 +1,4 @@
 /* Spatial graph workspace — colours come from the design tokens only. */
-.sg-workspace { display: flex; flex-direction: column; gap: 0.75rem; flex: 1; min-height: 0; }
 .sg-status p { margin: 0; color: var(--color-text-secondary); font-size: 0.875rem; }
 .sg-notice { margin-top: 0.25rem !important; padding: 0.5rem 0.75rem; border: 1px solid var(--color-warning); border-radius: 6px; color: var(--color-text) !important; background: var(--color-surface-muted); }
 
@@ -24,7 +23,6 @@
   outline: 3px solid var(--color-border-selected); outline-offset: 2px;
 }
 
-.sg-layout { display: flex; gap: 1rem; flex: 1; min-height: 0; }
 .sg-canvas-frame {
   flex: 1; min-width: 0; min-height: 420px; border-radius: 12px; overflow: hidden; position: relative;
   border: 1px solid var(--color-border-strong);
@@ -32,13 +30,9 @@
   background:
     radial-gradient(ellipse at 25% 15%, color-mix(in srgb, var(--aw-purple-700) 55%, transparent), transparent 60%),
     radial-gradient(ellipse at 80% 90%, color-mix(in srgb, var(--aw-blue-700) 45%, transparent), transparent 55%),
-    color-mix(in srgb, var(--aw-blue-900) 55%, black);
+    var(--aw-blue-900);
   box-shadow: 0 8px 32px color-mix(in srgb, var(--aw-blue-900) 35%, transparent);
 }
-.sg-canvas-hidden, .sg-canvas { width: 100%; height: 100%; min-height: inherit; }
-.sg-canvas { min-height: 420px; }
-.sg-side { width: 340px; display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto; }
-@media (max-width: 900px) { .sg-layout { flex-direction: column; } .sg-side { width: 100%; } }
 
 .sg-panel { background: var(--color-surface); backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2); border: 1px solid var(--color-border); border-radius: 8px; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; color: var(--color-text); }
 .sg-panel__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
@@ -58,7 +52,6 @@
 .sg-state__glyph { color: var(--sg-state-color); font-weight: 700; }
 .sg-state__text { color: var(--color-text); }
 
-.sg-list__items { max-height: 320px; overflow-y: auto; }
 .sg-list__item { width: 100%; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; text-align: left; background: transparent; border: 1px solid var(--color-border); border-radius: 6px; padding: 0.35rem 0.5rem; }
 .sg-list__item:hover { background: var(--color-surface-hover); }
 .sg-list__item[aria-pressed="true"] { border-color: var(--color-border-selected); background: var(--color-primary-soft); }
@@ -85,3 +78,96 @@
 @media (prefers-reduced-motion: reduce) {
   .sg-btn, .sg-chip, .sg-list__item, .sg-link { transition: none; }
 }
+
+/* ---- Layout: the 3D stage dominates; panels overlay instead of squeezing it ---- */
+.sg-workspace { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-height: 0; }
+.sg-topbar { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; }
+.sg-project { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--color-text); }
+.sg-project__label { color: var(--color-text-secondary); }
+.sg-project__static { font-weight: 600; color: var(--color-text-heading); }
+.sg-select, .sg-input {
+  font: inherit; color: var(--color-text); background: var(--color-surface-solid);
+  border: 1px solid var(--color-border-strong); border-radius: 6px; padding: 0.3rem 0.6rem; min-height: 2rem;
+}
+.sg-input { min-width: 12rem; }
+.sg-select:focus-visible, .sg-input:focus-visible { outline: 3px solid var(--color-border-selected); outline-offset: 2px; }
+
+.sg-layout { display: flex; gap: 0.75rem; flex: 1; min-height: 0; }
+.sg-stage { position: relative; flex: 1; min-width: 0; min-height: 22rem; display: flex; }
+.sg-canvas-frame { flex: 1; min-height: 0; }
+.sg-canvas-hidden { position: absolute; inset: 0; }
+.sg-canvas { position: absolute; inset: 0; }
+.sg-canvas canvas { display: block; }
+.sg-side { width: 300px; display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto; min-height: 0; }
+.sg-list__items { max-height: 45vh; overflow-y: auto; }
+
+.sg-drawer { position: absolute; top: 0.75rem; right: 0.75rem; bottom: 0.75rem; width: min(340px, calc(100% - 1.5rem)); overflow-y: auto; z-index: 3; display: flex; }
+.sg-drawer > .sg-panel { width: 100%; box-shadow: 0 8px 28px color-mix(in srgb, var(--aw-blue-900) 30%, transparent); }
+
+.sg-webgl-fallback {
+  position: absolute; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center;
+  padding: 1.5rem; color: var(--color-text-on-brand); z-index: 2;
+  background: color-mix(in srgb, var(--aw-blue-900) 85%, transparent);
+}
+
+@media (max-width: 1100px) {
+  .sg-layout { flex-direction: column; }
+  .sg-side { width: 100%; max-height: 40vh; }
+}
+@media (max-width: 768px) {
+  .sg-search { margin-left: 0; width: 100%; }
+  .sg-input { width: 100%; }
+  .sg-stage { min-height: 55vh; }
+  /* Inspector becomes a bottom sheet */
+  .sg-drawer { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 60vh; z-index: 30; padding: 0.5rem; }
+}
+
+/* ---- Focus Mode: fixed overlay inside the page (the app shell is untouched) ---- */
+.sg-workspace--focus {
+  position: fixed; inset: 0; z-index: 1000; padding: 0.75rem; overflow: auto;
+  background: var(--color-background);
+}
+.sg-workspace--focus .sg-stage { min-height: 0; }
+.sg-exit-focus {
+  align-self: flex-end; font-weight: 700; border-color: var(--color-primary);
+  background: var(--color-primary); color: var(--color-text-on-brand);
+}
+.sg-exit-focus:hover:not(:disabled) { background: var(--color-primary-strong); }
+
+/* ---- Compact layout + overflow safety (verified at 320-1280px) ---- */
+.spatial-graph-page, .sg-workspace, .sg-topbar, .sg-controls, .sg-layout, .sg-stage, .sg-side, .sg-panel,
+.sg-filters, .sg-modes, .sg-toolbar, .sg-search, .sg-project, .sg-canvas-frame { min-width: 0; max-width: 100%; }
+.sg-workspace { gap: 0.4rem; }
+.sg-topbar { justify-content: space-between; gap: 0.4rem 0.75rem; }
+.sg-topbar__end { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-left: auto; }
+.sg-controls { display: flex; flex-wrap: wrap; gap: 0.4rem 0.75rem; align-items: center; }
+.sg-search { flex: 1 1 10rem; max-width: 18rem; }
+.sg-input { width: 100%; min-width: 0; }
+.sg-chip, .sg-btn { min-height: 2rem; }
+.sg-filters, .sg-modes, .sg-toolbar { gap: 0.35rem; }
+.sg-list__label, .sg-panel__title, .sg-field dd { overflow-wrap: anywhere; }
+/* Very narrow: rows scroll inside their own container instead of widening the page */
+.sg-modes, .sg-filters { max-width: 100%; }
+@media (max-width: 480px) {
+  .sg-modes, .sg-filters { flex-wrap: nowrap; overflow-x: auto; padding: 4px 4px 0.35rem; scrollbar-width: thin; scrollbar-color: var(--color-border-strong) transparent; }
+  .sg-modes > *, .sg-filters > * { flex: 0 0 auto; }
+  .sg-modes:focus-within, .sg-filters:focus-within { outline: none; }
+  .sg-search { flex-basis: 100%; max-width: none; }
+  .sg-topbar__end { margin-left: 0; }
+}
+
+/* Camera overlay on the stage */
+.sg-camera {
+  position: absolute; left: 0.6rem; bottom: 0.6rem; z-index: 2;
+  display: grid; grid-template-columns: repeat(5, 2rem); gap: 0.25rem; padding: 0.3rem;
+  border-radius: 10px; border: 1px solid var(--color-border-strong);
+  background: var(--color-surface); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.sg-camera .sg-btn--icon { min-width: 0; width: 2rem; min-height: 2rem; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+@media (max-width: 480px) { .sg-camera { grid-template-columns: repeat(5, 1.9rem); } .sg-camera .sg-btn--icon { width: 1.9rem; } }
+
+/* Tighter controls so the stage starts near the top */
+.sg-btn, .sg-chip { padding: 0.2rem 0.6rem; min-height: 1.85rem; font-size: 0.85rem; }
+.sg-search { flex: 1 1 9rem; max-width: 13rem; }
+.sg-input { min-height: 1.85rem; padding: 0.2rem 0.6rem; font-size: 0.85rem; }
+.sg-status p { font-size: 0.8rem; }

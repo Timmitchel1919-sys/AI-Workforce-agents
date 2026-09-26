@@ -2,6 +2,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1.5rem;
-  gap: 1rem;
+  min-height: 32rem;
+  gap: 0.5rem;
 }

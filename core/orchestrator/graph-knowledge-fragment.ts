@@ -6,7 +6,7 @@ import type {
   WorkforceGraphNode,
 } from "../../contracts/graph.js";
 import { KNOWLEDGE_SOURCE_KINDS } from "../../contracts/graph.js";
-import { safeMetadata, truncate } from "./graph-projection.js";
+import { safeMetadata, truncate } from "./graph-util.js";
 import { toGraphState } from "./graph-state.js";
 
 const MAX_SOURCES = 100;

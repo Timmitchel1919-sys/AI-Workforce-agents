@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { formatVersion, } from "../../contracts/environments.js";
-import { safeMetadata, truncate } from "./graph-projection.js";
+import { byId, safeMetadata, truncate } from "./graph-util.js";
 import { toGraphState } from "./graph-state.js";
 const MAX_LABEL = 120;
 export const MAX_INSTANCE_NODES = 20;
@@ -30,7 +30,6 @@ const TYPE_BY_CODE = {
     unity: "unity",
     unreal: "unreal_engine",
 };
-const byId = (a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 export function buildEnvironmentFragment(input) {
     const { projectId } = input;
     const taskIds = new Set(input.tasks.filter((t) => t.projectId === projectId).map((t) => t.id));

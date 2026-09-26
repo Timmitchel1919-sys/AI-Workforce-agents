@@ -1,18 +1,18 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const viewProps: { current: any } = { current: null };
 vi.mock("../components/SpatialGraphView", () => ({
-  SpatialGraphView: (props: any) => {
-    viewProps.current = props;
+  SpatialGraphView: (props: SpatialGraphViewProps) => {
+    viewHarness.props = props;
     return <div data-testid="mock-canvas" />;
   },
 }));
 
 import { I18nProvider } from "../../../i18n";
 import { SpatialGraphWorkspace } from "../components/SpatialGraphWorkspace";
-import { makeProjection } from "./fixtures";
+import type { SpatialGraphViewProps } from "../components/SpatialGraphView";
+import { makeProjection, viewHarness } from "./fixtures";
 
 function setup(projection = makeProjection()) {
   return render(
@@ -25,10 +25,6 @@ function setup(projection = makeProjection()) {
 const listButtons = () => within(screen.getByRole("region", { name: "Node list" })).getAllByRole("button");
 
 describe("SpatialGraphWorkspace", () => {
-  beforeEach(() => {
-    viewProps.current = null;
-  });
-
   it("renders a labelled region, live status counts and a node list with type, label and state", () => {
     setup();
     expect(screen.getByRole("region", { name: "Spatial graph explorer" })).toBeInTheDocument();
@@ -51,8 +47,8 @@ describe("SpatialGraphWorkspace", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Tasks/ }));
     expect(screen.getByRole("button", { name: /^Tasks/ })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("sg-status")).toHaveTextContent("Showing 3 nodes and 1 relationships. Filter: Tasks.");
-    expect(viewProps.current.nodes).toHaveLength(3);
-    expect(viewProps.current.edges).toHaveLength(1);
+    expect(viewHarness.props.nodes).toHaveLength(3);
+    expect(viewHarness.props.edges).toHaveLength(1);
     expect(listButtons()).toHaveLength(3);
   });
 
@@ -61,7 +57,7 @@ describe("SpatialGraphWorkspace", () => {
     const btn = screen.getByRole("button", { name: "Task: Write API, state Running" });
     act(() => btn.focus());
     await userEvent.keyboard("{Enter}");
-    expect(viewProps.current.selectedId).toBe("task-t1");
+    expect(viewHarness.props.selectedId).toBe("task-t1");
     expect(screen.getByRole("heading", { name: "Write API" })).toBeInTheDocument();
     expect(btn).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("sg-announcement")).toHaveTextContent("Selected Task Write API, state Running.");
@@ -71,21 +67,21 @@ describe("SpatialGraphWorkspace", () => {
     setup();
     await userEvent.click(screen.getByRole("button", { name: "Task: Write API, state Running" }));
     await userEvent.keyboard("{Escape}");
-    expect(viewProps.current.selectedId).toBeNull();
+    expect(viewHarness.props.selectedId).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Task: Docs, state Completed" }));
     await userEvent.click(screen.getByRole("button", { name: "Deselect" }));
-    expect(viewProps.current.selectedId).toBeNull();
-    act(() => viewProps.current.onSelect("task-t2"));
-    expect(viewProps.current.selectedId).toBe("task-t2");
-    act(() => viewProps.current.onDeselect());
-    expect(viewProps.current.selectedId).toBeNull();
+    expect(viewHarness.props.selectedId).toBeNull();
+    act(() => viewHarness.props.onSelect("task-t2"));
+    expect(viewHarness.props.selectedId).toBe("task-t2");
+    act(() => viewHarness.props.onDeselect());
+    expect(viewHarness.props.selectedId).toBeNull();
   });
 
   it("isolates a node with its neighbours and exits isolation", async () => {
     setup();
     await userEvent.click(screen.getByRole("button", { name: "Task: Write API, state Running" }));
     await userEvent.click(screen.getByRole("button", { name: "Isolate node" }));
-    expect(viewProps.current.nodes.map((n: any) => n.id).sort()).toEqual([
+    expect(viewHarness.props.nodes.map((n) => n.id).sort()).toEqual([
       "agent-a1",
       "project-p1",
       "task-t1",
@@ -93,18 +89,18 @@ describe("SpatialGraphWorkspace", () => {
     ]);
     expect(screen.getByTestId("sg-status")).toHaveTextContent("Isolated around Write API");
     await userEvent.click(screen.getByRole("button", { name: "Exit isolation" }));
-    expect(viewProps.current.nodes).toHaveLength(8);
+    expect(viewHarness.props.nodes).toHaveLength(8);
   });
 
   it("expands relationships (emphasis) and collapses again", async () => {
     setup();
     await userEvent.click(screen.getByRole("button", { name: "Task: Write API, state Running" }));
-    expect(viewProps.current.emphasisIds).toBeNull();
+    expect(viewHarness.props.emphasisIds).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Expand relationships" }));
-    expect(viewProps.current.emphasisIds.has("agent-a1")).toBe(true);
-    expect(viewProps.current.emphasisIds.has("task-t3")).toBe(false);
+    expect(viewHarness.props.emphasisIds!.has("agent-a1")).toBe(true);
+    expect(viewHarness.props.emphasisIds!.has("task-t3")).toBe(false);
     await userEvent.click(screen.getByRole("button", { name: "Collapse relationships" }));
-    expect(viewProps.current.emphasisIds).toBeNull();
+    expect(viewHarness.props.emphasisIds).toBeNull();
   });
 
   it("reset restores filter, selection and issues a reset camera command", async () => {
@@ -112,26 +108,26 @@ describe("SpatialGraphWorkspace", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Agents/ }));
     await userEvent.click(screen.getByRole("button", { name: "Agent: Builder, state Active" }));
     await userEvent.click(screen.getByRole("button", { name: "Reset view" }));
-    expect(viewProps.current.selectedId).toBeNull();
-    expect(viewProps.current.nodes).toHaveLength(8);
-    expect(viewProps.current.cameraCommand.kind).toBe("reset");
+    expect(viewHarness.props.selectedId).toBeNull();
+    expect(viewHarness.props.nodes).toHaveLength(8);
+    expect(viewHarness.props.cameraCommand.kind).toBe("reset");
   });
 
   it("toolbar buttons and keyboard shortcuts issue camera commands", async () => {
     setup();
     await userEvent.click(screen.getByRole("button", { name: "Zoom in" }));
-    expect(viewProps.current.cameraCommand.kind).toBe("zoomIn");
+    expect(viewHarness.props.cameraCommand.kind).toBe("zoomIn");
     await userEvent.click(screen.getByRole("button", { name: "Pan left" }));
-    expect(viewProps.current.cameraCommand.kind).toBe("panLeft");
+    expect(viewHarness.props.cameraCommand.kind).toBe("panLeft");
     const frame = screen.getByRole("group", { name: /3D graph view/ });
     act(() => frame.focus());
     await userEvent.keyboard("{ArrowRight}");
-    expect(viewProps.current.cameraCommand.kind).toBe("orbitRight");
+    expect(viewHarness.props.cameraCommand.kind).toBe("orbitRight");
     await userEvent.keyboard("{Shift>}{ArrowUp}{/Shift}");
-    expect(viewProps.current.cameraCommand.kind).toBe("panUp");
+    expect(viewHarness.props.cameraCommand.kind).toBe("panUp");
     await userEvent.click(screen.getByRole("button", { name: "Task: Docs, state Completed" }));
     await userEvent.click(screen.getByRole("button", { name: "Focus selected node" }));
-    expect(viewProps.current.cameraCommand).toMatchObject({ kind: "focus", nodeId: "task-t3" });
+    expect(viewHarness.props.cameraCommand).toMatchObject({ kind: "focus", nodeId: "task-t3" });
   });
 
   it("never issues write requests", async () => {
@@ -157,11 +153,11 @@ describe("reduced motion", () => {
       removeEventListener: () => {},
     })) as unknown as typeof window.matchMedia;
     setup();
-    expect(viewProps.current.reducedMotion).toBe(true);
+    expect(viewHarness.props.reducedMotion).toBe(true);
   });
 
   it("defaults to animated camera transitions otherwise", () => {
     setup();
-    expect(viewProps.current.reducedMotion).toBe(false);
+    expect(viewHarness.props.reducedMotion).toBe(false);
   });
 });

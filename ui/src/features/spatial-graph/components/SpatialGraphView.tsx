@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { WorkforceGraphEdge, WorkforceGraphNode } from "../../../../../contracts/graph";
+import { useI18n } from "../../../i18n";
 import { useSceneColors, type SceneColors } from "../hooks/useSceneColors";
 import {
   CAMERA_LIMITS,
@@ -37,20 +38,32 @@ const TYPE_SCALE: Readonly<Record<string, number>> = { PROJECT: 1.6, CONTROL_PLA
 const MAX_EDGE_LABELS = 12;
 const ORIGIN: Vec3 = [0, 0, 0];
 
+// Constant argument tuples: no per-render allocation, so R3F never rebuilds geometry needlessly.
+const ARGS_SPHERE: [number, number, number] = [1, 24, 24];
+const ARGS_OCTA: [number] = [1.25];
+const ARGS_BOX: [number, number, number] = [1.6, 1.6, 1.6];
+const ARGS_TETRA: [number] = [1.45];
+const ARGS_DODECA: [number] = [1.15];
+const ARGS_ICOSA: [number, number] = [1.15, 1];
+const ARGS_RING: [number, number, number, number] = [1.7, 0.09, 8, 40];
+const ARGS_SELECT: [number, number, number] = [2.1, 16, 16];
+const LABEL_OFFSET: Vec3 = [0, 2.6, 0];
+const RING_ROTATION: [number, number, number] = [Math.PI / 2, 0, 0];
+
 function NodeGeometry({ shape }: { shape: ReturnType<typeof stateStyle>["shape"] }) {
   switch (shape) {
     case "octahedron":
-      return <octahedronGeometry args={[1.25]} />;
+      return <octahedronGeometry args={ARGS_OCTA} />;
     case "box":
-      return <boxGeometry args={[1.6, 1.6, 1.6]} />;
+      return <boxGeometry args={ARGS_BOX} />;
     case "tetrahedron":
-      return <tetrahedronGeometry args={[1.45]} />;
+      return <tetrahedronGeometry args={ARGS_TETRA} />;
     case "dodecahedron":
-      return <dodecahedronGeometry args={[1.15]} />;
+      return <dodecahedronGeometry args={ARGS_DODECA} />;
     case "icosahedron":
-      return <icosahedronGeometry args={[1.15, 1]} />;
+      return <icosahedronGeometry args={ARGS_ICOSA} />;
     default:
-      return <sphereGeometry args={[1, 24, 24]} />;
+      return <sphereGeometry args={ARGS_SPHERE} />;
   }
 }
 
@@ -96,19 +109,19 @@ function GraphNodeMesh({ node, position, colors, selected, hovered, dimmed, tool
         />
       </mesh>
       {style.ring && (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[1.7, 0.09, 8, 40]} />
+        <mesh rotation={RING_ROTATION}>
+          <torusGeometry args={ARGS_RING} />
           <meshBasicMaterial color={color} transparent opacity={dimmed ? 0.2 : 0.95} />
         </mesh>
       )}
       {selected && (
         <mesh>
-          <sphereGeometry args={[2.1, 16, 16]} />
+          <sphereGeometry args={ARGS_SELECT} />
           <meshBasicMaterial color={colors.selection} wireframe transparent opacity={0.6} />
         </mesh>
       )}
       {(hovered || selected) && (
-        <Html distanceFactor={20} position={[0, 2.6, 0]} center>
+        <Html distanceFactor={20} position={LABEL_OFFSET} center>
           <div className="sg-canvas-tooltip">{tooltip}</div>
         </Html>
       )}
@@ -205,6 +218,7 @@ function CameraRig({
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as ControlsLike | null;
   const goal = useRef<CameraPose | null>(null);
+  const scratch = useMemo(() => ({ pos: new THREE.Vector3(), tgt: new THREE.Vector3() }), []);
   const lastSeq = useRef<number | null>(null);
 
   const fit = useMemo(() => {
@@ -243,8 +257,8 @@ function CameraRig({
     const g = goal.current;
     if (!g) return;
     const k = 1 - Math.exp(-delta * 8);
-    const pos = new THREE.Vector3(...g.position);
-    const tgt = new THREE.Vector3(...g.target);
+    const pos = scratch.pos.set(...g.position);
+    const tgt = scratch.tgt.set(...g.target);
     camera.position.lerp(pos, k);
     if (controls) {
       controls.target.lerp(tgt, k);
@@ -311,16 +325,92 @@ export function SpatialGraphScene(props: SpatialGraphViewProps) {
 
 const INITIAL_CAMERA_POSITION: Vec3 = [DEFAULT_DIRECTION[0], DEFAULT_DIRECTION[1], DEFAULT_DIRECTION[2]];
 
-/** The WebGL canvas only. It is decorative for assistive tech: the node list carries the same information. */
+export type WebglStatus = "initializing" | "ready" | "unavailable" | "lost";
+
+/** Catches renderer-creation failures (no WebGL) so the page never goes blank or crashes. */
+class CanvasBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onError();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+interface GlLike {
+  domElement: HTMLCanvasElement;
+  dispose?: () => void;
+}
+
+/**
+ * The WebGL canvas only. It is decorative for assistive tech: the node list carries the same
+ * information. The wrapper reports truthful runtime evidence: `data-webgl-status` comes from the
+ * renderer's own creation / context events, and the counts are what is actually rendered.
+ */
 export function SpatialGraphView(props: SpatialGraphViewProps) {
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
+  const { t } = useI18n();
+  const [status, setStatus] = useState<WebglStatus>("initializing");
+  const glRef = useRef<GlLike | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  const onCreated = useCallback(({ gl }: { gl: GlLike }) => {
+    glRef.current = gl;
+    const canvas = gl.domElement;
+    const onLost = (e: Event) => {
+      e.preventDefault(); // allow the browser to restore the context
+      setStatus("lost");
+    };
+    const onRestored = () => setStatus("ready");
+    canvas.addEventListener("webglcontextlost", onLost);
+    canvas.addEventListener("webglcontextrestored", onRestored);
+    cleanupRef.current = () => {
+      canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
+    };
+    setStatus("ready");
+  }, []);
+
+  useEffect(
+    () => () => {
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+      glRef.current?.dispose?.();
+      glRef.current = null;
+    },
+    [],
+  );
+
+  const ready = status === "ready";
+  const message =
+    status === "unavailable" ? t("spatial.webgl.unavailable") : status === "lost" ? t("spatial.webgl.lost") : null;
+
   return (
-    <div className="sg-canvas" data-testid="spatial-graph-canvas">
-      {ready && (
-        <Canvas camera={{ position: INITIAL_CAMERA_POSITION, fov: 60 }} onPointerMissed={props.onDeselect}>
-          <SpatialGraphScene {...props} />
-        </Canvas>
+    <div
+      className="sg-canvas"
+      data-testid="spatial-graph-canvas"
+      data-webgl-status={status}
+      data-node-count={ready ? props.nodes.length : 0}
+      data-edge-count={ready ? props.edges.length : 0}
+    >
+      {status !== "unavailable" && (
+        <CanvasBoundary onError={() => setStatus("unavailable")}>
+          <Canvas
+            camera={{ position: INITIAL_CAMERA_POSITION, fov: 60 }}
+            onPointerMissed={props.onDeselect}
+            onCreated={onCreated}
+          >
+            <SpatialGraphScene {...props} />
+          </Canvas>
+        </CanvasBoundary>
+      )}
+      {message && (
+        <p className="sg-webgl-fallback" role="status">
+          {message}
+        </p>
       )}
     </div>
   );

@@ -1,47 +1,42 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchWorkforceGraph, type FetchGraphOptions } from "../api/spatialGraphClient";
 import type { WorkforceGraphProjection } from "../../../../../contracts/graph";
 
-export function useSpatialGraph(projectId?: string, options: FetchGraphOptions = {}) {
-  const [graph, setGraph] = useState<WorkforceGraphProjection | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const latestRequest = useRef(0);
+interface Settled {
+  key: string;
+  projectId: string;
+  graph: WorkforceGraphProjection | null;
+  error: Error | null;
+}
 
+export function useSpatialGraph(projectId?: string, options: FetchGraphOptions = {}) {
   const { mode, depth, maxNodes, rootNodeId } = options;
+  const key = projectId ? JSON.stringify([projectId, mode, depth, maxNodes, rootNodeId]) : null;
+  const [settled, setSettled] = useState<Settled | null>(null);
 
   useEffect(() => {
-    if (!projectId) return;
-
-    // Every request gets a sequence number; only the newest may write state, so an
-    // out-of-order (slower, older) response can never overwrite a newer one.
-    const requestId = ++latestRequest.current;
-    const isCurrent = () => latestRequest.current === requestId;
-
-    // Keep the previous graph for the same project visible while refetching (mode switch);
-    // a graph that belongs to another project is dropped immediately.
-    setGraph((prev) => (prev && prev.projectId === projectId ? prev : null));
-    setLoading(true);
+    if (!projectId || key === null) return;
+    // Each effect run owns one request; when the inputs change (or on unmount) the cleanup
+    // flags it stale, so an out-of-order response can never overwrite a newer one.
+    let stale = false;
     fetchWorkforceGraph(projectId, { mode, depth, maxNodes, rootNodeId })
-      .then((data) => {
-        if (!isCurrent()) return;
-        setGraph(data);
-        setError(null);
+      .then((graph) => {
+        if (!stale) setSettled({ key, projectId, graph, error: null });
       })
       .catch((err: unknown) => {
-        if (!isCurrent()) return;
-        setError(err instanceof Error ? err : new Error(String(err)));
-        setGraph(null);
-      })
-      .finally(() => {
-        if (isCurrent()) setLoading(false);
+        if (!stale) setSettled({ key, projectId, graph: null, error: err instanceof Error ? err : new Error(String(err)) });
       });
-
     return () => {
-      // Invalidate this request on unmount / dependency change.
-      if (latestRequest.current === requestId) latestRequest.current++;
+      stale = true;
     };
-  }, [projectId, mode, depth, maxNodes, rootNodeId]);
+  }, [key, projectId, mode, depth, maxNodes, rootNodeId]);
 
-  return { graph, loading, error };
+  const current = settled !== null && settled.key === key;
+  // The previous graph stays visible while refetching, but only for the same project.
+  const graph = settled && settled.projectId === projectId ? settled.graph : null;
+  return {
+    graph,
+    loading: key !== null && !current,
+    error: current ? settled.error : null,
+  };
 }

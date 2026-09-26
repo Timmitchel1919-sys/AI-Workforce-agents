@@ -4,51 +4,9 @@ import { buildEnvironmentFragment } from "./graph-environment-fragment.js";
 import { buildKnowledgeFragment } from "./graph-knowledge-fragment.js";
 import { CONTROL_PLANE_ID, selectMode } from "./graph-modes.js";
 import { toGraphState } from "./graph-state.js";
+import { byId, joinList, safeMetadata, truncate } from "./graph-util.js";
+export { byId, joinList, redactSecrets, safeMetadata, truncate, } from "./graph-util.js";
 const MAX_LABEL_LENGTH = 120;
-const MAX_META_STRING = 200;
-const MAX_LIST_ITEMS = 10;
-/**
- * Free text (task/step/agent descriptions) is user-authored, so obvious
- * credential shapes are scrubbed before it can appear on a graph node.
- */
-const SECRET_PATTERNS = [
-    /\bsk-[A-Za-z0-9_-]{8,}/g,
-    /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
-    /\bAKIA[0-9A-Z]{16}\b/g,
-    /\bgh[pousr]_[A-Za-z0-9]{20,}/g,
-    /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*/g,
-    /\b(api[_-]?key|token|secret|password|passwd|authorization)\s*[:=]\s*\S+/gi,
-];
-export function redactSecrets(value) {
-    let out = value;
-    for (const pattern of SECRET_PATTERNS)
-        out = out.replace(pattern, "[redacted]");
-    return out;
-}
-export function truncate(value, max) {
-    const clean = redactSecrets(value);
-    return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
-}
-/** Only display-safe scalar metadata survives; undefined entries are dropped. */
-export function safeMetadata(input) {
-    const out = {};
-    for (const key of Object.keys(input).sort()) {
-        const value = input[key];
-        if (value === undefined)
-            continue;
-        out[key] =
-            typeof value === "string" ? truncate(value, MAX_META_STRING) : value;
-    }
-    return Object.keys(out).length > 0 ? out : undefined;
-}
-export function joinList(values) {
-    if (!values || values.length === 0)
-        return undefined;
-    const shown = values.slice(0, MAX_LIST_ITEMS).join(", ");
-    return values.length > MAX_LIST_ITEMS
-        ? `${shown} (+${values.length - MAX_LIST_ITEMS})`
-        : shown;
-}
 /** Clamp caller-supplied bounds. Callers can only tighten, never loosen. */
 export function resolveBounds(options) {
     const clamp = (raw, fallback, ceiling) => {
@@ -76,7 +34,6 @@ function contentRevision(nodes, edges) {
         feed(`${e.id}|${e.source}|${e.target};`);
     return hash;
 }
-export const byId = (a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 export class GraphBuilder {
     nodes = new Map();
     edges = new Map();

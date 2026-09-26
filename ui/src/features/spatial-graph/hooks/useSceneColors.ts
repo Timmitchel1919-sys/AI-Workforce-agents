@@ -27,7 +27,6 @@ export function useSceneColors(): SceneColors {
     if (typeof MutationObserver === "undefined") return;
     const observer = new MutationObserver(() => setColors(read()));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class", "style"] });
-    setColors(read());
     return () => observer.disconnect();
   }, []);
   return colors;

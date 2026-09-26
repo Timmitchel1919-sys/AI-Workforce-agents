@@ -16,7 +16,7 @@ import {
   type EnvironmentType,
 } from "../../contracts/environments.js";
 import type { EnvironmentRegistry } from "../environments/environment-registry.js";
-import { safeMetadata, truncate } from "./graph-projection.js";
+import { byId, safeMetadata, truncate } from "./graph-util.js";
 import { toGraphState } from "./graph-state.js";
 
 const MAX_LABEL = 120;
@@ -67,9 +67,6 @@ const TYPE_BY_CODE: Readonly<Record<string, EnvironmentType>> = {
   unity: "unity",
   unreal: "unreal_engine",
 };
-
-const byId = <T extends { id: string }>(a: T, b: T): number =>
-  a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
 export function buildEnvironmentFragment(
   input: EnvironmentFragmentInput,

@@ -1,5 +1,5 @@
 import { KNOWLEDGE_SOURCE_KINDS } from "../../contracts/graph.js";
-import { safeMetadata, truncate } from "./graph-projection.js";
+import { safeMetadata, truncate } from "./graph-util.js";
 import { toGraphState } from "./graph-state.js";
 const MAX_SOURCES = 100;
 const ID_PATTERN = /^[A-Za-z0-9._:-]{1,200}$/;

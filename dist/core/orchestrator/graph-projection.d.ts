@@ -1,6 +1,7 @@
 import { type GraphFragment, type GraphQueryOptions, type WorkforceGraphEdge, type WorkforceGraphNode, type WorkforceGraphProjection } from "../../contracts/graph.js";
 import type { KnowledgeSourceProvider } from "../../contracts/graph.js";
 import type { AgentRegistry, EnvironmentRegistry, ProjectRegistry, TaskSystem, WorkflowSystem } from "../index.js";
+export { byId, joinList, redactSecrets, safeMetadata, truncate, } from "./graph-util.js";
 import type { SoftwareFactoryOrchestrator } from "./software-factory-orchestrator.js";
 /** Optional read-only collaborators. Absent → that slice is simply omitted. */
 export interface GraphProjectionSources {
@@ -19,16 +20,8 @@ export interface ResolvedGraphBounds {
     maxNodes: number;
     maxEdges: number;
 }
-export declare function redactSecrets(value: string): string;
-export declare function truncate(value: string, max: number): string;
-/** Only display-safe scalar metadata survives; undefined entries are dropped. */
-export declare function safeMetadata(input: Record<string, string | number | boolean | undefined>): Record<string, string | number | boolean> | undefined;
-export declare function joinList(values: readonly string[] | undefined): string | undefined;
 /** Clamp caller-supplied bounds. Callers can only tighten, never loosen. */
 export declare function resolveBounds(options: GraphQueryOptions): ResolvedGraphBounds;
-export declare const byId: <T extends {
-    id: string;
-}>(a: T, b: T) => number;
 export declare class GraphBuilder {
     readonly nodes: Map<string, WorkforceGraphNode>;
     readonly edges: Map<string, WorkforceGraphEdge>;

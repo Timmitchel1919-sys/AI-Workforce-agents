@@ -98,3 +98,10 @@ export function incidentEdges(graph: GraphData, id: string): WorkforceGraphEdge[
 export function toGraphData(projection: WorkforceGraphProjection): GraphData {
   return { nodes: projection.nodes, edges: projection.edges };
 }
+
+/** Case-insensitive label search over the given nodes; empty query matches nothing (null = no search). */
+export function matchNodes(nodes: readonly WorkforceGraphNode[], query: string): Set<string> | null {
+  const q = query.trim().toLowerCase();
+  if (q === "") return null;
+  return new Set(nodes.filter((n) => n.label.toLowerCase().includes(q)).map((n) => n.id));
+}

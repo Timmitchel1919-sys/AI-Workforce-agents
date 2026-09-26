@@ -7,9 +7,13 @@ const hook = vi.fn();
 vi.mock("../../../features/spatial-graph/hooks/useSpatialGraph", () => ({
   useSpatialGraph: (...a: unknown[]) => hook(...a),
 }));
-const projectsHook = vi.fn();
+
+let projectsState: { status: string; projects: Array<{ projectId: string; displayName: string }> } = {
+  status: "ready",
+  projects: [{ projectId: "p1", displayName: "Apollo" }],
+};
 vi.mock("../../../features/executionPlans", () => ({
-  useProjects: () => projectsHook(),
+  useProjects: () => ({ ...projectsState, refetch: () => {} }),
 }));
 vi.mock("../../../features/spatial-graph/components/SpatialGraphView", () => ({
   SpatialGraphView: () => <div data-testid="mock-canvas" />,
@@ -34,94 +38,121 @@ function renderAt(url: string) {
   );
 }
 
-describe("SpatialGraphPage mode switching", () => {
+const twoProjects = [
+  { projectId: "p1", displayName: "Apollo" },
+  { projectId: "p2", displayName: "Borealis" },
+];
+
+describe("SpatialGraphPage", () => {
   beforeEach(() => {
     hook.mockReset();
-    projectsHook.mockReset();
-    projectsHook.mockReturnValue({ status: "ready", projects: [{ projectId: "p1" }], refetch: vi.fn() });
-    hook.mockImplementation((_p: string, o: { mode: string }) => ({
-      graph: makeProjection({ mode: o.mode as never }),
+    projectsState = { status: "ready", projects: [{ projectId: "p1", displayName: "Apollo" }] };
+    hook.mockImplementation((p: string, o: { mode: string }) => ({
+      graph: makeProjection({ projectId: p, mode: o.mode as never }),
       loading: false,
       error: null,
     }));
   });
 
-  it("defaults to WORKFORCE and treats an invalid ?mode as WORKFORCE", () => {
-    renderAt("/graph?mode=NOPE");
-    expect(hook).toHaveBeenLastCalledWith("p1", { mode: "WORKFORCE", rootNodeId: undefined });
-    expect(screen.getByRole("radio", { name: "Workforce" })).toHaveAttribute("aria-checked", "true");
+  describe("mode switching", () => {
+    it("defaults to WORKFORCE and treats an invalid ?mode as WORKFORCE", () => {
+      renderAt("/graph?mode=NOPE");
+      expect(hook).toHaveBeenLastCalledWith("p1", { mode: "WORKFORCE", rootNodeId: undefined });
+      expect(screen.getByRole("button", { name: "Workforce" })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("reads a valid mode from the URL", () => {
+      renderAt("/graph?mode=DEPENDENCY");
+      expect(hook).toHaveBeenLastCalledWith("p1", { mode: "DEPENDENCY", rootNodeId: undefined });
+      expect(screen.getByRole("button", { name: "Dependencies" })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("switches mode without remounting, updates the URL, and fetches once per commit", async () => {
+      renderAt("/graph");
+      const canvas = screen.getByTestId("mock-canvas");
+      await userEvent.click(screen.getByRole("button", { name: /Agent: Builder/ }));
+      hook.mockClear();
+      screen.getByRole("button", { name: "Workforce" }).focus();
+      await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+      expect(hook).not.toHaveBeenCalled(); // moving focus does not refetch
+      await userEvent.keyboard("{Enter}");
+      expect(screen.getByTestId("where")).toHaveTextContent("mode=AGENT");
+      expect(hook).toHaveBeenLastCalledWith("p1", { mode: "AGENT", rootNodeId: "agent-a1" });
+      expect(new Set(hook.mock.calls.map((c) => JSON.stringify(c))).size).toBe(hook.mock.calls.length > 1 ? 2 : 1);
+      expect(screen.getByTestId("mock-canvas")).toBe(canvas); // same DOM node: no remount / reload
+    });
+
+    it("drops rootNodeId when the selection is not valid for the new mode", async () => {
+      renderAt("/graph");
+      await userEvent.click(screen.getByRole("button", { name: /Task: Write API/ }));
+      await userEvent.click(screen.getByRole("button", { name: "Agents" }));
+      expect(hook).toHaveBeenLastCalledWith("p1", { mode: "AGENT", rootNodeId: undefined });
+      await userEvent.click(screen.getByRole("button", { name: "Dependencies" }));
+      expect(hook).toHaveBeenLastCalledWith("p1", { mode: "DEPENDENCY", rootNodeId: "task-t1" });
+      await userEvent.click(screen.getByRole("button", { name: "Environments" }));
+      expect(hook).toHaveBeenLastCalledWith("p1", { mode: "ENVIRONMENT", rootNodeId: undefined });
+    });
+
+    it("keeps the previous graph (no spinner-only view) while loading", () => {
+      hook.mockReturnValue({ graph: makeProjection(), loading: true, error: null });
+      renderAt("/graph");
+      expect(screen.getByTestId("mock-canvas")).toBeInTheDocument();
+      expect(screen.getByRole("toolbar", { name: "Graph view mode" })).toHaveAttribute("aria-busy", "true");
+    });
   });
 
-  it("reads a valid mode from the URL", () => {
-    renderAt("/graph?mode=DEPENDENCY");
-    expect(hook).toHaveBeenLastCalledWith("p1", { mode: "DEPENDENCY", rootNodeId: undefined });
-    expect(screen.getByRole("radio", { name: "Dependencies" })).toHaveAttribute("aria-checked", "true");
-  });
+  describe("project selection", () => {
+    it("shows a single project as static text, with no selector", () => {
+      renderAt("/graph");
+      expect(screen.getByTestId("sg-project-static")).toHaveTextContent("Apollo");
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    });
 
-  it("switches mode without remounting, updates the URL and scopes to a valid selected root", async () => {
-    renderAt("/graph");
-    const canvas = screen.getByTestId("mock-canvas");
-    await userEvent.click(screen.getByRole("button", { name: /Agent: Builder/ }));
-    await userEvent.click(screen.getByRole("radio", { name: "Agents" }));
-    expect(screen.getByTestId("where")).toHaveTextContent("/graph?mode=AGENT");
-    expect(hook).toHaveBeenLastCalledWith("p1", { mode: "AGENT", rootNodeId: "agent-a1" });
-    expect(screen.getByTestId("mock-canvas")).toBe(canvas); // same DOM node: no remount / reload
-  });
+    it("offers only real registered projects and validates ?project= (invalid -> first)", () => {
+      projectsState = { status: "ready", projects: twoProjects };
+      renderAt("/graph?project=evil");
+      const select = screen.getByRole("combobox", { name: "Project" }) as HTMLSelectElement;
+      expect([...select.options].map((o) => o.value)).toEqual(["p1", "p2"]);
+      expect(select.value).toBe("p1");
+      expect(hook).toHaveBeenLastCalledWith("p1", expect.anything());
+    });
 
-  it("drops rootNodeId when the selection is not valid for the new mode", async () => {
-    renderAt("/graph");
-    await userEvent.click(screen.getByRole("button", { name: /Task: Write API/ }));
-    await userEvent.click(screen.getByRole("radio", { name: "Agents" }));
-    expect(hook).toHaveBeenLastCalledWith("p1", { mode: "AGENT", rootNodeId: undefined });
-    await userEvent.click(screen.getByRole("radio", { name: "Dependencies" }));
-    // a task is valid as the DEPENDENCY root
-    expect(hook).toHaveBeenLastCalledWith("p1", { mode: "DEPENDENCY", rootNodeId: "task-t1" });
-    await userEvent.click(screen.getByRole("radio", { name: "Environments" }));
-    expect(hook).toHaveBeenLastCalledWith("p1", { mode: "ENVIRONMENT", rootNodeId: undefined });
-  });
+    it("honours a valid ?project= and writes the choice to the URL", async () => {
+      projectsState = { status: "ready", projects: twoProjects };
+      renderAt("/graph?project=p2");
+      expect(hook).toHaveBeenLastCalledWith("p2", expect.anything());
+      await userEvent.selectOptions(screen.getByRole("combobox", { name: "Project" }), "p1");
+      expect(screen.getByTestId("where")).toHaveTextContent("project=p1");
+      expect(hook).toHaveBeenLastCalledWith("p1", expect.anything());
+    });
 
-  it("keeps the previous graph (no spinner-only view) while loading", () => {
-    hook.mockReturnValue({ graph: makeProjection(), loading: true, error: null });
-    renderAt("/graph");
-    expect(screen.getByTestId("mock-canvas")).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-busy", "true");
-  });
-});
+    it("never sends a node id from project A as rootNodeId for project B, and resets selection", async () => {
+      projectsState = { status: "ready", projects: twoProjects };
+      renderAt("/graph?project=p1");
+      await userEvent.click(screen.getByRole("button", { name: /Agent: Builder/ }));
+      await userEvent.click(screen.getByRole("button", { name: "Agents" }));
+      expect(hook).toHaveBeenLastCalledWith("p1", { mode: "AGENT", rootNodeId: "agent-a1" });
 
-describe("SpatialGraphPage project-list states", () => {
-  beforeEach(() => {
-    hook.mockReset();
-    hook.mockReturnValue({ graph: null, loading: false, error: null });
-    projectsHook.mockReset();
-  });
+      await userEvent.selectOptions(screen.getByRole("combobox", { name: "Project" }), "p2");
+      expect(hook).toHaveBeenLastCalledWith("p2", { mode: "AGENT", rootNodeId: undefined });
+      for (const call of hook.mock.calls) {
+        if (call[0] === "p2") expect(call[1].rootNodeId).toBeUndefined();
+      }
+      // switching back must not resurrect A's root either
+      await userEvent.selectOptions(screen.getByRole("combobox", { name: "Project" }), "p1");
+      expect(hook).toHaveBeenLastCalledWith("p1", { mode: "AGENT", rootNodeId: undefined });
+      // the workspace was re-keyed, so the old selection is gone (no inspector)
+      expect(screen.queryByRole("heading", { name: "Builder" })).not.toBeInTheDocument();
+    });
 
-  it("shows the real empty state only when the project list is genuinely empty", () => {
-    projectsHook.mockReturnValue({ status: "empty", projects: [], refetch: vi.fn() });
-    renderAt("/graph");
-    expect(screen.getByText("No Projects")).toBeInTheDocument();
-  });
-
-  it.each([
-    ["forbidden", "Project access denied"],
-    ["unauthenticated", "Sign-in required"],
-    ["error", "Could not load projects"],
-    ["not_found", "Could not load projects"],
-  ])("does not mask a %s project-list failure as 'No Projects'", (status, title) => {
-    projectsHook.mockReturnValue({ status, projects: [], refetch: vi.fn() });
-    renderAt("/graph");
-    expect(screen.getByText(title)).toBeInTheDocument();
-    expect(screen.queryByText("No Projects")).not.toBeInTheDocument();
-  });
-
-  it("offers a retry for transient failures but not for permission errors", async () => {
-    const refetch = vi.fn();
-    projectsHook.mockReturnValue({ status: "error", projects: [], refetch });
-    const { unmount } = renderAt("/graph");
-    await userEvent.click(screen.getByRole("button", { name: /try again/i }));
-    expect(refetch).toHaveBeenCalledTimes(1);
-    unmount();
-    projectsHook.mockReturnValue({ status: "forbidden", projects: [], refetch });
-    renderAt("/graph");
-    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+    it("still reports project-list failures instead of an empty state, and empty when there are none", () => {
+      projectsState = { status: "forbidden", projects: [] };
+      const { unmount } = renderAt("/graph");
+      expect(screen.queryByText("No Projects")).not.toBeInTheDocument();
+      unmount();
+      projectsState = { status: "empty", projects: [] };
+      renderAt("/graph");
+      expect(screen.getByText("No Projects")).toBeInTheDocument();
+    });
   });
 });

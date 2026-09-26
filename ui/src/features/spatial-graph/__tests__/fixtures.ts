@@ -1,3 +1,4 @@
+import type { SpatialGraphViewProps } from "../components/SpatialGraphView";
 import type {
   GraphOperationalState,
   WorkforceGraphEdge,
@@ -52,3 +53,6 @@ export function makeProjection(overrides: Partial<WorkforceGraphProjection> = {}
     ...overrides,
   };
 }
+
+/** Captures the props the (mocked) 3D view receives, so tests can assert what would be rendered. */
+export const viewHarness: { props: SpatialGraphViewProps } = { props: undefined as unknown as SpatialGraphViewProps };
