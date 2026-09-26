@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { useI18n } from "../../i18n";
+import { useI18n, type MessageKey } from "../../i18n";
 import { useSpatialGraph } from "../../features/spatial-graph/hooks/useSpatialGraph";
 import { SpatialGraphWorkspace } from "../../features/spatial-graph/components/SpatialGraphWorkspace";
 import { MODE_PARAM, parseMode, rootNodeFor } from "../../features/spatial-graph/lib/modes";
@@ -10,14 +10,28 @@ import { ErrorState } from "../../components/ui/ErrorState";
 import { EmptyState } from "../../components/ui/EmptyState";
 import type { GraphMode, WorkforceGraphNode } from "../../../../contracts/graph";
 import { Network } from "lucide-react";
-import { useProjects } from "../../features/executionPlans";
+import { useProjects, type PlanUiState } from "../../features/executionPlans";
 
 import "./SpatialGraphPage.css";
+
+const PROJECT_LIST_FAILURES: ReadonlySet<PlanUiState> = new Set<PlanUiState>([
+  "forbidden",
+  "unauthenticated",
+  "not_found",
+  "conflict",
+  "error",
+]);
+
+function projectListErrorKey(status: PlanUiState): "projectsForbidden" | "projectsUnauthenticated" | "projectsLoadFailed" {
+  if (status === "forbidden") return "projectsForbidden";
+  if (status === "unauthenticated") return "projectsUnauthenticated";
+  return "projectsLoadFailed";
+}
 
 export default function SpatialGraphPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { t } = useI18n();
-  const { status: projectsStatus, projects } = useProjects();
+  const { status: projectsStatus, projects, refetch: refetchProjects } = useProjects();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // The URL is the source of truth for the mode; unknown values fall back to WORKFORCE.
@@ -47,6 +61,19 @@ export default function SpatialGraphPage() {
   );
 
   if (projectsStatus === "loading" || (loading && !graph)) return <Spinner />;
+  // A failed project lookup must never masquerade as "no projects": permission,
+  // sign-in and server errors are reported as such. A project in the URL can
+  // still be graphed, so only block when there is nothing to show.
+  if (!projectId && PROJECT_LIST_FAILURES.has(projectsStatus)) {
+    const key = projectListErrorKey(projectsStatus);
+    return (
+      <ErrorState
+        title={t(`spatial.${key}` as MessageKey)}
+        description={t(`spatial.${key}Desc` as MessageKey)}
+        onRetry={projectsStatus === "forbidden" || projectsStatus === "unauthenticated" ? undefined : () => void refetchProjects()}
+      />
+    );
+  }
   if (projectsStatus === "empty" || !activeProjectId)
     return <EmptyState icon={<Network />} title={t("spatial.noProjects")} description={t("spatial.noProjectsDesc")} />;
   if (error) return <ErrorState title={t("spatial.loadFailed")} description={error.message} />;

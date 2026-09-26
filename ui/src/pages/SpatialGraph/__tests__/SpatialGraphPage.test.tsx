@@ -7,8 +7,9 @@ const hook = vi.fn();
 vi.mock("../../../features/spatial-graph/hooks/useSpatialGraph", () => ({
   useSpatialGraph: (...a: unknown[]) => hook(...a),
 }));
+const projectsHook = vi.fn();
 vi.mock("../../../features/executionPlans", () => ({
-  useProjects: () => ({ status: "ready", projects: [{ projectId: "p1" }] }),
+  useProjects: () => projectsHook(),
 }));
 vi.mock("../../../features/spatial-graph/components/SpatialGraphView", () => ({
   SpatialGraphView: () => <div data-testid="mock-canvas" />,
@@ -36,6 +37,8 @@ function renderAt(url: string) {
 describe("SpatialGraphPage mode switching", () => {
   beforeEach(() => {
     hook.mockReset();
+    projectsHook.mockReset();
+    projectsHook.mockReturnValue({ status: "ready", projects: [{ projectId: "p1" }], refetch: vi.fn() });
     hook.mockImplementation((_p: string, o: { mode: string }) => ({
       graph: makeProjection({ mode: o.mode as never }),
       loading: false,
@@ -82,5 +85,43 @@ describe("SpatialGraphPage mode switching", () => {
     renderAt("/graph");
     expect(screen.getByTestId("mock-canvas")).toBeInTheDocument();
     expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-busy", "true");
+  });
+});
+
+describe("SpatialGraphPage project-list states", () => {
+  beforeEach(() => {
+    hook.mockReset();
+    hook.mockReturnValue({ graph: null, loading: false, error: null });
+    projectsHook.mockReset();
+  });
+
+  it("shows the real empty state only when the project list is genuinely empty", () => {
+    projectsHook.mockReturnValue({ status: "empty", projects: [], refetch: vi.fn() });
+    renderAt("/graph");
+    expect(screen.getByText("No Projects")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["forbidden", "Project access denied"],
+    ["unauthenticated", "Sign-in required"],
+    ["error", "Could not load projects"],
+    ["not_found", "Could not load projects"],
+  ])("does not mask a %s project-list failure as 'No Projects'", (status, title) => {
+    projectsHook.mockReturnValue({ status, projects: [], refetch: vi.fn() });
+    renderAt("/graph");
+    expect(screen.getByText(title)).toBeInTheDocument();
+    expect(screen.queryByText("No Projects")).not.toBeInTheDocument();
+  });
+
+  it("offers a retry for transient failures but not for permission errors", async () => {
+    const refetch = vi.fn();
+    projectsHook.mockReturnValue({ status: "error", projects: [], refetch });
+    const { unmount } = renderAt("/graph");
+    await userEvent.click(screen.getByRole("button", { name: /try again/i }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    unmount();
+    projectsHook.mockReturnValue({ status: "forbidden", projects: [], refetch });
+    renderAt("/graph");
+    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
   });
 });
