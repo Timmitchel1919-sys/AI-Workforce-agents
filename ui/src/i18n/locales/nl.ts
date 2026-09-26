@@ -1748,4 +1748,10 @@ export const nl: Messages = {
       "edge": "{label}"
     }
   },
+  projectDetail: {
+    "openInGraph": "Openen in Ruimtelijke graaf",
+    "repository": "Repository",
+    "defaultBranch": "standaardbranch",
+    "opensInNewTab": "(opent in een nieuw tabblad)"
+  },
 };

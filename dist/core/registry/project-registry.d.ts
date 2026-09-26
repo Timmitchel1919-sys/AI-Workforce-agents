@@ -19,6 +19,7 @@ export interface ProjectRegistrationOptions {
 }
 export declare class ProjectRegistry {
     private readonly projects;
+    private readonly repositories;
     register(adapter: ProjectAdapter, options?: ProjectRegistrationOptions): ProjectRegistration;
     has(projectId: string): boolean;
     get(projectId: string): ProjectRegistration | undefined;

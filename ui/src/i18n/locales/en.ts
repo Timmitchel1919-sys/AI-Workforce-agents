@@ -1749,4 +1749,10 @@ export const en = {
       "edge": "{label}"
     }
   },
+  projectDetail: {
+    "openInGraph": "Open in Spatial Graph",
+    "repository": "Repository",
+    "defaultBranch": "default branch",
+    "opensInNewTab": "(opens in a new tab)"
+  },
 };

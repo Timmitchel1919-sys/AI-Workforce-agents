@@ -6,7 +6,7 @@
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
 import { TOOL_WILDCARD, NotFoundError, operatorCan, operatorCanAccessProject, PermissionDeniedError, validateOperatorPrincipal, } from "../../contracts/index.js";
-import { now, TechnologyCatalog } from "../../core/index.js";
+import { now, parseProjectRepositoryRef, TechnologyCatalog, } from "../../core/index.js";
 import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolView, deriveTaskView, deriveWorkflowView, MAX_PAGE_SIZE, paginate, } from "../derive.js";
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
 import { executionPlanSummaryView, executionPlanView } from "../plan-views.js";
@@ -751,6 +751,9 @@ export class WorkforceQueryService {
             .slice(0, 15)
             .map(deriveAuditEventView);
         const status = adapterStatus === "unavailable" ? "unavailable" : "available";
+        // Only a validated, credential-free reference is ever exposed; anything
+        // else in registration metadata stays server-side.
+        const repository = parseProjectRepositoryRef(registration.metadata.repository);
         return {
             projectId,
             displayName: registration.displayName,
@@ -761,6 +764,7 @@ export class WorkforceQueryService {
             activeWorkflows,
             recentTaskIds,
             recentActivity,
+            ...(repository ? { repository } : {}),
         };
     }
 }

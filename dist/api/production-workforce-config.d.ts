@@ -9,7 +9,14 @@ import type { Agent, EnvironmentDescriptor } from "../contracts/index.js";
 import type { ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
 export declare const CONTROL_PLANE_ANALYSIS_AGENT: Agent;
 /**
- * The first authoritative production project: Money Mind, on its real
+ * The first internal production project: the AI Workforce platform itself,
+ * represented by its own read-only adapter. Registration only makes the project
+ * exist (so access can be granted and it appears in the graph); it starts
+ * nothing. Repository identity is a credential-free reference.
+ */
+export declare function createAiWorkforceProductionBinding(): ProductionWorkforceConfiguration["projectAdapters"][number];
+/**
+ * A further authoritative production project: Money Mind, on its real
  * adapter. A Cloud Function has no Money Mind checkout, so unless
  * `MONEY_MIND_REPO_PATH` is configured the repository backend is the explicit
  * {@link UnavailableMoneyMindRepo}: the project is registered (access can be

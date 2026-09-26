@@ -220,6 +220,8 @@ export interface ProjectDetail extends ProjectSummary {
   capabilities: readonly { operation: string; description: string; action: string }[];
   connectedAgents: readonly string[];
   activeWorkflows: number;
+  /** Optional, operator-declared reference (https, credential-free). Absent unless declared. */
+  repository?: { url: string; defaultBranch: string };
 }
 
 export interface TechnologyEntry {

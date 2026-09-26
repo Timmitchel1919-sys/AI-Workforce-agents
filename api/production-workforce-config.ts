@@ -17,6 +17,11 @@ import {
   createProductionOpenAIAgentExecutor,
 } from "../agents/control-plane-analysis/index.js";
 import {
+  AI_WORKFORCE_DISPLAY_NAME,
+  AI_WORKFORCE_REPOSITORY,
+  AiWorkforceProjectAdapter,
+} from "../adapters/projects/ai-workforce/index.js";
+import {
   MoneyMindProjectAdapter,
   NodeMoneyMindRepo,
   UnavailableMoneyMindRepo,
@@ -55,7 +60,23 @@ export const CONTROL_PLANE_ANALYSIS_AGENT: Agent = Object.freeze({
 });
 
 /**
- * The first authoritative production project: Money Mind, on its real
+ * The first internal production project: the AI Workforce platform itself,
+ * represented by its own read-only adapter. Registration only makes the project
+ * exist (so access can be granted and it appears in the graph); it starts
+ * nothing. Repository identity is a credential-free reference.
+ */
+export function createAiWorkforceProductionBinding(): ProductionWorkforceConfiguration["projectAdapters"][number] {
+  return Object.freeze({
+    adapter: new AiWorkforceProjectAdapter(),
+    displayName: AI_WORKFORCE_DISPLAY_NAME,
+    metadata: Object.freeze({
+      repository: Object.freeze({ ...AI_WORKFORCE_REPOSITORY }),
+    }),
+  });
+}
+
+/**
+ * A further authoritative production project: Money Mind, on its real
  * adapter. A Cloud Function has no Money Mind checkout, so unless
  * `MONEY_MIND_REPO_PATH` is configured the repository backend is the explicit
  * {@link UnavailableMoneyMindRepo}: the project is registered (access can be
@@ -91,7 +112,10 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguratio
     }),
     tools: Object.freeze([]),
     toolHandlerBindings: Object.freeze({}),
-    projectAdapters: Object.freeze([createMoneyMindProductionBinding()]),
+    projectAdapters: Object.freeze([
+      createAiWorkforceProductionBinding(),
+      createMoneyMindProductionBinding(),
+    ]),
     permissionGrants: Object.freeze([]),
   });
 

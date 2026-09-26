@@ -6,7 +6,10 @@ export class BaseProjectAdapter {
         };
     }
     async execute(operation, input) {
-        const entry = this.operations[operation];
+        // Own properties only: "constructor"/"__proto__" must be "not exposed".
+        const entry = Object.hasOwn(this.operations, operation)
+            ? this.operations[operation]
+            : undefined;
         if (!entry) {
             throw new Error(`operation not exposed by project adapter ${this.projectId}: ${operation}`);
         }

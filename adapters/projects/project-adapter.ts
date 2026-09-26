@@ -43,7 +43,10 @@ export abstract class BaseProjectAdapter implements ProjectAdapter {
   }
 
   async execute(operation: string, input: unknown): Promise<unknown> {
-    const entry = this.operations[operation];
+    // Own properties only: "constructor"/"__proto__" must be "not exposed".
+    const entry = Object.hasOwn(this.operations, operation)
+      ? this.operations[operation]
+      : undefined;
     if (!entry) {
       throw new Error(
         `operation not exposed by project adapter ${this.projectId}: ${operation}`,

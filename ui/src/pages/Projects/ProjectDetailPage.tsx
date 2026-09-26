@@ -1,11 +1,12 @@
-import { NavLink, useLocation, useParams } from "react-router-dom";
-import { Lock } from "lucide-react";
+import { Link, NavLink, useLocation, useParams } from "react-router-dom";
+import { ExternalLink, Lock, Network } from "lucide-react";
 import { ErrorState, Skeleton } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
 import { useAuth } from "../../auth/useAuth";
 import { useProject, type ProjectDetail } from "../../features/executionPlans";
 import { useI18n } from "../../i18n";
+import { safeRepositoryLink } from "./repositoryLink";
 import { ExecutionPlanTab } from "./plan/ExecutionPlanTab";
 import { OperationsTab } from "./operations/OperationsTab";
 import { SessionDetail } from "./operations/SessionDetail";
@@ -99,9 +100,16 @@ export default function ProjectDetailPage() {
 
 function ProjectOverview({ project }: { project: ProjectDetail }) {
   const { t } = useI18n();
+  const repository = safeRepositoryLink(project.repository);
   return (
     <section className="plan-section" aria-labelledby="project-overview-title">
       <h3 id="project-overview-title">{t("plans.tabOverview")}</h3>
+      <p className="plan-overview-links">
+        <Link className="plan-project-link__cta" to={`/graph?project=${encodeURIComponent(project.projectId)}`}>
+          <Network size={16} aria-hidden />
+          {t("projectDetail.openInGraph")}
+        </Link>
+      </p>
       <dl className="plan-metrics">
         <div className="plan-metric">
           <dt>{t("plans.projectStatus")}</dt>
@@ -120,6 +128,19 @@ function ProjectOverview({ project }: { project: ProjectDetail }) {
           <dd>{project.activeWorkflows}</dd>
         </div>
       </dl>
+      {repository ? (
+        <p className="plan-repository">
+          <span className="plan-muted">{t("projectDetail.repository")}: </span>
+          <a href={repository.href} target="_blank" rel="noopener noreferrer">
+            {repository.text}
+            <ExternalLink size={14} aria-hidden />
+            <span className="visually-hidden"> {t("projectDetail.opensInNewTab")}</span>
+          </a>{" "}
+          <span className="plan-muted">
+            ({t("projectDetail.defaultBranch")}: <code>{repository.defaultBranch}</code>)
+          </span>
+        </p>
+      ) : null}
       <h4>{t("plans.projectCapabilities")}</h4>
       {project.capabilities.length === 0 ? (
         <p className="plan-muted">{t("plans.noCapabilities")}</p>

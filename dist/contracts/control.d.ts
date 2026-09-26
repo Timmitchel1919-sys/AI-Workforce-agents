@@ -276,6 +276,16 @@ export interface ProjectCapabilityView {
     description: string;
     action: string;
 }
+/**
+ * A project's repository REFERENCE: identity only. It never carries a
+ * credential — repository access is a separate, server-side integration
+ * concern (a private repository stays private).
+ */
+export interface ProjectRepositoryRef {
+    /** https URL without userinfo, query or fragment. */
+    url: string;
+    defaultBranch: string;
+}
 export interface ProjectView {
     projectId: string;
     displayName: string;
@@ -286,6 +296,8 @@ export interface ProjectView {
     activeWorkflows: number;
     recentTaskIds: readonly string[];
     recentActivity: readonly AuditEventView[];
+    /** Present only when the registration declares a valid, credential-free reference. */
+    repository?: ProjectRepositoryRef;
 }
 export interface ToolExecutionStats {
     total: number;

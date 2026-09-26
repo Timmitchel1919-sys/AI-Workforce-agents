@@ -7,6 +7,7 @@ export * from "./persistence/cached-repository.js";
 export * from "./persistence/in-memory-execution-record-store.js";
 export * from "./registry/agent-registry.js";
 export * from "./registry/project-registry.js";
+export * from "./registry/project-repository-ref.js";
 export * from "./tasks/task-system.js";
 export * from "./handoffs/handoff-system.js";
 export * from "./permissions/permission-system.js";

@@ -48,7 +48,11 @@ import type {
   HostCapabilitySnapshot,
   HostInstance,
 } from "../../contracts/index.js";
-import { now, TechnologyCatalog } from "../../core/index.js";
+import {
+  now,
+  parseProjectRepositoryRef,
+  TechnologyCatalog,
+} from "../../core/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import {
   deriveAgentView,
@@ -1041,6 +1045,12 @@ export class WorkforceQueryService {
     const status: ProjectView["status"] =
       adapterStatus === "unavailable" ? "unavailable" : "available";
 
+    // Only a validated, credential-free reference is ever exposed; anything
+    // else in registration metadata stays server-side.
+    const repository = parseProjectRepositoryRef(
+      registration.metadata.repository,
+    );
+
     return {
       projectId,
       displayName: registration.displayName,
@@ -1051,6 +1061,7 @@ export class WorkforceQueryService {
       activeWorkflows,
       recentTaskIds,
       recentActivity,
+      ...(repository ? { repository } : {}),
     };
   }
 }
