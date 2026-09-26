@@ -5,6 +5,8 @@ const fetchMock = vi.fn();
 // A plain function (not a vi.fn) for the failing case: vitest's call tracking would otherwise
 // attach its own un-handled derived promise to a rejected result.
 let failWith: Error | null = null;
+let token: string | null = "tok";
+vi.mock("../../../auth/useAuth", () => ({ useAuth: () => ({ accessToken: token }) }));
 vi.mock("../api/spatialGraphClient", () => ({
   fetchWorkforceGraph: (...a: unknown[]) => (failWith ? Promise.reject(failWith) : fetchMock(...a)),
 }));
@@ -21,6 +23,7 @@ function deferred<T>() {
 describe("useSpatialGraph", () => {
   beforeEach(() => {
     failWith = null;
+    token = "tok";
     fetchMock.mockReset();
   });
 
@@ -44,7 +47,7 @@ describe("useSpatialGraph", () => {
     fetchMock.mockResolvedValue(makeProjection());
     renderHook(() => useSpatialGraph("p1", { mode: "AGENT", depth: 2 }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock).toHaveBeenCalledWith("p1", { mode: "AGENT", depth: 2, maxNodes: undefined, rootNodeId: undefined });
+    expect(fetchMock).toHaveBeenCalledWith("p1", { mode: "AGENT", depth: 2, maxNodes: undefined, rootNodeId: undefined }, "tok");
   });
 
   it("surfaces errors", async () => {
@@ -54,5 +57,20 @@ describe("useSpatialGraph", () => {
     expect(result.current.error?.message).toBe("boom");
     expect(result.current.graph).toBeNull();
     failWith = null;
+  });
+
+  it("sends the signed-in access token with the request", async () => {
+    fetchMock.mockResolvedValue(makeProjection());
+    renderHook(() => useSpatialGraph("p1", { mode: "WORKFORCE" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock.mock.calls[0][2]).toBe("tok");
+  });
+
+  it("does not request the graph until the operator is signed in", async () => {
+    token = null;
+    const { result } = renderHook(() => useSpatialGraph("p1", { mode: "WORKFORCE" }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.loading).toBe(false);
   });
 });
