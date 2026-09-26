@@ -16,6 +16,12 @@ import {
   CONTROL_PLANE_ANALYSIS_TASK_TYPE,
   createProductionOpenAIAgentExecutor,
 } from "../agents/control-plane-analysis/index.js";
+import {
+  MoneyMindProjectAdapter,
+  NodeMoneyMindRepo,
+  UnavailableMoneyMindRepo,
+  loadMoneyMindConfig,
+} from "../adapters/projects/money-mind/index.js";
 import type { ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
 
 const DENIED_ACTIONS: readonly PermissionAction[] = [
@@ -48,6 +54,30 @@ export const CONTROL_PLANE_ANALYSIS_AGENT: Agent = Object.freeze({
   }),
 });
 
+/**
+ * The first authoritative production project: Money Mind, on its real
+ * adapter. A Cloud Function has no Money Mind checkout, so unless
+ * `MONEY_MIND_REPO_PATH` is configured the repository backend is the explicit
+ * {@link UnavailableMoneyMindRepo}: the project is registered (access can be
+ * granted, it appears in the graph) while every repository read or run fails
+ * honestly with "repository is not available". No fixture or synthetic data
+ * is ever substituted and no filesystem path is probed.
+ */
+export function createMoneyMindProductionBinding(
+  env: Record<string, string | undefined> = process.env,
+): ProductionWorkforceConfiguration["projectAdapters"][number] {
+  const configured = loadMoneyMindConfig({}, env);
+  return Object.freeze({
+    adapter: new MoneyMindProjectAdapter({
+      repo: configured
+        ? new NodeMoneyMindRepo({ repoPath: configured.repoPath })
+        : new UnavailableMoneyMindRepo(),
+    }),
+    displayName: "Money Mind",
+    metadata: Object.freeze({ sourceAvailable: configured !== undefined }),
+  });
+}
+
 export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguration =
   Object.freeze({
     agents: Object.freeze([
@@ -61,7 +91,7 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguratio
     }),
     tools: Object.freeze([]),
     toolHandlerBindings: Object.freeze({}),
-    projectAdapters: Object.freeze([]),
+    projectAdapters: Object.freeze([createMoneyMindProductionBinding()]),
     permissionGrants: Object.freeze([]),
   });
 

@@ -1,4 +1,5 @@
 import { CONTROL_PLANE_ANALYSIS_AGENT_ID, CONTROL_PLANE_ANALYSIS_TASK_TYPE, createProductionOpenAIAgentExecutor, } from "../agents/control-plane-analysis/index.js";
+import { MoneyMindProjectAdapter, NodeMoneyMindRepo, UnavailableMoneyMindRepo, loadMoneyMindConfig, } from "../adapters/projects/money-mind/index.js";
 const DENIED_ACTIONS = [
     "write",
     "deploy",
@@ -26,6 +27,27 @@ export const CONTROL_PLANE_ANALYSIS_AGENT = Object.freeze({
         toolAccess: "none",
     }),
 });
+/**
+ * The first authoritative production project: Money Mind, on its real
+ * adapter. A Cloud Function has no Money Mind checkout, so unless
+ * `MONEY_MIND_REPO_PATH` is configured the repository backend is the explicit
+ * {@link UnavailableMoneyMindRepo}: the project is registered (access can be
+ * granted, it appears in the graph) while every repository read or run fails
+ * honestly with "repository is not available". No fixture or synthetic data
+ * is ever substituted and no filesystem path is probed.
+ */
+export function createMoneyMindProductionBinding(env = process.env) {
+    const configured = loadMoneyMindConfig({}, env);
+    return Object.freeze({
+        adapter: new MoneyMindProjectAdapter({
+            repo: configured
+                ? new NodeMoneyMindRepo({ repoPath: configured.repoPath })
+                : new UnavailableMoneyMindRepo(),
+        }),
+        displayName: "Money Mind",
+        metadata: Object.freeze({ sourceAvailable: configured !== undefined }),
+    });
+}
 export const PRODUCTION_WORKFORCE_CONFIGURATION = Object.freeze({
     agents: Object.freeze([
         Object.freeze({
@@ -38,7 +60,7 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION = Object.freeze({
     }),
     tools: Object.freeze([]),
     toolHandlerBindings: Object.freeze({}),
-    projectAdapters: Object.freeze([]),
+    projectAdapters: Object.freeze([createMoneyMindProductionBinding()]),
     permissionGrants: Object.freeze([]),
 });
 /**

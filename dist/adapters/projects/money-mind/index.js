@@ -2,6 +2,7 @@ export * from "./money-mind-path-policy.js";
 export * from "./money-mind-repo-port.js";
 export * from "./money-mind-fixture-repo.js";
 export * from "./money-mind-fs-repo.js";
+export * from "./money-mind-unavailable-repo.js";
 export * from "./money-mind-config.js";
 export * from "./money-mind-status-parser.js";
 export * from "./money-mind-project-adapter.js";

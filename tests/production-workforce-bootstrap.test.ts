@@ -4,8 +4,10 @@ import test from "node:test";
 import {
   createProductionWorkforceBootstrap,
   PRODUCTION_WORKFORCE_CONFIGURATION,
+  createMoneyMindProductionBinding,
   type ProductionWorkforceConfiguration,
 } from "../api/index.js";
+import { UnavailableMoneyMindRepo } from "../adapters/projects/money-mind/index.js";
 import type { Agent, ToolDefinition } from "../contracts/index.js";
 
 const agent: Agent = {
@@ -87,6 +89,61 @@ test("the authoritative production configuration resolves only its real OpenAI b
     bootstrap.agentExecutors.has("control-plane-analysis-agent"),
     true,
   );
+});
+
+test("production registers exactly one real project: Money Mind, with an honest unavailable source", async () => {
+  // Hermetic: never depends on the developer/CI MONEY_MIND_REPO_PATH.
+  const bootstrap = createProductionWorkforceBootstrap({
+    ...PRODUCTION_WORKFORCE_CONFIGURATION,
+    projectAdapters: [createMoneyMindProductionBinding({})],
+  });
+  assert.equal(bootstrap.report.projectAdapterCount, 1);
+  const project = bootstrap.projects.get("money-mind");
+  assert.ok(project);
+  assert.equal(project.displayName, "Money Mind");
+  assert.equal(project.metadata?.sourceAvailable, false);
+  // No checkout in the runtime: reads report absence, runs fail; nothing is faked.
+  const adapter = bootstrap.projects.require("money-mind").adapter;
+  const status = (await adapter.execute("READ_STATUS", {})) as {
+    chapters: unknown[];
+    featureFlags: unknown[];
+  };
+  assert.deepEqual(status.chapters, []);
+  assert.deepEqual(status.featureFlags, []);
+  await assert.rejects(
+    () => adapter.execute("READ_FILE", { path: "docs/anything.md" }),
+    /not found/i,
+  );
+  // Nothing can run: the runner reports the script as unavailable.
+  const run = (await adapter.execute("RUN_TESTS", { script: "test" })) as {
+    available: boolean;
+  };
+  assert.equal(run.available, false);
+  // The existing production agent's project scope now refers to a real project.
+  assert.ok(
+    bootstrap.agents
+      .require("control-plane-analysis-agent")
+      .allowedProjects.every((id) => bootstrap.projects.has(id)),
+  );
+});
+
+test("the unavailable repository never probes a filesystem path", async () => {
+  const repo = new UnavailableMoneyMindRepo();
+  assert.equal(await repo.exists(), false);
+  assert.equal(await repo.hasScript("test" as never), false);
+  await assert.rejects(() => repo.readTextFile(), /not available/i);
+  await assert.rejects(() => repo.listDirectory(), /not available/i);
+  await assert.rejects(
+    () => repo.runScript("test" as never, 1000),
+    /not available/i,
+  );
+});
+
+test("a configured MONEY_MIND_REPO_PATH switches to the real filesystem backend", () => {
+  const binding = createMoneyMindProductionBinding({
+    MONEY_MIND_REPO_PATH: "/definitely/configured",
+  });
+  assert.equal(binding.metadata?.sourceAvailable, true);
 });
 
 test("production bootstrap rejects duplicate agent ids", () => {

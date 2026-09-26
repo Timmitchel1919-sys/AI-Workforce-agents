@@ -142,7 +142,8 @@ export class WorkforceQueryService {
                         }
                         : {
                             status: "healthy",
-                            detail: ids.join(", "),
+                            // Count only: project ids are per-operator scoped data.
+                            detail: `${ids.length} project adapter${ids.length === 1 ? "" : "s"} registered`,
                         };
                 },
             },
