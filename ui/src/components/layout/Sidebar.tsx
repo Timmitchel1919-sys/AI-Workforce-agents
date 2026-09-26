@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Network,
   Bot,
   ClipboardCheck,
   Factory,
@@ -32,6 +33,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   approvals: ClipboardCheck,
   "audit-log": ScrollText,
   knowledge: BookOpen,
+  "spatial-graph": Network as any,
   infrastructure: Server,
   "software-factory": Factory,
   settings: Settings,

@@ -41,6 +41,7 @@ export const nl: Messages = {
     workflows: "Workflows",
     projects: "Projecten",
     approvals: "Goedkeuringen",
+    spatialGraph: "Spatial Graph",
     knowledge: "Kennis",
     infrastructure: "Infrastructuur",
     softwareFactory: "Softwarefabriek",

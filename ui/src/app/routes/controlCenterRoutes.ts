@@ -18,3 +18,4 @@ export { default as ProjectDetailPage } from "../../pages/Projects/ProjectDetail
 export { default as UsersAccessPage } from "../../pages/Settings/UsersAccessPage";
 export { default as ApprovalsPage } from "../../pages/Approvals/ApprovalsPage";
 export { default as AuditLogPage } from "../../pages/AuditLog/AuditLogPage";
+export { default as SpatialGraphPage } from "../../pages/SpatialGraph/SpatialGraphPage";

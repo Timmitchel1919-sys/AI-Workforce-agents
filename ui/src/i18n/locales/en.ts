@@ -42,6 +42,7 @@ export const en = {
     workflows: "Workflows",
     projects: "Projects",
     approvals: "Approvals",
+    spatialGraph: "Spatial Graph",
     knowledge: "Knowledge",
     infrastructure: "Infrastructure",
     softwareFactory: "Software Factory",

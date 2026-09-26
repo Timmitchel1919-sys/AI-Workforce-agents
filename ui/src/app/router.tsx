@@ -38,6 +38,7 @@ const ApprovalsPage = fromChunk(loadControlCenterRoutes, "ApprovalsPage");
 const AuditLogPage = fromChunk(loadControlCenterRoutes, "AuditLogPage");
 const ProjectsPage = fromChunk(loadControlCenterRoutes, "ProjectsPage");
 const ProjectDetailPage = fromChunk(loadControlCenterRoutes, "ProjectDetailPage");
+const SpatialGraphPage = fromChunk(loadControlCenterRoutes, "SpatialGraphPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -105,6 +106,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "tasks/:taskId", element: withSuspense(<TaskDetailPage />) },
       { path: "workflows", element: withSuspense(<WorkflowsPage />) },
       { path: "workflows/:workflowId", element: withSuspense(<WorkflowDetailPage />) },
+      { path: "graph", element: withSuspense(<SpatialGraphPage />) },
       { path: "projects", element: withSuspense(<ProjectsPage />) },
       { path: "projects/:projectId", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations", element: withSuspense(<ProjectDetailPage />) },

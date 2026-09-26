@@ -1,0 +1,66 @@
+.spatial-graph-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.5rem;
+  gap: 1.5rem;
+}
+
+.spatial-graph-container {
+  display: flex;
+  flex: 1;
+  gap: 1rem;
+  min-height: 0;
+  position: relative;
+}
+
+.spatial-graph-canvas-wrapper {
+  flex: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: #050510;
+}
+
+.spatial-graph-inspector {
+  width: 320px;
+  background: var(--surface-color, #1a1a1a);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.spatial-graph-inspector h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.spatial-graph-inspector .badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: var(--primary-color, #3b82f6);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: max-content;
+}
+
+.spatial-graph-inspector p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.spatial-graph-inspector .metadata pre {
+  background: rgba(0,0,0,0.2);
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

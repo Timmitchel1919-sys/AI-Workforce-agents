@@ -37,6 +37,7 @@ import type { AccessService, ProfileService } from "../core/index.js";
 
 export interface ControlPlaneApiOptions {
   query: WorkforceQueryService;
+  graphQuery?: any;
   command: WorkforceCommandService;
   operatorDirectory: OperatorDirectory;
   /**
@@ -357,6 +358,9 @@ export function createControlPlaneApi(
           correlationId,
         );
       case "projects":
+          if (segs.length === 3 && segs[2] === "graph" && options.graphQuery) {
+            return send(res, 200, options.graphQuery.getWorkforceGraph(principal, { projectId: id, depth: params.get("depth") ? parseInt(params.get("depth")!, 10) : undefined }), correlationId);
+          }
         // `GET /projects/:projectId/agents` — nested project resource route.
         if (segs.length === 3 && segs[2] === "agents") {
           return send(
