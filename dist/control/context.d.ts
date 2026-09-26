@@ -25,6 +25,8 @@ export interface ControlPlaneContext {
      * when absent every environment query returns an empty result.
      */
     environments?: EnvironmentRegistry;
+    /** Registered knowledge sources for the Spatial Graph KNOWLEDGE mode. */
+    knowledge?: import("../contracts/graph.js").KnowledgeSourceProvider;
     /**
      * Execution planning (EO-3.1). Optional: when absent every plan query
      * returns "not found" and plan commands are rejected as invalid state.

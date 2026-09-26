@@ -1,4 +1,5 @@
 import { NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, WorkforceError, } from "../contracts/index.js";
+import { parseGraphQueryParams } from "../control/services/graph-query-service.js";
 const ERROR_KIND_STATUS = {
     invalid_request: 400,
     unauthorized: 401,
@@ -178,7 +179,7 @@ export function createControlPlaneApi(options) {
                 }), correlationId);
             case "projects":
                 if (segs.length === 3 && segs[2] === "graph" && options.graphQuery) {
-                    return send(res, 200, options.graphQuery.getWorkforceGraph(principal, { projectId: id, depth: params.get("depth") ? parseInt(params.get("depth"), 10) : undefined }), correlationId);
+                    return send(res, 200, notNull(options.graphQuery.getWorkforceGraph(principal, parseGraphQueryParams(id, params))), correlationId);
                 }
                 // `GET /projects/:projectId/agents` — nested project resource route.
                 if (segs.length === 3 && segs[2] === "agents") {
