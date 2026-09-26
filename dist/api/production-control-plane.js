@@ -1,3 +1,4 @@
+import { GraphQueryService } from "../control/services/graph-query-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -185,7 +186,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     };
     const query = new WorkforceQueryService(context);
     const command = new WorkforceCommandService(context);
+    const graphQuery = new GraphQueryService(context);
     const handler = createControlPlaneApi({
+        graphQuery,
         query,
         command,
         operatorDirectory,

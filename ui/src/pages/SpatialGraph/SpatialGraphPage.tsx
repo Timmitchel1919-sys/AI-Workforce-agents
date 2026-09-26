@@ -9,22 +9,21 @@ import { ErrorState } from "../../components/ui/ErrorState";
 import { EmptyState } from "../../components/ui/EmptyState";
 import type { WorkforceGraphNode } from "../../../../contracts/graph";
 import { Network } from "lucide-react";
+import { useProjects } from "../../features/executionPlans";
 
 import "./SpatialGraphPage.css";
 
 export default function SpatialGraphPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { t } = useI18n();
+  const { status: projectsStatus, projects } = useProjects();
   
-  // For EO-5.4 we need a project ID context. In the Control Center, if we are at root level /graph,
-  // we might not have projectId in the URL. We should use a selected project or default.
-  // We will assume `default` if not specified for the demo.
-  const activeProjectId = projectId || "default";
-
-  const { graph, loading, error } = useSpatialGraph(activeProjectId);
+  const activeProjectId = projectId || (projects.length > 0 ? projects[0].projectId : null);
+  const { graph, loading, error } = useSpatialGraph(activeProjectId || "");
   const [selectedNode, setSelectedNode] = useState<WorkforceGraphNode | null>(null);
 
-  if (loading) return <Spinner />;
+  if (projectsStatus === "loading" || loading) return <Spinner />;
+  if (projectsStatus === "empty" || !activeProjectId) return <EmptyState icon={<Network />} title="No Projects" description="You do not have access to any projects to view a graph." />;
   if (error) return <ErrorState title="Failed to load graph" description={error.message} />;
   if (!graph) return <EmptyState icon={<Network />} title="No Graph Data" description="The workforce relationship graph is empty." />;
 
@@ -36,7 +35,7 @@ export default function SpatialGraphPage() {
       />
       
       <div className="spatial-graph-container">
-        <div className="spatial-graph-canvas-wrapper">
+        <div className="spatial-graph-canvas-wrapper" aria-hidden="true">
           <SpatialGraphView 
             graph={graph} 
             onNodeSelect={(node) => setSelectedNode(node)} 
@@ -58,6 +57,19 @@ export default function SpatialGraphPage() {
             )}
           </div>
         )}
+
+        <div className="visually-hidden" aria-label="Accessible graph representation">
+          <h3>Nodes</h3>
+          <ul>
+            {graph.nodes.map(n => (
+              <li key={n.id}>
+                <button onClick={() => setSelectedNode(n)}>
+                  {n.type}: {n.label} (Status: {n.status})
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,13 @@
 import { WorkforceGraphProjectionService } from "../../core/orchestrator/graph-projection.js";
 import { GraphQueryOptions, WorkforceGraphProjection } from "../../contracts/graph.js";
 import { ControlPlaneContext } from "../index.js";
-import { OperatorPrincipal } from "../../contracts/index.js";
+import { 
+  OperatorPrincipal, 
+  operatorCanAccessProject, 
+  validateOperatorPrincipal, 
+  operatorCan, 
+  PermissionDeniedError 
+} from "../../contracts/index.js";
 
 export class GraphQueryService {
   private readonly projectionService: WorkforceGraphProjectionService;
@@ -18,9 +24,19 @@ export class GraphQueryService {
   public getWorkforceGraph(
     principal: OperatorPrincipal,
     options: GraphQueryOptions,
-  ): WorkforceGraphProjection {
-    // In a real scenario, we'd check ctx.permissions.can(principal, "read_project", options.projectId);
-    // We assume basic read access here or rely on the HTTP route.
-    return this.projectionService.getProjection(options);
+  ): WorkforceGraphProjection | undefined {
+    validateOperatorPrincipal(principal);
+    if (!operatorCan(principal, "view")) {
+      throw new PermissionDeniedError("Operator cannot view Control Center.");
+    }
+    if (!operatorCanAccessProject(principal, options.projectId)) {
+      return undefined; // Hide existence of the project
+    }
+    
+    // Bounds checking
+    const depth = options.depth !== undefined ? Math.min(options.depth, 5) : undefined;
+    const boundedOptions = { ...options, depth, maxNodes: Math.min(options.maxNodes || 250, 500) };
+
+    return this.projectionService.getProjection(boundedOptions);
   }
 }

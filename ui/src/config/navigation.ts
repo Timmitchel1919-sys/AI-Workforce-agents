@@ -44,7 +44,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.approvals", route: "/approvals", icon: "approvals", section: "workspace" },
   { labelKey: "nav.infrastructure", route: "/infrastructure", icon: "infrastructure", section: "workspace" },
   { labelKey: "nav.softwareFactory", route: "/software-factory", icon: "software-factory", section: "workspace" },
-  { labelKey: "nav.spatialGraph" as MessageKey, route: "/graph", icon: "spatial-graph", section: "main" },
+  { labelKey: "nav.spatialGraph" , route: "/graph", icon: "spatial-graph", section: "main" },
   { labelKey: "nav.knowledge", route: "/knowledge", icon: "knowledge", section: "intelligence" },
   { labelKey: "nav.auditLog", route: "/audit-log", icon: "audit-log", section: "governance" },
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },

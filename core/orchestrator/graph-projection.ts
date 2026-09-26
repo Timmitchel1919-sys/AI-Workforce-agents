@@ -47,7 +47,7 @@ export class WorkforceGraphProjectionService {
       referenceId: project.projectId,
     });
 
-    const agents = this.agentRegistry.list();
+    const agents = this.agentRegistry.list().filter(a => a.allowedProjects.includes(options.projectId) || a.allowedProjects.includes("*"));
     for (const agent of agents) {
       addNode({
         id: `agent-${agent.id}`,
@@ -93,7 +93,7 @@ export class WorkforceGraphProjectionService {
         });
       }
 
-      const dependsOn = (task as any).dependencies || [];
+      const dependsOn = task.dependencies || [];
       for (const depId of dependsOn) {
         addEdge({
           id: `task-dep-${task.id}-${depId}`,

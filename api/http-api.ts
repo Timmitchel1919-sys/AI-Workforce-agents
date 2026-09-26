@@ -37,7 +37,7 @@ import type { AccessService, ProfileService } from "../core/index.js";
 
 export interface ControlPlaneApiOptions {
   query: WorkforceQueryService;
-  graphQuery?: any;
+  graphQuery?: import("../control/index.js").GraphQueryService;
   command: WorkforceCommandService;
   operatorDirectory: OperatorDirectory;
   /**
