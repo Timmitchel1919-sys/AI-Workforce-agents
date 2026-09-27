@@ -103,6 +103,8 @@ import {
 import { DEVELOPER_AGENT_ID, DeveloperAgent } from "../agents/developer/index.js";
 import { QA_AGENT_ID, QaAgent } from "../agents/qa/index.js";
 import { PROJECT_MANAGER_AGENT_ID, ProjectManagerAgent } from "../agents/project-manager/index.js";
+import { SpecialistAgent } from "../agents/specialists/index.js";
+import { V1_SPECIALIST_WORKFORCE } from "../contracts/workforce.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
@@ -490,6 +492,24 @@ export async function createProductionControlPlaneRuntime(
       }),
     }),
   );
+
+  for (const agent of V1_SPECIALIST_WORKFORCE) {
+    bootstrap.agentExecutors.replace(
+      agent.id,
+      new SpecialistAgent({
+        descriptor: agent,
+        audit,
+        model: new RoutedModelProvider({
+          inner: new LazyOpenAIModelProvider(),
+          router: modelRouter,
+          agent: bootstrap.agents.require(agent.id),
+          requirement: specialistRequirement,
+          usageLedger,
+          audit,
+        }),
+      }),
+    );
+  }
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
     tasks,

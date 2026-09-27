@@ -163,7 +163,11 @@ export function createMoneyMindProductionBinding(
   });
 }
 
-import { V1_SPECIALIST_WORKFORCE } from "../contracts/workforce.js";
+import { V1_SPECIALIST_WORKFORCE, type AgentDescriptor } from "../contracts/workforce.js";
+import { SpecialistAgent } from "../agents/specialists/index.js";
+
+export const createBootstrapSpecialistAgentExecutor = (descriptor: AgentDescriptor) => (audit: AuditLog): SpecialistAgent =>
+  new SpecialistAgent({ descriptor, model: new LazyOpenAIModelProvider(), audit });
 
 export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguration =
   Object.freeze({
@@ -177,7 +181,7 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguratio
       Object.freeze({ definition: PROJECT_MANAGER_AGENT, executorKey: "openai-project-manager" }),
       ...V1_SPECIALIST_WORKFORCE.map(agent => Object.freeze({
         definition: agent,
-        executorKey: "openai-developer"
+        executorKey: `openai-specialist-${agent.id}`
       }))
     ]),
     executorBindings: Object.freeze({
@@ -185,6 +189,12 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguratio
       "openai-developer": createBootstrapDeveloperAgentExecutor,
       "openai-qa": createBootstrapQaAgentExecutor,
       "openai-project-manager": createBootstrapProjectManagerAgentExecutor,
+      ...Object.fromEntries(
+        V1_SPECIALIST_WORKFORCE.map(agent => [
+          `openai-specialist-${agent.id}`,
+          createBootstrapSpecialistAgentExecutor(agent)
+        ])
+      )
     }),
     tools: Object.freeze([]),
     toolHandlerBindings: Object.freeze({}),

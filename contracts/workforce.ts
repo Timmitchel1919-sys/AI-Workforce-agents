@@ -26,6 +26,40 @@ export interface AgentInstance {
   metadata?: Record<string, unknown>;
 }
 
+export interface SpecialistTask {
+  objective: string;
+  context: string[];
+  instructions: string;
+  acceptanceCriteria: string[];
+}
+
+export interface SpecialistResult {
+  taskId: string;
+  agentId: string;
+  summary: string;
+  output: Record<string, unknown>;
+  createdAt: string;
+}
+
+export function validateSpecialistTask(raw: unknown): SpecialistTask {
+  if (typeof raw !== "object" || raw === null) throw new Error("task must be an object");
+  const t = raw as Record<string, unknown>;
+  if (typeof t.objective !== "string") throw new Error("objective must be a string");
+  return {
+    objective: t.objective,
+    context: Array.isArray(t.context) ? t.context.map(String) : [],
+    instructions: typeof t.instructions === "string" ? t.instructions : "",
+    acceptanceCriteria: Array.isArray(t.acceptanceCriteria) ? t.acceptanceCriteria.map(String) : []
+  };
+}
+
+export function validateSpecialistResult(raw: unknown): asserts raw is SpecialistResult {
+  if (typeof raw !== "object" || raw === null) throw new Error("result must be an object");
+  const r = raw as Record<string, unknown>;
+  if (typeof r.taskId !== "string") throw new Error("taskId is required");
+  if (typeof r.summary !== "string") throw new Error("summary is required");
+}
+
 // V1 Specialist Workforce Descriptors
 export const V1_SPECIALIST_WORKFORCE: AgentDescriptor[] = [
   {

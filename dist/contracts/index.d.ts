@@ -434,3 +434,4 @@ export * from "./onboarding.js";
 export * from "./cost-center.js";
 export * from "./governance.js";
 export * from "./routing.js";
+export * from "./workforce.js";
