@@ -67,6 +67,8 @@ export const CONTROL_CAPABILITIES = [
   "create_workstream",
   "add_task_to_workstream",
   "tick_software_factory",
+  /* PROJECT-2 — project onboarding & provisioning (administrators only). */
+  "create_project",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -129,6 +131,8 @@ export const ROLE_CAPABILITIES: Record<
     "create_workstream",
     "add_task_to_workstream",
     "tick_software_factory",
+    // PROJECT-2: creating/provisioning a project is administrator-only.
+    "create_project",
   ],
 };
 
@@ -212,6 +216,15 @@ export const CONTROL_COMMANDS = [
   "create_workstream",
   "add_task_to_workstream",
   "tick_software_factory",
+  // PROJECT-2 — project onboarding & provisioning.
+  "onboarding_create",
+  "onboarding_update",
+  "onboarding_analyze",
+  "onboarding_plan",
+  "onboarding_approve_plan",
+  "onboarding_provision",
+  "onboarding_revalidate",
+  "onboarding_cancel",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 

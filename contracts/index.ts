@@ -305,6 +305,7 @@ export const AUDIT_EVENT_TYPES = [
   "execution_plan_event",
   "access_event",
   "execution_event",
+  "onboarding_event",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -854,3 +855,4 @@ export * from "./execution-records.js";
 export * from "./orchestration.js";
 export * from "./environment-routing.js";
 export * from "./graph.js";
+export * from "./onboarding.js";

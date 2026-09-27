@@ -1,3 +1,4 @@
+import { onboardingNl } from "./onboarding.nl";
 import type { Messages } from "../messages";
 
 /** Nederlands. Must match the English catalogue key-for-key (compile-time checked). */
@@ -1754,4 +1755,5 @@ export const nl: Messages = {
     "defaultBranch": "standaardbranch",
     "opensInNewTab": "(opent in een nieuw tabblad)"
   },
+  onboarding: onboardingNl,
 };

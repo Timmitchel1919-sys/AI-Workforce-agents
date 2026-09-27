@@ -7,6 +7,9 @@ export const loadLanding = () => import("../pages/Landing/LandingPage");
 export const loadAuthRoutes = () => import("./routes/authRoutes");
 export const loadControlCenterRoutes = () => import("./routes/controlCenterRoutes");
 
+/** Project onboarding wizard (separate lazy chunk; routes are added in router.tsx). */
+export const loadProjectOnboarding = () => import("../pages/ProjectOnboarding/routes");
+
 export type RouteChunk = "landing" | "auth" | "controlCenter";
 
 export const routeChunkLoaders: Record<RouteChunk, () => Promise<unknown>> = {

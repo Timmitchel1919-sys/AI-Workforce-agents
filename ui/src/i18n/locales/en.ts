@@ -1,3 +1,4 @@
+import { onboardingEn } from "./onboarding.en";
 /**
  * English — the source catalogue. Every other locale must match this shape.
  * Keys are grouped by surface; values may contain {placeholders}.
@@ -1755,4 +1756,5 @@ export const en = {
     "defaultBranch": "default branch",
     "opensInNewTab": "(opens in a new tab)"
   },
+  onboarding: onboardingEn,
 };

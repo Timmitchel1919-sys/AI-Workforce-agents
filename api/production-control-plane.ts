@@ -31,6 +31,8 @@ import {
   FirestoreExecutionSessionStore,
   FirestoreOperatorAccountStore,
   FirestoreOperatorProfileStore,
+  FirestoreOnboardingSessionStore,
+  FirestoreProvisionedProjectStore,
   isTransactionalFirestore,
   FirestoreEventPublisher,
   type FirebaseServices,
@@ -68,7 +70,12 @@ import {
   ProfileService,
   ExecutionPlanningService,
   ValidationError,
+  GitHubRepositoryReader,
+  OnboardingService,
+  ProjectProvisioningService,
 } from "../core/index.js";
+import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
+import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi, type ApiHandler } from "./http-api.js";
 import {
@@ -320,10 +327,63 @@ export async function createProductionControlPlaneRuntime(
       services.firestore.collection("control_events"),
     ),
   };
+  // PROJECT-2: onboarding & provisioning. Sessions and provisioned projects are
+  // authoritative + transactional in Firestore; the browser never touches them.
+  const provisionedProjects = new FirestoreProvisionedProjectStore(
+    transactionalFirestore,
+    { collectionPrefix: options.collectionPrefix },
+  );
+  const provisioning = new ProjectProvisioningService({
+    sessions: new FirestoreOnboardingSessionStore(transactionalFirestore, {
+      collectionPrefix: options.collectionPrefix,
+    }),
+    projects: provisionedProjects,
+    registry: bootstrap.projects,
+    audit,
+    adapterFactory: (project) => new ProvisionedProjectAdapter(project),
+  });
+  const onboardingService = new OnboardingService({
+    sessions: new FirestoreOnboardingSessionStore(transactionalFirestore, {
+      collectionPrefix: options.collectionPrefix,
+    }),
+    projects: provisionedProjects,
+    registry: bootstrap.projects,
+    audit,
+    reader: new GitHubRepositoryReader(),
+    provisioning,
+    platform: () => ({
+      descriptors: environmentRegistry.listDescriptors(),
+      usableDescriptorIds: new Set(
+        environmentRegistry.usableInstances().map((i) => i.descriptorId),
+      ),
+      agents: bootstrap.agents.list(),
+    }),
+  });
+  const onboarding = new OnboardingControlService(onboardingService, audit);
+  // READY projects become discoverable through the existing Project Registry.
+  // Other warm instances pick them up through this throttled sync.
+  const syncProjects = async (): Promise<void> => {
+    for (const project of await provisionedProjects.list()) {
+      if (project.readiness === "ready") provisioning.activate(project);
+    }
+  };
+  await syncProjects();
+  let lastSync = Date.now();
+  const projectSync = async (): Promise<void> => {
+    if (Date.now() - lastSync < 10_000) return;
+    lastSync = Date.now();
+    try {
+      await syncProjects();
+    } catch {
+      /* a transient read failure must not fail an unrelated request */
+    }
+  };
   const query = new WorkforceQueryService(context);
   const command = new WorkforceCommandService(context);
   const graphQuery = new GraphQueryService(context);
   const handler = createControlPlaneApi({
+    onboarding,
+    projectSync,
     graphQuery,
     query,
     command,

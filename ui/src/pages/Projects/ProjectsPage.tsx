@@ -4,6 +4,8 @@ import { EmptyState, ErrorState, Skeleton } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
 import { useProjects } from "../../features/executionPlans";
+import { NewProjectAction } from "../../features/projectOnboarding/components/NewProjectAction";
+import { ResumeList } from "../../features/projectOnboarding/components/ResumeList";
 import { useI18n } from "../../i18n";
 import "./ExecutionPlan.css";
 
@@ -17,7 +19,10 @@ export default function ProjectsPage() {
         eyebrow={t("common.brand")}
         title={t("plans.projectsTitle")}
         description={t("plans.projectsDescription")}
+        actions={<NewProjectAction />}
       />
+
+      <ResumeList />
 
       {status === "loading" ? (
         <div className="plan-list" role="status" aria-label={t("plans.projectsLoading")}>

@@ -40,6 +40,10 @@ export interface ControlPlaneApiOptions {
   query: WorkforceQueryService;
   graphQuery?: import("../control/index.js").GraphQueryService;
   command: WorkforceCommandService;
+  /** PROJECT-2: project onboarding & provisioning (admin-only, governed). */
+  onboarding?: import("../control/index.js").OnboardingControlService;
+  /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
+  projectSync?: () => Promise<void>;
   operatorDirectory: OperatorDirectory;
   /**
    * AUTHZ-1: verifies a token WITHOUT requiring an active role, for
@@ -60,6 +64,17 @@ export interface ControlPlaneApiOptions {
 }
 
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
+
+const ONBOARDING_METHODS: Record<string, "onboardingCreate" | "onboardingUpdate" | "onboardingAnalyze" | "onboardingPlan" | "onboardingApprovePlan" | "onboardingProvision" | "onboardingRevalidate" | "onboardingCancel"> = {
+  onboarding_create: "onboardingCreate",
+  onboarding_update: "onboardingUpdate",
+  onboarding_analyze: "onboardingAnalyze",
+  onboarding_plan: "onboardingPlan",
+  onboarding_approve_plan: "onboardingApprovePlan",
+  onboarding_provision: "onboardingProvision",
+  onboarding_revalidate: "onboardingRevalidate",
+  onboarding_cancel: "onboardingCancel",
+};
 
 const ERROR_KIND_STATUS: Record<ControlErrorKind, number> = {
   invalid_request: 400,
@@ -210,6 +225,7 @@ export function createControlPlaneApi(
     }
 
     try {
+      if (options.projectSync) await options.projectSync();
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
           req,
@@ -302,6 +318,20 @@ export function createControlPlaneApi(
   ): Promise<void> {
     const [head, id] = segs;
     switch (head) {
+      case "onboarding": {
+        const onboarding = options.onboarding;
+        if (!onboarding) throw new NotFoundError("resource not found");
+        if (id === "capabilities" && segs.length === 2) {
+          return send(res, 200, onboarding.capabilities(principal), correlationId);
+        }
+        if (!id) {
+          return send(res, 200, { sessions: await onboarding.list(principal) }, correlationId);
+        }
+        if (segs.length === 2) {
+          return send(res, 200, await onboarding.get(principal, id), correlationId);
+        }
+        throw new NotFoundError("resource not found");
+      }
       case "status":
         return send(
           res,

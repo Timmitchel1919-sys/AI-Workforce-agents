@@ -5,7 +5,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n, type MessageKey } from "../i18n";
 import RouteError from "./RouteError";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding } from "./routeModules";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -39,6 +39,8 @@ const AuditLogPage = fromChunk(loadControlCenterRoutes, "AuditLogPage");
 const ProjectsPage = fromChunk(loadControlCenterRoutes, "ProjectsPage");
 const ProjectDetailPage = fromChunk(loadControlCenterRoutes, "ProjectDetailPage");
 const SpatialGraphPage = fromChunk(loadControlCenterRoutes, "SpatialGraphPage");
+const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
+const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -108,6 +110,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "workflows/:workflowId", element: withSuspense(<WorkflowDetailPage />) },
       { path: "graph", element: withSuspense(<SpatialGraphPage />) },
       { path: "projects", element: withSuspense(<ProjectsPage />) },
+      { path: "projects/new", element: withSuspense(<NewProjectPage />) },
+      { path: "projects/onboarding/:onboardingId", element: withSuspense(<OnboardingPage />) },
       { path: "projects/:projectId", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations/:sessionId", element: withSuspense(<ProjectDetailPage />) },
