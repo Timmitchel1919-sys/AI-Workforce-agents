@@ -45,6 +45,7 @@ import {
   operatorCanAccessProject,
   requireId,
   requireText,
+  validateGovernanceRequest,
   validateOperatorPrincipal,
   validateTaskDraft,
 } from "../../contracts/index.js";
@@ -1820,6 +1821,114 @@ export class WorkforceCommandService {
       { reason: input.reason },
       run,
     );
+  }
+
+  /* -------------------------------------------------------------- */
+  /* EO-6.2 / EO-6.3 — Cost Center & Governance Policy Engine        */
+  /* -------------------------------------------------------------- */
+
+  /** Admin-only. Sets the project's ENFORCED budget policy (EO-6.2). */
+  async setBudgetPolicy(
+    principal: OperatorPrincipal,
+    input: { projectId?: unknown; policy?: unknown },
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    const command: ControlCommand = "set_budget_policy";
+    let projectId: string;
+    try {
+      projectId = requireId(input?.projectId, `${command}.projectId`);
+    } catch (error) {
+      return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+    }
+    if (!operatorCan(principal, "manage_budget_policy")) {
+      return this.audited(principal, command, "denied", projectId, `role "${principal.role}" may not manage a budget policy`, { projectId }, run);
+    }
+    if (!this.ctx.costCenter) {
+      return this.audited(principal, command, "rejected", projectId, "the Cost Center is not composed in this deployment", { projectId }, run, "not_found");
+    }
+    try {
+      const saved = await this.ctx.costCenter.budgetPolicy.set(principal, projectId, input?.policy);
+      return this.audited(principal, command, "executed", projectId, "budget policy set", { projectId, policy: saved }, run);
+    } catch (error) {
+      return this.audited(principal, command, "rejected", projectId, message(error), { projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+    }
+  }
+
+  /** Admin-only. Sets the project's governance policy (provider/model allow-list, approval threshold) (EO-6.3). */
+  async setGovernancePolicy(
+    principal: OperatorPrincipal,
+    input: { projectId?: unknown; policy?: unknown },
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    const command: ControlCommand = "set_governance_policy";
+    let projectId: string;
+    try {
+      projectId = requireId(input?.projectId, `${command}.projectId`);
+    } catch (error) {
+      return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+    }
+    if (!operatorCan(principal, "manage_governance_policy")) {
+      return this.audited(principal, command, "denied", projectId, `role "${principal.role}" may not manage a governance policy`, { projectId }, run);
+    }
+    if (!this.ctx.governance) {
+      return this.audited(principal, command, "rejected", projectId, "the Governance Policy Engine is not composed in this deployment", { projectId }, run, "not_found");
+    }
+    try {
+      const saved = await this.ctx.governance.policy.set(principal, projectId, input?.policy);
+      return this.audited(principal, command, "executed", projectId, "governance policy set", { projectId, policy: saved }, run);
+    } catch (error) {
+      return this.audited(principal, command, "rejected", projectId, message(error), { projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+    }
+  }
+
+  /**
+   * Evaluate one governed request: project auth + budget + provider/model
+   * allow-list, composed into ALLOW / DENY / REQUIRE_APPROVAL / UNKNOWN.
+   * Available to any authenticated principal who can view the project — the
+   * decision is read-mostly; a `require_approval` outcome only ever FILES a
+   * PENDING approval on the existing, separately-authorized ApprovalSystem,
+   * never executes anything by itself.
+   */
+  async evaluateGovernance(
+    principal: OperatorPrincipal,
+    input: unknown,
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    const command: ControlCommand = "evaluate_governance";
+    let request: ReturnType<typeof validateGovernanceRequest>;
+    try {
+      request = validateGovernanceRequest(input);
+    } catch (error) {
+      return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+    }
+    if (!this.ctx.governance) {
+      return this.audited(principal, command, "rejected", request.projectId, "the Governance Policy Engine is not composed in this deployment", { projectId: request.projectId }, run, "not_found");
+    }
+    if (!operatorCanAccessProject(principal, request.projectId)) {
+      return this.audited(principal, command, "denied", request.projectId, `operator may not act on project "${request.projectId}"`, { projectId: request.projectId }, run);
+    }
+    // The COMMAND executed successfully whenever the engine finished evaluating — "denied"/"rejected"
+    // are about the COMMAND's own authorization, never about the domain answer it produced. An
+    // allow/deny/require_approval/unknown business decision is data, returned in `details.decision`.
+    // Wrapped defensively: any unexpected throw from the engine (not just its own internal
+    // GOVERNANCE_UNAVAILABLE fallback) must still be captured in the audit trail, never skip it.
+    try {
+      const decision = await this.ctx.governance.engine.evaluate(principal, request);
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        request.projectId,
+        decision.detail,
+        { projectId: request.projectId, decision: decision.decision, reasonCode: decision.reasonCode, approvalId: decision.approvalId },
+        run,
+      );
+    } catch (error) {
+      return this.audited(principal, command, "rejected", request.projectId, message(error), { projectId: request.projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+    }
   }
 
   /* -------------------------------------------------------------- */

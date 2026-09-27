@@ -33,6 +33,16 @@ export interface AuditInputs {
   verifications: readonly VerificationResult[];
   sessions: readonly ExecutionSession[];
   usage: readonly UsageRecord[];
+  /**
+   * Whether THIS deployment even composed the verification / source-control
+   * capability the release-related rules check against. UNKNOWN !=
+   * VIOLATION: a release with no matching verification is only a proven
+   * bypass when the capability that would have recorded one is actually
+   * connected. When it is not, the rule reports that honestly instead of a
+   * fabricated critical finding — see ADR-0023's UNKNOWN != ABSENT and
+   * ADR-0026's NOT CONNECTED != EMPTY.
+   */
+  sourcesConnected: { verification: boolean; sourceControl: boolean };
 }
 
 type RawFinding = {
@@ -50,6 +60,9 @@ const RULES: Readonly<Record<AuditRuleId, Rule>> = Object.freeze({
     const commitBySha = new Map(inputs.commits.map((c) => [c.commitSha, c]));
     const verificationById = new Map(inputs.verifications.map((v) => [v.verificationId, v]));
     const out: RawFinding[] = [];
+    // A capability this deployment never composed cannot have recorded evidence either way —
+    // reporting a bypass here would punish "not connected" as if it were "proven violated".
+    if (!inputs.sourcesConnected.verification || !inputs.sourcesConnected.sourceControl) return out;
     for (const r of inputs.releases) {
       if (r.simulated) continue;
       const commit = commitBySha.get(r.commitSha);

@@ -20,6 +20,10 @@ const RULES = Object.freeze({
         const commitBySha = new Map(inputs.commits.map((c) => [c.commitSha, c]));
         const verificationById = new Map(inputs.verifications.map((v) => [v.verificationId, v]));
         const out = [];
+        // A capability this deployment never composed cannot have recorded evidence either way —
+        // reporting a bypass here would punish "not connected" as if it were "proven violated".
+        if (!inputs.sourcesConnected.verification || !inputs.sourcesConnected.sourceControl)
+            return out;
         for (const r of inputs.releases) {
             if (r.simulated)
                 continue;

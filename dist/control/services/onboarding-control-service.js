@@ -11,9 +11,21 @@ import { redact } from "../redaction.js";
 export class OnboardingControlService {
     service;
     audit;
-    constructor(service, audit) {
+    budgetPolicies;
+    constructor(service, audit, 
+    /**
+     * EO-6.3 bridge: when a plan is approved with any budget limit actually
+     * set, that becomes the project's ENFORCED `BudgetPolicy` too — onboarding
+     * recording a policy no longer has to mean nothing enforces it, once the
+     * Cost Center is composed. Optional and best-effort: a bridging failure
+     * is logged and never fails the approval itself (PROJECT READY !=
+     * AUTOMATIC EXECUTION applies here too — a budget-bridge hiccup must not
+     * block onboarding).
+     */
+    budgetPolicies) {
         this.service = service;
         this.audit = audit;
+        this.budgetPolicies = budgetPolicies;
     }
     capabilities(principal) {
         return this.service.capabilities(principal);
@@ -36,8 +48,33 @@ export class OnboardingControlService {
     onboardingPlan(p, b, o) {
         return this.run(p, "onboarding_plan", b, o, () => this.service.plan(p, b));
     }
-    onboardingApprovePlan(p, b, o) {
-        return this.run(p, "onboarding_approve_plan", b, o, () => this.service.approvePlan(p, b));
+    async onboardingApprovePlan(p, b, o) {
+        const result = await this.run(p, "onboarding_approve_plan", b, o, () => this.service.approvePlan(p, b));
+        if (result.outcome === "executed") {
+            await this.bridgeBudgetPolicy(p, result).catch(() => {
+                /* best-effort: onboarding's own approval already succeeded and must not be undone by this */
+            });
+        }
+        return result;
+    }
+    /** EO-6.3: approving a plan with any budget limit set also enforces it, from today onward. */
+    async bridgeBudgetPolicy(principal, result) {
+        if (!this.budgetPolicies)
+            return;
+        const session = result.details["session"];
+        const cost = session?.plan?.cost;
+        if (!session || !cost)
+            return;
+        const hasLimit = cost.dailyLimit !== undefined || cost.monthlyLimit !== undefined || cost.taskLimit !== undefined;
+        if (!hasLimit)
+            return;
+        await this.budgetPolicies.set(principal, session.projectId, {
+            dailyLimitUsd: cost.dailyLimit,
+            monthlyLimitUsd: cost.monthlyLimit,
+            taskLimitUsd: cost.taskLimit,
+            warningThresholdPercent: cost.warningThresholdPercent,
+            hardStop: cost.hardStop,
+        });
     }
     onboardingProvision(p, b, o) {
         return this.run(p, "onboarding_provision", b, o, () => this.service.provision(p, b));

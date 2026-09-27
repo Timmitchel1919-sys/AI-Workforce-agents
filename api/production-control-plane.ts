@@ -77,6 +77,8 @@ import {
   ProjectProvisioningService,
   ArtifactManager,
   DeploymentOrchestrator,
+  GovernancePolicyEngine,
+  GovernancePolicyStore,
   ModelProviderRegistry,
   RuleAuditor,
   SourceControlOrchestrator,
@@ -121,9 +123,9 @@ export interface ProductionControlPlaneRuntime {
     readonly deployments: DeploymentOrchestrator;
   };
   /**
-   * The FULL EO-6.2 Cost Center services, including the model-provider registry a future real
-   * adapter registers with. The context exposes only read views (and the admin-gated `budgetPolicy.set`,
-   * which self-authorizes). No HTTP route can register a provider.
+   * The FULL EO-6.2/6.3 Cost Center + Governance services, including the model-provider registry a
+   * future real adapter registers with. The context exposes only read views and the admin-gated
+   * `set` writers (which self-authorize); no HTTP route can register a provider.
    */
   readonly costCenter: {
     readonly modelProviders: ModelProviderRegistry;
@@ -131,6 +133,8 @@ export interface ProductionControlPlaneRuntime {
     readonly budgetPolicies: BudgetPolicyStore;
     readonly enforcer: BudgetEnforcer;
     readonly auditor: RuleAuditor;
+    readonly governancePolicies: GovernancePolicyStore;
+    readonly governanceEngine: GovernancePolicyEngine;
   };
   /** Environment discovery orchestration (no live probes wired in EO-2A). */
   readonly environmentDetector: EnvironmentDetector;
@@ -383,19 +387,18 @@ export async function createProductionControlPlaneRuntime(
     artifactSource: unavailableArtifactSource,
     deployments,
   });
-  // EO-6.2: the AI Cost Center & rule-based Auditor governance foundation. The usage ledger, budget
-  // policy and rule auditor need no model provider to exist — they are always composed here. What
-  // they can never do without one is see a real call: `modelProviders` is empty because production
-  // registers no model provider at all (no key, no adapter), so `costCenterCapabilities.enforcement`
-  // is honestly false. Setting a project's budget policy is available to a trusted caller
-  // (`BudgetPolicyStore.set`, admin-only) but is not yet reachable over HTTP — a documented gap, not
-  // a fabricated one (see ADR-0027).
+  // EO-6.2/6.3: the AI Cost Center, rule-based Auditor and Governance Policy Engine. None of these
+  // need a model provider to exist — they are always composed here. What they can never do without
+  // one is see a real call: `modelProviders` is empty because production registers no model provider
+  // at all (no key, no adapter), so `costCenterCapabilities.enforcement` is honestly false.
   const modelProviders = new ModelProviderRegistry();
   const usageLedger = new UsageLedger(executionRecords, now);
   const budgetPolicies = new BudgetPolicyStore(executionRecords, now, audit);
   const budgetEnforcer = new BudgetEnforcer(budgetPolicies, usageLedger, now);
   const ruleAuditor = new RuleAuditor(now, audit);
   const costCenterCapabilities = deriveCostCenterCapabilities({ providers: modelProviders });
+  const governancePolicies = new GovernancePolicyStore(executionRecords, now, audit);
+  const governanceEngine = new GovernancePolicyEngine(governancePolicies, budgetEnforcer, now, approvals, audit);
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
     tasks,
@@ -433,6 +436,13 @@ export async function createProductionControlPlaneRuntime(
     },
     costCenterCapabilities,
     auditor: { run: (...a: Parameters<typeof ruleAuditor.run>) => ruleAuditor.run(...a) },
+    governance: {
+      policy: {
+        get: (...a: Parameters<typeof governancePolicies.get>) => governancePolicies.get(...a),
+        set: (...a: Parameters<typeof governancePolicies.set>) => governancePolicies.set(...a),
+      },
+      engine: { evaluate: (...a: Parameters<typeof governanceEngine.evaluate>) => governanceEngine.evaluate(...a) },
+    },
     executionReceipts,
     executionRecords,
     environmentAdapters,
@@ -488,7 +498,7 @@ export async function createProductionControlPlaneRuntime(
       agents: bootstrap.agents.list(),
     }),
   });
-  const onboarding = new OnboardingControlService(onboardingService, audit);
+  const onboarding = new OnboardingControlService(onboardingService, audit, budgetPolicies);
   // READY projects become discoverable through the existing Project Registry.
   // Other warm instances pick them up through this throttled sync.
   const syncProjects = async (): Promise<void> => {
@@ -537,6 +547,8 @@ export async function createProductionControlPlaneRuntime(
       budgetPolicies,
       enforcer: budgetEnforcer,
       auditor: ruleAuditor,
+      governancePolicies,
+      governanceEngine,
     },
     environmentDetector,
     flush: () => repositories.flushAll(),

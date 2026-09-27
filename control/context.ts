@@ -23,6 +23,8 @@ import {
   type BudgetPolicyStore,
   type DeploymentOrchestrator,
   type EnvironmentAdapterRegistry,
+  type GovernancePolicyEngine,
+  type GovernancePolicyStore,
   type InMemoryExecutionReceiptStore,
   type RuleAuditor,
   type SourceControlOrchestrator,
@@ -104,6 +106,15 @@ export interface ControlPlaneContext {
   costCenterCapabilities?: CostCenterCapabilities;
   /** EO-6.2 rule-based Auditor (deterministic, never model-assisted). */
   auditor?: Pick<RuleAuditor, "run">;
+  /**
+   * EO-6.3 Governance Policy Engine: project authorization + budget +
+   * provider/model allow-list, composed into one ALLOW/DENY/REQUIRE_APPROVAL/
+   * UNKNOWN decision. Absent => not composed at all (governance routes 404).
+   */
+  governance?: {
+    policy: Pick<GovernancePolicyStore, "get" | "set">;
+    engine: Pick<GovernancePolicyEngine, "evaluate">;
+  };
   /** EO-4.5 environment execution adapter/runner status. */
   environmentAdapters?: Pick<EnvironmentAdapterRegistry, "status">;
   /**

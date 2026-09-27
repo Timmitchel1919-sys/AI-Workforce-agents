@@ -72,6 +72,7 @@ import {
   getExecutionSessionDetail,
   getProjectAuditFindings,
   getProjectCostReport,
+  getProjectGovernancePolicy,
   getProjectReleases,
   getProjectVerifications,
   listExecutionSessions,
@@ -691,6 +692,17 @@ export class WorkforceQueryService {
     )
       return undefined;
     return getProjectAuditFindings(this.ctx, principal, projectId);
+  }
+
+  /** EO-6.3 governance policy (provider/model allow-list, approval threshold). */
+  async getProjectGovernancePolicy(principal: OperatorPrincipal, projectId: string) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectGovernancePolicy(this.ctx, principal, projectId);
   }
 
   /** EO-4.5 environment execution status (real runners only count). */

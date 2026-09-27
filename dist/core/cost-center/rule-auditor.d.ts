@@ -21,6 +21,19 @@ export interface AuditInputs {
     verifications: readonly VerificationResult[];
     sessions: readonly ExecutionSession[];
     usage: readonly UsageRecord[];
+    /**
+     * Whether THIS deployment even composed the verification / source-control
+     * capability the release-related rules check against. UNKNOWN !=
+     * VIOLATION: a release with no matching verification is only a proven
+     * bypass when the capability that would have recorded one is actually
+     * connected. When it is not, the rule reports that honestly instead of a
+     * fabricated critical finding — see ADR-0023's UNKNOWN != ABSENT and
+     * ADR-0026's NOT CONNECTED != EMPTY.
+     */
+    sourcesConnected: {
+        verification: boolean;
+        sourceControl: boolean;
+    };
 }
 export declare const AUDIT_RULE_IDS_LIST: AuditRuleId[];
 export declare class RuleAuditor {

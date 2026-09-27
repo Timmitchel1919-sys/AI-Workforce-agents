@@ -314,3 +314,11 @@ export declare function getProjectAuditFindings(ctx: ControlPlaneContext, princi
     findings: readonly import("../../contracts/cost-center.js").AuditFinding[];
     configured: true;
 }>;
+/** EO-6.3 — this project's governance policy (provider/model allow-list, approval threshold). */
+export declare function getProjectGovernancePolicy(ctx: ControlPlaneContext, principal: OperatorPrincipal, projectId: string): Promise<{
+    configured: false;
+    policy?: undefined;
+} | {
+    configured: true;
+    policy: import("../../contracts/governance.js").GovernancePolicy | null;
+}>;

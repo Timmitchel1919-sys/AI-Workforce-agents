@@ -21,6 +21,29 @@
  * module does not claim.
  */
 import { ValidationError } from "./index.js";
+/* ------------------------------------------------------------------ */
+/* Money — exact summation                                            */
+/* ------------------------------------------------------------------ */
+/**
+ * Summing many small USD amounts (e.g. per-token fractional-cent charges) with
+ * plain `+=` accumulates floating-point drift — ten $0.01 charges sum to
+ * 0.09999999999999999 in IEEE-754, not $0.10. Kahan compensated summation
+ * carries the rounding error forward and cancels it back in, so a reported
+ * total is exact for any realistic number of usage events. Used wherever a
+ * ledger aggregates cost — never for a single event, which keeps whatever
+ * sub-cent precision the price table actually computed.
+ */
+export function sumUsd(amounts) {
+    let sum = 0;
+    let compensation = 0;
+    for (const amount of amounts) {
+        const y = amount - compensation;
+        const t = sum + y;
+        compensation = t - sum - y;
+        sum = t;
+    }
+    return sum;
+}
 /**
  * Published list prices as of this table's version. Adding a model here is a
  * deliberate, reviewed change — never inferred, never guessed from a model

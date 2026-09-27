@@ -10,6 +10,7 @@ import { safeRepositoryLink } from "./repositoryLink";
 import { ExecutionPlanTab } from "./plan/ExecutionPlanTab";
 import { OperationsTab } from "./operations/OperationsTab";
 import { SessionDetail } from "./operations/SessionDetail";
+import { CostCenterTab } from "./costCenter/CostCenterTab";
 import "./ExecutionPlan.css";
 
 /**
@@ -24,7 +25,9 @@ export default function ProjectDetailPage() {
     ? "execution-plan"
     : pathname.includes("/operations")
       ? "operations"
-      : "overview";
+      : pathname.includes("/cost")
+        ? "cost"
+        : "overview";
   const { t } = useI18n();
   const { accessDetails } = useAuth();
   const { status, project, refetch } = useProject(projectId);
@@ -70,6 +73,11 @@ export default function ProjectDetailPage() {
               {t("operations.tab")}
             </NavLink>
           ) : null}
+          {canViewPlans ? (
+            <NavLink to={`${base}/cost`} className="plan-tab">
+              {t("costCenter.tab")}
+            </NavLink>
+          ) : null}
         </nav>
         {tab === "execution-plan" && canViewPlans ? (
           <ExecutionPlanTab projectId={project.projectId} projectName={project.displayName} />
@@ -79,6 +87,8 @@ export default function ProjectDetailPage() {
           ) : (
             <OperationsTab projectId={project.projectId} />
           )
+        ) : tab === "cost" && canViewPlans ? (
+          <CostCenterTab projectId={project.projectId} />
         ) : (
           <ProjectOverview project={project} />
         )}

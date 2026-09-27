@@ -55,6 +55,8 @@ export const CONTROL_CAPABILITIES = [
     "create_project",
     /* EO-6.2 — AI Cost Center: setting the enforced budget is administrator-only. */
     "manage_budget_policy",
+    /* EO-6.3 — Governance Policy Engine: the allow-list/threshold policy is administrator-only. */
+    "manage_governance_policy",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -116,6 +118,8 @@ export const ROLE_CAPABILITIES = {
         "create_project",
         // EO-6.2: setting the enforced budget policy is administrator-only.
         "manage_budget_policy",
+        // EO-6.3: setting the governance allow-list/threshold policy is administrator-only.
+        "manage_governance_policy",
     ],
 };
 export function validateOperatorPrincipal(principal) {
@@ -176,6 +180,10 @@ export const CONTROL_COMMANDS = [
     "onboarding_provision",
     "onboarding_revalidate",
     "onboarding_cancel",
+    // EO-6.2/6.3 — AI Cost Center & Governance Policy Engine.
+    "set_budget_policy",
+    "set_governance_policy",
+    "evaluate_governance",
 ];
 /**
  * A refinement of a non-`executed` outcome, aligned with the `WorkforceError`

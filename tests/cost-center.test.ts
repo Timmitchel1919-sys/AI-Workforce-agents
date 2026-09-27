@@ -12,6 +12,7 @@ import {
   ValidationError,
   estimateCost,
   evaluateBudget,
+  sumUsd,
   type BudgetPolicy,
   type ModelProvider,
   type ModelRequest,
@@ -206,6 +207,77 @@ test("USAGE LEDGER: unpriced records are counted, never silently dropped from to
   assert.equal(totals.monthly, 0);
 });
 
+test("USAGE LEDGER: IDEMPOTENCY — a retried record with the same key never double-charges the project", async () => {
+  const store = new InMemoryExecutionRecordStore();
+  const clock = new FixedClock(Date.now());
+  const ledger = new UsageLedger(store, clock.now);
+  const draft = { projectId: PROJECT, provider: "fake", model: "claude-sonnet-5", cost: { priced: true as const, amountUsd: 1, pricingVersion: "t" }, idempotencyKey: "retry-1" };
+  const first = await ledger.record(draft);
+  const second = await ledger.record(draft);
+  assert.equal(first.usageId, second.usageId, "the retry returns the SAME record, not a new one");
+  const all = await ledger.listInternal(PROJECT);
+  assert.equal(all.length, 1, "exactly one record exists despite two record() calls");
+});
+
+test("USAGE LEDGER: CONCURRENCY — two racing retries with the same idempotency key still only record once", async () => {
+  const store = new InMemoryExecutionRecordStore();
+  const clock = new FixedClock(Date.now());
+  const ledger = new UsageLedger(store, clock.now);
+  const draft = { projectId: PROJECT, provider: "fake", model: "claude-sonnet-5", cost: { priced: true as const, amountUsd: 1, pricingVersion: "t" }, idempotencyKey: "race-1" };
+  const [a, b] = await Promise.all([ledger.record(draft), ledger.record(draft)]);
+  assert.equal(a.usageId, b.usageId);
+  const all = await ledger.listInternal(PROJECT);
+  assert.equal(all.length, 1, "a race between two concurrent calls with the same key still yields exactly one record");
+});
+
+test("USAGE LEDGER: CONCURRENCY without a durable store — two racing calls with the same key and DIFFERENT content still resolve to exactly one, SHARED record", async () => {
+  // No store at all (the in-memory fallback): DurableLedger's no-store path has no create-only
+  // protection of its own, so this proves UsageLedger's own in-process coalescing (not the store's)
+  // is what keeps two truly concurrent callers from both "winning" with different content.
+  const clock = new FixedClock(Date.now());
+  const ledger = new UsageLedger(undefined, clock.now);
+  const draftA = { projectId: PROJECT, provider: "fake", model: "claude-sonnet-5", cost: { priced: true as const, amountUsd: 1, pricingVersion: "t" }, idempotencyKey: "race-no-store" };
+  const draftB = { projectId: PROJECT, provider: "fake", model: "claude-sonnet-5", cost: { priced: true as const, amountUsd: 999, pricingVersion: "t" }, idempotencyKey: "race-no-store" };
+  const [a, b] = await Promise.all([ledger.record(draftA), ledger.record(draftB)]);
+  assert.equal(a.usageId, b.usageId);
+  assert.equal(a.cost.priced && a.cost.amountUsd, b.cost.priced && b.cost.amountUsd, "both callers must observe the SAME winning record, never two different amounts");
+  const all = await ledger.listInternal(PROJECT);
+  assert.equal(all.length, 1, "exactly one record exists even with no durable store to enforce it");
+});
+
+test("USAGE LEDGER: without an idempotency key, no dedupe is attempted — every call records a new entry", async () => {
+  const clock = new FixedClock(Date.now());
+  const ledger = new UsageLedger(undefined, clock.now);
+  const draft = { projectId: PROJECT, provider: "fake", model: "claude-sonnet-5", cost: { priced: true as const, amountUsd: 1, pricingVersion: "t" } };
+  await ledger.record(draft);
+  await ledger.record(draft);
+  const all = await ledger.listInternal(PROJECT);
+  assert.equal(all.length, 2, "with no key, dedupe is impossible by design — never silently assumed");
+});
+
+test("MONEY CORRECTNESS: plain += drifts on repeated $0.01 charges — this is a real bug class, not a hypothetical", () => {
+  let naive = 0;
+  for (let i = 0; i < 10; i += 1) naive += 0.01;
+  assert.notEqual(naive, 0.1, "demonstrates the float-drift bug sumUsd exists to fix");
+});
+
+test("MONEY CORRECTNESS: sumUsd is exact for accumulated drift where plain += is not", () => {
+  assert.equal(sumUsd(Array(10).fill(0.01)), 0.1);
+  assert.equal(sumUsd(Array(100).fill(0.01)), 1);
+  assert.equal(sumUsd([]), 0);
+  assert.equal(sumUsd([5]), 5);
+});
+
+test("MONEY CORRECTNESS: repeated $0.01 charges through the real ledger sum to EXACTLY $0.10, not a rounded-away approximation", async () => {
+  const clock = new FixedClock(Date.now());
+  const ledger = new UsageLedger(undefined, clock.now);
+  for (let i = 0; i < 10; i += 1) {
+    await ledger.record({ projectId: PROJECT, provider: "fake", model: "claude-sonnet-5", cost: { priced: true, amountUsd: 0.01, pricingVersion: "t" } });
+  }
+  const totals = await ledger.totals(OPERATOR, PROJECT, { dailySinceIso: new Date(0).toISOString(), monthlySinceIso: new Date(0).toISOString() });
+  assert.equal(totals.monthly, 0.1, "exact equality, not a rounded comparison");
+});
+
 test("BUDGET POLICY STORE: only an admin may set a policy; view is project-scoped", async () => {
   const clock = new FixedClock(Date.now());
   const audit = new AuditLog();
@@ -338,7 +410,14 @@ test("CAPABILITIES: enforcement is INERT with no registered provider, and flips 
 /* RuleAuditor — deterministic, rule-based, never model-assisted       */
 /* ------------------------------------------------------------------ */
 
-const EMPTY_INPUTS: AuditInputs = { releases: [], commits: [], verifications: [], sessions: [], usage: [] };
+const EMPTY_INPUTS: AuditInputs = {
+  releases: [],
+  commits: [],
+  verifications: [],
+  sessions: [],
+  usage: [],
+  sourcesConnected: { verification: true, sourceControl: true },
+};
 
 test("AUDITOR: a clean project (nothing wired yet) raises no findings", () => {
   const clock = new FixedClock(Date.now());
@@ -351,6 +430,30 @@ test("AUDITOR: a clean project (nothing wired yet) raises no findings", () => {
     "release_without_verification",
     "usage_unpriced",
   ]);
+});
+
+test("AUDITOR: UNKNOWN != VIOLATION — a release with no matching verification raises NOTHING when verification/source control is not even connected in this deployment", () => {
+  const clock = new FixedClock(Date.now());
+  const auditor = new RuleAuditor(clock.now);
+  const release = {
+    releaseId: "rel-1", projectId: PROJECT, candidateId: "c1", commitSha: "abc123", artifactDigests: [], targetId: "t1",
+    targetClass: "production" as const, adapterId: "a1", adapterVersion: "1", approvalIds: ["ap-1"], releasePolicyVersion: 1,
+    status: "deployed" as const, reasons: [], simulated: false, actor: "op-1", startedAt: clock.now(),
+  };
+  const notConnected = auditor.run(PROJECT, {
+    ...EMPTY_INPUTS,
+    releases: [release],
+    sourcesConnected: { verification: false, sourceControl: false },
+  });
+  assert.deepEqual(
+    notConnected.findings.filter((f) => f.ruleId === "release_without_verification"),
+    [],
+    "not connected must never be reported as a proven bypass",
+  );
+  // The SAME release, with sources connected, IS a real finding — proves the guard isn't just
+  // silencing the rule outright.
+  const connected = auditor.run(PROJECT, { ...EMPTY_INPUTS, releases: [release] });
+  assert.equal(connected.findings.filter((f) => f.ruleId === "release_without_verification").length, 1);
 });
 
 test("AUDITOR: a real (non-simulated) release with no matching passed verification is a critical finding", () => {

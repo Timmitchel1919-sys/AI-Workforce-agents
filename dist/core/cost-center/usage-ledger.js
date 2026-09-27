@@ -6,13 +6,26 @@
  * visible across Control Plane instances — same primitive EO-4.8 uses for
  * release records).
  */
-import { ExecutionDeniedError, operatorCan, operatorCanAccessProject, requireExecutionId, } from "../../contracts/index.js";
+import { ExecutionDeniedError, RecordExistsError, operatorCan, operatorCanAccessProject, requireExecutionId, sumUsd, } from "../../contracts/index.js";
 import { DurableLedger } from "../release/durable-ledger.js";
 import { createId } from "../shared.js";
 const KIND = "usage";
 export class UsageLedger {
     clock;
     ledger;
+    /**
+     * Coalesces concurrent `record()` calls for the SAME idempotency key onto
+     * ONE write, within this process. This is what makes idempotency actually
+     * safe under concurrency for the no-store (in-memory) composition too: the
+     * store-backed path also gets `RecordExistsError` protection from
+     * `DurableLedger`/Firestore, but the in-memory fallback has none of its
+     * own — two truly concurrent callers there would otherwise both "win" and
+     * whichever write lands last would silently overwrite the other's content
+     * with no error to catch. Reserving the SAME in-flight promise, set
+     * synchronously before any `await`, closes that gap without needing the
+     * shared `DurableLedger` primitive itself to change.
+     */
+    inFlight = new Map();
     constructor(store, clock) {
         this.clock = clock;
         this.ledger = new DurableLedger(store, clock);
@@ -21,11 +34,54 @@ export class UsageLedger {
      * Internal recording path — called only by the governed provider decorator
      * right after a real response is received, never from an operator request.
      * Not authorized against a principal for that reason.
+     *
+     * IDEMPOTENT when the caller supplies `idempotencyKey`: a retried call with
+     * the SAME key for the SAME distinct request returns the FIRST record
+     * unchanged rather than creating a second one (prevents double-charging a
+     * project for one retried provider call). Safe under concurrency: the
+     * store-backed path relies on create-only semantics, so two instances
+     * racing on the same key can never both win — the loser re-reads and
+     * returns what the winner wrote. With no key, no dedupe is possible; every
+     * call records a new entry.
+     *
+     * A caller is expected to generate a key that is unique PER DISTINCT
+     * request (like any idempotency key — reusing one across genuinely
+     * different requests means only the first is ever recorded, by design, the
+     * same as it would be anywhere else this pattern is used).
+     *
+     * The key is validated (`requireExecutionId`) and joined with `\u0000` —
+     * never with `:`, which `projectId` may legally contain — so a colon in
+     * one project's id can never be mistaken for the id/key boundary and
+     * collide with a different project's record (e.g. project `"acme"` with
+     * key `"eu:x"` must never produce the same storage id as project
+     * `"acme:eu"` with key `"x"`).
      */
     async record(draft) {
         const projectId = requireExecutionId(draft.projectId, "projectId");
+        if (!draft.idempotencyKey)
+            return this.persist(draft, projectId, createId("usage"));
+        const usageId = `idem:${projectId}\u0000${requireExecutionId(draft.idempotencyKey, "idempotencyKey")}`;
+        // Reserved SYNCHRONOUSLY (no `await` above this line since entering the function) — two calls
+        // for the same key, even invoked back-to-back with no store configured, coalesce onto the one
+        // promise set here, instead of both reaching a write.
+        const pending = this.inFlight.get(usageId);
+        if (pending)
+            return pending;
+        const promise = (async () => {
+            const existing = await this.ledger.find(KIND, usageId);
+            return existing ?? this.persist(draft, projectId, usageId);
+        })();
+        this.inFlight.set(usageId, promise);
+        try {
+            return await promise;
+        }
+        finally {
+            this.inFlight.delete(usageId);
+        }
+    }
+    async persist(draft, projectId, usageId) {
         const record = {
-            usageId: createId("usage"),
+            usageId,
             projectId,
             taskId: draft.taskId,
             agentId: draft.agentId,
@@ -36,9 +92,20 @@ export class UsageLedger {
             outputTokens: draft.outputTokens,
             totalTokens: draft.totalTokens,
             cost: draft.cost,
+            idempotencyKey: draft.idempotencyKey,
             createdAt: this.clock(),
         };
-        return this.ledger.save(KIND, record.usageId, projectId, record.createdAt, record, "create");
+        try {
+            return await this.ledger.save(KIND, usageId, projectId, record.createdAt, record, "create");
+        }
+        catch (error) {
+            if (draft.idempotencyKey && error instanceof RecordExistsError) {
+                const existing = await this.ledger.find(KIND, usageId);
+                if (existing)
+                    return existing;
+            }
+            throw error;
+        }
     }
     async listByProject(principal, projectId, limit = 200) {
         const id = requireExecutionId(projectId, "projectId");
@@ -67,9 +134,9 @@ export class UsageLedger {
     }
     async totalsInternal(projectId, windows) {
         const records = await this.listInternal(projectId, 500);
-        let daily = 0;
-        let monthly = 0;
-        let task = 0;
+        const dailyAmounts = [];
+        const monthlyAmounts = [];
+        const taskAmounts = [];
         let uncosted = 0;
         for (const r of records) {
             const amount = r.cost.priced ? r.cost.amountUsd : 0;
@@ -79,13 +146,14 @@ export class UsageLedger {
             if (!r.cost.priced && inScope)
                 uncosted += 1;
             if (r.createdAt >= windows.dailySinceIso)
-                daily += amount;
+                dailyAmounts.push(amount);
             if (r.createdAt >= windows.monthlySinceIso)
-                monthly += amount;
+                monthlyAmounts.push(amount);
             if (windows.taskId && r.taskId === windows.taskId)
-                task += amount;
+                taskAmounts.push(amount);
         }
-        return { daily, monthly, task, uncosted };
+        // Kahan summation: plain `+=` over many small USD amounts drifts (MONEY CORRECTNESS).
+        return { daily: sumUsd(dailyAmounts), monthly: sumUsd(monthlyAmounts), task: sumUsd(taskAmounts), uncosted };
     }
     authorize(principal, projectId) {
         if (!operatorCan(principal, "view") || !operatorCanAccessProject(principal, projectId)) {

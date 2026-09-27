@@ -12,7 +12,7 @@
  * any project's budget and is refused — never silently ungoverned.
  */
 import { ExecutionDeniedError, ValidationError, estimateCost, } from "../../contracts/index.js";
-import { extractCorrelation } from "../providers/request-correlation.js";
+import { extractCorrelation, extractIdempotencyKey } from "../providers/request-correlation.js";
 export class BudgetGovernedModelProvider {
     inner;
     enforcer;
@@ -51,6 +51,7 @@ export class BudgetGovernedModelProvider {
             outputTokens: response.usage?.outputTokens,
             totalTokens: response.usage?.totalTokens,
             cost,
+            idempotencyKey: extractIdempotencyKey(request),
         });
         this.audit?.record("usage_recorded", {
             ...correlation,

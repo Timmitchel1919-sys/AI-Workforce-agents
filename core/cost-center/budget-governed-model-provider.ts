@@ -20,7 +20,7 @@ import {
   type ModelResponse,
 } from "../../contracts/index.js";
 import type { AuditLog } from "../audit/audit-log.js";
-import { extractCorrelation } from "../providers/request-correlation.js";
+import { extractCorrelation, extractIdempotencyKey } from "../providers/request-correlation.js";
 import type { BudgetEnforcer } from "./budget-enforcer.js";
 import type { UsageLedger } from "./usage-ledger.js";
 
@@ -63,6 +63,7 @@ export class BudgetGovernedModelProvider implements ModelProvider {
       outputTokens: response.usage?.outputTokens,
       totalTokens: response.usage?.totalTokens,
       cost,
+      idempotencyKey: extractIdempotencyKey(request),
     });
     this.audit?.record("usage_recorded", {
       ...correlation,

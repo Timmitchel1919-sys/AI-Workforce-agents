@@ -4,3 +4,6 @@ export * from "./budget-enforcer.js";
 export * from "./budget-governed-model-provider.js";
 export * from "./rule-auditor.js";
 export * from "./cost-center-capabilities.js";
+export * from "./governance-policy-store.js";
+export * from "./governance-approval-binding.js";
+export * from "./governance-policy-engine.js";

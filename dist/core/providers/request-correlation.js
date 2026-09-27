@@ -13,3 +13,14 @@ export function extractCorrelation(request) {
         out.projectId = meta.projectId;
     return out;
 }
+/**
+ * A caller-supplied idempotency key from `request.metadata`, read separately
+ * from `extractCorrelation` so that helper's return shape — and every
+ * existing caller relying on it — is untouched. `undefined` when the caller
+ * gave none: no key means no dedupe is possible, which is reported honestly
+ * by whatever records usage, never assumed safe.
+ */
+export function extractIdempotencyKey(request) {
+    const key = request.metadata?.idempotencyKey;
+    return typeof key === "string" && key.trim() ? key : undefined;
+}

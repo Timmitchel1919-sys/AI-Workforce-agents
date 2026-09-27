@@ -311,6 +311,9 @@ export const AUDIT_EVENT_TYPES = [
   "budget_blocked",
   "budget_policy_set",
   "audit_finding_raised",
+  /* EO-6.3 — Governance Policy Engine. */
+  "governance_decision",
+  "governance_policy_set",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -862,3 +865,4 @@ export * from "./environment-routing.js";
 export * from "./graph.js";
 export * from "./onboarding.js";
 export * from "./cost-center.js";
+export * from "./governance.js";

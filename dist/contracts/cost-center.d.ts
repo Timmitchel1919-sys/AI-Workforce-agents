@@ -1,3 +1,13 @@
+/**
+ * Summing many small USD amounts (e.g. per-token fractional-cent charges) with
+ * plain `+=` accumulates floating-point drift — ten $0.01 charges sum to
+ * 0.09999999999999999 in IEEE-754, not $0.10. Kahan compensated summation
+ * carries the rounding error forward and cancels it back in, so a reported
+ * total is exact for any realistic number of usage events. Used wherever a
+ * ledger aggregates cost — never for a single event, which keeps whatever
+ * sub-cent precision the price table actually computed.
+ */
+export declare function sumUsd(amounts: readonly number[]): number;
 export interface ModelPrice {
     /** USD per 1,000,000 input tokens. */
     inputPerMillionUsd: number;
@@ -40,7 +50,15 @@ export interface UsageRecord {
     inputTokens?: number;
     outputTokens?: number;
     totalTokens?: number;
+    /** ALWAYS the actual cost, computed from a real response's own reported tokens — never an estimate. */
     cost: PriceEstimate | UnpricedEstimate;
+    /**
+     * When the caller supplied one, dedupes a retried request onto the SAME record instead of
+     * double-recording it: a second `record()` with the same key returns the first record unchanged.
+     * Absent when the caller gave none — no idempotency key means no dedupe is possible, which is
+     * reported honestly (see `UsageLedger.record`) rather than silently assumed safe.
+     */
+    idempotencyKey?: string;
     createdAt: string;
 }
 /** What the governed provider decorator supplies; the ledger assigns the id/time. */
@@ -55,6 +73,7 @@ export interface UsageDraft {
     outputTokens?: number;
     totalTokens?: number;
     cost: PriceEstimate | UnpricedEstimate;
+    idempotencyKey?: string;
 }
 export interface BudgetPolicy {
     projectId: string;

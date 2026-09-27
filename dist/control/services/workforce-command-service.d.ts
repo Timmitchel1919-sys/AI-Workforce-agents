@@ -88,6 +88,25 @@ export declare class WorkforceCommandService {
     disableAgent(principal: OperatorPrincipal, input: AgentCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     enableAgent(principal: OperatorPrincipal, input: AgentCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     private setAgentEnabled;
+    /** Admin-only. Sets the project's ENFORCED budget policy (EO-6.2). */
+    setBudgetPolicy(principal: OperatorPrincipal, input: {
+        projectId?: unknown;
+        policy?: unknown;
+    }, options?: CommandOptions): Promise<ControlCommandResult>;
+    /** Admin-only. Sets the project's governance policy (provider/model allow-list, approval threshold) (EO-6.3). */
+    setGovernancePolicy(principal: OperatorPrincipal, input: {
+        projectId?: unknown;
+        policy?: unknown;
+    }, options?: CommandOptions): Promise<ControlCommandResult>;
+    /**
+     * Evaluate one governed request: project auth + budget + provider/model
+     * allow-list, composed into ALLOW / DENY / REQUIRE_APPROVAL / UNKNOWN.
+     * Available to any authenticated principal who can view the project — the
+     * decision is read-mostly; a `require_approval` outcome only ever FILES a
+     * PENDING approval on the existing, separately-authorized ApprovalSystem,
+     * never executes anything by itself.
+     */
+    evaluateGovernance(principal: OperatorPrincipal, input: unknown, options?: CommandOptions): Promise<ControlCommandResult>;
     private resolveTask;
     private resolveWorkflow;
     /**

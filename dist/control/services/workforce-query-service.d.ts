@@ -350,6 +350,14 @@ export declare class WorkforceQueryService {
         findings: readonly import("../../contracts/cost-center.js").AuditFinding[];
         configured: true;
     } | undefined>;
+    /** EO-6.3 governance policy (provider/model allow-list, approval threshold). */
+    getProjectGovernancePolicy(principal: OperatorPrincipal, projectId: string): Promise<{
+        configured: false;
+        policy?: undefined;
+    } | {
+        configured: true;
+        policy: import("../../contracts/governance.js").GovernancePolicy | null;
+    } | undefined>;
     /** EO-4.5 environment execution status (real runners only count). */
     getExecutionEnvironments(principal: OperatorPrincipal): {
         configured: boolean;

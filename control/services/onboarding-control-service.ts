@@ -22,6 +22,7 @@ import type {
 } from "../../contracts/onboarding.js";
 import {
   OnboardingConflictError,
+  type BudgetPolicyStore,
   type OnboardingOutcome,
   type OnboardingService,
 } from "../../core/index.js";
@@ -35,6 +36,16 @@ export class OnboardingControlService {
   constructor(
     private readonly service: OnboardingService,
     private readonly audit: AuditLog,
+    /**
+     * EO-6.3 bridge: when a plan is approved with any budget limit actually
+     * set, that becomes the project's ENFORCED `BudgetPolicy` too — onboarding
+     * recording a policy no longer has to mean nothing enforces it, once the
+     * Cost Center is composed. Optional and best-effort: a bridging failure
+     * is logged and never fails the approval itself (PROJECT READY !=
+     * AUTOMATIC EXECUTION applies here too — a budget-bridge hiccup must not
+     * block onboarding).
+     */
+    private readonly budgetPolicies?: Pick<BudgetPolicyStore, "set">,
   ) {}
 
   capabilities(principal: OperatorPrincipal): OnboardingCapabilitiesView {
@@ -59,8 +70,31 @@ export class OnboardingControlService {
   onboardingPlan(p: OperatorPrincipal, b: Body, o?: CommandOptions) {
     return this.run(p, "onboarding_plan", b, o, () => this.service.plan(p, b));
   }
-  onboardingApprovePlan(p: OperatorPrincipal, b: Body, o?: CommandOptions) {
-    return this.run(p, "onboarding_approve_plan", b, o, () => this.service.approvePlan(p, b));
+  async onboardingApprovePlan(p: OperatorPrincipal, b: Body, o?: CommandOptions) {
+    const result = await this.run(p, "onboarding_approve_plan", b, o, () => this.service.approvePlan(p, b));
+    if (result.outcome === "executed") {
+      await this.bridgeBudgetPolicy(p, result).catch(() => {
+        /* best-effort: onboarding's own approval already succeeded and must not be undone by this */
+      });
+    }
+    return result;
+  }
+
+  /** EO-6.3: approving a plan with any budget limit set also enforces it, from today onward. */
+  private async bridgeBudgetPolicy(principal: OperatorPrincipal, result: ControlCommandResult): Promise<void> {
+    if (!this.budgetPolicies) return;
+    const session = result.details["session"] as OnboardingSession | undefined;
+    const cost = session?.plan?.cost;
+    if (!session || !cost) return;
+    const hasLimit = cost.dailyLimit !== undefined || cost.monthlyLimit !== undefined || cost.taskLimit !== undefined;
+    if (!hasLimit) return;
+    await this.budgetPolicies.set(principal, session.projectId, {
+      dailyLimitUsd: cost.dailyLimit,
+      monthlyLimitUsd: cost.monthlyLimit,
+      taskLimitUsd: cost.taskLimit,
+      warningThresholdPercent: cost.warningThresholdPercent,
+      hardStop: cost.hardStop,
+    });
   }
   onboardingProvision(p: OperatorPrincipal, b: Body, o?: CommandOptions) {
     return this.run(p, "onboarding_provision", b, o, () => this.service.provision(p, b));

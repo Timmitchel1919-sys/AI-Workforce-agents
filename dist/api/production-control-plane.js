@@ -10,7 +10,7 @@ import { randomUUID } from "node:crypto";
 import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, ModelProviderRegistry, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelProviderRegistry, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
@@ -213,19 +213,18 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         artifactSource: unavailableArtifactSource,
         deployments,
     });
-    // EO-6.2: the AI Cost Center & rule-based Auditor governance foundation. The usage ledger, budget
-    // policy and rule auditor need no model provider to exist — they are always composed here. What
-    // they can never do without one is see a real call: `modelProviders` is empty because production
-    // registers no model provider at all (no key, no adapter), so `costCenterCapabilities.enforcement`
-    // is honestly false. Setting a project's budget policy is available to a trusted caller
-    // (`BudgetPolicyStore.set`, admin-only) but is not yet reachable over HTTP — a documented gap, not
-    // a fabricated one (see ADR-0027).
+    // EO-6.2/6.3: the AI Cost Center, rule-based Auditor and Governance Policy Engine. None of these
+    // need a model provider to exist — they are always composed here. What they can never do without
+    // one is see a real call: `modelProviders` is empty because production registers no model provider
+    // at all (no key, no adapter), so `costCenterCapabilities.enforcement` is honestly false.
     const modelProviders = new ModelProviderRegistry();
     const usageLedger = new UsageLedger(executionRecords, now);
     const budgetPolicies = new BudgetPolicyStore(executionRecords, now, audit);
     const budgetEnforcer = new BudgetEnforcer(budgetPolicies, usageLedger, now);
     const ruleAuditor = new RuleAuditor(now, audit);
     const costCenterCapabilities = deriveCostCenterCapabilities({ providers: modelProviders });
+    const governancePolicies = new GovernancePolicyStore(executionRecords, now, audit);
+    const governanceEngine = new GovernancePolicyEngine(governancePolicies, budgetEnforcer, now, approvals, audit);
     const context = {
         agents: bootstrap.agents,
         tasks,
@@ -263,6 +262,13 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         },
         costCenterCapabilities,
         auditor: { run: (...a) => ruleAuditor.run(...a) },
+        governance: {
+            policy: {
+                get: (...a) => governancePolicies.get(...a),
+                set: (...a) => governancePolicies.set(...a),
+            },
+            engine: { evaluate: (...a) => governanceEngine.evaluate(...a) },
+        },
         executionReceipts,
         executionRecords,
         environmentAdapters,
@@ -306,7 +312,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
             agents: bootstrap.agents.list(),
         }),
     });
-    const onboarding = new OnboardingControlService(onboardingService, audit);
+    const onboarding = new OnboardingControlService(onboardingService, audit, budgetPolicies);
     // READY projects become discoverable through the existing Project Registry.
     // Other warm instances pick them up through this throttled sync.
     const syncProjects = async () => {
@@ -357,6 +363,8 @@ export async function createProductionControlPlaneRuntime(options = {}) {
             budgetPolicies,
             enforcer: budgetEnforcer,
             auditor: ruleAuditor,
+            governancePolicies,
+            governanceEngine,
         },
         environmentDetector,
         flush: () => repositories.flushAll(),

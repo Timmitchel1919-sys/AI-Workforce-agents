@@ -46,6 +46,10 @@ const COMMAND_METHODS = {
     "create-workstream": "createWorkstream",
     "add-workstream-task": "addTaskToWorkstream",
     "tick-software-factory": "tickSoftwareFactory",
+    // EO-6.2 / EO-6.3 — AI Cost Center & Governance Policy Engine.
+    "set-budget-policy": "setBudgetPolicy",
+    "set-governance-policy": "setGovernancePolicy",
+    "evaluate-governance": "evaluateGovernance",
 };
 function defaultCorrelationId() {
     const c = globalThis.crypto;
@@ -268,6 +272,10 @@ export function createControlPlaneApi(options) {
                 // EO-6.2 rule-based Auditor findings (never model-assisted).
                 if (segs.length === 3 && segs[2] === "audit-findings") {
                     return send(res, 200, notNull(await query.getProjectAuditFindings(principal, id)), correlationId);
+                }
+                // EO-6.3 governance policy (provider/model allow-list, approval threshold).
+                if (segs.length === 3 && segs[2] === "governance-policy") {
+                    return send(res, 200, notNull(await query.getProjectGovernancePolicy(principal, id)), correlationId);
                 }
                 // `GET /projects/:projectId/execution-sessions` (EO-4.1, metadata only)
                 if (segs.length === 3 && segs[2] === "execution-sessions") {

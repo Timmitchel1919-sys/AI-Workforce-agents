@@ -362,6 +362,15 @@ export async function getProjectAuditFindings(ctx, principal, projectId) {
         verifications,
         sessions,
         usage,
+        sourcesConnected: { verification: Boolean(rel.verification), sourceControl: Boolean(rel.sourceControl) },
     });
     return { configured: true, ...result };
+}
+/** EO-6.3 — this project's governance policy (provider/model allow-list, approval threshold). */
+export async function getProjectGovernancePolicy(ctx, principal, projectId) {
+    const id = requireExecutionId(projectId, "projectId");
+    if (!ctx.governance)
+        return { configured: false };
+    const policy = await ctx.governance.policy.get(principal, id);
+    return { configured: true, policy: policy ?? null };
 }
