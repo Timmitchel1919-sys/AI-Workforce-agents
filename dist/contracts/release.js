@@ -73,3 +73,16 @@ export const RELEASE_STATUSES = [
     "failed",
     "rolled_back",
 ];
+/** Capability ids used in reports (graph metadata / insights). */
+export const RELEASE_CAPABILITY_IDS = ["verification", "sourceControl", "deployment"];
+/** The capabilities a deployment does NOT have, in a stable order. */
+export function inertReleaseCapabilities(c) {
+    const out = [];
+    if (!c.verification)
+        out.push("verification");
+    if (!c.sourceControl)
+        out.push("sourceControl");
+    if (c.deploymentAdapters.length === 0)
+        out.push("deployment");
+    return out;
+}

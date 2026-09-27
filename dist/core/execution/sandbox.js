@@ -18,6 +18,10 @@ export class SandboxRegistry {
     get(providerId) {
         return this.providers.get(providerId);
     }
+    /** Registered provider ids, sorted. Lets a composition root DERIVE what it can run. */
+    list() {
+        return [...this.providers.keys()].sort();
+    }
     /**
      * First provider that can serve the instance, enforces every REQUIRED
      * limit and supports the network mode — isolating providers first.

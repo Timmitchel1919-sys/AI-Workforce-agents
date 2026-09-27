@@ -22,7 +22,7 @@ import { NodeInspector } from "./NodeInspector";
 import { SpatialGraphView } from "./SpatialGraphView";
 
 import { LiveStatusBar } from "./LiveStatusBar";
-import { sourceNames } from "../lib/sources";
+import { capabilityNames, sourceNames } from "../lib/sources";
 import { InsightsPanel } from "./InsightsPanel";
 import type { SpatialInsightsReport } from "../../../../../contracts/graph";
 import { traceExecutionPath } from "../lib/executionPath";
@@ -349,6 +349,11 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
         {graph.metadata?.unavailableSources && (
           <p className="sg-notice" data-testid="sg-unavailable-sources">
             {t("spatial.live.unavailableSources", { sources: sourceNames(t, graph.metadata.unavailableSources) })}
+          </p>
+        )}
+        {graph.metadata?.inertCapabilities && (
+          <p className="sg-notice sg-notice--info" data-testid="sg-inert-capabilities">
+            {t("spatial.live.inertCapabilities", { capabilities: capabilityNames(t, graph.metadata.inertCapabilities) })}
           </p>
         )}
         {graph.metadata?.notConfiguredSources && (

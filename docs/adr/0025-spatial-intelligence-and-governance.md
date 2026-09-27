@@ -84,7 +84,11 @@ replaced them — cancelling an execution audited `outcome: "cancelled"` instead
 is now written first and audit facts last; a colliding key survives under a
 `detail…` name (e.g. `detailOutcome`). Reproduced by a failing test first.
 
-## The release pipeline is NOT wired in production (verified)
+## The release pipeline is NOT wired in production (verified) — superseded by ADR-0026
+
+> Update (EO-6.1): the services are now composed in production, but as an INERT
+> pipeline (no sandbox, Git or deployment adapter). See ADR-0026; the text below
+> describes the state at the time of EO-5.
 
 `api/production-control-plane.ts` builds the Control Plane context with
 `execution` (sessions, ChangeSets) but **not** `verification`, `sourceControl` or

@@ -48,6 +48,10 @@ export class DeploymentOrchestrator {
         this.ledger = new DurableLedger(options.store, this.clock);
     }
     /* ---- trusted composition ------------------------------------- */
+    /** Registered deployment adapter ids (sorted). Lets a composition root DERIVE what it can deploy with. */
+    adapterIds() {
+        return [...this.adapters.keys()].sort();
+    }
     registerAdapter(adapter) {
         requireExecutionId(adapter.adapterId, "adapterId");
         if (this.adapters.has(adapter.adapterId))

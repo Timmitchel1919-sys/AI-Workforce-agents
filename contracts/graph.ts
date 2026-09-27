@@ -323,6 +323,12 @@ export interface SpatialInsightsReport {
    * production). Nothing about them can be shown, and that is not the same as "nothing happened".
    */
   notConfiguredSources?: string[];
+  /**
+   * Release capabilities this deployment does not have (verification / sourceControl /
+   * deployment) although the record sources ARE connected. INERT != IDLE: an empty release
+   * history here does not mean a pipeline ran and found nothing — nothing of that kind can run.
+   */
+  inertCapabilities?: string[];
   basis: "observed_state";
 }
 

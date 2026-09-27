@@ -9,6 +9,8 @@
  */
 import { type ArtifactIntegrity, type ArtifactRecord } from "../../contracts/index.js";
 export interface ArtifactDigestSource {
+    /** `false` marks a fail-closed stand-in (nothing to digest here). Absent/true => a real source. */
+    readonly available?: boolean;
     digestFile(projectId: string, path: string): Promise<{
         sha256: string;
         size: number;

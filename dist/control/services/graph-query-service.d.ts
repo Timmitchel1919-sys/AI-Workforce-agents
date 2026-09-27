@@ -28,6 +28,8 @@ export declare class GraphQueryService {
      * nothing here writes, executes or invokes a command.
      */
     getInsights(principal: OperatorPrincipal, projectId: string): Promise<SpatialInsightsReport | undefined>;
+    /** Release capabilities this deployment lacks (empty when it declares none or has them all). */
+    private inertCapabilities;
     /**
      * Lifecycle records are project-scoped and identical for every operator who passed the project
      * gate above, so one short-lived (promise-shared) read serves every concurrent poll for the

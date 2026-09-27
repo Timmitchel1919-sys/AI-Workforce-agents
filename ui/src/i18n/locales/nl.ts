@@ -1587,6 +1587,7 @@ export const nl: Messages = {
       "none": "Niets in de vastgelegde status vraagt aandacht.",
       "noneUnknown": "In de bronnen die gelezen konden worden zijn geen problemen gevonden, maar sommige bronnen zijn niet beschikbaar, dus het beeld is onvolledig.",
       "sourcesUnavailable": "Sommige uitvoeringsbronnen konden niet worden gelezen: {sources}. Bevindingen daarover zijn onbekend, niet afwezig.",
+      "inertCapabilities": "Gekoppeld, maar niet geconfigureerd in deze omgeving: {capabilities}. Dat kan hier niet draaien, dus geen bevindingen daarover betekent niet dat het goed gaat.",
       "sourcesNotConfigured": "Niet gekoppeld in deze omgeving: {sources}. Bevindingen daarover kunnen niet worden getoond, wat niet hetzelfde is als dat er geen zijn.",
       "truncated": "Er zijn meer bevindingen dan getoond.",
       "asOf": "Afgeleid van de status bij revisie {revision}.",
@@ -1658,8 +1659,10 @@ export const nl: Messages = {
       "added": "{label} is verschenen ({state}).",
       "removed": "{label} staat niet meer in deze weergave.",
       "unavailableSources": "Sommige uitvoeringsbronnen konden niet worden gelezen: {sources}. Ontbrekende activiteit hieronder is onbekend, niet afwezig.",
+      "inertCapabilities": "Gekoppeld, maar niet geconfigureerd in deze omgeving: {capabilities}. Dat kan hier niet draaien, dus een lege releasegeschiedenis betekent niet dat de pijplijn stilstaat.",
       "notConfigured": "Niet gekoppeld in deze omgeving: {sources}. Hierover kan hier niets worden getoond — dat is niet hetzelfde als dat er niets gebeurt."
     },
+    "capabilities": {"verification": "verificatie uitvoeren", "sourceControl": "committen en pushen", "deployment": "uitrollen"},
     "sources": {"sessions": "uitvoeringssessies", "changeSets": "ChangeSets", "verifications": "verificatie", "sourceControl": "beoordelingen en commits", "releases": "uitrol"},
     "edgeStatus": {"blocking": "blokkerend", "satisfied": "voldaan"},
     "note": "Opmerking: {note}",

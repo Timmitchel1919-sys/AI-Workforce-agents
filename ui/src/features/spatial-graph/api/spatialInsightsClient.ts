@@ -70,6 +70,7 @@ export function assertInsights(value: unknown, projectId: string): SpatialInsigh
     findings: value.findings.map(readFinding).filter((f): f is SpatialInsight => f !== null),
     truncated: value.truncated === true,
     ...(Array.isArray(value.unavailableSources) ? { unavailableSources: value.unavailableSources.filter((s): s is string => typeof s === "string") } : {}),
+    ...(Array.isArray(value.inertCapabilities) ? { inertCapabilities: value.inertCapabilities.filter((s): s is string => typeof s === "string") } : {}),
     ...(Array.isArray(value.notConfiguredSources) ? { notConfiguredSources: value.notConfiguredSources.filter((s): s is string => typeof s === "string") } : {}),
     basis: "observed_state",
   };

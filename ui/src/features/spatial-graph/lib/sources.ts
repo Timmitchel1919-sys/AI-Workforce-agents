@@ -16,3 +16,14 @@ export function sourceNames(t: Translate, csv: string | readonly string[]): stri
 export function humanize(value: string): string {
   return value.replace(/[_-]+/g, " ").trim();
 }
+
+const CAPABILITIES = ["verification", "sourceControl", "deployment"] as const;
+
+/** "verification,deployment" -> "running verification, deploying" (translated). */
+export function capabilityNames(t: Translate, csv: string | readonly string[]): string {
+  const ids = typeof csv === "string" ? csv.split(",") : csv;
+  return ids
+    .filter((id) => id !== "")
+    .map((id) => ((CAPABILITIES as readonly string[]).includes(id) ? t(`spatial.capabilities.${id}` as MessageKey) : humanize(id)))
+    .join(", ");
+}

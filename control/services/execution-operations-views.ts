@@ -26,6 +26,22 @@ const MAX_TIMELINE = 200;
 const MAX_RECEIPTS = 50;
 const MAX_SESSIONS = 100;
 
+/**
+ * A release source counts as CONFIGURED for the Operations views only when the CAPABILITY behind it
+ * exists. A composed-but-inert pipeline (records readable, nothing able to run) must keep reading
+ * "not configured", not "0 verifications": NOT CONNECTED != EMPTY. A context that does not declare
+ * capabilities keeps the original meaning (the service is present or it is not).
+ */
+function releaseSources(ctx: ControlPlaneContext) {
+  const caps = ctx.releaseCapabilities;
+  return {
+    verification: caps && !caps.verification ? undefined : ctx.verification,
+    sourceControl: caps && !caps.sourceControl ? undefined : ctx.sourceControl,
+    deployments:
+      caps && caps.deploymentAdapters.length === 0 ? undefined : ctx.deployments,
+  };
+}
+
 export interface ExecutionSessionSummaryView {
   sessionId: string;
   projectId: string;
@@ -114,11 +130,12 @@ export async function getExecutionOverview(
   const awaitingApproval = sessions.filter((s) =>
     s.reasons.some((r) => r.code === "APPROVAL_REQUIRED"),
   ).length;
-  const verifications = ctx.verification
-    ? await ctx.verification.listHistory(principal, projectId, 200)
+  const rel = releaseSources(ctx);
+  const verifications = rel.verification
+    ? await rel.verification.listHistory(principal, projectId, 200)
     : undefined;
-  const releases = ctx.deployments
-    ? await ctx.deployments.listReleases(principal, projectId, 200)
+  const releases = rel.deployments
+    ? await rel.deployments.listReleases(principal, projectId, 200)
     : undefined;
   const count = <T extends { status: string }>(items: readonly T[]) =>
     items.reduce<Record<string, number>>(
@@ -232,8 +249,8 @@ export async function getExecutionSessionDetail(
     .catch(() => undefined);
   const agent = ctx.agents.get(session.agentId);
   const instance = ctx.environments?.getInstance(session.environmentInstanceId);
-  const verifications: VerificationResult[] = ctx.verification
-    ? (await ctx.verification.listHistory(principal, projectId, 200))
+  const verifications: VerificationResult[] = releaseSources(ctx).verification
+    ? (await releaseSources(ctx).verification!.listHistory(principal, projectId, 200))
         .filter((v) => v.sourceSessionId === sessionId)
         .slice(0, 20)
     : [];
@@ -338,8 +355,9 @@ export async function getProjectVerifications(
   projectId: string,
 ) {
   requireExecutionId(projectId, "projectId");
-  if (!ctx.verification) return { configured: false as const, items: [] };
-  const items = await ctx.verification.listHistory(principal, projectId, 50);
+  const verification = releaseSources(ctx).verification;
+  if (!verification) return { configured: false as const, items: [] };
+  const items = await verification.listHistory(principal, projectId, 50);
   // Source consistency: a passed verification is CURRENT only if the
   // project's source still has the verified fingerprint.
   const current = await ctx.workspaceControl
@@ -363,14 +381,15 @@ export async function getProjectReleases(
   projectId: string,
 ) {
   requireExecutionId(projectId, "projectId");
-  const sourceControl = ctx.sourceControl
-    ? await ctx.sourceControl.activity(principal, projectId, 50)
+  const rel = releaseSources(ctx);
+  const sourceControl = rel.sourceControl
+    ? await rel.sourceControl.activity(principal, projectId, 50)
     : undefined;
-  const releases: ReleaseReceipt[] | undefined = ctx.deployments
-    ? await ctx.deployments.listReleases(principal, projectId, 50)
+  const releases: ReleaseReceipt[] | undefined = rel.deployments
+    ? await rel.deployments.listReleases(principal, projectId, 50)
     : undefined;
-  const targets = ctx.deployments
-    ? ctx.deployments.listTargets(principal, projectId)
+  const targets = rel.deployments
+    ? rel.deployments.listTargets(principal, projectId)
     : undefined;
   return {
     sourceControl: sourceControl

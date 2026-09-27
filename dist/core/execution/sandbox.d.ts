@@ -11,6 +11,8 @@ export declare class SandboxRegistry {
     private readonly providers;
     register(provider: SandboxProvider): void;
     get(providerId: string): SandboxProvider | undefined;
+    /** Registered provider ids, sorted. Lets a composition root DERIVE what it can run. */
+    list(): string[];
     /**
      * First provider that can serve the instance, enforces every REQUIRED
      * limit and supports the network mode — isolating providers first.

@@ -121,4 +121,17 @@ describe("live status in the workspace", () => {
     expect(screen.getByTestId("sg-not-configured")).toHaveTextContent("Niet gekoppeld in deze omgeving: uitrol");
     expect(screen.getByTestId("sg-not-configured").textContent).not.toMatch(/spatial\./);
   });
+
+  it("INERT != IDLE: connected-but-unconfigured release capabilities are named, in EN and NL, and are not 'not connected'", () => {
+    const g = makeProjection({ metadata: { inertCapabilities: "verification,sourceControl,deployment" } });
+    const { unmount } = render(wrap(<SpatialGraphWorkspace graph={g} mode="EXECUTION" live={liveOf("live")} />));
+    const note = screen.getByTestId("sg-inert-capabilities");
+    expect(note).toHaveTextContent("Connected, but not configured in this deployment: running verification, committing and pushing, deploying");
+    expect(note).toHaveTextContent(/does not mean an idle pipeline/);
+    expect(screen.queryByTestId("sg-not-configured")).toBeNull();
+    unmount();
+    render(wrap(<SpatialGraphWorkspace graph={g} mode="EXECUTION" live={liveOf("live")} />, "nl"));
+    expect(screen.getByTestId("sg-inert-capabilities")).toHaveTextContent("Gekoppeld, maar niet geconfigureerd in deze omgeving: verificatie uitvoeren, committen en pushen, uitrollen");
+    expect(screen.getByTestId("sg-inert-capabilities").textContent).not.toMatch(/spatial\./);
+  });
 });

@@ -4,7 +4,7 @@
  * Plane owns none of it and constructs none of it.
  */
 import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, TechnologyCatalog, ExecutionPlanningService, ExecutionManager, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem, type DeploymentOrchestrator, type EnvironmentAdapterRegistry, type InMemoryExecutionReceiptStore, type SourceControlOrchestrator, type VerificationService } from "../core/index.js";
-import type { ExecutionRecordStore, WorkspaceControl } from "../contracts/index.js";
+import type { ExecutionRecordStore, ReleaseCapabilities, WorkspaceControl } from "../contracts/index.js";
 import { type HealthProbe } from "./health.js";
 import { type ControlEventPublisher } from "./ports.js";
 import { AgentOperationalStore, WorkflowControlStore } from "./stores.js";
@@ -50,6 +50,13 @@ export interface ControlPlaneContext {
     sourceControl?: Pick<SourceControlOrchestrator, "activity">;
     /** EO-4.6 deployments (release receipts, registered targets). */
     deployments?: Pick<DeploymentOrchestrator, "listReleases" | "listTargets">;
+    /**
+     * What the release pipeline can actually DO here (vs. whether its record sources are
+     * connected). Absent => the deployment did not compose the pipeline at all. Present with an
+     * empty capability set => the pipeline is composed but INERT: it can read records and refuse
+     * work, and nothing can run. The graph and Operations views report the difference.
+     */
+    releaseCapabilities?: ReleaseCapabilities;
     /** EO-4.5 environment execution adapter/runner status. */
     environmentAdapters?: Pick<EnvironmentAdapterRegistry, "status">;
     /**

@@ -55,6 +55,8 @@ export declare class DeploymentOrchestrator {
     private readonly locks;
     private readonly ledger;
     constructor(options: DeploymentOrchestratorOptions);
+    /** Registered deployment adapter ids (sorted). Lets a composition root DERIVE what it can deploy with. */
+    adapterIds(): string[];
     registerAdapter(adapter: DeploymentAdapter): void;
     registerTarget(target: DeploymentTarget): void;
     setReleasePolicy(policy: ReleasePolicy): void;

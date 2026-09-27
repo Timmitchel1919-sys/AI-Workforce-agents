@@ -50,6 +50,8 @@ import {
   ToolExecutionEngine,
   ToolRegistry,
   VerificationService,
+  toPostDeployVerification,
+  verifyProduction,
   WORKSPACE_OPERATIONS,
   WORKSPACE_TOOL,
   defineBuildTool,
@@ -1801,6 +1803,139 @@ test("EO-5.8 E2E: session → ChangeSet → verification → review → approval
     assert.ok(cancelled, "the executed cancel is audited as executed");
     assert.equal(cancelled!.data?.actor, OPERATOR.id);
     assert.equal(cancelled!.data?.detailOutcome, "cancelled", "the domain outcome is preserved alongside, not instead");
+  } finally {
+    h.cleanup();
+  }
+});
+
+
+/* ------------------------------------------------------------------ */
+/* EO-6.1 — failure containment across the pipeline, and DEPLOYED !=    */
+/* HEALTHY with a real production-verification step.                    */
+/* ------------------------------------------------------------------ */
+test("EO-6.1 CHAIN: no downstream stage runs without its upstream gate — and each refusal records nothing", async () => {
+  const h = await harness();
+  try {
+    const { verification: v } = await h.developAndVerify();
+    const review = await h.sc.recordAgentReview(ADMIN, {
+      projectId: "alpha",
+      verificationId: v.verificationId,
+      reviewerAgentId: "review-agent",
+      status: "approved",
+    });
+    const stage = await h.sc.prepareStageSet(ADMIN, {
+      projectId: "alpha",
+      verificationId: v.verificationId,
+      reviewId: review.reviewId,
+    });
+    const activity = async () => (await h.sc.activity(ADMIN, "alpha", 50)).commits.length;
+    const commitWith = (approvalId: string, key: string) =>
+      h.sc.commit(ADMIN, { projectId: "alpha", stageSetId: stage.stageSetId, summary: "ship feature", approvalId }, key);
+
+    // APPROVED != EXECUTED and REQUESTED != APPROVED: a pending approval authorises nothing.
+    const requested = await h.sc.requestApproval(ADMIN, { projectId: "alpha", operation: "commit", subjectId: stage.stageSetId, reason: "ship" });
+    await assert.rejects(commitWith(requested.id, "chain-1"), (e: unknown) => e instanceof ExecutionDeniedError);
+    assert.equal(await activity(), 0, "a refused commit leaves no commit receipt");
+    // A decided-REJECTED approval authorises nothing either.
+    h.fixture.approvals.decide(requested.id, "rejected", "admin-2");
+    await assert.rejects(commitWith(requested.id, "chain-2"), (e: unknown) => e instanceof ExecutionDeniedError);
+    assert.equal(await activity(), 0);
+    // The genuine, approved, correctly-bound approval works — exactly once.
+    const good = await h.sc.requestApproval(ADMIN, { projectId: "alpha", operation: "commit", subjectId: stage.stageSetId, reason: "ship feature" });
+    h.approve(good.id);
+    const commit = await commitWith(good.id, "chain-4");
+    assert.equal(await activity(), 1);
+    // COMMIT CREATED != PUSH SUCCEEDED: push needs its own approval.
+    await assert.rejects(
+      h.sc.push(ADMIN, { projectId: "alpha", commitReceiptId: commit.receiptId, approvalId: good.id }, "chain-5"),
+      (e: unknown) => e instanceof ExecutionDeniedError,
+      "the COMMIT approval must not authorise the PUSH",
+    );
+    assert.equal((await h.sc.activity(ADMIN, "alpha", 50)).pushes.length, 0);
+    assert.notEqual(remoteHead(h.remote), commit.commitSha, "nothing reached the remote");
+    // PUSH SUCCEEDED != DEPLOYED: a deployment candidate cannot be built from a commit that was never pushed.
+    await assert.rejects(
+      h.deploy.createCandidate(ADMIN, { projectId: "alpha", pushReceiptId: "push_that_never_happened", targetId: "alpha-preview" }),
+      NotFoundError,
+    );
+    assert.deepEqual(await h.deploy.listReleases(ADMIN, "alpha"), [], "no release was recorded");
+  } finally {
+    h.cleanup();
+  }
+});
+
+test("EO-6.1 DEPLOYED != HEALTHY: a provider-accepted release is healthy ONLY if production verification passes and production itself reports the shipped version", async () => {
+  const h = await harness();
+  try {
+    const { push, verification: v } = await h.toPushed();
+    // The "network": production reports whatever it is currently running — set by the deploy, never by the test's expectation.
+    const prod: { up: boolean; version?: string; openRoute: boolean } = { up: true, version: undefined, openRoute: false };
+    const HTML = '<script src="/assets/index-Live1.js"></script>';
+    const json = { "content-type": "application/json", "cache-control": "no-store" };
+    const fakeFetch = (async (url: string) => {
+      const u = String(url);
+      if (u.endsWith("/")) return new Response(HTML, { status: 200, headers: { "content-type": "text/html" } });
+      if (u.endsWith("/api/health")) {
+        return prod.up
+          ? new Response(JSON.stringify({ status: "ok", ...(prod.version ? { version: prod.version } : {}) }), { status: 200, headers: json })
+          : new Response("down", { status: 503 });
+      }
+      if (u.endsWith("/api/projects") && prod.openRoute) return new Response("[]", { status: 200, headers: json });
+      return new Response("{}", { status: 401, headers: json });
+    }) as unknown as typeof fetch;
+    class VerifiedAdapter implements DeploymentAdapter {
+      readonly adapterId = "verified-hosting";
+      readonly version = "0.0.0-test";
+      readonly simulated = true;
+      /** Whether this simulated provider really "ships" the candidate to the production the test controls. */
+      ships = true;
+      async deploy(ctx: DeploymentContext) {
+        if (this.ships) prod.version = ctx.candidate.commitSha; // production now RUNS this build and says so
+        return { providerReleaseId: "prov-1" }; // the provider ACCEPTED the release either way
+      }
+      async verify() {
+        // The version comes from the report (what production says), NOT from this adapter.
+        return toPostDeployVerification(await verifyProduction({ baseUrls: ["https://example.web.app"], fetch: fakeFetch }));
+      }
+    }
+    const adapter = new VerifiedAdapter();
+    h.deploy.registerAdapter(adapter);
+    h.deploy.registerTarget({ targetId: "alpha-verified", projectId: "alpha", targetClass: "preview", adapterId: "verified-hosting", resources: ["hosting"], providerRef: "site", timeoutMs: 2_000 });
+    const run = async (key: string) =>
+      h.deploy.deploy(ADMIN, { projectId: "alpha", candidateId: (await h.deploy.createCandidate(ADMIN, { projectId: "alpha", pushReceiptId: push.receiptId, targetId: "alpha-verified", artifactIds: [...v.artifactIds] })).candidateId }, key);
+
+    // 1. Everything checks out AND production reports the shipped commit => healthy.
+    const healthy = await run("pv-1");
+    assert.equal(healthy.status, "healthy");
+    assert.equal(healthy.postDeploy!.versionMatches, true, "production itself reported the candidate's commit");
+
+    // 2. Provider accepted it, production HEALTH fails => degraded.
+    prod.up = false;
+    assert.equal((await run("pv-2")).status, "degraded");
+    prod.up = true;
+
+    // 3. Health is fine but a protected route is OPEN (auth bypass) => NOT healthy.
+    prod.openRoute = true;
+    const bypass = await run("pv-3");
+    assert.notEqual(bypass.status, "healthy", "an open protected route must never end healthy");
+    assert.equal(bypass.status, "degraded");
+    prod.openRoute = false;
+
+    // 4. The provider accepted the release but production still runs the OLD build (stale): the
+    //    reported version differs from the candidate => not healthy. (Previously the bridge echoed the
+    //    candidate's own SHA back, so this could never be caught.)
+    adapter.ships = false;
+    prod.version = "0".repeat(40);
+    const stale = await run("pv-4");
+    assert.notEqual(stale.status, "healthy");
+    assert.equal(stale.postDeploy!.versionMatches, false);
+    assert.equal(stale.postDeploy!.reportedVersion, "0".repeat(40));
+
+    // 5. Production reports NO version at all => the release cannot be called healthy.
+    prod.version = undefined;
+    const silent = await run("pv-5");
+    assert.notEqual(silent.status, "healthy");
+    assert.equal(silent.postDeploy!.versionMatches, false);
   } finally {
     h.cleanup();
   }

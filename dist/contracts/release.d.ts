@@ -231,6 +231,8 @@ export interface ReleaseReceipt {
  * the repository and remote of `projectId` from trusted configuration.
  */
 export interface GovernedGitPort {
+    /** `false` marks a fail-closed stand-in (no real Git here). Absent/true => a real port. */
+    readonly available?: boolean;
     head(projectId: string): Promise<{
         sha?: string;
         branch?: string;
@@ -308,3 +310,23 @@ export interface DeploymentAdapter {
     /** Restore a known previous provider release (never "deploy latest"). */
     rollback?(ctx: DeploymentContext, toProviderReleaseId: string): Promise<void>;
 }
+/**
+ * What a deployment can actually DO in the release pipeline, as opposed to whether its record
+ * sources are connected. The two are different facts: a Control Plane can read verification,
+ * source-control and release records (durable store) while having no sandbox to run verification,
+ * no Git to commit with and no adapter to deploy through. Reporting only the first would read as
+ * "the pipeline is running and found nothing" — NOT CONNECTED != EMPTY, and INERT != IDLE.
+ */
+export interface ReleaseCapabilities {
+    /** A sandbox provider AND registered operations exist, so verification stages can run. */
+    verification: boolean;
+    /** A real governed Git port and workspace are configured, so commit/push can run. */
+    sourceControl: boolean;
+    /** Registered deployment adapter ids. Empty => nothing can be deployed. */
+    deploymentAdapters: readonly string[];
+}
+/** Capability ids used in reports (graph metadata / insights). */
+export declare const RELEASE_CAPABILITY_IDS: readonly ["verification", "sourceControl", "deployment"];
+export type ReleaseCapabilityId = (typeof RELEASE_CAPABILITY_IDS)[number];
+/** The capabilities a deployment does NOT have, in a stable order. */
+export declare function inertReleaseCapabilities(c: ReleaseCapabilities): ReleaseCapabilityId[];

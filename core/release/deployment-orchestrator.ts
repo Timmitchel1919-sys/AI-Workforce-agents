@@ -124,6 +124,11 @@ export class DeploymentOrchestrator {
 
   /* ---- trusted composition ------------------------------------- */
 
+  /** Registered deployment adapter ids (sorted). Lets a composition root DERIVE what it can deploy with. */
+  adapterIds(): string[] {
+    return [...this.adapters.keys()].sort();
+  }
+
   registerAdapter(adapter: DeploymentAdapter): void {
     requireExecutionId(adapter.adapterId, "adapterId");
     if (this.adapters.has(adapter.adapterId))

@@ -1,7 +1,7 @@
 import { useI18n, type MessageKey } from "../../../i18n";
 import type { SpatialInsight, SpatialInsightsReport } from "../../../../../contracts/graph";
 import { nodeTypeLabel, stateLabel } from "../lib/labels";
-import { humanize, sourceNames } from "../lib/sources";
+import { capabilityNames, humanize, sourceNames } from "../lib/sources";
 
 interface Props {
   report: SpatialInsightsReport | null;
@@ -64,6 +64,11 @@ export function InsightsPanel({ report, loading, failed, isInView, onSelectNode 
       {unreadable.length > 0 && (
         <p className="sg-notice" role="status" data-testid="sg-insights-partial">
           {t("spatial.insights.sourcesUnavailable", { sources: sourceNames(t, unreadable) })}
+        </p>
+      )}
+      {(report?.inertCapabilities?.length ?? 0) > 0 && (
+        <p className="sg-notice sg-notice--info" role="status" data-testid="sg-insights-inert">
+          {t("spatial.insights.inertCapabilities", { capabilities: capabilityNames(t, report!.inertCapabilities!) })}
         </p>
       )}
       {notConnected.length > 0 && (

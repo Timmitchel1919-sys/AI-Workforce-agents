@@ -198,6 +198,8 @@ export interface WorkspaceCleanupReport {
  * reached only through the ExecutionManager (authorized, audited).
  */
 export interface WorkspaceControl {
+  /** `false` marks a fail-closed stand-in (no real workspace here). Absent/true => a real one. */
+  readonly available?: boolean;
   changeSet(workspaceId: string): ChangeSet | undefined;
   workspace(workspaceId: string): ManagedWorkspaceView | undefined;
   rollback(workspaceId: string, sessionId: string): Promise<RollbackReport>;

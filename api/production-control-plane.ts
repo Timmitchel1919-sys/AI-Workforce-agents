@@ -73,6 +73,14 @@ import {
   GitHubRepositoryReader,
   OnboardingService,
   ProjectProvisioningService,
+  ArtifactManager,
+  DeploymentOrchestrator,
+  SourceControlOrchestrator,
+  UnavailableArtifactSource,
+  UnavailableGovernedGit,
+  UnavailableWorkspaceControl,
+  VerificationService,
+  deriveReleaseCapabilities,
 } from "../core/index.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
@@ -96,6 +104,15 @@ export interface ProductionControlPlaneRuntime {
   readonly bootstrap: ProductionWorkforceBootstrap;
   readonly query: WorkforceQueryService;
   readonly command: WorkforceCommandService;
+  /**
+   * The FULL release services. The control-plane context exposes only their read views; the
+   * trusted host (and tests) hold the whole thing. No HTTP route reaches the mutating methods.
+   */
+  readonly release: {
+    readonly verification: VerificationService;
+    readonly sourceControl: SourceControlOrchestrator;
+    readonly deployments: DeploymentOrchestrator;
+  };
   /** Environment discovery orchestration (no live probes wired in EO-2A). */
   readonly environmentDetector: EnvironmentDetector;
   /** Flushes pending Firestore-backed writes on an explicit graceful shutdown. */
@@ -269,6 +286,10 @@ export async function createProductionControlPlaneRuntime(
     transactionalFirestore,
     { collectionPrefix: options.collectionPrefix },
   );
+  // Shared with the verification service below: it must see exactly the operations and sandbox
+  // providers the execution manager sees — one registry each, never a second copy.
+  const executionOperations = new ExecutionOperationRegistry();
+  const executionSandboxes = new SandboxRegistry();
   const execution = new ExecutionManager({
     planning,
     approvals,
@@ -277,9 +298,9 @@ export async function createProductionControlPlaneRuntime(
     environments: environmentRegistry,
     tools: bootstrap.tools,
     projects: bootstrap.projects,
-    operations: new ExecutionOperationRegistry(),
+    operations: executionOperations,
     policies: executionPolicies,
-    sandboxes: new SandboxRegistry(),
+    sandboxes: executionSandboxes,
     // EO-4.8: sessions are transactional in Firestore (CAS across instances);
     // every receipt is also written create-only before a response returns.
     sessions: new FirestoreExecutionSessionStore(transactionalFirestore, {
@@ -289,6 +310,59 @@ export async function createProductionControlPlaneRuntime(
     receipts: executionReceipts,
     receiptStore: executionRecords,
     environmentAdapters,
+  });
+  // EO-6.1: the release pipeline (verification → review → commit/push → deployment), composed
+  // against the SAME approvals, audit, durable record store and execution manager as everything
+  // else. Production has no workspace, no Git and no deployment adapter, so every capability that
+  // needs one is a fail-closed "unavailable" port: the services read their durable records and
+  // enforce their state machines, and anything that would act is DENIED (never simulated).
+  const unavailableWorkspace = new UnavailableWorkspaceControl();
+  const unavailableArtifactSource = new UnavailableArtifactSource();
+  const unavailableGit = new UnavailableGovernedGit();
+  const artifacts = new ArtifactManager({
+    source: unavailableArtifactSource,
+    maxArtifactBytes: 50 * 1024 * 1024,
+  });
+  const verification = new VerificationService({
+    manager: execution,
+    planning,
+    operations: executionOperations,
+    environments: environmentRegistry,
+    sandboxes: executionSandboxes,
+    projects: bootstrap.projects,
+    audit,
+    artifacts,
+    workspaceControl: unavailableWorkspace,
+    store: executionRecords,
+  });
+  const sourceControl = new SourceControlOrchestrator({
+    git: unavailableGit,
+    verification,
+    manager: execution,
+    workspaceControl: unavailableWorkspace,
+    approvals,
+    projects: bootstrap.projects,
+    audit,
+    store: executionRecords,
+  });
+  const deployments = new DeploymentOrchestrator({
+    sourceControl,
+    verification,
+    artifacts,
+    approvals,
+    projects: bootstrap.projects,
+    audit,
+    store: executionRecords,
+  });
+  // DERIVED, at read time, from the ports and registries the services were composed with — never
+  // declared. A capability turns on only when a real provider/adapter is registered.
+  const releaseCapabilities = deriveReleaseCapabilities({
+    sandboxes: executionSandboxes,
+    operations: executionOperations,
+    git: unavailableGit,
+    workspace: unavailableWorkspace,
+    artifactSource: unavailableArtifactSource,
+    deployments,
   });
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
@@ -304,6 +378,19 @@ export async function createProductionControlPlaneRuntime(
     environments: environmentRegistry,
     planning,
     execution,
+    // READ-ONLY views: the context can list history/activity/releases and nothing else, at runtime
+    // as well as by type. The full services live on `runtime.release` for the trusted host.
+    verification: {
+      listHistory: (...a: Parameters<typeof verification.listHistory>) => verification.listHistory(...a),
+    },
+    sourceControl: {
+      activity: (...a: Parameters<typeof sourceControl.activity>) => sourceControl.activity(...a),
+    },
+    deployments: {
+      listReleases: (...a: Parameters<typeof deployments.listReleases>) => deployments.listReleases(...a),
+      listTargets: (...a: Parameters<typeof deployments.listTargets>) => deployments.listTargets(...a),
+    },
+    releaseCapabilities,
     executionReceipts,
     executionRecords,
     environmentAdapters,
@@ -401,6 +488,7 @@ export async function createProductionControlPlaneRuntime(
     bootstrap,
     query,
     command,
+    release: { verification, sourceControl, deployments },
     environmentDetector,
     flush: () => repositories.flushAll(),
   });

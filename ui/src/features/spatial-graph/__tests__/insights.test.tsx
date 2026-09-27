@@ -182,6 +182,13 @@ describe("panel", () => {
     expect(screen.queryByTestId("sg-insights-partial")).toBeNull(); // not a failed read
   });
 
+  it("inert capabilities are stated next to an empty result, so 'no findings' is not read as 'going well'", () => {
+    render1(assertInsights(report({ findings: [], inertCapabilities: ["verification", "deployment"] }), "p1"));
+    expect(screen.getByTestId("sg-insights-inert")).toHaveTextContent("Connected, but not configured in this deployment: running verification, deploying");
+    expect(screen.getByTestId("sg-insights-inert")).toHaveTextContent(/does not mean it is going well/);
+    expect(screen.queryByTestId("sg-insights-not-configured")).toBeNull();
+  });
+
   it("templates read as words: node types are translated and statuses are de-underscored; no plural clashes", () => {
     const f = finding({ kind: "FAILED_EXECUTION", variant: "failed", severity: "critical", params: { session: "Session build", status: "timed_out" }, limitations: ["cause_not_recorded"] });
     const w = finding({ kind: "WAITING_APPROVAL", variant: "waiting", params: { subject: "Commit abc", subjectType: "COMMIT", approval: "Approval: commit" }, recommendations: [], evidence: [ev("approval-a", "Approval: commit", "awaiting_approval")] });

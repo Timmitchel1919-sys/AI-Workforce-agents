@@ -1588,6 +1588,7 @@ export const en = {
       "none": "Nothing in the recorded state needs attention.",
       "noneUnknown": "No issues were found in the sources that could be read, but some sources are unavailable, so the picture is incomplete.",
       "sourcesUnavailable": "Some execution sources could not be read: {sources}. Findings about them are unknown, not absent.",
+      "inertCapabilities": "Connected, but not configured in this deployment: {capabilities}. Nothing of that kind can run here, so having no findings about it does not mean it is going well.",
       "sourcesNotConfigured": "Not connected in this deployment: {sources}. Findings about them cannot be shown, which is not the same as there being none.",
       "truncated": "More findings exist than are shown.",
       "asOf": "Derived from the state at revision {revision}.",
@@ -1659,8 +1660,10 @@ export const en = {
       "added": "{label} appeared ({state}).",
       "removed": "{label} is no longer in this view.",
       "unavailableSources": "Some execution sources could not be read: {sources}. Missing activity below is unknown, not absent.",
+      "inertCapabilities": "Connected, but not configured in this deployment: {capabilities}. Nothing of that kind can run here, so an empty release history does not mean an idle pipeline.",
       "notConfigured": "Not connected in this deployment: {sources}. Nothing about them can be shown here — that is not the same as nothing happening."
     },
+    "capabilities": {"verification": "running verification", "sourceControl": "committing and pushing", "deployment": "deploying"},
     "sources": {"sessions": "execution sessions", "changeSets": "ChangeSets", "verifications": "verification", "sourceControl": "reviews and commits", "releases": "deployments"},
     "edgeStatus": {"blocking": "blocking", "satisfied": "satisfied"},
     "note": "Note: {note}",

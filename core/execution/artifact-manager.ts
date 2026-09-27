@@ -18,6 +18,8 @@ import {
 import { createId, now } from "../shared.js";
 
 export interface ArtifactDigestSource {
+  /** `false` marks a fail-closed stand-in (nothing to digest here). Absent/true => a real source. */
+  readonly available?: boolean;
   digestFile(
     projectId: string,
     path: string,
