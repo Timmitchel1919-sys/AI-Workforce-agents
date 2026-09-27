@@ -63,6 +63,30 @@ interface CommandRun {
   readonly correlationId: string;
 }
 
+const AUDIT_FACT_KEYS = new Set(["command", "outcome", "errorKind", "correlationId", "actor", "actorRole", "resourceId", "reason"]);
+
+/** `outcome` -> `detailOutcome`, so payload data never shares a key with an audit fact. */
+function namespaceAuditCollisions(details: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(details)) {
+    out[AUDIT_FACT_KEYS.has(key) ? `detail${key[0]!.toUpperCase()}${key.slice(1)}` : key] = value;
+  }
+  return out;
+}
+
+/** A caller-supplied id reduced to something safe to put in an audit record (string, bounded). */
+function auditRef(value: unknown): string | undefined {
+  return typeof value === "string" ? value.slice(0, 128) : undefined;
+}
+
+/** Optional operator free text: must be a string, at most `max` characters. */
+function boundedText(value: unknown, field: string, max = 500): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string") throw new ValidationError(`${field} must be a string`);
+  if (value.length > max) throw new ValidationError(`${field} must be at most ${max} characters`);
+  return value;
+}
+
 const TERMINAL_TASK_STATUSES = new Set(["completed", "cancelled"]);
 const TERMINAL_WORKFLOW_STATUSES = new Set([
   "completed",
@@ -87,9 +111,15 @@ export class WorkforceCommandService {
     options?: CommandOptions,
   ): Promise<ControlCommandResult> {
     const run: CommandRun = { correlationId: resolveCorrelationId(options) };
+    let note: string | undefined;
+    try {
+      note = boundedText(input?.note, "approve.note");
+    } catch (error) {
+      return this.audited(principal, "approve", "rejected", auditRef(input?.approvalId), message(error), {}, run);
+    }
     return this.decideApproval(principal, "approve", input?.approvalId, run, {
       decision: "approved",
-      note: input?.note,
+      note,
     });
   }
 
@@ -101,12 +131,13 @@ export class WorkforceCommandService {
     const run: CommandRun = { correlationId: resolveCorrelationId(options) };
     try {
       requireId(input?.reason, "reject.reason");
+      boundedText(input?.reason, "reject.reason");
     } catch (error) {
       return this.audited(
         principal,
         "reject",
         "rejected",
-        input?.approvalId,
+        auditRef(input?.approvalId),
         message(error),
         {},
         run,
@@ -166,19 +197,6 @@ export class WorkforceCommandService {
         "not_found",
       );
     }
-    if (approval.status !== "requested") {
-      return this.audited(
-        principal,
-        command,
-        "rejected",
-        approvalId,
-        `approval is already ${approval.status}`,
-        {},
-        run,
-        "invalid_state",
-      );
-    }
-
     const meta = approval.decisionMetadata ?? {};
     const taskId = typeof meta.taskId === "string" ? meta.taskId : undefined;
     const linkedTask = taskId ? this.ctx.tasks.get(taskId) : undefined;
@@ -189,16 +207,55 @@ export class WorkforceCommandService {
     const linkedPlan = planDocId
       ? this.ctx.planning?.get(planDocId)
       : undefined;
-    const projectId = linkedTask?.projectId ?? linkedPlan?.projectId;
-    if (projectId && !operatorCanAccessProject(principal, projectId)) {
+    // The approval's project: its linked task/plan, else the project a bound approval
+    // (commit/push/deployment) was stamped with — the same attribution the approval queue uses.
+    const stamped = typeof meta.projectId === "string" ? meta.projectId : undefined;
+    const projectId = linkedTask?.projectId ?? linkedPlan?.projectId ?? stamped;
+    // Fail closed: a project-scoped operator may not decide an approval that cannot be attributed
+    // to a project they can act on. (A wildcard operator is not project-scoped.)
+    const unattributable = !projectId && principal.allowedProjects !== "*";
+    if (unattributable || (projectId && !operatorCanAccessProject(principal, projectId))) {
+      // Checked BEFORE the status, so a scoped operator cannot learn another project's approval
+      // state; and the reason names no project. (The 403 is the established API contract for a
+      // foreign approval; ids stay enumerable, which is why nothing else about it is revealed.)
       return this.audited(
         principal,
         command,
         "denied",
         approvalId,
-        `operator may not act on project "${projectId}"`,
+        "operator may not act on this approval",
+        {},
+        run,
+      );
+    }
+    if (approval.status !== "requested") {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        approvalId,
+        `approval is already ${approval.status}`,
         { projectId },
         run,
+        "invalid_state",
+      );
+    }
+    // A lapsed approval must not authorise anything, even though nothing has swept it yet.
+    if (approval.expiresAt !== undefined && approval.expiresAt <= now()) {
+      try {
+        this.ctx.approvals.expire(approvalId);
+      } catch {
+        /* already decided concurrently: the refusal below still stands */
+      }
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        approvalId,
+        "approval has expired",
+        { projectId },
+        run,
+        "invalid_state",
       );
     }
 
@@ -1371,9 +1428,15 @@ export class WorkforceCommandService {
       );
     }
 
+    let reasonText: string | undefined;
+    try {
+      reasonText = boundedText(input?.reason, "cancel_task.reason");
+    } catch (error) {
+      return this.audited(principal, "cancel_task", "rejected", task.id, message(error), { projectId: task.projectId }, run);
+    }
     const next = this.ctx.tasks.transition(task.id, "cancelled", {
-      error: input.reason
-        ? `cancelled by operator ${principal.id}: ${input.reason}`
+      error: reasonText
+        ? `cancelled by operator ${principal.id}: ${reasonText}`
         : `cancelled by operator ${principal.id}`,
       metadata: { cancelledBy: principal.id },
     });
@@ -1943,7 +2006,11 @@ export class WorkforceCommandService {
       projectId,
       agentId: command.endsWith("_agent") ? resourceId : undefined,
       taskId: command.endsWith("_task") ? resourceId : undefined,
+      // Payload data goes FIRST and the audit facts LAST, and a payload key that collides with an
+      // audit fact is kept under a `detail…` name — so command data can never overwrite who acted,
+      // what ran, its outcome or its correlation id (e.g. cancel-execution's domain `outcome`).
       data: {
+        ...namespaceAuditCollisions(redact(details)),
         command,
         outcome,
         errorKind: kind,
@@ -1952,7 +2019,6 @@ export class WorkforceCommandService {
         actorRole: principal?.role ?? "unknown",
         resourceId,
         reason,
-        ...redact(details),
       },
     });
     const result: ControlCommandResult = {

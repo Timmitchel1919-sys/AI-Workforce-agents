@@ -383,3 +383,83 @@ test("api: unknown route is 404", async () => {
     assert.equal(res.status, 404);
   });
 });
+
+/* ---- EO-5.6 conditional graph poll (?since=<revision>) ---- */
+
+function graphApi(revision: number) {
+  const projection = {
+    projectId: "p1",
+    mode: "EXECUTION",
+    revision,
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    nodes: [{ id: "n" }],
+    edges: [],
+    truncated: false,
+    appliedLimits: { depth: 3, maxNodes: 250, maxEdges: 1500 },
+  };
+  const { query, command } = fakes({ commandCalls: [], throwOnStatus: false });
+  return createControlPlaneApi({
+    query,
+    command,
+    operatorDirectory: directory,
+    graphQuery: {
+      getWorkforceGraph: async () => projection,
+    } as unknown as import("../control/index.js").GraphQueryService,
+  });
+}
+const auth = { authorization: "Bearer good" };
+
+test("api graph: since=<current revision> returns a content-free 'unchanged' reply", async () => {
+  await withServer(graphApi(42), async (base) => {
+    const res = await fetch(`${base}/api/projects/p1/graph?mode=EXECUTION&since=42`, { headers: auth });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Record<string, unknown>;
+    assert.equal(body.unchanged, true);
+    assert.equal(body.revision, 42);
+    assert.equal("nodes" in body, false, "no graph content on an unchanged reply");
+  });
+});
+
+test("api graph: a stale or absent since returns the full projection", async () => {
+  await withServer(graphApi(42), async (base) => {
+    for (const q of ["since=41", "since=", ""]) {
+      const res = await fetch(`${base}/api/projects/p1/graph?mode=EXECUTION&${q}`, { headers: auth });
+      const body = (await res.json()) as Record<string, unknown>;
+      assert.equal(res.status, 200);
+      assert.equal(body.unchanged, undefined, q);
+      assert.ok(Array.isArray(body.nodes), q);
+    }
+  });
+});
+
+test("api graph: a malformed since is a 400, never a silent full read", async () => {
+  await withServer(graphApi(42), async (base) => {
+    for (const q of ["since=abc", "since=-1", "since=1e3", "since=99999999999999"]) {
+      const res = await fetch(`${base}/api/projects/p1/graph?${q}`, { headers: auth });
+      assert.equal(res.status, 400, q);
+    }
+  });
+});
+
+test("api graph: since never bypasses authentication", async () => {
+  await withServer(graphApi(42), async (base) => {
+    const res = await fetch(`${base}/api/projects/p1/graph?since=42`);
+    assert.equal(res.status, 401);
+  });
+});
+
+test("api graph: responses are never stored by shared caches, and a bad since does no work", async () => {
+  let projected = 0;
+  const { query, command } = fakes({ commandCalls: [], throwOnStatus: false });
+  const api = createControlPlaneApi({
+    query, command, operatorDirectory: directory,
+    graphQuery: { getWorkforceGraph: async () => { projected += 1; return { projectId: "p1", mode: "WORKFORCE", revision: 1, generatedAt: "t", nodes: [], edges: [] }; } } as unknown as import("../control/index.js").GraphQueryService,
+  });
+  await withServer(api, async (base) => {
+    const bad = await fetch(`${base}/api/projects/p1/graph?since=abc`, { headers: auth });
+    assert.equal(bad.status, 400);
+    assert.equal(projected, 0, "validated before any projection work");
+    const ok = await fetch(`${base}/api/projects/p1/graph`, { headers: auth });
+    assert.equal(ok.headers.get("cache-control"), "no-store");
+  });
+});

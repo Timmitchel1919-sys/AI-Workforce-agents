@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useI18n, type MessageKey } from "../../i18n";
 import { useSpatialGraph } from "../../features/spatial-graph/hooks/useSpatialGraph";
+import { useSpatialInsights } from "../../features/spatial-graph/hooks/useSpatialInsights";
 import { SpatialGraphWorkspace } from "../../features/spatial-graph/components/SpatialGraphWorkspace";
 import { ProjectSelector } from "../../features/spatial-graph/components/ProjectSelector";
 import { MODE_PARAM, parseMode, rootNodeFor } from "../../features/spatial-graph/lib/modes";
@@ -47,7 +48,10 @@ export default function SpatialGraphPage() {
   const rootNodeId =
     root && root.mode === mode && root.projectId === activeProjectId ? root.id : undefined;
   const options = useMemo(() => ({ mode, rootNodeId }), [mode, rootNodeId]);
-  const { graph, loading, error } = useSpatialGraph(activeProjectId || "", options);
+  const { graph, loading, error, live, lastConfirmedAt, transitions, transitionCount, refresh } = useSpatialGraph(activeProjectId || "", options);
+
+  // Insights follow the graph's revision (one refresh, no second polling loop).
+  const insights = useSpatialInsights(activeProjectId || undefined, graph?.revision);
 
   const onModeChange = useCallback(
     (next: GraphMode, selected: WorkforceGraphNode | null) => {
@@ -112,6 +116,8 @@ export default function SpatialGraphPage() {
         graph={graph}
         mode={mode}
         busy={loading}
+        insights={insights}
+        live={{ status: live, lastConfirmedAt, transitions, transitionCount, onRefresh: refresh }}
         onModeChange={onModeChange}
       />
     </div>

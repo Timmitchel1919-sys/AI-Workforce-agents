@@ -18,6 +18,7 @@ const ROOT_TYPES: Readonly<Partial<Record<GraphMode, readonly WorkforceGraphNode
   AGENT: ["AGENT"],
   WORKFLOW: ["WORKFLOW"],
   DEPENDENCY: ["TASK"],
+  EXECUTION: ["EXECUTION_SESSION"],
 };
 
 /** The selected node may become rootNodeId only when it is valid for the target mode. */

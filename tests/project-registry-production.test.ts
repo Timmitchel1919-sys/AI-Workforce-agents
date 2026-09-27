@@ -273,9 +273,9 @@ test("cross-project IDOR is denied: a member of one project cannot read another'
   assert.equal(await query.getProject(mmMember, AI), undefined);
   assert.equal(await query.getProject(aiMember, "money-mind"), undefined);
   assert.equal(await query.getProject(aiMember, "does-not-exist"), undefined);
-  assert.equal(graph.getWorkforceGraph(mmMember, { projectId: AI }), undefined);
-  assert.equal(graph.getWorkforceGraph(nobody, { projectId: AI }), undefined);
-  assert.ok(graph.getWorkforceGraph(aiMember, { projectId: AI }));
+  assert.equal(await graph.getWorkforceGraph(mmMember, { projectId: AI }), undefined);
+  assert.equal(await graph.getWorkforceGraph(nobody, { projectId: AI }), undefined);
+  assert.ok(await graph.getWorkforceGraph(aiMember, { projectId: AI }));
 });
 
 test("project view exposes the validated repository reference only", async () => {
@@ -403,9 +403,9 @@ test("AI Workforce has honest empty project resources: nothing is fabricated", a
   assert.deepEqual(view?.connectedAgents, []);
 });
 
-test("graph: the AI Workforce project is the real root; only real relationships; isolated; no fake data", () => {
+test("graph: the AI Workforce project is the real root; only real relationships; isolated; no fake data", async () => {
   const { graph } = controlPlane();
-  const g = graph.getWorkforceGraph(aiMember, { projectId: AI })!;
+  const g = (await graph.getWorkforceGraph(aiMember, { projectId: AI }))!;
   assert.ok(g);
   assert.equal(g.projectId, AI);
   const project = g.nodes.find((n) => n.type === "PROJECT")!;
@@ -441,16 +441,16 @@ test("graph: the AI Workforce project is the real root; only real relationships;
   assert.equal(g.truncated, false);
 });
 
-test("graph: the Money Mind project still resolves its own scoped agent, isolated from AI Workforce", () => {
+test("graph: the Money Mind project still resolves its own scoped agent, isolated from AI Workforce", async () => {
   const { graph } = controlPlane();
-  const mm = graph.getWorkforceGraph(mmMember, { projectId: "money-mind" })!;
+  const mm = (await graph.getWorkforceGraph(mmMember, { projectId: "money-mind" }))!;
   assert.ok(
     mm.nodes.some(
       (n) =>
         n.type === "AGENT" && n.referenceId === "control-plane-analysis-agent",
     ),
   );
-  const ai = graph.getWorkforceGraph(aiMember, { projectId: AI })!;
+  const ai = (await graph.getWorkforceGraph(aiMember, { projectId: AI }))!;
   assert.equal(
     ai.nodes.some((n) => n.type === "AGENT"),
     false,

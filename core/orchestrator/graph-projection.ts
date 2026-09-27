@@ -18,7 +18,14 @@ import type {
   TaskSystem,
   WorkflowSystem,
 } from "../index.js";
-import { buildEnvironmentFragment } from "./graph-environment-fragment.js";
+import {
+  buildEnvironmentFragment,
+  opaqueInstanceId,
+} from "./graph-environment-fragment.js";
+import {
+  buildExecutionFragment,
+  type ExecutionGraphRecords,
+} from "./graph-execution-fragment.js";
 import { buildKnowledgeFragment } from "./graph-knowledge-fragment.js";
 import { CONTROL_PLANE_ID, selectMode } from "./graph-modes.js";
 import { toGraphState } from "./graph-state.js";
@@ -85,6 +92,7 @@ export function resolveBounds(options: GraphQueryOptions): ResolvedGraphBounds {
 function contentRevision(
   nodes: readonly WorkforceGraphNode[],
   edges: readonly WorkforceGraphEdge[],
+  truncated: boolean,
 ): number {
   let hash = 5381;
   const feed = (text: string): void => {
@@ -92,8 +100,30 @@ function contentRevision(
       hash = ((hash << 5) + hash + text.charCodeAt(i)) >>> 0;
     }
   };
-  for (const n of nodes) feed(`${n.id}|${n.status}|${n.state};`);
-  for (const e of edges) feed(`${e.id}|${e.source}|${e.target};`);
+  // Metadata is part of authoritative content (attempt counts, file counts,
+  // timestamps): a change there must move the revision. Keys are stored sorted
+  // by `safeMetadata`, so serialisation is deterministic.
+  for (const n of nodes) {
+    feed(`${n.id}|${n.label}|${n.status}|${n.state}|`);
+    if (n.metadata) feed(JSON.stringify(n.metadata));
+    feed(";");
+  }
+  for (const e of edges) feed(`${e.id}|${e.source}|${e.target}|${e.status ?? ""};`);
+  // A view that is cut short differs from one that is complete, even with equal nodes.
+  feed(truncated ? "T" : "F");
+  return hash;
+}
+
+/**
+ * Folds extra authoritative text into a revision. Used when part of what the
+ * client sees (e.g. which sources were unreadable) is not in the node/edge set,
+ * so a `since` poll can never answer "unchanged" across that change.
+ */
+export function mixRevision(revision: number, text: string): number {
+  let hash = revision >>> 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = ((hash << 5) + hash + text.charCodeAt(i)) >>> 0;
+  }
   return hash;
 }
 
@@ -211,7 +241,15 @@ export class WorkforceGraphProjectionService {
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
-  public getProjection(options: GraphQueryOptions): WorkforceGraphProjection {
+  /**
+   * `execution` carries authoritative lifecycle records the caller already
+   * fetched through authorised reads. Absent → no execution nodes (sparse real
+   * data is correct; nothing is invented).
+   */
+  public getProjection(
+    options: GraphQueryOptions,
+    execution?: ExecutionGraphRecords,
+  ): WorkforceGraphProjection {
     const project = this.projectRegistry.get(options.projectId);
     if (!project) {
       throw new NotFoundError("project not found");
@@ -220,7 +258,7 @@ export class WorkforceGraphProjectionService {
     const mode = options.mode ?? DEFAULT_GRAPH_MODE;
     const projectNodeId = `project-${project.projectId}`;
 
-    const builder = this.buildBaseGraph(options.projectId, projectNodeId);
+    const builder = this.buildFullGraph(options.projectId, projectNodeId, execution);
     const baseNodes = [...builder.nodes.values()].sort(byId);
     const baseEdges = [...builder.edges.values()];
 
@@ -257,7 +295,7 @@ export class WorkforceGraphProjectionService {
     return {
       projectId: options.projectId,
       mode,
-      revision: contentRevision(view.nodes, view.edges),
+      revision: contentRevision(view.nodes, view.edges, view.truncated),
       generatedAt: this.clock().toISOString(),
       nodes: view.nodes,
       edges: view.edges,
@@ -266,6 +304,45 @@ export class WorkforceGraphProjectionService {
       ...(effectiveRoot ? { rootNodeId: effectiveRoot } : {}),
       ...(selection.note ? { metadata: { note: selection.note } } : {}),
     };
+  }
+
+  /**
+   * The complete AUTHORISED graph for one project (base + execution lifecycle), before any mode
+   * filtering or bounding. Used by the projection itself and by spatial intelligence, so both
+   * reason over exactly the same nodes.
+   */
+  private buildFullGraph(
+    projectId: string,
+    projectNodeId: string,
+    execution?: ExecutionGraphRecords,
+  ): GraphBuilder {
+    const builder = this.buildBaseGraph(projectId, projectNodeId);
+    if (execution) {
+      builder.merge(
+        buildExecutionFragment({
+          projectId,
+          projectNodeId,
+          records: execution,
+          existingNodeIds: new Set(builder.nodes.keys()),
+          environmentNodeId: (instanceId) =>
+            `env-instance-${opaqueInstanceId(projectId, instanceId)}`,
+        }),
+      );
+    }
+    return builder;
+  }
+
+  /** Full authorised graph + its revision, for read-only derivation (spatial intelligence). */
+  public getInsightGraph(
+    projectId: string,
+    execution?: ExecutionGraphRecords,
+  ): { nodes: WorkforceGraphNode[]; edges: WorkforceGraphEdge[]; revision: number; generatedAt: string } {
+    const project = this.projectRegistry.get(projectId);
+    if (!project) throw new NotFoundError("project not found");
+    const builder = this.buildFullGraph(projectId, `project-${project.projectId}`, execution);
+    const nodes = [...builder.nodes.values()].sort(byId);
+    const edges = [...builder.edges.values()].sort(byId);
+    return { nodes, edges, revision: contentRevision(nodes, edges, false), generatedAt: this.clock().toISOString() };
   }
 
   private buildBaseGraph(

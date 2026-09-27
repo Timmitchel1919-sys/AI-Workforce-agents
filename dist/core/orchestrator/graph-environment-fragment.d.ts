@@ -21,3 +21,8 @@ export interface EnvironmentFragmentInput {
     registry?: Pick<EnvironmentRegistry, "listInstances">;
 }
 export declare function buildEnvironmentFragment(input: EnvironmentFragmentInput): GraphFragment;
+/**
+ * Registry instance ids embed a hash of host id + install path, so they are
+ * never exposed. The graph id is a per-project opaque digest instead.
+ */
+export declare function opaqueInstanceId(projectId: string, instanceId: string): string;

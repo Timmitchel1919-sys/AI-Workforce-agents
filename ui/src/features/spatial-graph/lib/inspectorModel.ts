@@ -42,7 +42,34 @@ export type InspectorFieldId =
   | "updatedAt"
   | "code"
   | "environmentType"
-  | "availability";
+  | "availability"
+  // Execution lifecycle (EO-5.6)
+  | "sessions"
+  | "changeSets"
+  | "verifications"
+  | "reviews"
+  | "approvals"
+  | "commits"
+  | "deployments"
+  | "stageKind"
+  | "risk"
+  | "attempts"
+  | "startedAt"
+  | "endedAt"
+  | "fileCount"
+  | "stages"
+  | "passedStages"
+  | "failedStages"
+  | "reviewerKind"
+  | "action"
+  | "requestedAt"
+  | "decidedAt"
+  | "commitSha"
+  | "branch"
+  | "targetClass"
+  | "simulated"
+  | "durationMs"
+  | "completedAt";
 
 export interface NodeRef {
   id: string;
@@ -113,6 +140,25 @@ const CONSUMED_KEYS = new Set([
   "environmentType",
   "availability",
   "assignedTasks",
+  "stageKind",
+  "risk",
+  "attempts",
+  "startedAt",
+  "endedAt",
+  "fileCount",
+  "stages",
+  "passedStages",
+  "failedStages",
+  "reviewerKind",
+  "action",
+  "requestedAt",
+  "decidedAt",
+  "commitSha",
+  "branch",
+  "targetClass",
+  "simulated",
+  "durationMs",
+  "completedAt",
 ]);
 
 export function humanizeKey(key: string): string {
@@ -232,6 +278,43 @@ export function buildInspectorModel(node: WorkforceGraphNode, graph: GraphData):
       nodes("agents", ofType("AGENT"), "none", false);
       nodes("tasks", ofType("TASK"), "none", false);
       break;
+    // Execution lifecycle: relationships come from real edges only; scalar facts from whitelisted
+    // metadata. A fact the backend did not record renders as "Unavailable", never as a guess.
+    case "EXECUTION_SESSION":
+      nodes("assignedAgent", related("incoming", ["EXECUTES"], ["AGENT"]), "unavailable", true);
+      nodes("tasks", related("incoming", ["EXECUTES"], ["TASK"]), "unavailable", true);
+      nodes("environments", related("outgoing", ["RUNS_ON"], ["ENVIRONMENT"]), "unavailable", true);
+      nodes("changeSets", related("outgoing", ["PRODUCES"], ["CHANGESET"]), "none", true);
+      nodes("approvals", related("outgoing", ["REQUIRES_APPROVAL"], ["APPROVAL"]), "none", true);
+      break;
+    case "CHANGESET":
+      nodes("sessions", related("incoming", ["PRODUCES"], ["EXECUTION_SESSION"]), "unavailable", true);
+      nodes("verifications", related("outgoing", ["VERIFIED_BY"], ["VERIFICATION"]), "none", true);
+      nodes("reviews", related("outgoing", ["REVIEWED_BY"], ["REVIEW"]), "none", true);
+      nodes("commits", related("outgoing", ["COMMITTED_AS"], ["COMMIT"]), "none", true);
+      break;
+    case "VERIFICATION":
+      nodes("changeSets", related("incoming", ["VERIFIED_BY"], ["CHANGESET"]), "unavailable", true);
+      nodes("sessions", related("incoming", ["VERIFIED_BY"], ["EXECUTION_SESSION"]), "none", false);
+      break;
+    case "REVIEW":
+      nodes("changeSets", related("incoming", ["REVIEWED_BY"], ["CHANGESET"]), "unavailable", true);
+      break;
+    case "APPROVAL":
+      // Visible != authorised: this node only reports the approval's state.
+      nodes("sessions", related("incoming", ["REQUIRES_APPROVAL"], ["EXECUTION_SESSION"]), "none", false);
+      nodes("commits", related("incoming", ["REQUIRES_APPROVAL"], ["COMMIT"]), "none", false);
+      nodes("deployments", related("incoming", ["REQUIRES_APPROVAL"], ["DEPLOYMENT"]), "none", false);
+      break;
+    case "COMMIT":
+      nodes("changeSets", related("incoming", ["COMMITTED_AS"], ["CHANGESET"]), "unavailable", true);
+      nodes("approvals", related("outgoing", ["REQUIRES_APPROVAL"], ["APPROVAL"]), "none", true);
+      nodes("deployments", related("outgoing", ["DEPLOYED_TO"], ["DEPLOYMENT"]), "none", true);
+      break;
+    case "DEPLOYMENT":
+      nodes("commits", related("incoming", ["DEPLOYED_TO"], ["COMMIT"]), "unavailable", true);
+      nodes("approvals", related("outgoing", ["REQUIRES_APPROVAL"], ["APPROVAL"]), "none", true);
+      break;
     default:
       text("kind", "kind", false);
       text("description", "description", false);
@@ -248,6 +331,13 @@ export function buildInspectorModel(node: WorkforceGraphNode, graph: GraphData):
     CONTROL_PLANE: ["kind", "version"],
     WORKFLOW_STEP: ["kind", "code"],
     WORKFLOW: ["version"],
+    EXECUTION_SESSION: ["stageKind", "risk", "attempts", "createdAt", "startedAt", "endedAt"],
+    CHANGESET: ["fileCount", "updatedAt"],
+    VERIFICATION: ["stages", "passedStages", "failedStages", "createdAt", "completedAt"],
+    REVIEW: ["reviewerKind", "createdAt"],
+    APPROVAL: ["action", "requestedAt", "decidedAt"],
+    COMMIT: ["commitSha", "branch", "createdAt"],
+    DEPLOYMENT: ["targetClass", "simulated", "startedAt", "endedAt", "durationMs"],
   };
   for (const id of metaSpecs[node.type] ?? []) {
     if (!fields.some((f) => f.id === id)) text(id, id, false);

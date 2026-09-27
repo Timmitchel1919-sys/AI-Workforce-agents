@@ -3,7 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("../../../features/spatial-graph/hooks/useSpatialInsights", () => ({
+  useSpatialInsights: () => ({ report: null, loading: false, failed: false }),
+}));
 const hook = vi.fn();
+/** The live fields the real hook returns alongside graph/loading/error. */
+const LIVE = { live: "live", lastConfirmedAt: null, transitions: [], refresh: () => {} };
 vi.mock("../../../features/spatial-graph/hooks/useSpatialGraph", () => ({
   useSpatialGraph: (...a: unknown[]) => hook(...a),
 }));
@@ -51,6 +56,7 @@ describe("SpatialGraphPage", () => {
       graph: makeProjection({ projectId: p, mode: o.mode as never }),
       loading: false,
       error: null,
+      ...LIVE,
     }));
   });
 
@@ -94,7 +100,7 @@ describe("SpatialGraphPage", () => {
     });
 
     it("keeps the previous graph (no spinner-only view) while loading", () => {
-      hook.mockReturnValue({ graph: makeProjection(), loading: true, error: null });
+      hook.mockReturnValue({ graph: makeProjection(), loading: true, error: null, ...LIVE });
       renderAt("/graph");
       expect(screen.getByTestId("mock-canvas")).toBeInTheDocument();
       expect(screen.getByRole("toolbar", { name: "Graph view mode" })).toHaveAttribute("aria-busy", "true");

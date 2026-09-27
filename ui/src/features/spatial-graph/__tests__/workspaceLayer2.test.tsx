@@ -30,7 +30,7 @@ describe("mode switcher", () => {
     await userEvent.keyboard("{ArrowRight}{ArrowRight}");
     expect(screen.getByRole("button", { name: "Workflows" })).toHaveFocus();
     await userEvent.keyboard("{End}");
-    expect(screen.getByRole("button", { name: "Knowledge" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Execution" })).toHaveFocus();
     await userEvent.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: "Workforce" })).toHaveFocus(); // wraps
     await userEvent.keyboard("{ArrowLeft}{Home}");

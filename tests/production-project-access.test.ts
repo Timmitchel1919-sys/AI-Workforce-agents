@@ -95,19 +95,19 @@ test("the project view exposes no repository URL or source-availability internal
   assert.equal(json.includes("sourceAvailable"), false);
 });
 
-test("graph access follows project scope for the registered project", () => {
+test("graph access follows project scope for the registered project", async () => {
   const { ctx } = setup();
   const graph = new GraphQueryService({
     ...ctx,
     softwareFactory: undefined,
   } as ControlPlaneContext);
-  assert.ok(graph.getWorkforceGraph(member, { projectId: "money-mind" }));
+  assert.ok(await graph.getWorkforceGraph(member, { projectId: "money-mind" }));
   assert.equal(
-    graph.getWorkforceGraph(scoped, { projectId: "money-mind" }),
+    await graph.getWorkforceGraph(scoped, { projectId: "money-mind" }),
     undefined,
   );
   assert.equal(
-    graph.getWorkforceGraph(none, { projectId: "money-mind" }),
+    await graph.getWorkforceGraph(none, { projectId: "money-mind" }),
     undefined,
   );
 });

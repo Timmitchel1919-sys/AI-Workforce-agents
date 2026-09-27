@@ -171,3 +171,46 @@
 .sg-search { flex: 1 1 9rem; max-width: 13rem; }
 .sg-input { min-height: 1.85rem; padding: 0.2rem 0.6rem; font-size: 0.85rem; }
 .sg-status p { font-size: 0.8rem; }
+
+/* EO-5.6 live status */
+.sg-live { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; font-size: 0.85rem; color: var(--color-text-secondary); }
+.sg-live__badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.15rem 0.6rem; border: 1px solid currentColor; border-radius: 999px; font-weight: 600; }
+.sg-live__badge--live { color: var(--color-success); }
+.sg-live__badge--refreshing, .sg-live__badge--paused { color: var(--color-info); }
+.sg-live__badge--reconnecting { color: var(--color-warning); }
+.sg-live__badge--degraded { color: var(--color-danger); }
+.sg-live__badge--offline { color: var(--color-text-disabled); }
+.sg-live__recent ol { margin: 0.25rem 0 0; padding-left: 1.25rem; max-height: 10rem; overflow: auto; }
+.sg-live__type { color: var(--color-text-disabled); }
+
+/* EO-5.7 command panel + confirmation */
+.sg-cmd { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--color-border, currentColor); }
+.sg-cmd-list { list-style: none; margin: 0.25rem 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.sg-btn--danger { border-color: var(--color-danger); color: var(--color-danger); }
+.sg-btn--primary { border-color: var(--color-info); color: var(--color-info); }
+.sg-cmd-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: var(--color-overlay, rgba(0,0,0,.5)); padding: 1rem; }
+.sg-cmd-dialog { width: min(32rem, 100%); max-height: 90vh; overflow: auto; background: var(--color-surface, #fff); color: var(--color-text); border: 1px solid var(--color-border, currentColor); border-radius: 10px; padding: 1rem 1.25rem; }
+.sg-cmd-field { display: grid; gap: 0.25rem; margin: 0.5rem 0; }
+.sg-cmd-field textarea { width: 100%; font: inherit; }
+.sg-cmd-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; margin-top: 0.75rem; }
+/* Narrow screens: a bottom sheet with full-width, thumb-sized controls (no tiny destructive buttons). */
+@media (max-width: 640px) {
+  .sg-cmd-overlay { align-items: flex-end; padding: 0; }
+  .sg-cmd-dialog { width: 100%; border-radius: 12px 12px 0 0; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+  .sg-cmd-actions { flex-direction: column-reverse; }
+  .sg-cmd-actions .sg-btn, .sg-cmd-list .sg-btn { min-height: 44px; width: 100%; }
+}
+
+/* EO-5.8 insights */
+.sg-insights__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; max-height: 50vh; overflow-y: auto; }
+.sg-insight { border: 1px solid var(--color-border); border-left-width: 4px; border-radius: 6px; padding: 0.5rem 0.7rem; }
+.sg-insight p { margin: 0.2rem 0; }
+.sg-insight--critical { border-left-color: var(--color-danger); }
+.sg-insight--warning { border-left-color: var(--color-warning); }
+.sg-insight--info { border-left-color: var(--color-info); }
+.sg-insight__sev { font-weight: 600; }
+.sg-insight__sev--critical { color: var(--color-danger); }
+.sg-insight__sev--warning { color: var(--color-warning); }
+.sg-insight__sev--info { color: var(--color-info); }
+.sg-insight ul { margin: 0.1rem 0; padding-left: 1.1rem; }
+.sg-insight__limits { font-size: 0.8rem; }

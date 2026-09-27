@@ -336,7 +336,7 @@ function ctxFor(h: ReturnType<typeof build>): ControlPlaneContext {
   } as unknown as ControlPlaneContext;
 }
 
-test("GraphQueryService enforces project authorisation before projecting", () => {
+test("GraphQueryService enforces project authorisation before projecting", async () => {
   const h = build(["t1"]);
   h.tasks.create({ type: "ops", description: "x", projectId: A });
   const service = new GraphQueryService(ctxFor(h));
@@ -356,10 +356,10 @@ test("GraphQueryService enforces project authorisation before projecting", () =>
     allowedProjects: [],
   };
 
-  assert.ok(service.getWorkforceGraph(viewer, { projectId: A }));
-  assert.equal(service.getWorkforceGraph(scoped, { projectId: A }), undefined);
-  assert.equal(service.getWorkforceGraph(none, { projectId: A }), undefined);
-  assert.throws(() =>
+  assert.ok(await service.getWorkforceGraph(viewer, { projectId: A }));
+  assert.equal(await service.getWorkforceGraph(scoped, { projectId: A }), undefined);
+  assert.equal(await service.getWorkforceGraph(none, { projectId: A }), undefined);
+  await assert.rejects(() =>
     service.getWorkforceGraph(
       { id: "", role: "viewer", allowedProjects: "*" },
       { projectId: A },

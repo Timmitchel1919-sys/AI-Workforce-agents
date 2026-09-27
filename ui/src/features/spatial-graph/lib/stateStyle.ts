@@ -33,6 +33,13 @@ export const STATE_STYLES: Readonly<Record<GraphOperationalState, StateStyle>> =
   blocked: { token: "--color-warning", shape: "box", ring: false, wireframe: false, glyph: "■" },
   failed: { token: "--color-danger", shape: "tetrahedron", ring: false, wireframe: false, glyph: "▲" },
   completed: { token: "--aw-purple-500", shape: "dodecahedron", ring: false, wireframe: false, glyph: "✓" },
+  awaiting_review: { token: "--aw-gold-400", shape: "box", ring: true, wireframe: false, glyph: "⧖" },
+  awaiting_approval: { token: "--color-warning", shape: "octahedron", ring: true, wireframe: false, glyph: "⏸" },
+  deploying: { token: "--color-info", shape: "dodecahedron", ring: true, wireframe: false, glyph: "⇧" },
+  deployed: { token: "--color-success", shape: "icosahedron", ring: false, wireframe: false, glyph: "⬆" },
+  cancelled: { token: "--color-text-disabled", shape: "octahedron", ring: false, wireframe: true, glyph: "✕" },
+  rolled_back: { token: "--color-warning", shape: "tetrahedron", ring: true, wireframe: false, glyph: "↩" },
+  degraded: { token: "--color-warning", shape: "box", ring: false, wireframe: true, glyph: "⚠" },
   offline: { token: "--aw-blue-300", shape: "sphere", ring: false, wireframe: true, glyph: "○" },
   unavailable: { token: "--color-text-disabled", shape: "icosahedron", ring: false, wireframe: true, glyph: "?" },
 };

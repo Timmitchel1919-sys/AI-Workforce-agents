@@ -6,8 +6,8 @@ import { availableFilters } from "../lib/graphModel";
 import { edge, node } from "./fixtures";
 
 describe("modes", () => {
-  it("has the 7 modes and falls back to WORKFORCE for invalid values", () => {
-    expect(MODE_LIST).toHaveLength(7);
+  it("has the 8 modes and falls back to WORKFORCE for invalid values", () => {
+    expect(MODE_LIST).toHaveLength(8);
     expect(parseMode("AGENT")).toBe("AGENT");
     expect(parseMode("agent")).toBe("WORKFORCE");
     expect(parseMode("<script>")).toBe("WORKFORCE");
@@ -29,8 +29,8 @@ describe("modes", () => {
   });
 
   it("wraps when stepping through modes", () => {
-    expect(stepMode("KNOWLEDGE", 1)).toBe("WORKFORCE");
-    expect(stepMode("WORKFORCE", -1)).toBe("KNOWLEDGE");
+    expect(stepMode("EXECUTION", 1)).toBe("WORKFORCE");
+    expect(stepMode("WORKFORCE", -1)).toBe("EXECUTION");
   });
 });
 

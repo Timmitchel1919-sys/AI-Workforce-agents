@@ -21,6 +21,10 @@ export interface ControlPlaneApiOptions {
     query: WorkforceQueryService;
     graphQuery?: import("../control/index.js").GraphQueryService;
     command: WorkforceCommandService;
+    /** PROJECT-2: project onboarding & provisioning (admin-only, governed). */
+    onboarding?: import("../control/index.js").OnboardingControlService;
+    /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
+    projectSync?: () => Promise<void>;
     operatorDirectory: OperatorDirectory;
     /**
      * AUTHZ-1: verifies a token WITHOUT requiring an active role, for

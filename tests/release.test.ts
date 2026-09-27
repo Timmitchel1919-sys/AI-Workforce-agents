@@ -55,7 +55,15 @@ import {
   defineBuildTool,
   registerExecutionTool,
 } from "../core/index.js";
-import { ADMIN, BETA_OPERATOR, OPERATOR } from "./fixtures/execution.js";
+import { ADMIN, BETA_OPERATOR, OPERATOR, VIEWER } from "./fixtures/execution.js";
+import {
+  AgentOperationalStore,
+  GraphQueryService,
+  WorkflowControlStore,
+  WorkforceCommandService,
+  type ControlPlaneContext,
+} from "../control/index.js";
+import { ProjectRegistry, TaskSystem, WorkflowSystem } from "../core/index.js";
 import {
   WEB_AGENT,
   WEB_HOST,
@@ -1611,6 +1619,188 @@ test("EO-4.8 RELEASE RESTART: records, idempotency and candidates survive a new 
       ),
       /already committed|verify it again/,
     );
+  } finally {
+    h.cleanup();
+  }
+});
+
+
+/* ------------------------------------------------------------------ */
+/* EO-5.8 end-to-end: the REAL pipeline (local Git, real orchestrators, */
+/* test deploy adapter) observed through the graph and spatial         */
+/* intelligence. Nothing here touches production or a real remote.     */
+/* ------------------------------------------------------------------ */
+test("EO-5.8 E2E: session → ChangeSet → verification → review → approval → commit → push → deployment → graph → insights → audit", async () => {
+  const h = await harness();
+  try {
+    const tasks = new TaskSystem();
+    const projects = new ProjectRegistry();
+    projects.register({
+      projectId: "alpha",
+      async describe() {
+        return { name: "alpha", capabilities: [] };
+      },
+      async execute() {
+        return {};
+      },
+    });
+    // Lifecycle reads are shared for a few seconds per project (ADR-0023); the scenario moves an
+    // injected clock forward between observations so each one sees the latest recorded state.
+    let now = 1_000_000;
+    const ctx = {
+      clock: () => now,
+      agents: h.fixture.agents,
+      tasks,
+      workflows: new WorkflowSystem(),
+      approvals: h.fixture.approvals,
+      permissions: new PermissionSystem([]),
+      tools: new ToolRegistry(h.fixture.audit),
+      projects,
+      audit: h.fixture.audit,
+      agentOps: new AgentOperationalStore(),
+      workflowControl: new WorkflowControlStore(),
+      environments: h.fixture.registry,
+      execution: h.manager,
+      verification: h.verification,
+      sourceControl: h.sc,
+      deployments: h.deploy,
+    } as unknown as ControlPlaneContext;
+    const gq = new GraphQueryService(ctx);
+    // The unit-of-work the operator sees: one running task and one waiting on it (real TaskSystem).
+    const upstream = tasks.create({ type: "ops", description: "Build the feature", projectId: "alpha" });
+    tasks.create({ type: "ops", description: "Publish the feature", projectId: "alpha", dependencies: [upstream.id] });
+
+    const graph = async () => (await gq.getWorkforceGraph(ADMIN, { projectId: "alpha", mode: "EXECUTION" }))!;
+    const insights = async () => (await gq.getInsights(ADMIN, "alpha"))!;
+    const observe = () => {
+      now += 60_000;
+    };
+    const has = (g: Awaited<ReturnType<typeof graph>>, type: string) => g.nodes.some((n) => n.type === type);
+    const edge = (g: Awaited<ReturnType<typeof graph>>, type: string, source: string, target: string) =>
+      g.edges.some((e) => e.type === type && e.source === source && e.target === target);
+
+    // Before anything ran: sparse and honest — no execution nodes are invented.
+    const empty = await graph();
+    for (const t of ["EXECUTION_SESSION", "CHANGESET", "VERIFICATION", "REVIEW", "COMMIT", "DEPLOYMENT", "APPROVAL"]) {
+      assert.ok(!has(empty, t), `no ${t} before anything ran`);
+    }
+
+    // ---- the real pipeline, up to a pushed commit ----
+    const { verification: v, review, stage, commit, push } = await h.toPushed();
+    observe();
+    const g1 = await graph();
+    for (const t of ["EXECUTION_SESSION", "CHANGESET", "VERIFICATION", "REVIEW", "COMMIT", "APPROVAL"]) {
+      assert.ok(has(g1, t), `${t} is projected from the real record`);
+    }
+    assert.ok(!has(g1, "DEPLOYMENT"), "COMMIT != DEPLOYMENT: nothing was deployed yet");
+    // Correlation is by the records' own identifiers, not by any heuristic.
+    const cs = `changeset-${commit.changeSetId}`;
+    const sessionEdge = g1.edges.find((e) => e.type === "PRODUCES" && e.target === cs);
+    assert.ok(sessionEdge, "session PRODUCES the ChangeSet");
+    assert.ok(edge(g1, "VERIFIED_BY", cs, `verification-${v.verificationId}`));
+    assert.ok(edge(g1, "REVIEWED_BY", cs, `review-${review.reviewId}`));
+    assert.ok(edge(g1, "COMMITTED_AS", cs, `commit-${commit.receiptId}`));
+    assert.ok(g1.edges.some((e) => e.type === "REQUIRES_APPROVAL" && e.source === `commit-${commit.receiptId}`), "the commit's approval is projected");
+    assert.ok(!JSON.stringify(g1).includes("secret://"), "no credential reference reaches the graph");
+    assert.ok(!JSON.stringify(g1).includes(h.tmp), "no filesystem path reaches the graph");
+    const i1 = await insights();
+    assert.ok(i1.findings.some((f) => f.kind === "BLOCKED_TASK" && f.variant === "dependency" && f.params.dependency === "Build the feature"), "the real dependent task is reported as waiting on its real dependency");
+    assert.ok(!i1.findings.some((f) => f.kind === "FAILED_EXECUTION" || f.kind === "DEPLOYMENT_PROBLEM"), "a healthy pipeline reports no failure");
+
+    // ---- deployment to a (test-adapter) preview target ----
+    const candidate = await h.deploy.createCandidate(ADMIN, {
+      projectId: "alpha",
+      pushReceiptId: push.receiptId,
+      targetId: "alpha-preview",
+      artifactIds: [...v.artifactIds],
+    });
+    const release = await h.deploy.deploy(ADMIN, { projectId: "alpha", candidateId: candidate.candidateId }, "e2e-1");
+    assert.equal(release.status, "healthy");
+    observe();
+    const g2 = await graph();
+    const dep = g2.nodes.find((n) => n.id === `deployment-${release.releaseId}`)!;
+    assert.ok(dep, "the release is projected");
+    assert.match(dep.label, /\(simulated\)/, "a simulated deployment can never read as a real one");
+    assert.equal(dep.state, "completed", "healthy (post-deploy verified) is completed");
+    assert.ok(edge(g2, "DEPLOYED_TO", `commit-${commit.receiptId}`, dep.id), "linked through the release's own commit SHA");
+    assert.notEqual(g2.revision, g1.revision, "revision moved when the authoritative state moved");
+    assert.equal((await graph()).revision, g2.revision, "a read does not move the revision");
+    assert.ok(!(await insights()).findings.some((f) => f.kind === "DEPLOYMENT_PROBLEM"));
+
+    // ---- FAILURE CONTAINMENT: a failing deployment is reported, never as healthy ----
+    h.deployAdapter.fail = true;
+    const failing = await h.deploy.createCandidate(ADMIN, { projectId: "alpha", pushReceiptId: push.receiptId, targetId: "alpha-preview" });
+    const bad = await h.deploy.deploy(ADMIN, { projectId: "alpha", candidateId: failing.candidateId }, "e2e-2");
+    assert.equal(bad.status, "failed");
+    observe();
+    const g3 = await graph();
+    assert.equal(g3.nodes.find((n) => n.id === `deployment-${bad.releaseId}`)!.state, "failed");
+    assert.equal(g3.nodes.find((n) => n.id === dep.id)!.state, "completed", "the earlier healthy release is unaffected");
+    const i3 = await insights();
+    const problem = i3.findings.find((f) => f.kind === "DEPLOYMENT_PROBLEM" && f.subjectNodeId === `deployment-${bad.releaseId}`)!;
+    assert.equal(problem.severity, "critical");
+    assert.ok(problem.limitations.includes("cause_not_recorded"), "it does not claim to know why");
+    assert.notEqual(i3.graphRevision, i1.graphRevision);
+    h.deployAdapter.fail = false;
+
+    // ---- KILL/CANCEL PATH: an authorised operator stops work through the governed command ----
+    const command = new WorkforceCommandService(ctx);
+    const { session: toStop } = await h.manager.createSession(
+      OPERATOR,
+      {
+        projectId: "alpha",
+        planId: h.plan.planId,
+        planVersion: h.plan.version,
+        stageId: "build:web",
+        operationId: "workspace.file.create",
+        operationIds: ["workspace.file.update", "workspace.file.read"],
+      },
+      "e2e-cancel",
+    );
+    assert.ok(["created", "validating", "ready", "running"].includes(toStop.status), `cancellable, was ${toStop.status}: ${JSON.stringify(toStop.reasons)}`);
+    const viewerTry = await command.cancelExecution(VIEWER, { sessionId: toStop.sessionId, reason: "no" });
+    assert.equal(viewerTry.outcome, "denied", "a viewer cannot stop work");
+    const stopped = await command.cancelExecution(OPERATOR, { sessionId: toStop.sessionId, reason: "operator stop" });
+    assert.equal(stopped.outcome, "executed");
+    observe();
+    const g4 = await graph();
+    assert.equal(g4.nodes.find((n) => n.id === `session-${toStop.sessionId}`)!.state, "cancelled", "a cancelled session is cancelled, not 'unavailable'");
+    assert.ok(!(await insights()).findings.some((f) => f.kind === "FAILED_EXECUTION" && f.subjectNodeId === `session-${toStop.sessionId}`), "a cancellation is not reported as a failure");
+
+    // ---- AUDIT RECONSTRUCTION: request → plan → assignment → execution → ChangeSet → verification →
+    //      review → approval → commit → deployment → result, all linked by recorded identifiers ----
+    const session = await h.manager.getSession(ADMIN, sessionEdge!.source.replace(/^session-/, ""));
+    const chain = {
+      plan: session.plan.planId,
+      assignedAgent: session.agentId,
+      environment: session.environmentInstanceId,
+      session: session.sessionId,
+      changeSet: commit.changeSetId,
+      verification: commit.verificationId,
+      review: commit.reviewId,
+      approvals: [...commit.approvalIds],
+      commit: commit.commitSha,
+      release: release.commitSha,
+      result: release.status,
+    };
+    assert.equal(chain.plan, h.plan.planId);
+    assert.ok(chain.assignedAgent && chain.environment, "assignment and environment are recorded on the session");
+    assert.equal(chain.verification, v.verificationId);
+    assert.equal(chain.review, review.reviewId);
+    assert.equal(stage.changeSetId, chain.changeSet);
+    assert.equal(chain.release, chain.commit, "the deployment is for exactly that commit");
+    assert.ok(chain.approvals.length > 0);
+    assert.equal(chain.result, "healthy");
+    const actions = h.fixture.audit.query({ type: "execution_event" }).map((e) => e.data.action);
+    for (const a of ["review_recorded", "stage_set_created", "commit_completed", "push_completed", "deployment_candidate_created", "deployment_started", "deployment_healthy"]) {
+      assert.ok(actions.includes(a), `audited: ${a}`);
+    }
+    const commands = h.fixture.audit.list().filter((e) => e.type === "control_command");
+    assert.ok(commands.some((e) => e.data?.command === "cancel_execution" && e.data?.outcome === "denied"));
+    const cancelled = commands.find((e) => e.data?.command === "cancel_execution" && e.data?.outcome === "executed");
+    assert.ok(cancelled, "the executed cancel is audited as executed");
+    assert.equal(cancelled!.data?.actor, OPERATOR.id);
+    assert.equal(cancelled!.data?.detailOutcome, "cancelled", "the domain outcome is preserved alongside, not instead");
   } finally {
     h.cleanup();
   }

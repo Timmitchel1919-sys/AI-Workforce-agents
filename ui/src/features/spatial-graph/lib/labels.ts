@@ -1,4 +1,5 @@
 import type { MessageKey, MessageParams } from "../../../i18n";
+import type { GraphTransition } from "./graphDiff";
 
 export type Translate = (key: MessageKey, params?: MessageParams) => string;
 
@@ -22,3 +23,12 @@ export const filterLabel = (t: Translate, filter: string): string =>
 export const edgeStatusLabel = (t: Translate, status: string): string =>
   labelOr(t, `spatial.edgeStatus.${status}`, status);
 export const modeLabel = (t: Translate, mode: string): string => labelOr(t, `spatial.modes.${mode}`, mode);
+
+/** One-line, translated description of a real, server-confirmed transition. */
+export function describeTransition(t: Translate, tr: GraphTransition): string {
+  if (tr.kind === "removed") return t("spatial.live.removed", { label: tr.label });
+  const state = stateLabel(t, tr.toState ?? "unavailable").toLowerCase();
+  return tr.kind === "added"
+    ? t("spatial.live.added", { label: tr.label, state })
+    : t("spatial.live.changed", { label: tr.label, state });
+}

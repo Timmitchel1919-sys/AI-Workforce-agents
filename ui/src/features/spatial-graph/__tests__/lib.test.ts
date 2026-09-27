@@ -94,12 +94,14 @@ describe("deterministic layout", () => {
 });
 
 describe("state mapping", () => {
-  it("covers all eight states with distinct tokens and redundant encodings", () => {
-    expect(ALL_STATES).toHaveLength(8);
-    const tokens = new Set(ALL_STATES.map((s) => STATE_STYLES[s].token));
-    expect(tokens.size).toBe(8);
+  it("covers all fifteen states; colour is never the only signal (shape/ring/glyph are unique)", () => {
+    expect(ALL_STATES).toHaveLength(15);
+    // Lifecycle states may share a colour token with a related state, so uniqueness is required
+    // of the NON-colour encodings, which is what makes each state distinguishable without colour.
+    const shapes = new Set(ALL_STATES.map((s) => `${STATE_STYLES[s].shape}|${STATE_STYLES[s].ring}|${STATE_STYLES[s].wireframe}`));
+    expect(shapes.size).toBe(15);
     const glyphs = new Set(ALL_STATES.map((s) => STATE_STYLES[s].glyph));
-    expect(glyphs.size).toBe(8);
+    expect(glyphs.size).toBe(15);
     for (const s of ALL_STATES) expect(stateCssVar(s)).toMatch(/^var\(--/);
   });
 

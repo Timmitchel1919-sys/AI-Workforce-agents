@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { useI18n } from "../../../i18n";
+import { useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { authContext } from "../../../auth/authContext";
+import { useNodeCommand } from "../hooks/useNodeCommand";
+import { CommandConfirmDialog } from "./CommandConfirmDialog";
+import { useI18n, type MessageKey } from "../../../i18n";
 import type { GraphMode, WorkforceGraphEdge, WorkforceGraphNode, WorkforceGraphProjection } from "../../../../../contracts/graph";
 import { useFocusMode } from "../hooks/useFocusMode";
 import { useFullscreen } from "../hooks/useFullscreen";
@@ -7,7 +10,7 @@ import { useReducedMotion } from "../hooks/useReducedMotion";
 import { commandForKey, type CameraCommand, type CameraCommandKind } from "../lib/camera";
 import { availableFilters, matchNodes, toGraphData } from "../lib/graphModel";
 import { computeLayout } from "../lib/layout";
-import { edgeStatusLabel, edgeTypeLabel, filterLabel, modeLabel, nodeTypeLabel, stateLabel } from "../lib/labels";
+import { describeTransition, edgeStatusLabel, edgeTypeLabel, filterLabel, modeLabel, nodeTypeLabel, stateLabel } from "../lib/labels";
 import { deriveView, INITIAL_VIEW_STATE, viewReducer } from "../lib/viewState";
 import { AccessibleGraphList } from "./AccessibleGraphList";
 import { GraphFilters } from "./GraphFilters";
@@ -17,6 +20,14 @@ import { GraphToolbar } from "./GraphToolbar";
 import { ModeSwitcher } from "./ModeSwitcher";
 import { NodeInspector } from "./NodeInspector";
 import { SpatialGraphView } from "./SpatialGraphView";
+
+import { LiveStatusBar } from "./LiveStatusBar";
+import { sourceNames } from "../lib/sources";
+import { InsightsPanel } from "./InsightsPanel";
+import type { SpatialInsightsReport } from "../../../../../contracts/graph";
+import { traceExecutionPath } from "../lib/executionPath";
+import type { LiveStatus } from "../lib/liveStatus";
+import type { GraphTransition } from "../lib/graphDiff";
 
 import "../spatial-graph.css";
 
@@ -30,6 +41,17 @@ interface WorkspaceProps {
   onModeChange?: (mode: GraphMode, selected: WorkforceGraphNode | null) => void;
   /** Project selector (or static name), rendered first in the compact toolbar. */
   projectControl?: ReactNode;
+  /** Grounded observations (EO-5.8). Absent => the panel is not shown. */
+  insights?: { report: SpatialInsightsReport | null; loading: boolean; failed: boolean };
+  /** Live transport state from useSpatialGraph. Absent => no live claim is made. */
+  live?: {
+    status: LiveStatus;
+    lastConfirmedAt: string | null;
+    transitions: readonly GraphTransition[];
+    /** Uncapped running total, so announcements keep working after the history list is full. */
+    transitionCount?: number;
+    onRefresh?: () => void;
+  };
 }
 
 /**
@@ -37,7 +59,7 @@ interface WorkspaceProps {
  * isolation, camera, focus mode); nothing is ever written back to the Control Plane.
  * The page keys this component by project, so every piece of state below is per project.
  */
-export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange, projectControl }: WorkspaceProps) {
+export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange, projectControl, live, insights }: WorkspaceProps) {
   const { t } = useI18n();
   const reducedMotion = useReducedMotion();
   const [view, dispatch] = useReducer(viewReducer, INITIAL_VIEW_STATE);
@@ -48,6 +70,11 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
   const rootRef = useRef<HTMLElement | null>(null);
   const { active: focusActive, toggle: toggleFocus, exit: exitFocus, triggerRef, exitRef } = useFocusMode(rootRef);
   const fullscreen = useFullscreen(rootRef);
+  // The command state machine and its dialog belong to the workspace (not the inspector): a request
+  // in flight must survive the inspector unmounting, and the confirmation must not be confined by
+  // the inspector panel's blur/overflow. Bound to the project; the graph is re-read on settle.
+  const account = useContext(authContext);
+  const command = useNodeCommand(graph.projectId, account?.accessToken ?? null, live?.onRefresh);
 
   const full = useMemo(() => toGraphData(graph), [graph]);
   const positions = useMemo(
@@ -81,7 +108,12 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
     prevGraph.current = graph;
     const modeChanged = prev.mode !== graph.mode;
     dispatch({ type: "prune", ids: new Set(graph.nodes.map((n) => n.id)), resetFilter: modeChanged });
-    sendCamera("fit");
+    // A live update must not yank the camera out from under the operator: refit only when the
+    // view itself changed (mode or root), never for a routine state change.
+    // The one exception: a sparse view that first fills in (e.g. the first execution session
+    // appears in an empty EXECUTION view) is refit, or the new nodes could sit off-screen unseen.
+    const firstFill = prev.nodes.length <= 3 && graph.nodes.length > prev.nodes.length;
+    if (modeChanged || prev.rootNodeId !== graph.rootNodeId || firstFill) sendCamera("fit");
     if (modeChanged) {
       setAnnouncement(
         t("spatial.modeAnnouncement", {
@@ -92,6 +124,40 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
       );
     }
   }, [graph, t, sendCamera]);
+
+  // Announce only meaningful live changes: degradation, recovery and real state transitions.
+  // Routine successful polls are silent, so a screen reader is never spammed. One block builds
+  // the whole message so a recovery and a transition in the same update cannot overwrite each
+  // other, and transitions are counted by the uncapped total, not by the (capped) list length.
+  const liveStatus = live?.status;
+  const transitions = live?.transitions;
+  const totalTransitions = live?.transitionCount ?? transitions?.length ?? 0;
+  // Derived during render from the previous values (React's recommended pattern), not in an effect.
+  const isBad = (st: LiveStatus | undefined) => st === "reconnecting" || st === "degraded" || st === "offline";
+  const [seen, setSeen] = useState({ status: liveStatus, total: totalTransitions, degraded: isBad(liveStatus) });
+  if (seen.status !== liveStatus || seen.total !== totalTransitions) {
+    const parts: string[] = [];
+    let degraded = seen.degraded;
+    if (liveStatus !== undefined && liveStatus !== seen.status) {
+      // "refreshing" between offline and live is transient: recovery is judged against the last
+      // BAD status, not merely the previous one, so it is never lost. A view that mounts already
+      // degraded starts with `degraded` true, so its eventual recovery is announced too.
+      if (isBad(liveStatus)) {
+        degraded = true;
+        parts.push(t(`spatial.live.${liveStatus}` as MessageKey));
+      } else if (liveStatus === "live" && degraded) {
+        degraded = false;
+        parts.push(t("spatial.live.live"));
+      }
+    }
+    const fresh = totalTransitions - seen.total;
+    if (fresh > 0 && transitions && transitions.length > 0) {
+      const shown = transitions.slice(-Math.min(fresh, 3, transitions.length)).map((tr) => describeTransition(t, tr));
+      parts.push(shown.join(" ") + (fresh > 3 ? ` (+${fresh - 3})` : ""));
+    }
+    setSeen({ status: liveStatus, total: totalTransitions, degraded });
+    if (parts.length > 0) setAnnouncement(parts.join(" "));
+  }
 
   const select = useCallback(
     (id: string) => {
@@ -181,7 +247,12 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
 
   const note = graph.metadata?.note;
   const { maxNodes, depth } = graph.appliedLimits ?? { maxNodes: graph.nodes.length, depth: 0 };
-  const emphasis = matchIds ?? derived.emphasisIds;
+  // Execution path: following a selected session/ChangeSet/… through its real lifecycle edges.
+  const pathIds = useMemo(
+    () => (derived.emphasisIds ? null : traceExecutionPath(derived.visible.edges, derived.selectedId)),
+    [derived.emphasisIds, derived.visible.edges, derived.selectedId],
+  );
+  const emphasis = matchIds ?? derived.emphasisIds ?? pathIds;
 
   return (
     <section
@@ -190,6 +261,7 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
       aria-label={t("spatial.regionLabel")}
       aria-busy={busy}
       data-focus-mode={focusActive}
+      tabIndex={-1}
       onKeyDown={onRegionKeyDown}
     >
       {focusActive && (
@@ -252,8 +324,19 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
         />
       </div>
 
+      {live && (
+        <LiveStatusBar
+          status={live.status}
+          lastConfirmedAt={live.lastConfirmedAt}
+          transitions={live.transitions}
+          onRefresh={live.onRefresh}
+        />
+      )}
       <div className="sg-status" role="status" aria-live="polite" aria-atomic="true">
         <p data-testid="sg-status">{status}</p>
+        {pathIds && !matchIds && (
+          <p data-testid="sg-path-status">{t("spatial.pathTrace", { count: pathIds.size })}</p>
+        )}
         {matchIds && (
           <p data-testid="sg-search-status">{t("spatial.search.results", { count: matchIds.size })}</p>
         )}
@@ -261,6 +344,16 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
         {note && (
           <p className="sg-notice sg-notice--info" data-testid="sg-note">
             {t("spatial.note", { note })}
+          </p>
+        )}
+        {graph.metadata?.unavailableSources && (
+          <p className="sg-notice" data-testid="sg-unavailable-sources">
+            {t("spatial.live.unavailableSources", { sources: sourceNames(t, graph.metadata.unavailableSources) })}
+          </p>
+        )}
+        {graph.metadata?.notConfiguredSources && (
+          <p className="sg-notice sg-notice--info" data-testid="sg-not-configured">
+            {t("spatial.live.notConfigured", { sources: sourceNames(t, graph.metadata.notConfiguredSources) })}
           </p>
         )}
         {graph.truncated && (
@@ -303,7 +396,7 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
           <CameraControls hasSelection={derived.selectedId !== null} onCamera={onCamera} onReset={reset} />
           {selectedNode && (
             <div className="sg-drawer">
-              <NodeInspector node={selectedNode} graph={full} onSelectNode={select} onClose={deselect} />
+              <NodeInspector node={selectedNode} graph={full} onSelectNode={select} onClose={deselect} onCommandBegin={command.begin} commandBusy={command.busy} />
             </div>
           )}
         </div>
@@ -315,9 +408,30 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
             onSelect={select}
             onHover={(id) => dispatch({ type: "hover", id })}
           />
+          {insights && (
+            <InsightsPanel
+              report={insights.report}
+              loading={insights.loading}
+              failed={insights.failed}
+              isInView={(id) => nodeById.has(id)}
+              onSelectNode={(id) => {
+                select(id);
+                sendCamera("focus", id);
+              }}
+            />
+          )}
           <GraphLegend edges={derived.visible.edges} />
         </div>
       </div>
+      {/* Rendered at the workspace root: outside the inspector (no blur/overflow containing block),
+          inside Focus Mode's non-inert area, and independent of what is selected. */}
+      <CommandConfirmDialog
+        state={command.state}
+        onConfirm={(r) => void command.confirm(r)}
+        onCancel={command.cancel}
+        onDismiss={command.dismiss}
+        restoreFocusTo={() => rootRef.current}
+      />
     </section>
   );
 }

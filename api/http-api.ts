@@ -28,11 +28,13 @@ import {
   type TaskQuery,
   type VerifiedIdentity,
   type WorkflowQuery,
+  type WorkforceGraphUnchanged,
 } from "../contracts/index.js";
 import {
   type WorkforceCommandService,
   type WorkforceQueryService,
 } from "../control/index.js";
+import { sanitizeCorrelationId } from "../control/correlation.js";
 import { parseGraphQueryParams } from "../control/services/graph-query-service.js";
 import type { AccessService, ProfileService } from "../core/index.js";
 
@@ -157,8 +159,9 @@ export function createControlPlaneApi(
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
+    // The inbound id reaches audit records and the response header: only a well-formed one is kept.
     const correlationId =
-      headerValue(req, corrHeader)?.trim() || newCorrelationId();
+      sanitizeCorrelationId(headerValue(req, corrHeader)) ?? newCorrelationId();
     const url = new URL(req.url ?? "/", "http://localhost");
     const path = url.pathname.replace(/\/$/, "");
     const method = (req.method ?? "GET").toUpperCase();
@@ -390,15 +393,37 @@ export function createControlPlaneApi(
         );
       case "projects":
         if (segs.length === 3 && segs[2] === "graph" && options.graphQuery) {
+          // Validate `since` before any work so a malformed value costs nothing.
+          const since = params.get("since");
+          if (since !== null && since !== "" && !/^\d{1,12}$/.test(since)) {
+            throw new ValidationError("since must be a revision number");
+          }
+          const graph = notNull(
+            await options.graphQuery.getWorkforceGraph(
+              principal,
+              parseGraphQueryParams(id!, params),
+            ),
+          );
+          // Conditional poll: authorisation and projection above ran in full,
+          // so `since` can only ever save bandwidth, never widen access.
+          if (since !== null && since !== "" && Number(since) === graph.revision) {
+            const unchanged: WorkforceGraphUnchanged = {
+              projectId: graph.projectId,
+              mode: graph.mode,
+              revision: graph.revision,
+              generatedAt: graph.generatedAt,
+              unchanged: true,
+            };
+            return send(res, 200, unchanged, correlationId);
+          }
+          return send(res, 200, graph, correlationId);
+        }
+        // EO-5.8 spatial intelligence: read-only, authorised exactly like the graph.
+        if (segs.length === 3 && segs[2] === "insights" && options.graphQuery) {
           return send(
             res,
             200,
-            notNull(
-              options.graphQuery.getWorkforceGraph(
-                principal,
-                parseGraphQueryParams(id!, params),
-              ),
-            ),
+            notNull(await options.graphQuery.getInsights(principal, id!)),
             correlationId,
           );
         }
@@ -771,7 +796,30 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    const methodName = COMMAND_METHODS[name];
+    if (name.startsWith("onboarding_") && options.onboarding) {
+      const onboarding = options.onboarding;
+      const method = Object.hasOwn(ONBOARDING_METHODS, name) ? ONBOARDING_METHODS[name] : undefined;
+      if (!method) {
+        return send(res, 404, { error: { message: `unknown command: ${name}` } }, correlationId);
+      }
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+      }
+      const fn = onboarding[method] as (
+        p: OperatorPrincipal,
+        input: Record<string, unknown>,
+        opts: { correlationId: string },
+      ) => Promise<{ errorKind?: ControlErrorKind }>;
+      const outcome = await fn.call(onboarding, principal, payload, { correlationId });
+      return send(res, outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200, outcome, correlationId);
+    }
+    // Own properties only: inherited names ("constructor", "__proto__", "toString") are not commands.
+    const methodName = Object.hasOwn(COMMAND_METHODS, name)
+      ? COMMAND_METHODS[name]
+      : undefined;
     if (!methodName) {
       return send(
         res,
@@ -811,6 +859,8 @@ export function createControlPlaneApi(
     res.writeHead(status, {
       "content-type": "application/json; charset=utf-8",
       "content-length": Buffer.byteLength(json),
+      // Authorised, per-operator data: never store it in a shared/intermediate cache.
+      "cache-control": "no-store",
       ...(correlationId ? { [corrHeader]: correlationId } : {}),
     });
     res.end(json);

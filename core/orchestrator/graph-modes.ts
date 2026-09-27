@@ -108,7 +108,14 @@ export const MODE_DEFINITIONS: Readonly<Record<GraphMode, ModeDefinition>> = {
     }),
   },
   AGENT: {
-    types: set("PROJECT", "AGENT", "TASK", "WORKFLOW", ...ENVIRONMENT_TYPES),
+    types: set(
+      "PROJECT",
+      "AGENT",
+      "TASK",
+      "WORKFLOW",
+      "EXECUTION_SESSION",
+      ...ENVIRONMENT_TYPES,
+    ),
     select: (ctx, visible) => {
       const agentRoot = rootOfType(ctx, visible, "AGENT");
       if (agentRoot) {
@@ -177,6 +184,48 @@ export const MODE_DEFINITIONS: Readonly<Record<GraphMode, ModeDefinition>> = {
           : {
               note: "No registered environments are routed for this project.",
             }),
+      };
+    },
+  },
+  EXECUTION: {
+    types: set(
+      "PROJECT",
+      "AGENT",
+      "TASK",
+      "EXECUTION_SESSION",
+      "CHANGESET",
+      "VERIFICATION",
+      "REVIEW",
+      "APPROVAL",
+      "COMMIT",
+      "DEPLOYMENT",
+      ...ENVIRONMENT_TYPES,
+    ),
+    select: (ctx, visible) => {
+      // Agents/tasks/environments appear only as context for real execution
+      // records; an agent with no session is not part of the execution view.
+      const lifecycle = set(
+        "EXECUTION_SESSION",
+        "CHANGESET",
+        "VERIFICATION",
+        "REVIEW",
+        "APPROVAL",
+        "COMMIT",
+        "DEPLOYMENT",
+      );
+      const nodes = pruneUnlinked(
+        visible,
+        ctx.edges,
+        set("AGENT", "TASK", ...ENVIRONMENT_TYPES),
+        lifecycle,
+      );
+      return {
+        nodes,
+        edges: [],
+        rootIds: [ctx.requestedRoot ?? ctx.projectNodeId],
+        ...(nodes.some((n) => lifecycle.has(n.type))
+          ? {}
+          : { note: "No execution activity has been recorded for this project." }),
       };
     },
   },

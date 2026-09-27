@@ -98,7 +98,9 @@ async function sendRequest<T>(
 
   headers.set("Accept", "application/json");
   headers.set("Content-Type", "application/json");
-  headers.set("x-correlation-id", createCorrelationId());
+  // A caller that supplies its own correlation id (e.g. a command whose audit trail must be
+  // traceable) keeps it; otherwise one is minted per request.
+  if (!headers.has("x-correlation-id")) headers.set("x-correlation-id", createCorrelationId());
 
   if (options.accessToken) {
     headers.set("Authorization", `Bearer ${options.accessToken}`);
@@ -120,8 +122,11 @@ async function sendRequest<T>(
     if (!response.ok) {
       const message = errorMessageFromBody(body) ?? "The request could not be completed.";
 
+      const bodyObj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
       throw new ApiError(message, {
         status: response.status,
+        ...(typeof bodyObj.errorKind === "string" ? { errorKind: bodyObj.errorKind } : {}),
+        ...(typeof bodyObj.reason === "string" ? { reason: bodyObj.reason } : {}),
         requestId:
           response.headers.get("x-request-id") ??
           response.headers.get("x-correlation-id") ??
@@ -136,10 +141,10 @@ async function sendRequest<T>(
     }
 
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new ApiError("The request timed out.");
+      throw new ApiError("The request timed out.", { code: "timeout" });
     }
 
-    throw new ApiError("Unable to communicate with the Control Plane API.");
+    throw new ApiError("Unable to communicate with the Control Plane API.", { code: "network" });
   } finally {
     window.clearTimeout(timeout);
   }

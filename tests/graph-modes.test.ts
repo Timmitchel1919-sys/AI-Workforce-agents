@@ -417,7 +417,7 @@ test("every mode is deterministic, bounded, and free of dangling edges", () => {
   }
 });
 
-test("authorisation applies to every mode", () => {
+test("authorisation applies to every mode", async () => {
   const h = build();
   const svc = new GraphQueryService({
     agents: h.agents,
@@ -434,7 +434,7 @@ test("authorisation applies to every mode", () => {
   const outsider = { id: "o", role: "operator" as const, allowedProjects: [B] };
   for (const mode of GRAPH_MODES) {
     assert.equal(
-      svc.getWorkforceGraph(outsider, { projectId: A, mode }),
+      await svc.getWorkforceGraph(outsider, { projectId: A, mode }),
       undefined,
       mode,
     );

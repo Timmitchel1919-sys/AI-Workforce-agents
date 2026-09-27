@@ -5,6 +5,8 @@ import type { GraphData } from "../lib/graphModel";
 import { buildInspectorModel, type FieldValue, type InspectorRelation, type NodeRef } from "../lib/inspectorModel";
 import { edgeStatusLabel, edgeTypeLabel, nodeTypeLabel } from "../lib/labels";
 import { StateBadge } from "./StateBadge";
+import { NodeCommandPanel } from "./NodeCommandPanel";
+import type { NodeAction } from "../lib/nodeActions";
 
 interface Props {
   node: WorkforceGraphNode | null;
@@ -12,9 +14,12 @@ interface Props {
   graph: GraphData;
   onSelectNode: (id: string) => void;
   onClose: () => void;
+  /** Command controller (owned by the workspace so it outlives this inspector). */
+  onCommandBegin?: (action: NodeAction, nodeLabel: string) => void;
+  commandBusy?: boolean;
 }
 
-export function NodeInspector({ node, graph, onSelectNode, onClose }: Props) {
+export function NodeInspector({ node, graph, onSelectNode, onClose, onCommandBegin, commandBusy = false }: Props) {
   const { t } = useI18n();
   const model = useMemo(() => (node ? buildInspectorModel(node, graph) : null), [node, graph]);
 
@@ -26,6 +31,11 @@ export function NodeInspector({ node, graph, onSelectNode, onClose }: Props) {
       </section>
     );
   }
+
+  // What a confirmation names. An approval also names what it gates, through the REAL
+  // REQUIRES_APPROVAL edge, so the operator sees exactly what they are deciding.
+  const gated = node.type === "APPROVAL" ? model.relations.find((r) => r.edgeType === "REQUIRES_APPROVAL" && r.direction === "incoming") : undefined;
+  const commandLabel = gated ? `${node.label} → ${gated.other.label}` : node.label;
 
   const unavailable = <span className="sg-muted">{t("spatial.inspector.unavailable")}</span>;
 
@@ -112,6 +122,9 @@ export function NodeInspector({ node, graph, onSelectNode, onClose }: Props) {
             ))}
           </dl>
         </>
+      )}
+      {onCommandBegin && (
+        <NodeCommandPanel node={node} onBegin={(a) => onCommandBegin(a, commandLabel)} busy={commandBusy} />
       )}
       <h3 className="sg-subtitle">{t("spatial.inspector.relations")}</h3>
       {model.relations.length === 0 ? (

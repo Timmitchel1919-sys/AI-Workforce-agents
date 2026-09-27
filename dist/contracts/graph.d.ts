@@ -3,7 +3,7 @@
  * Future modes (COST, SECURITY, DEPLOYMENT, AUDIT) are added to this list and
  * to the mode registry in core/orchestrator/graph-modes.ts — no new engine.
  */
-export declare const GRAPH_MODES: readonly ["WORKFORCE", "PROJECT", "AGENT", "WORKFLOW", "DEPENDENCY", "ENVIRONMENT", "KNOWLEDGE"];
+export declare const GRAPH_MODES: readonly ["WORKFORCE", "PROJECT", "AGENT", "WORKFLOW", "DEPENDENCY", "ENVIRONMENT", "KNOWLEDGE", "EXECUTION"];
 export type GraphMode = (typeof GRAPH_MODES)[number];
 export declare const DEFAULT_GRAPH_MODE: GraphMode;
 /** Hard server-side bounds. Query options can only tighten these. */
@@ -13,13 +13,15 @@ export declare const GRAPH_LIMITS: {
     readonly defaultMaxNodes: 250;
     readonly maxNodes: 500;
     readonly maxEdges: 1500;
+    /** Per-family cap on execution-lifecycle records projected (newest first). */
+    readonly maxExecutionRecords: 50;
 };
 /**
  * Normalised operational vocabulary the UI colours from. The raw `status`
  * string stays on the node; `state` is derived server-side from authoritative
  * state only (never invented). `unavailable` = authoritative state exposes none.
  */
-export declare const GRAPH_OPERATIONAL_STATES: readonly ["active", "running", "queued", "blocked", "failed", "completed", "offline", "unavailable"];
+export declare const GRAPH_OPERATIONAL_STATES: readonly ["active", "running", "queued", "blocked", "failed", "completed", "awaiting_review", "awaiting_approval", "deploying", "deployed", "cancelled", "rolled_back", "degraded", "offline", "unavailable"];
 export type GraphOperationalState = (typeof GRAPH_OPERATIONAL_STATES)[number];
 export interface WorkforceGraphProjection {
     projectId: string;
@@ -39,6 +41,17 @@ export interface WorkforceGraphProjection {
     /** Root the projection was scoped to, when one was requested and valid. */
     rootNodeId?: string;
     metadata?: Record<string, string>;
+}
+/**
+ * Reply to a conditional graph poll (`?since=<revision>`) when the caller's
+ * revision is still current. Carries no graph content, only proof of currency.
+ */
+export interface WorkforceGraphUnchanged {
+    projectId: string;
+    mode: GraphMode;
+    revision: number;
+    generatedAt: string;
+    unchanged: true;
 }
 export type WorkforceGraphNodeType = "PROJECT" | "PROGRAM" | "WORKSTREAM" | "TASK" | "AGENT" | "CAPABILITY" | "MODEL" | "ENVIRONMENT" | "RUNNER" | "EXECUTION_PLAN" | "EXECUTION_SESSION" | "WORKSPACE" | "WRITE_SCOPE" | "CHANGESET" | "VERIFICATION" | "REVIEW" | "APPROVAL" | "REPOSITORY" | "COMMIT" | "ARTIFACT" | "DEPLOYMENT" | "CONTROL_PLANE" | "WORKFLOW" | "WORKFLOW_STEP" | "ENVIRONMENT_ROUTER" | "KNOWLEDGE_SOURCE";
 export interface WorkforceGraphNode {
@@ -104,3 +117,71 @@ export interface GraphFragment {
     nodes: WorkforceGraphNode[];
     edges: WorkforceGraphEdge[];
 }
+/**
+ * Findings derived ONLY from the authorised graph's observed state. They are observations with
+ * evidence — not predictions, not scores, and never commands. SUGGESTION != COMMAND.
+ */
+export declare const INSIGHT_KINDS: readonly ["BLOCKED_TASK", "FAILED_EXECUTION", "WAITING_APPROVAL", "ENVIRONMENT_UNAVAILABLE", "REVIEW_WAITING", "DEPLOYMENT_PROBLEM", "DEPENDENCY_BOTTLENECK"];
+export type InsightKind = (typeof INSIGHT_KINDS)[number];
+export declare const INSIGHT_SEVERITIES: readonly ["info", "warning", "critical"];
+export type InsightSeverity = (typeof INSIGHT_SEVERITIES)[number];
+/** What exactly was observed (a finer cut of the kind; drives the explanation wording). */
+export declare const INSIGHT_VARIANTS: readonly ["dependency", "approval", "waiting", "unspecified", "queue", "failed", "degraded", "rolled_back", "unverified"];
+export type InsightVariant = (typeof INSIGHT_VARIANTS)[number];
+/** The state of a node at the revision the finding was derived from. */
+export interface InsightEvidence {
+    nodeId: string;
+    nodeType: WorkforceGraphNodeType;
+    label: string;
+    state: GraphOperationalState;
+    status: string;
+}
+/**
+ * Things the finding does NOT establish. Shown to the operator so a finding is never read as more
+ * certain than the recorded state allows.
+ */
+export declare const INSIGHT_LIMITATIONS: readonly ["cause_not_recorded", "as_of_revision"];
+export type InsightLimitation = (typeof INSIGHT_LIMITATIONS)[number];
+export declare const INSIGHT_RECOMMENDATIONS: readonly ["inspect", "decide_approval", "consider_retry", "check_environment", "review_dependency", "review_changeset"];
+export type InsightRecommendationKind = (typeof INSIGHT_RECOMMENDATIONS)[number];
+/**
+ * A suggestion. It carries no command payload and nothing executes it: acting on it is a separate,
+ * explicit, confirmed operator action through the Control Plane (ADR-0024).
+ */
+export interface InsightRecommendation {
+    kind: InsightRecommendationKind;
+    targetNodeId: string;
+    /** An existing Control Plane command this suggestion relates to — a label, never invoked. */
+    relatedCommand?: "retry-task" | "cancel-task" | "cancel-execution" | "approve" | "reject";
+}
+export interface SpatialInsight {
+    /** Stable for the same subject and observation. */
+    id: string;
+    kind: InsightKind;
+    variant: InsightVariant;
+    severity: InsightSeverity;
+    subjectNodeId: string;
+    /** Values for the explanation template (labels, statuses, counts) — all taken from the graph. */
+    params: Record<string, string | number>;
+    evidence: InsightEvidence[];
+    recommendations: InsightRecommendation[];
+    limitations: InsightLimitation[];
+}
+export interface SpatialInsightsReport {
+    projectId: string;
+    /** Revision of the (unfiltered, authorised) graph the findings were derived from. */
+    graphRevision: number;
+    generatedAt: string;
+    findings: SpatialInsight[];
+    /** More findings existed than the bound allows. */
+    truncated: boolean;
+    /** Execution sources that could not be read: findings about them are UNKNOWN, not absent. */
+    unavailableSources?: string[];
+    /**
+     * Sources this deployment does not have at all (e.g. the release pipeline is not wired in
+     * production). Nothing about them can be shown, and that is not the same as "nothing happened".
+     */
+    notConfiguredSources?: string[];
+    basis: "observed_state";
+}
+export declare const MAX_INSIGHTS = 100;
