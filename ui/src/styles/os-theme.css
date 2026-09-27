@@ -7,39 +7,39 @@
 
 html.os-document,
 html.os-document body {
-  background: #02040a;
+  background: #020203;
   color-scheme: dark;
 }
 
 .os-theme {
-  /* Palette */
-  --lp-bg: #02040a;
+  /* Palette - Graphite/Obsidian/Glass */
+  --lp-bg: #030304;
   --lp-bg-deep: #000000;
-  --lp-navy: #050c1f;
-  --lp-blue: #2f7bff;
-  --lp-blue-bright: #6aaeff;
-  --lp-blue-soft: rgba(47, 123, 255, 0.16);
-  --lp-cyan: #5fd4ff;
+  --lp-navy: #050508;
+  --lp-blue: rgba(255, 255, 255, 0.4);
+  --lp-blue-bright: rgba(255, 255, 255, 0.8);
+  --lp-blue-soft: rgba(255, 255, 255, 0.1);
+  --lp-cyan: rgba(255, 255, 255, 0.6);
   --lp-gold: #d9ac52;
   --lp-gold-bright: #f2d48a;
   --lp-gold-soft: rgba(217, 172, 82, 0.28);
-  --lp-text: #f3f6ff;
-  --lp-text-secondary: #c3cce2;
-  --lp-text-muted: #8d9ab8;
+  --lp-text: #f8fafc;
+  --lp-text-secondary: #94a3b8;
+  --lp-text-muted: #64748b;
 
-  /* Glass */
-  --lp-glass-bg: rgba(5, 10, 20, 0.55);
-  --lp-glass-bg-strong: rgba(6, 13, 28, 0.72);
-  --lp-glass-border: rgba(100, 170, 255, 0.16);
-  --lp-glass-border-hover: rgba(120, 185, 255, 0.42);
-  --lp-glass-highlight: rgba(255, 255, 255, 0.05);
+  /* Glass - frosted transparency */
+  --lp-glass-bg: rgba(10, 10, 12, 0.6);
+  --lp-glass-bg-strong: rgba(15, 15, 18, 0.75);
+  --lp-glass-border: rgba(255, 255, 255, 0.1);
+  --lp-glass-border-hover: rgba(255, 255, 255, 0.25);
+  --lp-glass-highlight: rgba(255, 255, 255, 0.1);
   --lp-blur: 24px;
 
   /* Form fields */
-  --lp-field-bg: rgba(4, 10, 22, 0.7);
-  --lp-field-border: rgba(140, 170, 220, 0.2);
-  --lp-field-border-focus: rgba(106, 174, 255, 0.85);
-  --lp-field-glow: 0 0 0 3px rgba(47, 123, 255, 0.22), 0 0 18px rgba(47, 123, 255, 0.18);
+  --lp-field-bg: rgba(20, 20, 24, 0.7);
+  --lp-field-border: rgba(255, 255, 255, 0.15);
+  --lp-field-border-focus: rgba(255, 255, 255, 0.4);
+  --lp-field-glow: 0 0 0 3px rgba(255, 255, 255, 0.1), 0 0 18px rgba(255, 255, 255, 0.05);
   --lp-error: #ff8a8a;
   --lp-error-border: rgba(255, 120, 120, 0.6);
   --lp-success: #46e3a8;
@@ -59,9 +59,8 @@ html.os-document body {
   --lp-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --lp-hover: 200ms;
   --lp-reveal: 650ms;
-  --lp-focus: #9cc8ff;
+  --lp-focus: rgba(255, 255, 255, 0.5);
   --lp-font: Inter, Manrope, "Segoe UI", system-ui, sans-serif;
-
 
   color: var(--lp-text);
   font-family: var(--lp-font);
@@ -84,11 +83,11 @@ html.os-document body {
 .lp-glass {
   background: var(--lp-glass-bg);
   border: 1px solid var(--lp-glass-border);
-  -webkit-backdrop-filter: blur(var(--lp-blur)) saturate(140%);
-  backdrop-filter: blur(var(--lp-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--lp-blur)) saturate(150%);
+  backdrop-filter: blur(var(--lp-blur)) saturate(150%);
   box-shadow:
     inset 0 1px 0 var(--lp-glass-highlight),
-    0 24px 48px rgba(0, 0, 0, 0.35);
+    0 24px 48px rgba(0, 0, 0, 0.5);
 }
 
 /* ---------- Background environment ---------- */
@@ -106,10 +105,10 @@ html.os-document body {
   position: absolute;
   inset: -20%;
   background:
-    radial-gradient(40% 35% at 50% 32%, rgba(47, 123, 255, 0.22), transparent 70%),
+    radial-gradient(40% 35% at 50% 32%, rgba(255, 255, 255, 0.08), transparent 70%),
     radial-gradient(30% 25% at 50% 34%, rgba(217, 172, 82, 0.05), transparent 70%),
-    radial-gradient(60% 50% at 15% 90%, rgba(20, 60, 160, 0.14), transparent 70%),
-    radial-gradient(50% 40% at 90% 70%, rgba(20, 70, 190, 0.1), transparent 70%);
+    radial-gradient(60% 50% at 15% 90%, rgba(255, 255, 255, 0.04), transparent 70%),
+    radial-gradient(50% 40% at 90% 70%, rgba(255, 255, 255, 0.03), transparent 70%);
   opacity: calc(1 - var(--lp-hero-progress, 0) * 0.45);
 }
 
@@ -117,8 +116,8 @@ html.os-document body {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(100, 170, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(100, 170, 255, 0.045) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 64px 64px;
   -webkit-mask-image: radial-gradient(70% 60% at 50% 35%, #000 20%, transparent 80%);
   mask-image: radial-gradient(70% 60% at 50% 35%, #000 20%, transparent 80%);
@@ -133,7 +132,7 @@ html.os-document body {
 }
 
 .lp-bg__edges line {
-  stroke: rgba(100, 170, 255, 0.12);
+  stroke: rgba(255, 255, 255, 0.1);
   stroke-width: 1;
 }
 
@@ -158,14 +157,14 @@ html.os-document body {
   width: 2px;
   height: 2px;
   border-radius: 50%;
-  background: rgba(160, 205, 255, 0.55);
+  background: rgba(255, 255, 255, 0.4);
   animation: lp-particle-drift 22s linear infinite;
 }
 
 .lp-bg__vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.75));
+  background: radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.9));
 }
 
 /* ---------- Buttons ---------- */
@@ -195,29 +194,30 @@ html.os-document body {
 }
 
 .lp-button--primary {
-  border: 1px solid rgba(106, 174, 255, 0.7);
-  background: linear-gradient(180deg, rgba(32, 88, 214, 0.55), rgba(8, 26, 78, 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--lp-text);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 0 0 1px rgba(47, 123, 255, 0.12),
-    0 10px 32px rgba(47, 123, 255, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 10px 32px rgba(0, 0, 0, 0.4);
 }
 
 .lp-button--primary:hover {
   transform: translateY(-2px);
-  border-color: #a9d0ff;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 0 0 1px rgba(106, 174, 255, 0.3),
-    0 14px 44px rgba(47, 123, 255, 0.42);
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 14px 44px rgba(0, 0, 0, 0.5);
 }
 
 .lp-button--secondary {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
   color: var(--lp-text-secondary);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
@@ -225,7 +225,7 @@ html.os-document body {
 
 .lp-button--secondary:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.25);
   color: var(--lp-text);
 }
 
