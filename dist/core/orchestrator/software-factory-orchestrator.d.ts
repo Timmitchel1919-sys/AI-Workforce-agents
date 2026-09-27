@@ -25,6 +25,7 @@ export declare class SoftwareFactoryOrchestrator {
     addTask(workstreamId: string, input: SoftwareFactoryTaskInput | TaskDraft): Task;
     findProgram(programId: string, projectId?: string): SoftwareFactoryProgram | undefined;
     findWorkstream(workstreamId: string, programId?: string, projectId?: string): Workstream | undefined;
+    planFromObjective(programId: string, name: string, objective: string, projectId?: string): Promise<SoftwareFactoryProgramDetail>;
     tick(programId?: string): Promise<void>;
     private tickProgram;
     overview(projectIds?: ReadonlySet<string>): SoftwareFactoryOverview;

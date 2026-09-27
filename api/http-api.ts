@@ -113,6 +113,7 @@ const COMMAND_METHODS: Record<
   "kill-execution": "killExecution",
   "change-operator-role": "changeOperatorRole",
   // EO-5.1 — Software Factory orchestration.
+  "plan-from-objective": "planFromObjective",
   "create-program": "createProgram",
   "create-workstream": "createWorkstream",
   "add-workstream-task": "addTaskToWorkstream",

@@ -358,6 +358,67 @@ export class WorkforceCommandService {
   /* software factory (EO-5.1)                                      */
   /* -------------------------------------------------------------- */
 
+  async planFromObjective(
+    principal: OperatorPrincipal,
+    input: {
+      projectId?: unknown;
+      programId?: unknown;
+      name?: unknown;
+      objective?: unknown;
+    },
+    options?: CommandOptions,
+  ): Promise<ControlCommandResult> {
+    const run = { correlationId: resolveCorrelationId(options) };
+    const command = "plan_from_objective";
+    let projectId: string;
+    let programId: string;
+    let name: string;
+    let objective: string;
+    try {
+      projectId = requireId(input?.projectId, "plan_from_objective.projectId");
+      programId = requireId(input?.programId, "plan_from_objective.programId");
+      name = requireText(input?.name, "plan_from_objective.name");
+      objective = requireText(input?.objective, "plan_from_objective.objective");
+
+      const factory = this.ctx.softwareFactory;
+      if (!factory) {
+        return this.audited(
+          principal,
+          command,
+          "rejected",
+          programId,
+          "software factory is not configured",
+          { projectId },
+          run,
+          "invalid_state",
+        );
+      }
+      
+      const detail = await factory.planFromObjective(programId, name, objective, projectId);
+
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        detail.program.id,
+        "program and workstream autonomously planned",
+        { projectId, detail },
+        run,
+      );
+    } catch (error) {
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        typeof input?.programId === "string" ? input.programId : "",
+        message(error),
+        { projectId: typeof input?.projectId === "string" ? input.projectId : "" },
+        run,
+        softwareFactoryKind(error),
+      );
+    }
+  }
+
   async createProgram(
     principal: OperatorPrincipal,
     input: {

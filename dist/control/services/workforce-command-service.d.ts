@@ -24,6 +24,12 @@ export declare class WorkforceCommandService {
     approve(principal: OperatorPrincipal, input: ApprovalCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     reject(principal: OperatorPrincipal, input: RejectCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     private decideApproval;
+    planFromObjective(principal: OperatorPrincipal, input: {
+        projectId?: unknown;
+        programId?: unknown;
+        name?: unknown;
+        objective?: unknown;
+    }, options?: CommandOptions): Promise<ControlCommandResult>;
     createProgram(principal: OperatorPrincipal, input: {
         projectId?: unknown;
         id?: unknown;
