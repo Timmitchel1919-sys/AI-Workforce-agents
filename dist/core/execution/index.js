@@ -12,3 +12,4 @@ export * from "./artifact-manager.js";
 export * from "./build-profiles.js";
 export * from "./verification-service.js";
 export * from "./environment-adapters.js";
+export * from "./sandbox-enforcer.js";
