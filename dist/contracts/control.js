@@ -51,6 +51,8 @@ export const CONTROL_CAPABILITIES = [
     "create_workstream",
     "add_task_to_workstream",
     "tick_software_factory",
+    /* PROJECT-2 — project onboarding & provisioning (administrators only). */
+    "create_project",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -108,6 +110,8 @@ export const ROLE_CAPABILITIES = {
         "create_workstream",
         "add_task_to_workstream",
         "tick_software_factory",
+        // PROJECT-2: creating/provisioning a project is administrator-only.
+        "create_project",
     ],
 };
 export function validateOperatorPrincipal(principal) {
@@ -159,6 +163,15 @@ export const CONTROL_COMMANDS = [
     "create_workstream",
     "add_task_to_workstream",
     "tick_software_factory",
+    // PROJECT-2 — project onboarding & provisioning.
+    "onboarding_create",
+    "onboarding_update",
+    "onboarding_analyze",
+    "onboarding_plan",
+    "onboarding_approve_plan",
+    "onboarding_provision",
+    "onboarding_revalidate",
+    "onboarding_cancel",
 ];
 /**
  * A refinement of a non-`executed` outcome, aligned with the `WorkforceError`

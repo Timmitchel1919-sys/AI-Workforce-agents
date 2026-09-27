@@ -21,3 +21,4 @@ export * from "./services/workforce-command-service.js";
 export * from "./dashboard/render.js";
 export * from "./dashboard/build-html.js";
 export * from "./services/graph-query-service.js";
+export * from "./services/onboarding-control-service.js";

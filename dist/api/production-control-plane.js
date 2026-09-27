@@ -7,10 +7,12 @@ import { GraphQueryService } from "../control/services/graph-query-service.js";
  * without changing this authoritative runtime graph.
  */
 import { randomUUID } from "node:crypto";
-import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, } from "../core/index.js";
+import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
+import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
@@ -184,10 +186,61 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         workflowEngine,
         events: new FirestoreEventPublisher(services.firestore.collection("control_events")),
     };
+    // PROJECT-2: onboarding & provisioning. Sessions and provisioned projects are
+    // authoritative + transactional in Firestore; the browser never touches them.
+    const provisionedProjects = new FirestoreProvisionedProjectStore(transactionalFirestore, { collectionPrefix: options.collectionPrefix });
+    const provisioning = new ProjectProvisioningService({
+        sessions: new FirestoreOnboardingSessionStore(transactionalFirestore, {
+            collectionPrefix: options.collectionPrefix,
+        }),
+        projects: provisionedProjects,
+        registry: bootstrap.projects,
+        audit,
+        adapterFactory: (project) => new ProvisionedProjectAdapter(project),
+    });
+    const onboardingService = new OnboardingService({
+        sessions: new FirestoreOnboardingSessionStore(transactionalFirestore, {
+            collectionPrefix: options.collectionPrefix,
+        }),
+        projects: provisionedProjects,
+        registry: bootstrap.projects,
+        audit,
+        reader: new GitHubRepositoryReader(),
+        provisioning,
+        platform: () => ({
+            descriptors: environmentRegistry.listDescriptors(),
+            usableDescriptorIds: new Set(environmentRegistry.usableInstances().map((i) => i.descriptorId)),
+            agents: bootstrap.agents.list(),
+        }),
+    });
+    const onboarding = new OnboardingControlService(onboardingService, audit);
+    // READY projects become discoverable through the existing Project Registry.
+    // Other warm instances pick them up through this throttled sync.
+    const syncProjects = async () => {
+        for (const project of await provisionedProjects.list()) {
+            if (project.readiness === "ready")
+                provisioning.activate(project);
+        }
+    };
+    await syncProjects();
+    let lastSync = Date.now();
+    const projectSync = async () => {
+        if (Date.now() - lastSync < 10_000)
+            return;
+        lastSync = Date.now();
+        try {
+            await syncProjects();
+        }
+        catch {
+            /* a transient read failure must not fail an unrelated request */
+        }
+    };
     const query = new WorkforceQueryService(context);
     const command = new WorkforceCommandService(context);
     const graphQuery = new GraphQueryService(context);
     const handler = createControlPlaneApi({
+        onboarding,
+        projectSync,
         graphQuery,
         query,
         command,

@@ -53,6 +53,7 @@ export const AUDIT_EVENT_TYPES = [
     "execution_plan_event",
     "access_event",
     "execution_event",
+    "onboarding_event",
 ];
 export const DEFAULT_AGENT_LIMITS = {
     maxIterations: 3,
@@ -341,3 +342,4 @@ export * from "./execution-records.js";
 export * from "./orchestration.js";
 export * from "./environment-routing.js";
 export * from "./graph.js";
+export * from "./onboarding.js";
