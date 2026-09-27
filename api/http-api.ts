@@ -495,6 +495,24 @@ export function createControlPlaneApi(
             correlationId,
           );
         }
+        // EO-6.2 AI Cost Center: usage, budget policy, evaluated status.
+        if (segs.length === 3 && segs[2] === "cost") {
+          return send(
+            res,
+            200,
+            notNull(await query.getProjectCostReport(principal, id!)),
+            correlationId,
+          );
+        }
+        // EO-6.2 rule-based Auditor findings (never model-assisted).
+        if (segs.length === 3 && segs[2] === "audit-findings") {
+          return send(
+            res,
+            200,
+            notNull(await query.getProjectAuditFindings(principal, id!)),
+            correlationId,
+          );
+        }
         // `GET /projects/:projectId/execution-sessions` (EO-4.1, metadata only)
         if (segs.length === 3 && segs[2] === "execution-sessions") {
           return send(

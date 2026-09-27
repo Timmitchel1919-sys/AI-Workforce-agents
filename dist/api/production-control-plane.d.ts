@@ -1,6 +1,6 @@
 import { type FirebaseServices } from "../adapters/firebase/index.js";
 import { WorkforceCommandService, WorkforceQueryService, type ControlPlaneContext } from "../control/index.js";
-import { EnvironmentDetector, DeploymentOrchestrator, SourceControlOrchestrator, VerificationService } from "../core/index.js";
+import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, DeploymentOrchestrator, ModelProviderRegistry, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { type ApiHandler } from "./http-api.js";
 import { type ProductionWorkforceBootstrap, type ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
@@ -20,6 +20,18 @@ export interface ProductionControlPlaneRuntime {
         readonly verification: VerificationService;
         readonly sourceControl: SourceControlOrchestrator;
         readonly deployments: DeploymentOrchestrator;
+    };
+    /**
+     * The FULL EO-6.2 Cost Center services, including the model-provider registry a future real
+     * adapter registers with. The context exposes only read views (and the admin-gated `budgetPolicy.set`,
+     * which self-authorizes). No HTTP route can register a provider.
+     */
+    readonly costCenter: {
+        readonly modelProviders: ModelProviderRegistry;
+        readonly usage: UsageLedger;
+        readonly budgetPolicies: BudgetPolicyStore;
+        readonly enforcer: BudgetEnforcer;
+        readonly auditor: RuleAuditor;
     };
     /** Environment discovery orchestration (no live probes wired in EO-2A). */
     readonly environmentDetector: EnvironmentDetector;

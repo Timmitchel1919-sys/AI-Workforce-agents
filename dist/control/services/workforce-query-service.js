@@ -11,7 +11,7 @@ import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolVi
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
 import { executionPlanSummaryView, executionPlanView } from "../plan-views.js";
 import { redact } from "../redaction.js";
-import { getExecutionOverview, getExecutionSessionDetail, getProjectReleases, getProjectVerifications, listExecutionSessions, } from "./execution-operations-views.js";
+import { getExecutionOverview, getExecutionSessionDetail, getProjectAuditFindings, getProjectCostReport, getProjectReleases, getProjectVerifications, listExecutionSessions, } from "./execution-operations-views.js";
 export class WorkforceQueryService {
     ctx;
     constructor(ctx) {
@@ -446,6 +446,22 @@ export class WorkforceQueryService {
             !operatorCanAccessProject(principal, projectId))
             return undefined;
         return getProjectReleases(this.ctx, principal, projectId);
+    }
+    /** EO-6.2 AI Cost Center: usage, budget policy and evaluated status. */
+    async getProjectCostReport(principal, projectId) {
+        this.authorizeView(principal);
+        if (!this.ctx.projects.get(projectId) ||
+            !operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return getProjectCostReport(this.ctx, principal, projectId);
+    }
+    /** EO-6.2 rule-based Auditor findings (never model-assisted). */
+    async getProjectAuditFindings(principal, projectId) {
+        this.authorizeView(principal);
+        if (!this.ctx.projects.get(projectId) ||
+            !operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return getProjectAuditFindings(this.ctx, principal, projectId);
     }
     /** EO-4.5 environment execution status (real runners only count). */
     getExecutionEnvironments(principal) {

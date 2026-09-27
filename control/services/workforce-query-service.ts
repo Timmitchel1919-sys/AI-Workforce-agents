@@ -70,6 +70,8 @@ import { redact } from "../redaction.js";
 import {
   getExecutionOverview,
   getExecutionSessionDetail,
+  getProjectAuditFindings,
+  getProjectCostReport,
   getProjectReleases,
   getProjectVerifications,
   listExecutionSessions,
@@ -667,6 +669,28 @@ export class WorkforceQueryService {
     )
       return undefined;
     return getProjectReleases(this.ctx, principal, projectId);
+  }
+
+  /** EO-6.2 AI Cost Center: usage, budget policy and evaluated status. */
+  async getProjectCostReport(principal: OperatorPrincipal, projectId: string) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectCostReport(this.ctx, principal, projectId);
+  }
+
+  /** EO-6.2 rule-based Auditor findings (never model-assisted). */
+  async getProjectAuditFindings(principal: OperatorPrincipal, projectId: string) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectAuditFindings(this.ctx, principal, projectId);
   }
 
   /** EO-4.5 environment execution status (real runners only count). */

@@ -54,6 +54,11 @@ export const AUDIT_EVENT_TYPES = [
     "access_event",
     "execution_event",
     "onboarding_event",
+    /* EO-6.2 — AI Cost Center & rule-based Auditor. */
+    "usage_recorded",
+    "budget_blocked",
+    "budget_policy_set",
+    "audit_finding_raised",
 ];
 export const DEFAULT_AGENT_LIMITS = {
     maxIterations: 3,
@@ -343,3 +348,4 @@ export * from "./orchestration.js";
 export * from "./environment-routing.js";
 export * from "./graph.js";
 export * from "./onboarding.js";
+export * from "./cost-center.js";

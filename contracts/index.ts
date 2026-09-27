@@ -306,6 +306,11 @@ export const AUDIT_EVENT_TYPES = [
   "access_event",
   "execution_event",
   "onboarding_event",
+  /* EO-6.2 — AI Cost Center & rule-based Auditor. */
+  "usage_recorded",
+  "budget_blocked",
+  "budget_policy_set",
+  "audit_finding_raised",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -856,3 +861,4 @@ export * from "./orchestration.js";
 export * from "./environment-routing.js";
 export * from "./graph.js";
 export * from "./onboarding.js";
+export * from "./cost-center.js";

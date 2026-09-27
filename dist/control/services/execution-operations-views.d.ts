@@ -274,3 +274,43 @@ export declare function getProjectReleases(ctx: ControlPlaneContext, principal: 
         targets?: undefined;
     };
 }>;
+/**
+ * EO-6.2 — this project's usage, budget policy and evaluated status. The
+ * ledger and budget gate are always composed (they need no model provider
+ * to exist), so `configured: false` here means the Cost Center itself was
+ * never wired into this deployment — not that no model call has happened.
+ * Whether a call can EVER be governed is `capabilities.enforcement`
+ * (CONNECTED != CAPABLE).
+ */
+export declare function getProjectCostReport(ctx: ControlPlaneContext, principal: OperatorPrincipal, projectId: string): Promise<{
+    configured: false;
+    budgetPolicy?: undefined;
+    evaluation?: undefined;
+    usage?: undefined;
+    capabilities?: undefined;
+} | {
+    configured: true;
+    budgetPolicy: import("../../contracts/cost-center.js").BudgetPolicy | null;
+    evaluation: import("../../contracts/cost-center.js").BudgetEvaluation;
+    usage: import("../../contracts/cost-center.js").UsageRecord[];
+    capabilities: {
+        enforcement: boolean;
+        providerIds: readonly string[];
+    };
+}>;
+/**
+ * EO-6.2 — RULE-BASED findings, recomputed fresh from the same authorized,
+ * project-scoped reads the graph and Operations already use. A source this
+ * deployment has not composed at all (verification / source control /
+ * deployments / cost center) contributes no records rather than blocking the
+ * whole read — the same "connected vs capable" honesty as `getProjectReleases`.
+ */
+export declare function getProjectAuditFindings(ctx: ControlPlaneContext, principal: OperatorPrincipal, projectId: string): Promise<{
+    configured: false;
+} | {
+    projectId: string;
+    generatedAt: string;
+    rulesRun: readonly import("../../contracts/cost-center.js").AuditRuleId[];
+    findings: readonly import("../../contracts/cost-center.js").AuditFinding[];
+    configured: true;
+}>;

@@ -323,6 +323,33 @@ export declare class WorkforceQueryService {
             targets?: undefined;
         };
     } | undefined>;
+    /** EO-6.2 AI Cost Center: usage, budget policy and evaluated status. */
+    getProjectCostReport(principal: OperatorPrincipal, projectId: string): Promise<{
+        configured: false;
+        budgetPolicy?: undefined;
+        evaluation?: undefined;
+        usage?: undefined;
+        capabilities?: undefined;
+    } | {
+        configured: true;
+        budgetPolicy: import("../../contracts/cost-center.js").BudgetPolicy | null;
+        evaluation: import("../../contracts/cost-center.js").BudgetEvaluation;
+        usage: import("../../contracts/cost-center.js").UsageRecord[];
+        capabilities: {
+            enforcement: boolean;
+            providerIds: readonly string[];
+        };
+    } | undefined>;
+    /** EO-6.2 rule-based Auditor findings (never model-assisted). */
+    getProjectAuditFindings(principal: OperatorPrincipal, projectId: string): Promise<{
+        configured: false;
+    } | {
+        projectId: string;
+        generatedAt: string;
+        rulesRun: readonly import("../../contracts/cost-center.js").AuditRuleId[];
+        findings: readonly import("../../contracts/cost-center.js").AuditFinding[];
+        configured: true;
+    } | undefined>;
     /** EO-4.5 environment execution status (real runners only count). */
     getExecutionEnvironments(principal: OperatorPrincipal): {
         configured: boolean;

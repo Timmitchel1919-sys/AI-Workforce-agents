@@ -53,6 +53,8 @@ export const CONTROL_CAPABILITIES = [
     "tick_software_factory",
     /* PROJECT-2 — project onboarding & provisioning (administrators only). */
     "create_project",
+    /* EO-6.2 — AI Cost Center: setting the enforced budget is administrator-only. */
+    "manage_budget_policy",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -112,6 +114,8 @@ export const ROLE_CAPABILITIES = {
         "tick_software_factory",
         // PROJECT-2: creating/provisioning a project is administrator-only.
         "create_project",
+        // EO-6.2: setting the enforced budget policy is administrator-only.
+        "manage_budget_policy",
     ],
 };
 export function validateOperatorPrincipal(principal) {

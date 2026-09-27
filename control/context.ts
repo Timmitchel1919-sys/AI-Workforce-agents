@@ -19,13 +19,18 @@ import {
   ToolRegistry,
   WorkflowEngine,
   WorkflowSystem,
+  type BudgetEnforcer,
+  type BudgetPolicyStore,
   type DeploymentOrchestrator,
   type EnvironmentAdapterRegistry,
   type InMemoryExecutionReceiptStore,
+  type RuleAuditor,
   type SourceControlOrchestrator,
+  type UsageLedger,
   type VerificationService,
 } from "../core/index.js";
 import type {
+  CostCenterCapabilities,
   ExecutionRecordStore,
   ReleaseCapabilities,
   WorkspaceControl,
@@ -84,6 +89,21 @@ export interface ControlPlaneContext {
    * work, and nothing can run. The graph and Operations views report the difference.
    */
   releaseCapabilities?: ReleaseCapabilities;
+  /** EO-6.2 AI Cost Center: usage ledger + budget policy. Absent => not composed at all (cost/audit routes 404). */
+  costCenter?: {
+    usage: Pick<UsageLedger, "listByProject">;
+    budgetPolicy: Pick<BudgetPolicyStore, "get" | "set">;
+    enforcer: Pick<BudgetEnforcer, "evaluate">;
+  };
+  /**
+   * Whether the Cost Center's budget gate can ever actually run (a real model
+   * provider is registered). Present but `enforcement: false` => composed but
+   * INERT: the ledger and gate exist and would refuse work, but nothing calls
+   * a model, so nothing is ever recorded. CONNECTED != CAPABLE.
+   */
+  costCenterCapabilities?: CostCenterCapabilities;
+  /** EO-6.2 rule-based Auditor (deterministic, never model-assisted). */
+  auditor?: Pick<RuleAuditor, "run">;
   /** EO-4.5 environment execution adapter/runner status. */
   environmentAdapters?: Pick<EnvironmentAdapterRegistry, "status">;
   /**

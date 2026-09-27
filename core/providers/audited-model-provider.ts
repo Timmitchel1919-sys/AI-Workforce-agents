@@ -5,6 +5,7 @@ import {
   ProviderError,
 } from "../../contracts/index.js";
 import { AuditLog } from "../audit/audit-log.js";
+import { extractCorrelation } from "./request-correlation.js";
 
 export interface AuditedModelProviderOptions {
   /**
@@ -50,7 +51,7 @@ export class AuditedModelProvider implements ModelProvider {
   }
 
   async generate(request: ModelRequest): Promise<ModelResponse> {
-    const correlation = this.correlation(request);
+    const correlation = extractCorrelation(request);
     const requestedModel = request.model ?? null;
 
     this.audit.record("model_provider_requested", {
@@ -105,19 +106,6 @@ export class AuditedModelProvider implements ModelProvider {
       });
       throw error;
     }
-  }
-
-  private correlation(request: ModelRequest): {
-    taskId?: string;
-    agentId?: string;
-    projectId?: string;
-  } {
-    const meta = request.metadata ?? {};
-    const out: { taskId?: string; agentId?: string; projectId?: string } = {};
-    if (typeof meta.taskId === "string") out.taskId = meta.taskId;
-    if (typeof meta.agentId === "string") out.agentId = meta.agentId;
-    if (typeof meta.projectId === "string") out.projectId = meta.projectId;
-    return out;
   }
 
   private preview(text: string): string {

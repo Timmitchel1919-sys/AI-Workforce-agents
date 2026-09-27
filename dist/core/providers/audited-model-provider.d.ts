@@ -31,6 +31,5 @@ export declare class AuditedModelProvider implements ModelProvider {
     private readonly previewChars;
     constructor(inner: ModelProvider, audit: AuditLog, options?: AuditedModelProviderOptions);
     generate(request: ModelRequest): Promise<ModelResponse>;
-    private correlation;
     private preview;
 }

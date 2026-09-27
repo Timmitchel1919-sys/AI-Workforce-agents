@@ -400,3 +400,65 @@ export async function getProjectReleases(
       : { configured: false as const },
   };
 }
+
+/**
+ * EO-6.2 — this project's usage, budget policy and evaluated status. The
+ * ledger and budget gate are always composed (they need no model provider
+ * to exist), so `configured: false` here means the Cost Center itself was
+ * never wired into this deployment — not that no model call has happened.
+ * Whether a call can EVER be governed is `capabilities.enforcement`
+ * (CONNECTED != CAPABLE).
+ */
+export async function getProjectCostReport(
+  ctx: ControlPlaneContext,
+  principal: OperatorPrincipal,
+  projectId: string,
+) {
+  const id = requireExecutionId(projectId, "projectId");
+  if (!ctx.costCenter) return { configured: false as const };
+  const [budgetPolicy, evaluation, usage] = await Promise.all([
+    ctx.costCenter.budgetPolicy.get(principal, id),
+    ctx.costCenter.enforcer.evaluate(principal, id),
+    ctx.costCenter.usage.listByProject(principal, id, 50),
+  ]);
+  const caps = ctx.costCenterCapabilities;
+  return {
+    configured: true as const,
+    budgetPolicy: budgetPolicy ?? null,
+    evaluation,
+    usage,
+    capabilities: { enforcement: caps?.enforcement ?? false, providerIds: caps?.providerIds ?? [] },
+  };
+}
+
+/**
+ * EO-6.2 — RULE-BASED findings, recomputed fresh from the same authorized,
+ * project-scoped reads the graph and Operations already use. A source this
+ * deployment has not composed at all (verification / source control /
+ * deployments / cost center) contributes no records rather than blocking the
+ * whole read — the same "connected vs capable" honesty as `getProjectReleases`.
+ */
+export async function getProjectAuditFindings(
+  ctx: ControlPlaneContext,
+  principal: OperatorPrincipal,
+  projectId: string,
+) {
+  const id = requireExecutionId(projectId, "projectId");
+  if (!ctx.auditor) return { configured: false as const };
+  const rel = releaseSources(ctx);
+  const [releases, activity, verifications, sessions, usage] = await Promise.all([
+    rel.deployments ? rel.deployments.listReleases(principal, id, 200) : Promise.resolve([]),
+    rel.sourceControl ? rel.sourceControl.activity(principal, id, 200) : Promise.resolve(undefined),
+    rel.verification ? rel.verification.listHistory(principal, id, 200) : Promise.resolve([]),
+    ctx.execution ? ctx.execution.listSessions(principal, id) : Promise.resolve([]),
+    ctx.costCenter ? ctx.costCenter.usage.listByProject(principal, id, 200) : Promise.resolve([]),
+  ]);
+  const result = ctx.auditor.run(id, {
+    releases,
+    commits: activity?.commits ?? [],
+    verifications,
+    sessions,
+    usage,
+  });
+  return { configured: true as const, ...result };
+}

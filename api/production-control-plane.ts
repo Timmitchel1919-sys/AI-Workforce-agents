@@ -49,6 +49,8 @@ import {
 import {
   ApprovalSystem,
   AuditLog,
+  BudgetEnforcer,
+  BudgetPolicyStore,
   EnvironmentDetector,
   EnvironmentRegistry,
   EnvironmentRouter,
@@ -75,12 +77,17 @@ import {
   ProjectProvisioningService,
   ArtifactManager,
   DeploymentOrchestrator,
+  ModelProviderRegistry,
+  RuleAuditor,
   SourceControlOrchestrator,
   UnavailableArtifactSource,
   UnavailableGovernedGit,
   UnavailableWorkspaceControl,
+  UsageLedger,
   VerificationService,
+  deriveCostCenterCapabilities,
   deriveReleaseCapabilities,
+  now,
 } from "../core/index.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
@@ -112,6 +119,18 @@ export interface ProductionControlPlaneRuntime {
     readonly verification: VerificationService;
     readonly sourceControl: SourceControlOrchestrator;
     readonly deployments: DeploymentOrchestrator;
+  };
+  /**
+   * The FULL EO-6.2 Cost Center services, including the model-provider registry a future real
+   * adapter registers with. The context exposes only read views (and the admin-gated `budgetPolicy.set`,
+   * which self-authorizes). No HTTP route can register a provider.
+   */
+  readonly costCenter: {
+    readonly modelProviders: ModelProviderRegistry;
+    readonly usage: UsageLedger;
+    readonly budgetPolicies: BudgetPolicyStore;
+    readonly enforcer: BudgetEnforcer;
+    readonly auditor: RuleAuditor;
   };
   /** Environment discovery orchestration (no live probes wired in EO-2A). */
   readonly environmentDetector: EnvironmentDetector;
@@ -364,6 +383,19 @@ export async function createProductionControlPlaneRuntime(
     artifactSource: unavailableArtifactSource,
     deployments,
   });
+  // EO-6.2: the AI Cost Center & rule-based Auditor governance foundation. The usage ledger, budget
+  // policy and rule auditor need no model provider to exist — they are always composed here. What
+  // they can never do without one is see a real call: `modelProviders` is empty because production
+  // registers no model provider at all (no key, no adapter), so `costCenterCapabilities.enforcement`
+  // is honestly false. Setting a project's budget policy is available to a trusted caller
+  // (`BudgetPolicyStore.set`, admin-only) but is not yet reachable over HTTP — a documented gap, not
+  // a fabricated one (see ADR-0027).
+  const modelProviders = new ModelProviderRegistry();
+  const usageLedger = new UsageLedger(executionRecords, now);
+  const budgetPolicies = new BudgetPolicyStore(executionRecords, now, audit);
+  const budgetEnforcer = new BudgetEnforcer(budgetPolicies, usageLedger, now);
+  const ruleAuditor = new RuleAuditor(now, audit);
+  const costCenterCapabilities = deriveCostCenterCapabilities({ providers: modelProviders });
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
     tasks,
@@ -391,6 +423,16 @@ export async function createProductionControlPlaneRuntime(
       listTargets: (...a: Parameters<typeof deployments.listTargets>) => deployments.listTargets(...a),
     },
     releaseCapabilities,
+    costCenter: {
+      usage: { listByProject: (...a: Parameters<typeof usageLedger.listByProject>) => usageLedger.listByProject(...a) },
+      budgetPolicy: {
+        get: (...a: Parameters<typeof budgetPolicies.get>) => budgetPolicies.get(...a),
+        set: (...a: Parameters<typeof budgetPolicies.set>) => budgetPolicies.set(...a),
+      },
+      enforcer: { evaluate: (...a: Parameters<typeof budgetEnforcer.evaluate>) => budgetEnforcer.evaluate(...a) },
+    },
+    costCenterCapabilities,
+    auditor: { run: (...a: Parameters<typeof ruleAuditor.run>) => ruleAuditor.run(...a) },
     executionReceipts,
     executionRecords,
     environmentAdapters,
@@ -489,6 +531,13 @@ export async function createProductionControlPlaneRuntime(
     query,
     command,
     release: { verification, sourceControl, deployments },
+    costCenter: {
+      modelProviders,
+      usage: usageLedger,
+      budgetPolicies,
+      enforcer: budgetEnforcer,
+      auditor: ruleAuditor,
+    },
     environmentDetector,
     flush: () => repositories.flushAll(),
   });
