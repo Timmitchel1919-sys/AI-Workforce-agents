@@ -74,21 +74,31 @@ test("production bootstrap validates and materializes trusted bindings", () => {
   assert.equal(Object.isFrozen(bootstrap.report), true);
 });
 
-test("the authoritative production configuration resolves only its real OpenAI binding", () => {
+test("the authoritative production configuration resolves its real OpenAI-backed agents (EO-8: control-plane-analysis + Developer/QA/Project Manager) and zero tools", () => {
   const bootstrap = createProductionWorkforceBootstrap(
     PRODUCTION_WORKFORCE_CONFIGURATION,
   );
-  assert.equal(bootstrap.report.agentCount, 1);
+  assert.equal(bootstrap.report.agentCount, 4);
   assert.equal(bootstrap.report.toolCount, 0);
   assert.equal(bootstrap.report.operational, true);
   assert.equal(
     bootstrap.agents.require("control-plane-analysis-agent").name,
     "Control Plane Analysis Agent",
   );
+  assert.equal(bootstrap.agents.require("developer-agent").name, "Developer Agent");
+  assert.equal(bootstrap.agents.require("qa-agent").name, "QA Agent");
   assert.equal(
-    bootstrap.agentExecutors.has("control-plane-analysis-agent"),
-    true,
+    bootstrap.agents.require("project-manager-agent").name,
+    "Project Manager Agent",
   );
+  for (const id of [
+    "control-plane-analysis-agent",
+    "developer-agent",
+    "qa-agent",
+    "project-manager-agent",
+  ]) {
+    assert.equal(bootstrap.agentExecutors.has(id), true, `expected an executor bound for ${id}`);
+  }
 });
 
 test("production registers exactly one real project: Money Mind, with an honest unavailable source", async () => {

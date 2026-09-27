@@ -38,7 +38,8 @@ export interface ExecutionPlanningServiceOptions {
     repository?: ExecutionPlanRepository;
     models?: ModelCapabilityRegistry;
     catalog?: TechnologyCatalog;
-    isAgentEnabled?: (agentId: string) => boolean;
+    /** EO-8: `projectId` lets project-scoped disable/enable override the global default. */
+    isAgentEnabled?: (agentId: string, projectId: string) => boolean;
     /** When provided, plans can only be created for existing projects. */
     projectExists?: (projectId: string) => boolean;
     clock?: () => string;

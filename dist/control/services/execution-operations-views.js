@@ -210,7 +210,8 @@ export async function getExecutionSessionDetail(ctx, principal, projectId, sessi
                 agentId: agent.id,
                 name: agent.name,
                 capabilities: agent.capabilities,
-                enabled: ctx.agentOps.isEnabled(agent.id),
+                // EO-8: this session belongs to `projectId` — the project-scoped status (most-specific-wins) is the one that actually governed dispatch.
+                enabled: ctx.agentOps.isEnabled(agent.id, projectId),
             }
             : { agentId: session.agentId, registered: false },
         model: agent?.modelPolicy

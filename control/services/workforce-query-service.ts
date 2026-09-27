@@ -492,7 +492,8 @@ export class WorkforceQueryService {
         (agent): agent is NonNullable<typeof agent> => agent !== undefined,
       )
       .map((agent) =>
-        deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit),
+        // EO-8: project-scoped (most-specific-wins over a global disable) — this IS a per-project view.
+        deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id, projectId), audit),
       );
   }
 

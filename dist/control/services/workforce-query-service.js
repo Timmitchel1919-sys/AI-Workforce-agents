@@ -338,7 +338,9 @@ export class WorkforceQueryService {
         return this.connectedAgentIds(projectId)
             .map((agentId) => byId.get(agentId))
             .filter((agent) => agent !== undefined)
-            .map((agent) => deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit));
+            .map((agent) => 
+        // EO-8: project-scoped (most-specific-wins over a global disable) — this IS a per-project view.
+        deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id, projectId), audit));
     }
     /* -------------------------------------------------------------- */
     /* tools                                                         */

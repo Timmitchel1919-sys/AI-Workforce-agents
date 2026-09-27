@@ -53,12 +53,15 @@ export class AgentQualificationRouter {
      *
      * AVAILABLE AGENT ≠ QUALIFIED AGENT.
      */
-    evaluateCandidates(agents, requirement, isEnabled = () => true) {
+    evaluateCandidates(agents, requirement, 
+    // EO-8: `projectId` lets a caller answer "enabled for THIS project" (most-specific-wins over a
+    // global disable), not just "enabled anywhere" — see `AgentOperationalStore.isEnabled`.
+    isEnabled = () => true) {
         return [...agents]
             .sort((a, b) => a.id.localeCompare(b.id))
             .map((agent) => {
             const reasons = [];
-            if (!isEnabled(agent.id))
+            if (!isEnabled(agent.id, requirement.projectId))
                 reasons.push("agent_disabled");
             if (agent.allowedProjects.length > 0 &&
                 !agent.allowedProjects.includes(requirement.projectId)) {

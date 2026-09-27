@@ -526,7 +526,9 @@ export class ExecutionPlanningService {
                 id: a.id,
                 capabilities: [...a.capabilities].sort(),
                 allowedProjects: [...a.allowedProjects].sort(),
-                enabled: isEnabled(a.id),
+                // EO-8: a project-scoped enable/disable must also invalidate this fingerprint — the
+                // fingerprint's whole purpose is to change whenever a planning-relevant input does.
+                enabled: isEnabled(a.id, request.projectId),
                 modelPolicy: a.modelPolicy
                     ? { provider: a.modelPolicy.provider, model: a.modelPolicy.model }
                     : undefined,

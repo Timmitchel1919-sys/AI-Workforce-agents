@@ -6,8 +6,28 @@
  * server-side only when the executor is invoked.
  */
 import type { Agent, EnvironmentDescriptor } from "../contracts/index.js";
+import { DeveloperAgent } from "../agents/developer/index.js";
+import { QaAgent } from "../agents/qa/index.js";
+import { ProjectManagerAgent } from "../agents/project-manager/index.js";
+import { AuditLog } from "../core/index.js";
 import type { ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
 export declare const CONTROL_PLANE_ANALYSIS_AGENT: Agent;
+export declare const DEVELOPER_AGENT: Agent;
+export declare const QA_AGENT: Agent;
+export declare const PROJECT_MANAGER_AGENT: Agent;
+/**
+ * Bootstrap-time-only executor bindings for the three specialist agents.
+ * `createProductionWorkforceBootstrap` calls these eagerly at construction,
+ * before the Model Router / Cost Center exist in the composition root — the
+ * SAME reason `openai-control-plane-analysis` below binds an audit-only
+ * factory here. Every one of these three is immediately swapped for a
+ * routed, metered instance via `RoutingAgentExecutor.replace` once the
+ * Router exists (see `production-control-plane.ts`); nothing reaches this
+ * unrouted, ungoverned binding for a real request.
+ */
+export declare const createBootstrapDeveloperAgentExecutor: (audit: AuditLog) => DeveloperAgent;
+export declare const createBootstrapQaAgentExecutor: (audit: AuditLog) => QaAgent;
+export declare const createBootstrapProjectManagerAgentExecutor: (audit: AuditLog) => ProjectManagerAgent;
 /**
  * The first internal production project: the AI Workforce platform itself,
  * represented by its own read-only adapter. Registration only makes the project

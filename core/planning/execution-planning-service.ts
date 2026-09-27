@@ -76,7 +76,8 @@ export interface ExecutionPlanningServiceOptions {
   repository?: ExecutionPlanRepository;
   models?: ModelCapabilityRegistry;
   catalog?: TechnologyCatalog;
-  isAgentEnabled?: (agentId: string) => boolean;
+  /** EO-8: `projectId` lets project-scoped disable/enable override the global default. */
+  isAgentEnabled?: (agentId: string, projectId: string) => boolean;
   /** When provided, plans can only be created for existing projects. */
   projectExists?: (projectId: string) => boolean;
   clock?: () => string;
@@ -686,7 +687,9 @@ export class ExecutionPlanningService {
           id: a.id,
           capabilities: [...a.capabilities].sort(),
           allowedProjects: [...a.allowedProjects].sort(),
-          enabled: isEnabled(a.id),
+          // EO-8: a project-scoped enable/disable must also invalidate this fingerprint — the
+          // fingerprint's whole purpose is to change whenever a planning-relevant input does.
+          enabled: isEnabled(a.id, request.projectId),
           modelPolicy: a.modelPolicy
             ? { provider: a.modelPolicy.provider, model: a.modelPolicy.model }
             : undefined,

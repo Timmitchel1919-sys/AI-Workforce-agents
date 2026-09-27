@@ -336,10 +336,22 @@ export type ApprovalRiskLevel = (typeof APPROVAL_RISK_LEVELS)[number];
 /**
  * Control-plane-owned operational flag for an agent. The `AgentRegistry`
  * definition is never mutated; this lives alongside it.
+ *
+ * EO-8: `projectId` is `undefined` for the GLOBAL record (`id === agentId`,
+ * the only kind that existed before this layer) and set for a PROJECT-SCOPED
+ * override (`id === "${agentId}\u0000${projectId}"`). Most-specific-wins: a
+ * project-scoped record, when one exists for the project in question,
+ * decides `enabled` on its own — it can disable an agent for one project
+ * while the agent stays enabled everywhere else, or keep an agent enabled
+ * for one project while it is disabled everywhere else. Only the SAME
+ * admin-only capability (`disable_agent`/`enable_agent`) can set either kind
+ * of record, so this is an operational scoping tool, not a privilege
+ * boundary (see `AgentOperationalStore.isEnabled`).
  */
 export interface AgentOperationalRecord {
   id: string;
   agentId: string;
+  projectId?: string;
   enabled: boolean;
   disabledBy?: string;
   disabledReason?: string;
@@ -714,6 +726,8 @@ export interface WorkflowCommandInput {
 export interface AgentCommandInput {
   agentId: string;
   reason?: string;
+  /** EO-8: when supplied, scopes enable/disable to this project only (most-specific-wins). Omitted = the global record, unchanged from before this layer. */
+  projectId?: string;
 }
 /** The body IS the planning request; it is validated and normalized server-side. */
 export type CreateExecutionPlanCommandInput = Record<string, unknown>;

@@ -100,7 +100,8 @@ export interface ExecutionManagerOptions {
   planning: Pick<ExecutionPlanningService, "get" | "latest" | "refreshSeries">;
   approvals: Pick<ApprovalSystem, "get">;
   agents: { get(id: string): Agent | undefined };
-  isAgentEnabled?: (agentId: string) => boolean;
+  /** EO-8: `projectId` lets project-scoped disable/enable override the global default. */
+  isAgentEnabled?: (agentId: string, projectId: string) => boolean;
   environments: EnvironmentRegistry;
   tools: Pick<ToolRegistry, "get">;
   projects: { has(projectId: string): boolean };

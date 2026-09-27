@@ -25,6 +25,6 @@ export declare class AgentQualificationRouter {
     evaluateCandidates(agents: readonly Agent[], requirement: {
         projectId: string;
         requiredCapabilities: readonly string[];
-    }, isEnabled?: (agentId: string) => boolean): AgentCandidateEvidence[];
+    }, isEnabled?: (agentId: string, projectId: string) => boolean): AgentCandidateEvidence[];
     route(agent: Agent, requirement: EnvironmentRequirement): AgentRouteResult;
 }

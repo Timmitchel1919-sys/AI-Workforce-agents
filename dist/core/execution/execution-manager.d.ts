@@ -31,7 +31,8 @@ export interface ExecutionManagerOptions {
     agents: {
         get(id: string): Agent | undefined;
     };
-    isAgentEnabled?: (agentId: string) => boolean;
+    /** EO-8: `projectId` lets project-scoped disable/enable override the global default. */
+    isAgentEnabled?: (agentId: string, projectId: string) => boolean;
     environments: EnvironmentRegistry;
     tools: Pick<ToolRegistry, "get">;
     projects: {

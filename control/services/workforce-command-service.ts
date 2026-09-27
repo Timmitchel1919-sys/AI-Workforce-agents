@@ -1786,27 +1786,60 @@ export class WorkforceCommandService {
       );
     }
 
-    const currentlyEnabled = this.ctx.agentOps.isEnabled(agentId);
+    // EO-8: an optional projectId scopes this to one project (most-specific-wins over the global
+    // record) rather than the agent everywhere. Validated the same way every other project-scoped
+    // command in this service is: a real, registered project, and this principal may access it —
+    // the command is admin-only today (admins are typically allowedProjects: "*"), but this stays
+    // correct if a narrower role ever gains it, same discipline as every other project-scoped path.
+    const projectId = input.projectId?.trim() || undefined;
+    if (projectId !== undefined) {
+      if (!this.ctx.projects.has(projectId)) {
+        return this.audited(
+          principal,
+          command,
+          "rejected",
+          agentId,
+          "unknown project",
+          { projectId },
+          run,
+          "not_found",
+        );
+      }
+      if (!operatorCanAccessProject(principal, projectId)) {
+        return this.audited(
+          principal,
+          command,
+          "denied",
+          agentId,
+          `role "${principal.role}" may not act on project "${projectId}"`,
+          { projectId },
+          run,
+        );
+      }
+    }
+
+    const currentlyEnabled = this.ctx.agentOps.isEnabled(agentId, projectId);
     if (currentlyEnabled === enabled) {
       return this.audited(
         principal,
         command,
         "rejected",
         agentId,
-        `agent is already ${enabled ? "enabled" : "disabled"}`,
-        {},
+        `agent is already ${enabled ? "enabled" : "disabled"}${projectId ? ` for project "${projectId}"` : ""}`,
+        { projectId },
         run,
         "invalid_state",
       );
     }
 
     if (enabled) {
-      this.ctx.agentOps.enable(agentId, principal.id);
+      this.ctx.agentOps.enable(agentId, principal.id, projectId);
     } else {
       this.ctx.agentOps.disable(
         agentId,
         principal.id,
         input.reason ?? "disabled by operator",
+        projectId,
       );
     }
 
@@ -1816,9 +1849,9 @@ export class WorkforceCommandService {
       "executed",
       agentId,
       enabled
-        ? "agent enabled — may receive new tasks again"
-        : "agent disabled — will not receive new tasks; running work is left to finish",
-      { reason: input.reason },
+        ? `agent enabled${projectId ? ` for project "${projectId}"` : ""} — may receive new tasks again`
+        : `agent disabled${projectId ? ` for project "${projectId}"` : ""} — will not receive new tasks; running work is left to finish`,
+      { reason: input.reason, projectId },
       run,
     );
   }

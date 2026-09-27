@@ -16,6 +16,7 @@ import {
   type EnvironmentRequirement,
   type Handoff,
   type HostInstance,
+  type ModelRequirementProfile,
   type SoftwareFactoryEnvironmentProvider,
   type SoftwareFactoryProgram,
   type SoftwareFactoryTaskAlias,
@@ -82,6 +83,7 @@ import {
   ModelCapabilityRegistry,
   ModelProviderRegistry,
   ModelRouter,
+  RoutedModelProvider,
   RuleAuditor,
   SourceControlOrchestrator,
   UnavailableArtifactSource,
@@ -98,6 +100,9 @@ import {
   LazyOpenAIModelProvider,
   createProductionOpenAIAgentExecutor,
 } from "../agents/control-plane-analysis/index.js";
+import { DEVELOPER_AGENT_ID, DeveloperAgent } from "../agents/developer/index.js";
+import { QA_AGENT_ID, QaAgent } from "../agents/qa/index.js";
+import { PROJECT_MANAGER_AGENT_ID, ProjectManagerAgent } from "../agents/project-manager/index.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
@@ -282,7 +287,7 @@ export async function createProductionControlPlaneRuntime(
     store: new FirestoreExecutionPlanStore(transactionalFirestore, {
       collectionPrefix: options.collectionPrefix,
     }),
-    isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+    isAgentEnabled: (agentId, projectId) => agentOps.isEnabled(agentId, projectId),
     projectExists: (projectId) => bootstrap.projects.has(projectId),
   });
   // AUTHZ-1: operator accounts (Firestore, transactional) are the only source
@@ -338,7 +343,7 @@ export async function createProductionControlPlaneRuntime(
     planning,
     approvals,
     agents: bootstrap.agents,
-    isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+    isAgentEnabled: (agentId, projectId) => agentOps.isEnabled(agentId, projectId),
     environments: environmentRegistry,
     tools: bootstrap.tools,
     projects: bootstrap.projects,
@@ -433,6 +438,57 @@ export async function createProductionControlPlaneRuntime(
   bootstrap.agentExecutors.replace(
     CONTROL_PLANE_ANALYSIS_AGENT_ID,
     createProductionOpenAIAgentExecutor(audit, { router: modelRouter, usageLedger }),
+  );
+  // EO-8: the three specialist agents (Developer/QA/Project Manager) were fully implemented and
+  // tested but never wired into any production composition root. Same two-phase pattern as the
+  // control-plane analysis agent above: `production-workforce-config.ts` binds each to a real but
+  // UNROUTED provider at bootstrap time (before the Router/Cost Center exist), and this replaces
+  // that binding with one wrapped in `RoutedModelProvider` — routed before every call, metered
+  // after a successful one, requested-vs-actual model mismatches audited — the SAME reviewed EO-7
+  // pipeline, generalized to any plain `ModelProvider`-based agent. Nothing reaches the unrouted
+  // binding for a real request; it exists only for the instant between bootstrap and this call.
+  const specialistRequirement: ModelRequirementProfile = { requiredCapabilities: ["reasoning", "structured_output"] };
+  bootstrap.agentExecutors.replace(
+    DEVELOPER_AGENT_ID,
+    new DeveloperAgent({
+      audit,
+      model: new RoutedModelProvider({
+        inner: new LazyOpenAIModelProvider(),
+        router: modelRouter,
+        agent: bootstrap.agents.require(DEVELOPER_AGENT_ID),
+        requirement: specialistRequirement,
+        usageLedger,
+        audit,
+      }),
+    }),
+  );
+  bootstrap.agentExecutors.replace(
+    QA_AGENT_ID,
+    new QaAgent({
+      audit,
+      model: new RoutedModelProvider({
+        inner: new LazyOpenAIModelProvider(),
+        router: modelRouter,
+        agent: bootstrap.agents.require(QA_AGENT_ID),
+        requirement: specialistRequirement,
+        usageLedger,
+        audit,
+      }),
+    }),
+  );
+  bootstrap.agentExecutors.replace(
+    PROJECT_MANAGER_AGENT_ID,
+    new ProjectManagerAgent({
+      audit,
+      model: new RoutedModelProvider({
+        inner: new LazyOpenAIModelProvider(),
+        router: modelRouter,
+        agent: bootstrap.agents.require(PROJECT_MANAGER_AGENT_ID),
+        requirement: specialistRequirement,
+        usageLedger,
+        audit,
+      }),
+    }),
   );
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
