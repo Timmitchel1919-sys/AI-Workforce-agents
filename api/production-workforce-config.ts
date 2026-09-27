@@ -163,6 +163,8 @@ export function createMoneyMindProductionBinding(
   });
 }
 
+import { V1_SPECIALIST_WORKFORCE } from "../contracts/workforce.js";
+
 export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguration =
   Object.freeze({
     agents: Object.freeze([
@@ -173,6 +175,10 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguratio
       Object.freeze({ definition: DEVELOPER_AGENT, executorKey: "openai-developer" }),
       Object.freeze({ definition: QA_AGENT, executorKey: "openai-qa" }),
       Object.freeze({ definition: PROJECT_MANAGER_AGENT, executorKey: "openai-project-manager" }),
+      ...V1_SPECIALIST_WORKFORCE.map(agent => Object.freeze({
+        definition: agent,
+        executorKey: "openai-developer"
+      }))
     ]),
     executorBindings: Object.freeze({
       "openai-control-plane-analysis": createProductionOpenAIAgentExecutor,
