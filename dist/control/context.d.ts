@@ -3,7 +3,7 @@
  * services read from and act through. Everything is injected — the Control
  * Plane owns none of it and constructs none of it.
  */
-import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, TechnologyCatalog, ExecutionPlanningService, ExecutionManager, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem, type BudgetEnforcer, type BudgetPolicyStore, type DeploymentOrchestrator, type EnvironmentAdapterRegistry, type GovernancePolicyEngine, type GovernancePolicyStore, type InMemoryExecutionReceiptStore, type RuleAuditor, type SourceControlOrchestrator, type UsageLedger, type VerificationService } from "../core/index.js";
+import { AgentRegistry, ApprovalSystem, AuditLog, AccessService, EnvironmentRegistry, TechnologyCatalog, ExecutionPlanningService, ExecutionManager, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem, type BudgetEnforcer, type BudgetPolicyStore, type DeploymentOrchestrator, type EnvironmentAdapterRegistry, type GovernancePolicyEngine, type GovernancePolicyStore, type InMemoryExecutionReceiptStore, type ModelRouter, type RuleAuditor, type SourceControlOrchestrator, type UsageLedger, type VerificationService } from "../core/index.js";
 import type { CostCenterCapabilities, ExecutionRecordStore, ReleaseCapabilities, WorkspaceControl } from "../contracts/index.js";
 import { type HealthProbe } from "./health.js";
 import { type ControlEventPublisher } from "./ports.js";
@@ -80,6 +80,14 @@ export interface ControlPlaneContext {
     governance?: {
         policy: Pick<GovernancePolicyStore, "get" | "set">;
         engine: Pick<GovernancePolicyEngine, "evaluate">;
+    };
+    /**
+     * EO-7 Model Router: capability + provider-availability + governance
+     * filtering, ranking and a reconstructable decision. Absent => not
+     * composed at all (routing-history routes 404).
+     */
+    routing?: {
+        router: Pick<ModelRouter, "get" | "listByProject">;
     };
     /** EO-4.5 environment execution adapter/runner status. */
     environmentAdapters?: Pick<EnvironmentAdapterRegistry, "status">;

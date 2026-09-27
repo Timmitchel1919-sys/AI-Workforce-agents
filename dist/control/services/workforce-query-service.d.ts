@@ -358,6 +358,19 @@ export declare class WorkforceQueryService {
         configured: true;
         policy: import("../../contracts/governance.js").GovernancePolicy | null;
     } | undefined>;
+    /** EO-7 routing decision history (bounded, newest first). */
+    getProjectRoutingDecisions(principal: OperatorPrincipal, projectId: string): Promise<{
+        configured: false;
+        decisions?: undefined;
+    } | {
+        configured: true;
+        decisions: import("../../contracts/routing.js").RoutingDecision[];
+    } | undefined>;
+    /** EO-7 one routing decision — undefined for an unknown id OR one belonging to another project. */
+    getProjectRoutingDecision(principal: OperatorPrincipal, projectId: string, routingDecisionId: string): Promise<{
+        configured: true;
+        decision: import("../../contracts/routing.js").RoutingDecision;
+    } | undefined>;
     /** EO-4.5 environment execution status (real runners only count). */
     getExecutionEnvironments(principal: OperatorPrincipal): {
         configured: boolean;

@@ -79,7 +79,9 @@ import {
   DeploymentOrchestrator,
   GovernancePolicyEngine,
   GovernancePolicyStore,
+  ModelCapabilityRegistry,
   ModelProviderRegistry,
+  ModelRouter,
   RuleAuditor,
   SourceControlOrchestrator,
   UnavailableArtifactSource,
@@ -91,6 +93,11 @@ import {
   deriveReleaseCapabilities,
   now,
 } from "../core/index.js";
+import {
+  CONTROL_PLANE_ANALYSIS_AGENT_ID,
+  LazyOpenAIModelProvider,
+  createProductionOpenAIAgentExecutor,
+} from "../agents/control-plane-analysis/index.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
@@ -135,6 +142,11 @@ export interface ProductionControlPlaneRuntime {
     readonly auditor: RuleAuditor;
     readonly governancePolicies: GovernancePolicyStore;
     readonly governanceEngine: GovernancePolicyEngine;
+  };
+  /** EO-7: the FULL Model Router services. The context exposes only read views. */
+  readonly routing: {
+    readonly modelCapabilities: ModelCapabilityRegistry;
+    readonly router: ModelRouter;
   };
   /** Environment discovery orchestration (no live probes wired in EO-2A). */
   readonly environmentDetector: EnvironmentDetector;
@@ -205,6 +217,14 @@ export async function createProductionControlPlaneRuntime(
     new ProbeRegistry(),
     audit,
   );
+  // EO-7: a REAL, declared capability profile for the one real provider this deployment has —
+  // never fabricated (no vision/coding/large_context claimed; only what this agent actually
+  // exercises: `generateStructured` and general text reasoning). No `model` is pinned — the
+  // profile matches whatever `OPENAI_MODEL` the provider is actually configured with at call
+  // time, which this composition root never reads (that stays inside the provider adapter).
+  const modelCapabilities = new ModelCapabilityRegistry([
+    { id: "openai-default", providerId: "openai", capabilities: ["reasoning", "structured_output"] },
+  ]);
   const bootstrap = createProductionWorkforceBootstrap(
     options.configuration ?? PRODUCTION_WORKFORCE_CONFIGURATION,
     audit,
@@ -256,6 +276,7 @@ export async function createProductionControlPlaneRuntime(
     agents: bootstrap.agents,
     audit,
     approvals,
+    models: modelCapabilities,
     // Authoritative + transactional (EO-3.2): no write-through cache, so
     // concurrent instances cannot fork or overwrite plan history.
     store: new FirestoreExecutionPlanStore(transactionalFirestore, {
@@ -388,10 +409,14 @@ export async function createProductionControlPlaneRuntime(
     deployments,
   });
   // EO-6.2/6.3: the AI Cost Center, rule-based Auditor and Governance Policy Engine. None of these
-  // need a model provider to exist — they are always composed here. What they can never do without
-  // one is see a real call: `modelProviders` is empty because production registers no model provider
-  // at all (no key, no adapter), so `costCenterCapabilities.enforcement` is honestly false.
+  // need a model provider to exist — they are always composed here.
+  // EO-7 registers the ONE real provider this deployment has: the SAME `LazyOpenAIModelProvider`
+  // the control-plane-analysis agent's executor uses, so `costCenterCapabilities.enforcement`
+  // truthfully flips to `true` — there IS a real, governable model-call path now, whether or not
+  // `OPENAI_API_KEY`/`OPENAI_MODEL` are actually configured (the provider itself still fails
+  // closed if they are absent; registering the FACTORY reads no secret).
   const modelProviders = new ModelProviderRegistry();
+  modelProviders.register("openai", () => new LazyOpenAIModelProvider());
   const usageLedger = new UsageLedger(executionRecords, now);
   const budgetPolicies = new BudgetPolicyStore(executionRecords, now, audit);
   const budgetEnforcer = new BudgetEnforcer(budgetPolicies, usageLedger, now);
@@ -399,6 +424,16 @@ export async function createProductionControlPlaneRuntime(
   const costCenterCapabilities = deriveCostCenterCapabilities({ providers: modelProviders });
   const governancePolicies = new GovernancePolicyStore(executionRecords, now, audit);
   const governanceEngine = new GovernancePolicyEngine(governancePolicies, budgetEnforcer, now, approvals, audit);
+  const modelRouter = new ModelRouter(modelCapabilities, modelProviders, governanceEngine, now, executionRecords, audit, budgetEnforcer, governancePolicies);
+  // This agent has no per-call cost pre-estimate to offer yet (see ADR-0029), so its one allowed
+  // project explicitly permits proceeding on unknown cost — the REAL budget hard-stop still
+  // applies regardless (`BudgetEnforcer.evaluateInternal`, checked unconditionally). Every OTHER
+  // project stays fail-closed by default (EO-6.3's reviewed, unchanged behavior).
+  await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
+  bootstrap.agentExecutors.replace(
+    CONTROL_PLANE_ANALYSIS_AGENT_ID,
+    createProductionOpenAIAgentExecutor(audit, { router: modelRouter, usageLedger }),
+  );
   const context: ControlPlaneContext = {
     agents: bootstrap.agents,
     tasks,
@@ -442,6 +477,12 @@ export async function createProductionControlPlaneRuntime(
         set: (...a: Parameters<typeof governancePolicies.set>) => governancePolicies.set(...a),
       },
       engine: { evaluate: (...a: Parameters<typeof governanceEngine.evaluate>) => governanceEngine.evaluate(...a) },
+    },
+    routing: {
+      router: {
+        get: (...a: Parameters<typeof modelRouter.get>) => modelRouter.get(...a),
+        listByProject: (...a: Parameters<typeof modelRouter.listByProject>) => modelRouter.listByProject(...a),
+      },
     },
     executionReceipts,
     executionRecords,
@@ -550,6 +591,7 @@ export async function createProductionControlPlaneRuntime(
       governancePolicies,
       governanceEngine,
     },
+    routing: { modelCapabilities, router: modelRouter },
     environmentDetector,
     flush: () => repositories.flushAll(),
   });

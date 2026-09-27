@@ -116,6 +116,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "projects/:projectId/operations", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations/:sessionId", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/cost", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/model-routing", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/model-routing/:routingDecisionId", element: withSuspense(<ProjectDetailPage />) },
       {
         path: "projects/:projectId/execution-plan",
         element: withSuspense(<ProjectDetailPage />),

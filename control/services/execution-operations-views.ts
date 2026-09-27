@@ -475,3 +475,32 @@ export async function getProjectGovernancePolicy(
   const policy = await ctx.governance.policy.get(principal, id);
   return { configured: true as const, policy: policy ?? null };
 }
+
+/** EO-7 — this project's routing decision history (bounded, newest first). */
+export async function getProjectRoutingDecisions(
+  ctx: ControlPlaneContext,
+  _principal: OperatorPrincipal,
+  projectId: string,
+) {
+  const id = requireExecutionId(projectId, "projectId");
+  if (!ctx.routing) return { configured: false as const };
+  const decisions = await ctx.routing.router.listByProject(id);
+  return { configured: true as const, decisions };
+}
+
+/** EO-7 — one routing decision, reconstructable (who requested it, what was rejected and why, what was selected). */
+export async function getProjectRoutingDecision(
+  ctx: ControlPlaneContext,
+  _principal: OperatorPrincipal,
+  projectId: string,
+  routingDecisionId: string,
+) {
+  const id = requireExecutionId(projectId, "projectId");
+  if (!ctx.routing) return undefined;
+  const decision = await ctx.routing.router.get(id, requireExecutionId(routingDecisionId, "routingDecisionId"));
+  // A decision id that exists but belongs to a DIFFERENT project must read as "not found" —
+  // never leak that it exists elsewhere. `get` is keyed only by decision id in the ledger, so the
+  // project match is verified here, not assumed.
+  if (!decision || decision.projectId !== id) return undefined;
+  return { configured: true as const, decision };
+}

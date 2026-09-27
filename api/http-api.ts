@@ -526,6 +526,23 @@ export function createControlPlaneApi(
             correlationId,
           );
         }
+        // EO-7 routing decision history / one reconstructable decision.
+        if (segs.length === 3 && segs[2] === "routing-decisions") {
+          return send(
+            res,
+            200,
+            notNull(await query.getProjectRoutingDecisions(principal, id!)),
+            correlationId,
+          );
+        }
+        if (segs.length === 4 && segs[2] === "routing-decisions") {
+          return send(
+            res,
+            200,
+            notNull(await query.getProjectRoutingDecision(principal, id!, segs[3]!)),
+            correlationId,
+          );
+        }
         // `GET /projects/:projectId/execution-sessions` (EO-4.1, metadata only)
         if (segs.length === 3 && segs[2] === "execution-sessions") {
           return send(

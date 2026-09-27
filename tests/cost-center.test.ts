@@ -69,6 +69,12 @@ test("PRICE: a known model prices from the tokens the provider actually reported
   }
 });
 
+test("PRICE: a differently-cased but identical model id still finds its real price — never wrongly 'unpriced' by case alone", () => {
+  const estimate = estimateCost("Claude-Sonnet-5", { inputTokens: 1000, outputTokens: 500 });
+  assert.equal(estimate.priced, true);
+  if (estimate.priced) assert.ok(Math.abs(estimate.amountUsd - 0.0105) < 1e-9);
+});
+
 test("PRICE: an unlisted model is honestly unpriced, never a guessed number", () => {
   const estimate = estimateCost("some-future-model", { inputTokens: 1000, outputTokens: 500 });
   assert.equal(estimate.priced, false);
@@ -120,9 +126,19 @@ test("BUDGET EVAL: reaching a non-hard-stop limit only warns, never blocks", () 
   assert.equal(result.status, "warning");
 });
 
-test("BUDGET EVAL: unpriced usage is reported even when the priced total looks fine", () => {
+test("BUDGET EVAL: unpriced usage under a hard-stop with a real limit BLOCKS — the priced total looking fine proves nothing about the unpriced portion", () => {
+  // `policy()` defaults to hardStop:true with a $10 daily limit — exactly the case where "the
+  // priced total is $0, so it must be fine" would let unbounded, unverified real spend through a
+  // policy whose entire purpose is to stop it. CRITICAL fix: this must be blocked, not "unpriced".
   const result = evaluateBudget(policy(), { daily: 0, monthly: 0, task: 0 }, 3);
-  assert.equal(result.status, "unpriced");
+  assert.equal(result.status, "blocked");
+});
+
+test("BUDGET EVAL: unpriced usage with NO hard-stop, or NO limit configured at all, is only advisory (\"unpriced\") — never blocked when there is nothing to enforce", () => {
+  const softPolicy = policy({ hardStop: false });
+  assert.equal(evaluateBudget(softPolicy, { daily: 0, monthly: 0, task: 0 }, 3).status, "unpriced");
+  const noLimitPolicy = policy({ dailyLimitUsd: undefined, hardStop: true });
+  assert.equal(evaluateBudget(noLimitPolicy, { daily: 0, monthly: 0, task: 0 }, 3).status, "unpriced");
 });
 
 test("BUDGET EVAL: the tightest breached scope wins even if a looser scope has room", () => {

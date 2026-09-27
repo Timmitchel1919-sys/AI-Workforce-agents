@@ -97,37 +97,40 @@ async function withServer<T>(
   }
 }
 
-test("the production runtime composes the Cost Center for real (ledger, budget gate, rule auditor) even with zero providers", async () => {
+test("the production runtime composes the Cost Center for real (ledger, budget gate, rule auditor); EO-7 registers the one real provider this deployment has", async () => {
   const rt = await createProductionControlPlaneRuntime({ services: services() });
   assert.ok(rt.context.costCenter, "the Cost Center is composed, not absent");
   assert.ok(rt.context.auditor, "the rule auditor is composed");
   const caps = rt.context.costCenterCapabilities!;
-  assert.equal(caps.enforcement, false, "no provider is registered in production => enforcement is honestly inert");
-  assert.deepEqual(caps.providerIds, []);
-  assert.deepEqual(inertCostCenterCapabilities(caps), ["enforcement"]);
+  // EO-7 wires the control-plane-analysis agent's REAL OpenAI path through this SAME registry, so
+  // enforcement is honestly `true` now — whether or not OPENAI_API_KEY/OPENAI_MODEL are actually
+  // configured (the provider itself still fails closed if they are absent).
+  assert.equal(caps.enforcement, true, "a real provider is registered in production");
+  assert.deepEqual(caps.providerIds, ["openai"]);
+  assert.deepEqual(inertCostCenterCapabilities(caps), []);
   await rt.flush();
 });
 
-test("registering a provider flips the SAME capabilities object live — derived, never a snapshot", async () => {
+test("registering a SECOND provider still flips the SAME capabilities object live — derived, never a snapshot", async () => {
   const rt = await createProductionControlPlaneRuntime({ services: services() });
   const caps = rt.context.costCenterCapabilities!;
-  assert.equal(caps.enforcement, false);
+  assert.deepEqual(caps.providerIds, ["openai"]);
   rt.costCenter.modelProviders.register("fake", () => new FakeProvider());
   assert.equal(caps.enforcement, true, "the composed registry is the SAME instance the capabilities read from");
-  assert.deepEqual(caps.providerIds, ["fake"]);
+  assert.deepEqual(caps.providerIds, ["fake", "openai"]);
   await rt.flush();
 });
 
-test("GET cost report: RECORDED != ENFORCED — no budget policy is NOT_CONFIGURED, and enforcement is honestly inert", async () => {
+test("GET cost report: RECORDED != ENFORCED — no budget policy is NOT_CONFIGURED, even though the platform CAN now enforce one (a real provider exists)", async () => {
   const rt = await createProductionControlPlaneRuntime({ services: services() });
   await withServer(rt, async (get) => {
     const res = await get("/api/projects/ai-workforce/cost", "admin");
     assert.equal(res.status, 200);
     assert.equal(res.json.configured, true, "the Cost Center itself is composed");
-    assert.equal(res.json.budgetPolicy, null, "no policy has been set for this project");
+    assert.equal(res.json.budgetPolicy, null, "no policy has been set for THIS project");
     assert.equal(res.json.evaluation?.status, "not_configured");
     assert.deepEqual(res.json.usage, []);
-    assert.equal(res.json.capabilities?.enforcement, false);
+    assert.equal(res.json.capabilities?.enforcement, true, "recording a policy is a separate fact from whether enforcement CAN run at all");
     assert.equal(res.headers.get("cache-control"), "no-store");
   });
 });

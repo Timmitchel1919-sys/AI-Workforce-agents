@@ -322,3 +322,16 @@ export declare function getProjectGovernancePolicy(ctx: ControlPlaneContext, pri
     configured: true;
     policy: import("../../contracts/governance.js").GovernancePolicy | null;
 }>;
+/** EO-7 — this project's routing decision history (bounded, newest first). */
+export declare function getProjectRoutingDecisions(ctx: ControlPlaneContext, _principal: OperatorPrincipal, projectId: string): Promise<{
+    configured: false;
+    decisions?: undefined;
+} | {
+    configured: true;
+    decisions: import("../../contracts/routing.js").RoutingDecision[];
+}>;
+/** EO-7 — one routing decision, reconstructable (who requested it, what was rejected and why, what was selected). */
+export declare function getProjectRoutingDecision(ctx: ControlPlaneContext, _principal: OperatorPrincipal, projectId: string, routingDecisionId: string): Promise<{
+    configured: true;
+    decision: import("../../contracts/routing.js").RoutingDecision;
+} | undefined>;

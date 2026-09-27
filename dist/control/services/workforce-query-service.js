@@ -11,7 +11,7 @@ import { deriveAgentView, deriveApprovalView, deriveAuditEventView, deriveToolVi
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
 import { executionPlanSummaryView, executionPlanView } from "../plan-views.js";
 import { redact } from "../redaction.js";
-import { getExecutionOverview, getExecutionSessionDetail, getProjectAuditFindings, getProjectCostReport, getProjectGovernancePolicy, getProjectReleases, getProjectVerifications, listExecutionSessions, } from "./execution-operations-views.js";
+import { getExecutionOverview, getExecutionSessionDetail, getProjectAuditFindings, getProjectCostReport, getProjectGovernancePolicy, getProjectReleases, getProjectRoutingDecision, getProjectRoutingDecisions, getProjectVerifications, listExecutionSessions, } from "./execution-operations-views.js";
 export class WorkforceQueryService {
     ctx;
     constructor(ctx) {
@@ -470,6 +470,22 @@ export class WorkforceQueryService {
             !operatorCanAccessProject(principal, projectId))
             return undefined;
         return getProjectGovernancePolicy(this.ctx, principal, projectId);
+    }
+    /** EO-7 routing decision history (bounded, newest first). */
+    async getProjectRoutingDecisions(principal, projectId) {
+        this.authorizeView(principal);
+        if (!this.ctx.projects.get(projectId) ||
+            !operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return getProjectRoutingDecisions(this.ctx, principal, projectId);
+    }
+    /** EO-7 one routing decision — undefined for an unknown id OR one belonging to another project. */
+    async getProjectRoutingDecision(principal, projectId, routingDecisionId) {
+        this.authorizeView(principal);
+        if (!this.ctx.projects.get(projectId) ||
+            !operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return getProjectRoutingDecision(this.ctx, principal, projectId, routingDecisionId);
     }
     /** EO-4.5 environment execution status (real runners only count). */
     getExecutionEnvironments(principal) {

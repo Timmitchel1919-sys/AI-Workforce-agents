@@ -92,7 +92,11 @@ export declare function validateBudgetPolicyDraft(input: unknown): Omit<BudgetPo
  * `not_configured` is distinct from `ok`: no policy is not the same as an
  * unlimited budget, it only means nothing has been asked to enforce a limit
  * yet. `unpriced` means real usage exists but its cost cannot be computed, so
- * the budget cannot be honestly evaluated against it.
+ * the budget cannot be honestly evaluated against it — EXCEPT under a
+ * hard-stop policy with a real limit configured, where unpriced usage
+ * escalates to `blocked` instead (see `evaluateBudget`): a hard-stop's whole
+ * purpose is to guarantee spend never passes the limit unverified, so
+ * "cannot verify" must never be treated as "assumed fine".
  */
 export declare const BUDGET_STATUSES: readonly ["not_configured", "ok", "warning", "blocked", "unpriced"];
 export type BudgetStatus = (typeof BUDGET_STATUSES)[number];

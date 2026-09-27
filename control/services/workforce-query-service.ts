@@ -74,6 +74,8 @@ import {
   getProjectCostReport,
   getProjectGovernancePolicy,
   getProjectReleases,
+  getProjectRoutingDecision,
+  getProjectRoutingDecisions,
   getProjectVerifications,
   listExecutionSessions,
 } from "./execution-operations-views.js";
@@ -703,6 +705,28 @@ export class WorkforceQueryService {
     )
       return undefined;
     return getProjectGovernancePolicy(this.ctx, principal, projectId);
+  }
+
+  /** EO-7 routing decision history (bounded, newest first). */
+  async getProjectRoutingDecisions(principal: OperatorPrincipal, projectId: string) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectRoutingDecisions(this.ctx, principal, projectId);
+  }
+
+  /** EO-7 one routing decision — undefined for an unknown id OR one belonging to another project. */
+  async getProjectRoutingDecision(principal: OperatorPrincipal, projectId: string, routingDecisionId: string) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectRoutingDecision(this.ctx, principal, projectId, routingDecisionId);
   }
 
   /** EO-4.5 environment execution status (real runners only count). */

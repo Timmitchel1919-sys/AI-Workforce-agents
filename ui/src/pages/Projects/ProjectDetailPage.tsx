@@ -11,6 +11,8 @@ import { ExecutionPlanTab } from "./plan/ExecutionPlanTab";
 import { OperationsTab } from "./operations/OperationsTab";
 import { SessionDetail } from "./operations/SessionDetail";
 import { CostCenterTab } from "./costCenter/CostCenterTab";
+import { ModelRoutingTab } from "./modelRouting/ModelRoutingTab";
+import { RoutingDecisionDetail } from "./modelRouting/RoutingDecisionDetail";
 import "./ExecutionPlan.css";
 
 /**
@@ -19,7 +21,7 @@ import "./ExecutionPlan.css";
  * whose role may view planning data — UX only; the Control Plane decides.
  */
 export default function ProjectDetailPage() {
-  const { projectId, sessionId } = useParams<{ projectId: string; sessionId?: string }>();
+  const { projectId, sessionId, routingDecisionId } = useParams<{ projectId: string; sessionId?: string; routingDecisionId?: string }>();
   const pathname = useLocation().pathname;
   const tab = pathname.endsWith("/execution-plan")
     ? "execution-plan"
@@ -27,7 +29,9 @@ export default function ProjectDetailPage() {
       ? "operations"
       : pathname.includes("/cost")
         ? "cost"
-        : "overview";
+        : pathname.includes("/model-routing")
+          ? "model-routing"
+          : "overview";
   const { t } = useI18n();
   const { accessDetails } = useAuth();
   const { status, project, refetch } = useProject(projectId);
@@ -78,6 +82,11 @@ export default function ProjectDetailPage() {
               {t("costCenter.tab")}
             </NavLink>
           ) : null}
+          {canViewPlans ? (
+            <NavLink to={`${base}/model-routing`} className="plan-tab">
+              {t("modelRouting.tab")}
+            </NavLink>
+          ) : null}
         </nav>
         {tab === "execution-plan" && canViewPlans ? (
           <ExecutionPlanTab projectId={project.projectId} projectName={project.displayName} />
@@ -89,6 +98,12 @@ export default function ProjectDetailPage() {
           )
         ) : tab === "cost" && canViewPlans ? (
           <CostCenterTab projectId={project.projectId} />
+        ) : tab === "model-routing" && canViewPlans ? (
+          routingDecisionId ? (
+            <RoutingDecisionDetail projectId={project.projectId} routingDecisionId={routingDecisionId} />
+          ) : (
+            <ModelRoutingTab projectId={project.projectId} />
+          )
         ) : (
           <ProjectOverview project={project} />
         )}

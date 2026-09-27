@@ -26,6 +26,7 @@ import {
   type GovernancePolicyEngine,
   type GovernancePolicyStore,
   type InMemoryExecutionReceiptStore,
+  type ModelRouter,
   type RuleAuditor,
   type SourceControlOrchestrator,
   type UsageLedger,
@@ -114,6 +115,14 @@ export interface ControlPlaneContext {
   governance?: {
     policy: Pick<GovernancePolicyStore, "get" | "set">;
     engine: Pick<GovernancePolicyEngine, "evaluate">;
+  };
+  /**
+   * EO-7 Model Router: capability + provider-availability + governance
+   * filtering, ranking and a reconstructable decision. Absent => not
+   * composed at all (routing-history routes 404).
+   */
+  routing?: {
+    router: Pick<ModelRouter, "get" | "listByProject">;
   };
   /** EO-4.5 environment execution adapter/runner status. */
   environmentAdapters?: Pick<EnvironmentAdapterRegistry, "status">;

@@ -61,7 +61,10 @@ export const MODEL_PRICES = Object.freeze({
  * never a guess.
  */
 export function estimateCost(model, usage) {
-    const price = MODEL_PRICES[model];
+    // MODEL_PRICES keys are lowercase by convention; a provider reporting a differently-cased but
+    // identical model id (e.g. "GPT-4o" vs "gpt-4o") must still find its real price, not silently
+    // come back "unpriced" (the same bug class fixed in the Model Router's own price lookup).
+    const price = MODEL_PRICES[model.toLowerCase()];
     if (!price)
         return { priced: false, reason: `no price entry for model "${model}"` };
     if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined)) {
@@ -101,7 +104,11 @@ export function validateBudgetPolicyDraft(input) {
  * `not_configured` is distinct from `ok`: no policy is not the same as an
  * unlimited budget, it only means nothing has been asked to enforce a limit
  * yet. `unpriced` means real usage exists but its cost cannot be computed, so
- * the budget cannot be honestly evaluated against it.
+ * the budget cannot be honestly evaluated against it — EXCEPT under a
+ * hard-stop policy with a real limit configured, where unpriced usage
+ * escalates to `blocked` instead (see `evaluateBudget`): a hard-stop's whole
+ * purpose is to guarantee spend never passes the limit unverified, so
+ * "cannot verify" must never be treated as "assumed fine".
  */
 export const BUDGET_STATUSES = ["not_configured", "ok", "warning", "blocked", "unpriced"];
 /**
@@ -158,6 +165,20 @@ export function evaluateBudget(policy, usedUsd, uncostedUsageCount) {
         }
     }
     if (uncostedUsageCount > 0) {
+        // A hard-stop policy with a real dollar limit exists specifically to guarantee spend never
+        // passes that limit unverified. Unpriced usage means the TRUE spend cannot be checked against
+        // it — the priced total staying under the limit proves nothing about the unpriced portion, so
+        // reporting "ok"/"unpriced" here would let real, unbounded spend continue past a policy whose
+        // entire point is to stop it. Fails closed to `blocked`, never silently `allow`ed as a lesser
+        // "advisory" state, whenever hardStop is actually configured with something to enforce.
+        const hasLimit = policy.taskLimitUsd !== undefined || policy.dailyLimitUsd !== undefined || policy.monthlyLimitUsd !== undefined;
+        if (policy.hardStop && hasLimit) {
+            return {
+                status: "blocked",
+                currency: "USD",
+                detail: `${uncostedUsageCount} usage event(s) could not be priced and this project's budget is hard-stopped — spend cannot be verified against the configured limit, so it is treated as blocked rather than assumed safe`,
+            };
+        }
         return {
             status: "unpriced",
             currency: "USD",

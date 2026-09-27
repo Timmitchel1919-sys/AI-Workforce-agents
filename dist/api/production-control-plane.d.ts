@@ -1,6 +1,6 @@
 import { type FirebaseServices } from "../adapters/firebase/index.js";
 import { WorkforceCommandService, WorkforceQueryService, type ControlPlaneContext } from "../control/index.js";
-import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelProviderRegistry, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
+import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { type ApiHandler } from "./http-api.js";
 import { type ProductionWorkforceBootstrap, type ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
@@ -34,6 +34,11 @@ export interface ProductionControlPlaneRuntime {
         readonly auditor: RuleAuditor;
         readonly governancePolicies: GovernancePolicyStore;
         readonly governanceEngine: GovernancePolicyEngine;
+    };
+    /** EO-7: the FULL Model Router services. The context exposes only read views. */
+    readonly routing: {
+        readonly modelCapabilities: ModelCapabilityRegistry;
+        readonly router: ModelRouter;
     };
     /** Environment discovery orchestration (no live probes wired in EO-2A). */
     readonly environmentDetector: EnvironmentDetector;

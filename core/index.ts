@@ -41,3 +41,4 @@ export * from "./access/index.js";
 export * from "./release/index.js";
 export * from "./onboarding/index.js";
 export * from "./cost-center/index.js";
+export * from "./routing/index.js";
