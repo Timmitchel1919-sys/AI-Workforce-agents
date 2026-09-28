@@ -20,7 +20,10 @@ import {
   type ModelResponse,
 } from "../../contracts/index.js";
 import type { AuditLog } from "../audit/audit-log.js";
-import { extractCorrelation, extractIdempotencyKey } from "../providers/request-correlation.js";
+import {
+  extractCorrelation,
+  extractIdempotencyKey,
+} from "../providers/request-correlation.js";
 import type { BudgetEnforcer } from "./budget-enforcer.js";
 import type { UsageLedger } from "./usage-ledger.js";
 
@@ -39,13 +42,23 @@ export class BudgetGovernedModelProvider implements ModelProvider {
   async generate(request: ModelRequest): Promise<ModelResponse> {
     const correlation = extractCorrelation(request);
     if (!correlation.projectId) {
-      throw new ValidationError("model request metadata.projectId is required for a budget-governed provider");
+      throw new ValidationError(
+        "model request metadata.projectId is required for a budget-governed provider",
+      );
     }
-    const evaluation = await this.enforcer.evaluateInternal(correlation.projectId, correlation.taskId);
+    const evaluation = await this.enforcer.evaluateInternal(
+      correlation.projectId,
+      correlation.taskId,
+    );
     if (evaluation.status === "blocked") {
       this.audit?.record("budget_blocked", {
         ...correlation,
-        data: { provider: this.inner.id, model: request.model ?? null, scope: evaluation.scope, detail: evaluation.detail },
+        data: {
+          provider: this.inner.id,
+          model: request.model ?? null,
+          scope: evaluation.scope,
+          detail: evaluation.detail,
+        },
       });
       throw new ExecutionDeniedError("RESOURCE_LIMIT", evaluation.detail);
     }
@@ -67,7 +80,12 @@ export class BudgetGovernedModelProvider implements ModelProvider {
     });
     this.audit?.record("usage_recorded", {
       ...correlation,
-      data: { usageId: usage.usageId, provider: usage.provider, model: usage.model, cost: usage.cost },
+      data: {
+        usageId: usage.usageId,
+        provider: usage.provider,
+        model: usage.model,
+        cost: usage.cost,
+      },
     });
     return response;
   }

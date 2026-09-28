@@ -239,7 +239,12 @@ export class WorkforceGraphProjectionService {
         const builder = this.buildFullGraph(projectId, `project-${project.projectId}`, execution);
         const nodes = [...builder.nodes.values()].sort(byId);
         const edges = [...builder.edges.values()].sort(byId);
-        return { nodes, edges, revision: contentRevision(nodes, edges, false), generatedAt: this.clock().toISOString() };
+        return {
+            nodes,
+            edges,
+            revision: contentRevision(nodes, edges, false),
+            generatedAt: this.clock().toISOString(),
+        };
     }
     buildBaseGraph(projectId, projectNodeId) {
         const b = new GraphBuilder();

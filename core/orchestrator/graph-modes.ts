@@ -225,7 +225,9 @@ export const MODE_DEFINITIONS: Readonly<Record<GraphMode, ModeDefinition>> = {
         rootIds: [ctx.requestedRoot ?? ctx.projectNodeId],
         ...(nodes.some((n) => lifecycle.has(n.type))
           ? {}
-          : { note: "No execution activity has been recorded for this project." }),
+          : {
+              note: "No execution activity has been recorded for this project.",
+            }),
       };
     },
   },

@@ -72,18 +72,54 @@ function provider(transport: OpenAIResponsesTransport): OpenAIModelProvider {
  * estimate to offer yet — see ADR — so its target project explicitly allows
  * unknown cost; the real budget hard-stop still applies regardless).
  */
-async function buildRouter(profileCapabilities: readonly ("reasoning" | "structured_output")[] = ["reasoning", "structured_output"], registerProvider = true) {
+async function buildRouter(
+  profileCapabilities: readonly ("reasoning" | "structured_output")[] = [
+    "reasoning",
+    "structured_output",
+  ],
+  registerProvider = true,
+) {
   const clock = () => "2026-01-01T00:00:00.000Z";
-  const profiles = new ModelCapabilityRegistry(profileCapabilities.length > 0 ? [{ id: "openai-default", providerId: "openai", capabilities: profileCapabilities }] : []);
+  const profiles = new ModelCapabilityRegistry(
+    profileCapabilities.length > 0
+      ? [
+          {
+            id: "openai-default",
+            providerId: "openai",
+            capabilities: profileCapabilities,
+          },
+        ]
+      : [],
+  );
   const providers = new ModelProviderRegistry();
-  if (registerProvider) providers.register("openai", () => provider({ async create() { throw new Error("unused"); } }));
+  if (registerProvider)
+    providers.register("openai", () =>
+      provider({
+        async create() {
+          throw new Error("unused");
+        },
+      }),
+    );
   const budgetPolicies = new BudgetPolicyStore(undefined, clock);
   const usage = new UsageLedger(undefined, clock);
   const budget = new BudgetEnforcer(budgetPolicies, usage, clock);
   const governancePolicies = new GovernancePolicyStore(undefined, clock);
   await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
-  const governance = new GovernancePolicyEngine(governancePolicies, budget, clock);
-  return new ModelRouter(profiles, providers, governance, clock, undefined, undefined, budget, governancePolicies);
+  const governance = new GovernancePolicyEngine(
+    governancePolicies,
+    budget,
+    clock,
+  );
+  return new ModelRouter(
+    profiles,
+    providers,
+    governance,
+    clock,
+    undefined,
+    undefined,
+    budget,
+    governancePolicies,
+  );
 }
 
 test("OpenAI executor maps validated structured output and usage", async () => {
@@ -227,9 +263,15 @@ test("EO-7: with a router configured, an unavailable provider fails closed BEFOR
   });
   await assert.rejects(
     () => executor.execute(agent, task()),
-    (error: unknown) => error instanceof AgentExecutionError && error.reason === "model_unavailable",
+    (error: unknown) =>
+      error instanceof AgentExecutionError &&
+      error.reason === "model_unavailable",
   );
-  assert.equal(calls, 0, "the provider must never be invoked once routing finds no qualified candidate");
+  assert.equal(
+    calls,
+    0,
+    "the provider must never be invoked once routing finds no qualified candidate",
+  );
 });
 
 test("EO-7: with a router configured and a qualified candidate, the result carries the routing decision and the requested model", async () => {
@@ -241,14 +283,29 @@ test("EO-7: with a router configured and a qualified candidate, the result carri
     provider: provider({
       async create() {
         return {
-          output_text: JSON.stringify({ summary: "ok", findings: [], risks: [], recommendations: [], confidence: "low" }),
+          output_text: JSON.stringify({
+            summary: "ok",
+            findings: [],
+            risks: [],
+            recommendations: [],
+            confidence: "low",
+          }),
           model: "test-model",
         };
       },
     }),
   });
-  const result = (await executor.execute(agent, task())) as { metadata: { routingDecisionId?: string; requestedModel?: string; model: string } };
-  assert.ok(result.metadata.routingDecisionId, "a real routing decision id is attached");
+  const result = (await executor.execute(agent, task())) as {
+    metadata: {
+      routingDecisionId?: string;
+      requestedModel?: string;
+      model: string;
+    };
+  };
+  assert.ok(
+    result.metadata.routingDecisionId,
+    "a real routing decision id is attached",
+  );
   // The registered profile has no PINNED model (matches any model this provider serves), so
   // requestedModel is honestly absent — never a fabricated echo of the actual model.
   assert.equal(result.metadata.requestedModel, undefined);
@@ -257,16 +314,42 @@ test("EO-7: with a router configured and a qualified candidate, the result carri
 
 test("EO-7: REQUESTED MODEL != ACTUAL MODEL — a routed, pinned model that differs from what the provider actually reports is recorded as a real, auditable mismatch", async () => {
   const clock = () => "2026-01-01T00:00:00.000Z";
-  const profiles = new ModelCapabilityRegistry([{ id: "pinned", providerId: "openai", model: "requested-model", capabilities: ["reasoning", "structured_output"] }]);
+  const profiles = new ModelCapabilityRegistry([
+    {
+      id: "pinned",
+      providerId: "openai",
+      model: "requested-model",
+      capabilities: ["reasoning", "structured_output"],
+    },
+  ]);
   const providers = new ModelProviderRegistry();
-  providers.register("openai", () => provider({ async create() { throw new Error("unused"); } }));
+  providers.register("openai", () =>
+    provider({
+      async create() {
+        throw new Error("unused");
+      },
+    }),
+  );
   const budgetPolicies = new BudgetPolicyStore(undefined, clock);
   const usage = new UsageLedger(undefined, clock);
   const budget = new BudgetEnforcer(budgetPolicies, usage, clock);
   const governancePolicies = new GovernancePolicyStore(undefined, clock);
   await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
-  const governance = new GovernancePolicyEngine(governancePolicies, budget, clock);
-  const router = new ModelRouter(profiles, providers, governance, clock, undefined, undefined, budget, governancePolicies);
+  const governance = new GovernancePolicyEngine(
+    governancePolicies,
+    budget,
+    clock,
+  );
+  const router = new ModelRouter(
+    profiles,
+    providers,
+    governance,
+    clock,
+    undefined,
+    undefined,
+    budget,
+    governancePolicies,
+  );
 
   const audit = new AuditLog();
   const executor = new OpenAIAgentExecutor({
@@ -276,17 +359,32 @@ test("EO-7: REQUESTED MODEL != ACTUAL MODEL — a routed, pinned model that diff
     provider: provider({
       async create() {
         return {
-          output_text: JSON.stringify({ summary: "ok", findings: [], risks: [], recommendations: [], confidence: "low" }),
+          output_text: JSON.stringify({
+            summary: "ok",
+            findings: [],
+            risks: [],
+            recommendations: [],
+            confidence: "low",
+          }),
           model: "actual-model", // the provider reports something OTHER than what was requested
         };
       },
     }),
   });
-  const result = (await executor.execute(agent, task())) as { metadata: { requestedModel?: string; model: string } };
+  const result = (await executor.execute(agent, task())) as {
+    metadata: { requestedModel?: string; model: string };
+  };
   assert.equal(result.metadata.requestedModel, "requested-model");
   assert.equal(result.metadata.model, "actual-model");
   assert.ok(
-    audit.list().some((event) => event.data.kind === "model_mismatch" && event.data.requestedModel === "requested-model" && event.data.actualModel === "actual-model"),
+    audit
+      .list()
+      .some(
+        (event) =>
+          event.data.kind === "model_mismatch" &&
+          event.data.requestedModel === "requested-model" &&
+          event.data.actualModel === "actual-model",
+      ),
     "the mismatch itself must be recorded in the audit trail, not silently absorbed",
   );
 });
@@ -297,11 +395,22 @@ test("EO-7: without a router configured, behavior is exactly as before — unrou
     clock: () => 0,
     provider: provider({
       async create() {
-        return { output_text: JSON.stringify({ summary: "ok", findings: [], risks: [], recommendations: [], confidence: "low" }), model: "test-model" };
+        return {
+          output_text: JSON.stringify({
+            summary: "ok",
+            findings: [],
+            risks: [],
+            recommendations: [],
+            confidence: "low",
+          }),
+          model: "test-model",
+        };
       },
     }),
   });
-  const result = (await executor.execute(agent, task())) as { metadata: { routingDecisionId?: string; requestedModel?: string } };
+  const result = (await executor.execute(agent, task())) as {
+    metadata: { routingDecisionId?: string; requestedModel?: string };
+  };
   assert.equal(result.metadata.routingDecisionId, undefined);
   assert.equal(result.metadata.requestedModel, undefined);
 });
@@ -316,7 +425,13 @@ test("EO-7: with a usageLedger configured, a real successful call is recorded in
     provider: provider({
       async create() {
         return {
-          output_text: JSON.stringify({ summary: "ok", findings: [], risks: [], recommendations: [], confidence: "low" }),
+          output_text: JSON.stringify({
+            summary: "ok",
+            findings: [],
+            risks: [],
+            recommendations: [],
+            confidence: "low",
+          }),
           model: "test-model",
           usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
         };
@@ -326,7 +441,11 @@ test("EO-7: with a usageLedger configured, a real successful call is recorded in
   await executor.execute(agent, task());
   await executor.execute(agent, task()); // same task id — a retry, not a second real call
   const recorded = await usageLedger.listInternal("money-mind");
-  assert.equal(recorded.length, 1, "the same task id must never be billed twice");
+  assert.equal(
+    recorded.length,
+    1,
+    "the same task id must never be billed twice",
+  );
   assert.equal(recorded[0]!.provider, "openai");
   assert.equal(recorded[0]!.model, "test-model");
   assert.equal(recorded[0]!.inputTokens, 10);

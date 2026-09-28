@@ -19,7 +19,7 @@ import { assertNoSecrets } from "../planning/plan-secret-guard.js";
 import { analyzeRepositoryEvidence, analyzeSpecification, } from "./discovery.js";
 import { OnboardingConflictError } from "./onboarding-errors.js";
 import { buildPlan } from "./planner.js";
-import { STALE_RUN_MS } from "./provisioning-service.js";
+import { STALE_RUN_MS, } from "./provisioning-service.js";
 import { parseGitHubTarget, } from "./repository-source.js";
 const OVERRIDE_FIELDS = [
     "language",
@@ -39,8 +39,7 @@ export class OnboardingService {
     constructor(deps) {
         this.deps = deps;
         this.clock = deps.clock ?? (() => new Date().toISOString());
-        this.newId =
-            deps.newId ?? (() => `onb-${randomBytes(6).toString("hex")}`);
+        this.newId = deps.newId ?? (() => `onb-${randomBytes(6).toString("hex")}`);
     }
     /* -------------------------------------------------------------- */
     /* queries                                                        */
@@ -60,25 +59,82 @@ export class OnboardingService {
                             : "Read-only discovery of PUBLIC repositories. Private repositories need the server-side GitHub credential, which is not configured."
                         : "No GitHub reader is configured.",
                 },
-                { provider: "template", available: true, note: "Start from an idea or requirements." },
-                { provider: "local_workspace", available: false, note: "Requires a future Desktop Agent / environment bridge; a browser cannot read local folders." },
-                { provider: "gitlab", available: false, note: "No GitLab integration exists." },
-                { provider: "bitbucket", available: false, note: "No Bitbucket integration exists." },
-                { provider: "azure_devops", available: false, note: "No Azure DevOps integration exists." },
-                { provider: "source_bundle", available: false, note: "Uploaded source bundles are not supported yet." },
-                { provider: "existing_project", available: false, note: "Cloning an existing AI Workforce project is not supported yet." },
+                {
+                    provider: "template",
+                    available: true,
+                    note: "Start from an idea or requirements.",
+                },
+                {
+                    provider: "local_workspace",
+                    available: false,
+                    note: "Requires a future Desktop Agent / environment bridge; a browser cannot read local folders.",
+                },
+                {
+                    provider: "gitlab",
+                    available: false,
+                    note: "No GitLab integration exists.",
+                },
+                {
+                    provider: "bitbucket",
+                    available: false,
+                    note: "No Bitbucket integration exists.",
+                },
+                {
+                    provider: "azure_devops",
+                    available: false,
+                    note: "No Azure DevOps integration exists.",
+                },
+                {
+                    provider: "source_bundle",
+                    available: false,
+                    note: "Uploaded source bundles are not supported yet.",
+                },
+                {
+                    provider: "existing_project",
+                    available: false,
+                    note: "Cloning an existing AI Workforce project is not supported yet.",
+                },
             ],
             kinds: [
-                { kind: "create_new", available: true, note: "Propose an architecture from requirements." },
-                { kind: "import_existing", available: github, note: github ? "Import a GitHub repository." : "No repository reader is configured." },
-                { kind: "import_local", available: false, note: "Requires a future Desktop Agent / environment bridge; a browser cannot safely read a local folder." },
+                {
+                    kind: "create_new",
+                    available: true,
+                    note: "Propose an architecture from requirements.",
+                },
+                {
+                    kind: "import_existing",
+                    available: github,
+                    note: github
+                        ? "Import a GitHub repository."
+                        : "No repository reader is configured.",
+                },
+                {
+                    kind: "import_local",
+                    available: false,
+                    note: "Requires a future Desktop Agent / environment bridge; a browser cannot safely read a local folder.",
+                },
             ],
             gaps: [
-                { key: "github_repository_creation", note: "Governed GitHub repository creation is not implemented; it stays a pending requirement." },
-                { key: "firebase_provisioning", note: "Automatic Firebase project creation is not implemented; it stays a pending requirement." },
-                { key: "cost_enforcement", note: "Budget policies are recorded but not enforced: no AI Cost Center is wired." },
-                { key: "agent_assignment", note: "Only registered production agents can be listed; roadmap roles have no implementation yet." },
-                { key: "objective_pipeline", note: "Objective-to-software execution is a future layer; onboarding does not run agents." },
+                {
+                    key: "github_repository_creation",
+                    note: "Governed GitHub repository creation is not implemented; it stays a pending requirement.",
+                },
+                {
+                    key: "firebase_provisioning",
+                    note: "Automatic Firebase project creation is not implemented; it stays a pending requirement.",
+                },
+                {
+                    key: "cost_enforcement",
+                    note: "Budget policies are recorded but not enforced: no AI Cost Center is wired.",
+                },
+                {
+                    key: "agent_assignment",
+                    note: "Only registered production agents can be listed; roadmap roles have no implementation yet.",
+                },
+                {
+                    key: "objective_pipeline",
+                    note: "Objective-to-software execution is a future layer; onboarding does not run agents.",
+                },
             ],
         };
     }
@@ -154,7 +210,8 @@ export class OnboardingService {
         const patched = this.applyPatch(current, input.patch);
         assertNoSecrets(patched.draft, "draft");
         await this.checkDuplicates(patched, false);
-        const sourceChanged = JSON.stringify(patched.draft.source) !== JSON.stringify(current.draft.source);
+        const sourceChanged = JSON.stringify(patched.draft.source) !==
+            JSON.stringify(current.draft.source);
         const planWasInvalidated = current.plan !== undefined || current.approval !== undefined;
         const next = structuredClone(patched);
         if (sourceChanged) {
@@ -174,7 +231,8 @@ export class OnboardingService {
         else if (current.status === "draft" && this.sourceComplete(next)) {
             next.status = "source_configured";
         }
-        if (next.status !== current.status && !canTransitionOnboarding(current.status, next.status)) {
+        if (next.status !== current.status &&
+            !canTransitionOnboarding(current.status, next.status)) {
             throw new StateTransitionError(`cannot move onboarding from ${current.status} to ${next.status}`);
         }
         const saved = await this.persist(next, current.revision);
@@ -197,7 +255,9 @@ export class OnboardingService {
             throw new ValidationError("configure the source before analysis");
         }
         const analyzing = await this.persist({ ...structuredClone(current), status: "analyzing", failure: undefined }, current.revision);
-        this.audit(analyzing, principal, "analysis_started", { kind: current.kind });
+        this.audit(analyzing, principal, "analysis_started", {
+            kind: current.kind,
+        });
         let analysis;
         let failure;
         if (current.kind === "import_existing") {
@@ -277,7 +337,8 @@ export class OnboardingService {
         if (current.status !== "review_required" || !current.plan) {
             throw new StateTransitionError(`no plan is awaiting approval (status: ${current.status})`);
         }
-        if (input.planVersion !== current.plan.planVersion || input.planHash !== current.plan.planHash) {
+        if (input.planVersion !== current.plan.planVersion ||
+            input.planHash !== current.plan.planHash) {
             throw new StateTransitionError("the plan changed — review the current version before approving");
         }
         if (current.plan.blockers.length > 0) {
@@ -293,7 +354,9 @@ export class OnboardingService {
             approvedAt: this.clock(),
         };
         const saved = await this.persist(next, current.revision);
-        this.audit(saved, principal, "plan_approved", { planVersion: current.plan.planVersion });
+        this.audit(saved, principal, "plan_approved", {
+            planVersion: current.plan.planVersion,
+        });
         return { session: saved };
     }
     async provision(principal, input) {
@@ -309,17 +372,31 @@ export class OnboardingService {
             const staleRun = current.status !== "ready" &&
                 Date.now() - Date.parse(current.updatedAt) > STALE_RUN_MS;
             if (!staleRun) {
-                return { session: current, idempotent: true, note: "provisioning already requested for this plan" };
+                return {
+                    session: current,
+                    idempotent: true,
+                    note: "provisioning already requested for this plan",
+                };
             }
         }
-        if (input.expectedRevision !== undefined && input.expectedRevision !== current.revision) {
+        if (input.expectedRevision !== undefined &&
+            input.expectedRevision !== current.revision) {
             throw new OnboardingConflictError("revision_conflict", "the onboarding session changed — reload the latest state", current.revision);
         }
-        const resumable = ["approved", "provisioning_failed", "validation_failed", "provisioning", "validating"];
+        const resumable = [
+            "approved",
+            "provisioning_failed",
+            "validation_failed",
+            "provisioning",
+            "validating",
+        ];
         if (!resumable.includes(current.status)) {
             throw new StateTransitionError(`cannot provision while onboarding is ${current.status}`);
         }
-        if (!current.plan || !current.approval || current.approval.planHash !== input.planHash || current.plan.planHash !== input.planHash) {
+        if (!current.plan ||
+            !current.approval ||
+            current.approval.planHash !== input.planHash ||
+            current.plan.planHash !== input.planHash) {
             throw new StateTransitionError("the approved plan does not match this request — approve the current plan first");
         }
         // A `provisioning`/`validating` row that reached this point is stale (a
@@ -328,8 +405,15 @@ export class OnboardingService {
         let base = current;
         if (current.status === "provisioning" || current.status === "validating") {
             const failed = structuredClone(current);
-            failed.status = current.status === "provisioning" ? "provisioning_failed" : "validation_failed";
-            failed.failure = { code: "stale_run", message: "the previous run stopped without finishing; resuming", at: this.clock() };
+            failed.status =
+                current.status === "provisioning"
+                    ? "provisioning_failed"
+                    : "validation_failed";
+            failed.failure = {
+                code: "stale_run",
+                message: "the previous run stopped without finishing; resuming",
+                at: this.clock(),
+            };
             base = await this.persist(failed, current.revision);
         }
         const session = await this.deps.provisioning.run(base, principal.id);
@@ -427,7 +511,10 @@ export class OnboardingService {
         const url = session.draft.source.repositoryUrl;
         const target = url ? parseGitHubTarget(url) : undefined;
         const key = target
-            ? repositoryKey({ url: `https://github.com/${target.owner}/${target.name}`, defaultBranch: "main" })
+            ? repositoryKey({
+                url: `https://github.com/${target.owner}/${target.name}`,
+                defaultBranch: "main",
+            })
             : undefined;
         if (this.deps.registry.has(session.projectId)) {
             throw new OnboardingConflictError("duplicate_project", "project id already exists");
@@ -451,9 +538,12 @@ export class OnboardingService {
         }
         if (strict) {
             for (const other of await this.deps.sessions.list()) {
-                if (other.id === session.id || ["cancelled", "analysis_failed"].includes(other.status))
+                if (other.id === session.id ||
+                    ["cancelled", "analysis_failed"].includes(other.status))
                     continue;
-                if (code !== "" && other.draft.identity.code === code && other.status !== "draft") {
+                if (code !== "" &&
+                    other.draft.identity.code === code &&
+                    other.status !== "draft") {
                     throw new OnboardingConflictError("duplicate_project", `project code ${code} is already used by another onboarding in progress`);
                 }
             }
@@ -470,7 +560,8 @@ export class OnboardingService {
     }
     async loadForWrite(id, expectedRevision) {
         const session = await this.load(requireString(id, "id"));
-        if (typeof expectedRevision !== "number" || !Number.isInteger(expectedRevision)) {
+        if (typeof expectedRevision !== "number" ||
+            !Number.isInteger(expectedRevision)) {
             throw new ValidationError("expectedRevision is required");
         }
         if (expectedRevision !== session.revision) {
@@ -479,7 +570,11 @@ export class OnboardingService {
         return session;
     }
     async persist(next, expectedRevision) {
-        const saved = { ...next, revision: expectedRevision + 1, updatedAt: this.clock() };
+        const saved = {
+            ...next,
+            revision: expectedRevision + 1,
+            updatedAt: this.clock(),
+        };
         if (!(await this.deps.sessions.replace(saved, expectedRevision))) {
             throw new OnboardingConflictError("revision_conflict", "the onboarding session changed concurrently — reload the latest state");
         }
@@ -487,7 +582,8 @@ export class OnboardingService {
     }
     canCreate(principal) {
         // A scoped operator could never see the project it creates.
-        return operatorCan(principal, "create_project") && principal.allowedProjects === "*";
+        return (operatorCan(principal, "create_project") &&
+            principal.allowedProjects === "*");
     }
     requireCreator(principal) {
         if (!operatorCan(principal, "create_project")) {
@@ -572,7 +668,9 @@ function validateIdentity(input, base) {
             next.fullName = fullName;
     }
     if (input["code"] !== undefined) {
-        const code = typeof input["code"] === "string" ? input["code"].trim().toUpperCase() : "";
+        const code = typeof input["code"] === "string"
+            ? input["code"].trim().toUpperCase()
+            : "";
         if (code !== "" && !PROJECT_CODE_PATTERN.test(code)) {
             throw new ValidationError("identity.code must be 2–12 upper-case letters/digits, starting with a letter");
         }
@@ -622,7 +720,9 @@ function validateSource(input, base, kind) {
         }
         if (input["branch"] !== undefined) {
             const branch = optionalText(input["branch"], "source.branch", 100);
-            if (branch !== undefined && (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(branch) || branch.includes(".."))) {
+            if (branch !== undefined &&
+                (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(branch) ||
+                    branch.includes(".."))) {
                 throw new ValidationError("source.branch is not a valid branch name");
             }
             if (branch === undefined)
@@ -630,7 +730,8 @@ function validateSource(input, base, kind) {
             else
                 next.branch = branch;
         }
-        if (input["specification"] !== undefined || input["createRepository"] !== undefined) {
+        if (input["specification"] !== undefined ||
+            input["createRepository"] !== undefined) {
             throw new ValidationError("specification and createRepository apply to new projects only");
         }
     }
@@ -710,7 +811,8 @@ function validateGitPolicy(input, level) {
             continue;
         const branch = optionalText(input[key], `gitPolicy.${key}`, 100);
         if (branch !== undefined) {
-            if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(branch) || branch.includes("..")) {
+            if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(branch) ||
+                branch.includes("..")) {
                 throw new ValidationError(`gitPolicy.${key} is not a valid branch name`);
             }
             out[key] = branch;
@@ -719,7 +821,8 @@ function validateGitPolicy(input, level) {
     if (input["agentBranchPattern"] !== undefined) {
         const pattern = optionalText(input["agentBranchPattern"], "gitPolicy.agentBranchPattern", 100);
         if (pattern !== undefined) {
-            if (!/^[A-Za-z0-9._/<>-]{1,100}$/.test(pattern) || pattern.includes("..")) {
+            if (!/^[A-Za-z0-9._/<>-]{1,100}$/.test(pattern) ||
+                pattern.includes("..")) {
                 throw new ValidationError("gitPolicy.agentBranchPattern is not valid");
             }
             out.agentBranchPattern = pattern;
@@ -738,14 +841,20 @@ function validateCostPolicy(input) {
         const value = input[key];
         if (value === undefined || value === null)
             continue;
-        if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 10_000_000) {
+        if (typeof value !== "number" ||
+            !Number.isFinite(value) ||
+            value < 0 ||
+            value > 10_000_000) {
             throw new ValidationError(`costPolicy.${key} must be a non-negative number`);
         }
         out[key] = value;
     }
     if (input["warningThresholdPercent"] !== undefined) {
         const value = input["warningThresholdPercent"];
-        if (typeof value !== "number" || !Number.isFinite(value) || value < 1 || value > 100) {
+        if (typeof value !== "number" ||
+            !Number.isFinite(value) ||
+            value < 1 ||
+            value > 100) {
             throw new ValidationError("costPolicy.warningThresholdPercent must be 1–100");
         }
         out.warningThresholdPercent = value;

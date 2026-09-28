@@ -15,7 +15,10 @@ import {
   EMPTY_EXECUTION_RECORDS,
   type ExecutionGraphRecords,
 } from "../../core/orchestrator/graph-execution-fragment.js";
-import { GRAPH_LIMITS, type SpatialInsightsReport } from "../../contracts/graph.js";
+import {
+  GRAPH_LIMITS,
+  type SpatialInsightsReport,
+} from "../../contracts/graph.js";
 import { inertReleaseCapabilities } from "../../contracts/release.js";
 import {
   OperatorPrincipal,
@@ -139,17 +142,19 @@ export class GraphQueryService {
     if (!this.ctx.projects.get(options.projectId)) {
       return this.projectionService.getProjection(options);
     }
-    const { records, unavailable, notConfigured } = await this.collectExecutionRecords(
-      principal,
-      options.projectId,
-    );
+    const { records, unavailable, notConfigured } =
+      await this.collectExecutionRecords(principal, options.projectId);
     const projection = this.projectionService.getProjection(options, records);
     // A source that failed OR does not exist in this deployment must read as "unknown", never as
     // "nothing happened". The lists are part of what the client sees but not of the node/edge set,
     // so they are folded into the revision: a `since` poll can never answer "unchanged" across a
     // source failing, recovering or being wired.
     const inert = this.inertCapabilities();
-    if (unavailable.length === 0 && notConfigured.length === 0 && inert.length === 0) {
+    if (
+      unavailable.length === 0 &&
+      notConfigured.length === 0 &&
+      inert.length === 0
+    ) {
       return projection;
     }
     return {
@@ -160,8 +165,12 @@ export class GraphQueryService {
       ),
       metadata: {
         ...projection.metadata,
-        ...(unavailable.length > 0 ? { unavailableSources: unavailable.join(",") } : {}),
-        ...(notConfigured.length > 0 ? { notConfiguredSources: notConfigured.join(",") } : {}),
+        ...(unavailable.length > 0
+          ? { unavailableSources: unavailable.join(",") }
+          : {}),
+        ...(notConfigured.length > 0
+          ? { notConfiguredSources: notConfigured.join(",") }
+          : {}),
         ...(inert.length > 0 ? { inertCapabilities: inert.join(",") } : {}),
       },
     };
@@ -182,13 +191,16 @@ export class GraphQueryService {
     }
     if (!operatorCanAccessProject(principal, projectId)) return undefined;
     if (!this.ctx.projects.get(projectId)) return undefined;
-    const { records, unavailable, notConfigured } = await this.collectExecutionRecords(principal, projectId);
+    const { records, unavailable, notConfigured } =
+      await this.collectExecutionRecords(principal, projectId);
     const graph = this.projectionService.getInsightGraph(projectId, records);
     const { findings, truncated } = deriveInsights(graph);
     return {
       projectId,
       graphRevision:
-        unavailable.length === 0 && notConfigured.length === 0 && this.inertCapabilities().length === 0
+        unavailable.length === 0 &&
+        notConfigured.length === 0 &&
+        this.inertCapabilities().length === 0
           ? graph.revision
           : mixRevision(
               graph.revision,
@@ -198,8 +210,12 @@ export class GraphQueryService {
       findings,
       truncated,
       ...(unavailable.length > 0 ? { unavailableSources: unavailable } : {}),
-      ...(notConfigured.length > 0 ? { notConfiguredSources: notConfigured } : {}),
-      ...(this.inertCapabilities().length > 0 ? { inertCapabilities: this.inertCapabilities() } : {}),
+      ...(notConfigured.length > 0
+        ? { notConfiguredSources: notConfigured }
+        : {}),
+      ...(this.inertCapabilities().length > 0
+        ? { inertCapabilities: this.inertCapabilities() }
+        : {}),
       basis: "observed_state",
     };
   }
@@ -236,7 +252,8 @@ export class GraphQueryService {
     this.recordCache.set(projectId, { at: now, value });
     value.catch(() => {
       // Evict only our own entry, never a newer one that replaced it.
-      if (this.recordCache.get(projectId)?.value === value) this.recordCache.delete(projectId);
+      if (this.recordCache.get(projectId)?.value === value)
+        this.recordCache.delete(projectId);
     });
     return value;
   }
@@ -286,11 +303,15 @@ export class GraphQueryService {
       .slice(0, limit);
 
     // One failing ChangeSet read marks ChangeSets as partly unknown; it does not blank the rest.
-    const changeSets: NonNullable<Awaited<ReturnType<ExecutionManager["getChangeSet"]>>>[] = [];
+    const changeSets: NonNullable<
+      Awaited<ReturnType<ExecutionManager["getChangeSet"]>>
+    >[] = [];
     if (!ctx.execution) notConfigured.add("changeSets");
     if (ctx.execution) {
       const settled = await Promise.allSettled(
-        sessions.map((s) => ctx.execution!.getChangeSet(principal, s.sessionId)),
+        sessions.map((s) =>
+          ctx.execution!.getChangeSet(principal, s.sessionId),
+        ),
       );
       for (const r of settled) {
         if (r.status === "rejected") unavailable.add("changeSets");
@@ -309,7 +330,11 @@ export class GraphQueryService {
       "sourceControl",
       !!ctx.sourceControl,
       async () => {
-        const a = await ctx.sourceControl!.activity(principal, projectId, limit);
+        const a = await ctx.sourceControl!.activity(
+          principal,
+          projectId,
+          limit,
+        );
         return { reviews: a.reviews, commits: a.commits };
       },
       { reviews: [], commits: [] },

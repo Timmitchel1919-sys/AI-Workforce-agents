@@ -52,7 +52,13 @@ export function buildExecutionFragment(input) {
             return;
         const id = `${type.toLowerCase()}-${source}-${target}`;
         if (!edges.has(id)) {
-            edges.set(id, { id, type, source, target, ...(status ? { status } : {}) });
+            edges.set(id, {
+                id,
+                type,
+                source,
+                target,
+                ...(status ? { status } : {}),
+            });
         }
     };
     const sessions = newest(records.sessions, (s) => s.createdAt, (s) => s.sessionId);
@@ -82,7 +88,11 @@ export function buildExecutionFragment(input) {
             continue;
         node(executionNodeId.changeSet(c.changeSetId), "CHANGESET", c.changeSetId, "ChangeSet", c.status, normalise(CHANGESET_STATE, c.status), 
         // Counts only — never paths, hashes or file contents.
-        { fileCount: c.entries.length, baselineCount: c.baseline.length, updatedAt: c.updatedAt });
+        {
+            fileCount: c.entries.length,
+            baselineCount: c.baseline.length,
+            updatedAt: c.updatedAt,
+        });
     }
     for (const v of verifications) {
         if (v.projectId !== projectId)

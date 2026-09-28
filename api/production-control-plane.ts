@@ -100,9 +100,15 @@ import {
   LazyOpenAIModelProvider,
   createProductionOpenAIAgentExecutor,
 } from "../agents/control-plane-analysis/index.js";
-import { DEVELOPER_AGENT_ID, DeveloperAgent } from "../agents/developer/index.js";
+import {
+  DEVELOPER_AGENT_ID,
+  DeveloperAgent,
+} from "../agents/developer/index.js";
 import { QA_AGENT_ID, QaAgent } from "../agents/qa/index.js";
-import { PROJECT_MANAGER_AGENT_ID, ProjectManagerAgent } from "../agents/project-manager/index.js";
+import {
+  PROJECT_MANAGER_AGENT_ID,
+  ProjectManagerAgent,
+} from "../agents/project-manager/index.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
 import { V1_SPECIALIST_WORKFORCE } from "../contracts/workforce.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
@@ -230,7 +236,11 @@ export async function createProductionControlPlaneRuntime(
   // profile matches whatever `OPENAI_MODEL` the provider is actually configured with at call
   // time, which this composition root never reads (that stays inside the provider adapter).
   const modelCapabilities = new ModelCapabilityRegistry([
-    { id: "openai-default", providerId: "openai", capabilities: ["reasoning", "structured_output"] },
+    {
+      id: "openai-default",
+      providerId: "openai",
+      capabilities: ["reasoning", "structured_output"],
+    },
   ]);
   const bootstrap = createProductionWorkforceBootstrap(
     options.configuration ?? PRODUCTION_WORKFORCE_CONFIGURATION,
@@ -289,7 +299,8 @@ export async function createProductionControlPlaneRuntime(
     store: new FirestoreExecutionPlanStore(transactionalFirestore, {
       collectionPrefix: options.collectionPrefix,
     }),
-    isAgentEnabled: (agentId, projectId) => agentOps.isEnabled(agentId, projectId),
+    isAgentEnabled: (agentId, projectId) =>
+      agentOps.isEnabled(agentId, projectId),
     projectExists: (projectId) => bootstrap.projects.has(projectId),
   });
   // AUTHZ-1: operator accounts (Firestore, transactional) are the only source
@@ -345,7 +356,8 @@ export async function createProductionControlPlaneRuntime(
     planning,
     approvals,
     agents: bootstrap.agents,
-    isAgentEnabled: (agentId, projectId) => agentOps.isEnabled(agentId, projectId),
+    isAgentEnabled: (agentId, projectId) =>
+      agentOps.isEnabled(agentId, projectId),
     environments: environmentRegistry,
     tools: bootstrap.tools,
     projects: bootstrap.projects,
@@ -428,10 +440,31 @@ export async function createProductionControlPlaneRuntime(
   const budgetPolicies = new BudgetPolicyStore(executionRecords, now, audit);
   const budgetEnforcer = new BudgetEnforcer(budgetPolicies, usageLedger, now);
   const ruleAuditor = new RuleAuditor(now, audit);
-  const costCenterCapabilities = deriveCostCenterCapabilities({ providers: modelProviders });
-  const governancePolicies = new GovernancePolicyStore(executionRecords, now, audit);
-  const governanceEngine = new GovernancePolicyEngine(governancePolicies, budgetEnforcer, now, approvals, audit);
-  const modelRouter = new ModelRouter(modelCapabilities, modelProviders, governanceEngine, now, executionRecords, audit, budgetEnforcer, governancePolicies);
+  const costCenterCapabilities = deriveCostCenterCapabilities({
+    providers: modelProviders,
+  });
+  const governancePolicies = new GovernancePolicyStore(
+    executionRecords,
+    now,
+    audit,
+  );
+  const governanceEngine = new GovernancePolicyEngine(
+    governancePolicies,
+    budgetEnforcer,
+    now,
+    approvals,
+    audit,
+  );
+  const modelRouter = new ModelRouter(
+    modelCapabilities,
+    modelProviders,
+    governanceEngine,
+    now,
+    executionRecords,
+    audit,
+    budgetEnforcer,
+    governancePolicies,
+  );
   // This agent has no per-call cost pre-estimate to offer yet (see ADR-0029), so its one allowed
   // project explicitly permits proceeding on unknown cost — the REAL budget hard-stop still
   // applies regardless (`BudgetEnforcer.evaluateInternal`, checked unconditionally). Every OTHER
@@ -439,7 +472,10 @@ export async function createProductionControlPlaneRuntime(
   await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
   bootstrap.agentExecutors.replace(
     CONTROL_PLANE_ANALYSIS_AGENT_ID,
-    createProductionOpenAIAgentExecutor(audit, { router: modelRouter, usageLedger }),
+    createProductionOpenAIAgentExecutor(audit, {
+      router: modelRouter,
+      usageLedger,
+    }),
   );
   // EO-8: the three specialist agents (Developer/QA/Project Manager) were fully implemented and
   // tested but never wired into any production composition root. Same two-phase pattern as the
@@ -449,7 +485,9 @@ export async function createProductionControlPlaneRuntime(
   // after a successful one, requested-vs-actual model mismatches audited — the SAME reviewed EO-7
   // pipeline, generalized to any plain `ModelProvider`-based agent. Nothing reaches the unrouted
   // binding for a real request; it exists only for the instant between bootstrap and this call.
-  const specialistRequirement: ModelRequirementProfile = { requiredCapabilities: ["reasoning", "structured_output"] };
+  const specialistRequirement: ModelRequirementProfile = {
+    requiredCapabilities: ["reasoning", "structured_output"],
+  };
   bootstrap.agentExecutors.replace(
     DEVELOPER_AGENT_ID,
     new DeveloperAgent({
@@ -527,37 +565,58 @@ export async function createProductionControlPlaneRuntime(
     // READ-ONLY views: the context can list history/activity/releases and nothing else, at runtime
     // as well as by type. The full services live on `runtime.release` for the trusted host.
     verification: {
-      listHistory: (...a: Parameters<typeof verification.listHistory>) => verification.listHistory(...a),
+      listHistory: (...a: Parameters<typeof verification.listHistory>) =>
+        verification.listHistory(...a),
     },
     sourceControl: {
-      activity: (...a: Parameters<typeof sourceControl.activity>) => sourceControl.activity(...a),
+      activity: (...a: Parameters<typeof sourceControl.activity>) =>
+        sourceControl.activity(...a),
     },
     deployments: {
-      listReleases: (...a: Parameters<typeof deployments.listReleases>) => deployments.listReleases(...a),
-      listTargets: (...a: Parameters<typeof deployments.listTargets>) => deployments.listTargets(...a),
+      listReleases: (...a: Parameters<typeof deployments.listReleases>) =>
+        deployments.listReleases(...a),
+      listTargets: (...a: Parameters<typeof deployments.listTargets>) =>
+        deployments.listTargets(...a),
     },
     releaseCapabilities,
     costCenter: {
-      usage: { listByProject: (...a: Parameters<typeof usageLedger.listByProject>) => usageLedger.listByProject(...a) },
-      budgetPolicy: {
-        get: (...a: Parameters<typeof budgetPolicies.get>) => budgetPolicies.get(...a),
-        set: (...a: Parameters<typeof budgetPolicies.set>) => budgetPolicies.set(...a),
+      usage: {
+        listByProject: (...a: Parameters<typeof usageLedger.listByProject>) =>
+          usageLedger.listByProject(...a),
       },
-      enforcer: { evaluate: (...a: Parameters<typeof budgetEnforcer.evaluate>) => budgetEnforcer.evaluate(...a) },
+      budgetPolicy: {
+        get: (...a: Parameters<typeof budgetPolicies.get>) =>
+          budgetPolicies.get(...a),
+        set: (...a: Parameters<typeof budgetPolicies.set>) =>
+          budgetPolicies.set(...a),
+      },
+      enforcer: {
+        evaluate: (...a: Parameters<typeof budgetEnforcer.evaluate>) =>
+          budgetEnforcer.evaluate(...a),
+      },
     },
     costCenterCapabilities,
-    auditor: { run: (...a: Parameters<typeof ruleAuditor.run>) => ruleAuditor.run(...a) },
+    auditor: {
+      run: (...a: Parameters<typeof ruleAuditor.run>) => ruleAuditor.run(...a),
+    },
     governance: {
       policy: {
-        get: (...a: Parameters<typeof governancePolicies.get>) => governancePolicies.get(...a),
-        set: (...a: Parameters<typeof governancePolicies.set>) => governancePolicies.set(...a),
+        get: (...a: Parameters<typeof governancePolicies.get>) =>
+          governancePolicies.get(...a),
+        set: (...a: Parameters<typeof governancePolicies.set>) =>
+          governancePolicies.set(...a),
       },
-      engine: { evaluate: (...a: Parameters<typeof governanceEngine.evaluate>) => governanceEngine.evaluate(...a) },
+      engine: {
+        evaluate: (...a: Parameters<typeof governanceEngine.evaluate>) =>
+          governanceEngine.evaluate(...a),
+      },
     },
     routing: {
       router: {
-        get: (...a: Parameters<typeof modelRouter.get>) => modelRouter.get(...a),
-        listByProject: (...a: Parameters<typeof modelRouter.listByProject>) => modelRouter.listByProject(...a),
+        get: (...a: Parameters<typeof modelRouter.get>) =>
+          modelRouter.get(...a),
+        listByProject: (...a: Parameters<typeof modelRouter.listByProject>) =>
+          modelRouter.listByProject(...a),
       },
     },
     executionReceipts,
@@ -615,7 +674,11 @@ export async function createProductionControlPlaneRuntime(
       agents: bootstrap.agents.list(),
     }),
   });
-  const onboarding = new OnboardingControlService(onboardingService, audit, budgetPolicies);
+  const onboarding = new OnboardingControlService(
+    onboardingService,
+    audit,
+    budgetPolicies,
+  );
   // READY projects become discoverable through the existing Project Registry.
   // Other warm instances pick them up through this throttled sync.
   const syncProjects = async (): Promise<void> => {
@@ -713,4 +776,3 @@ function denyByDefaultEnvironmentProvider(): SoftwareFactoryEnvironmentProvider 
     },
   };
 }
-

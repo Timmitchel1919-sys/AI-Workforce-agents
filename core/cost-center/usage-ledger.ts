@@ -74,7 +74,8 @@ export class UsageLedger {
    */
   async record(draft: UsageDraft): Promise<UsageRecord> {
     const projectId = requireExecutionId(draft.projectId, "projectId");
-    if (!draft.idempotencyKey) return this.persist(draft, projectId, createId("usage"));
+    if (!draft.idempotencyKey)
+      return this.persist(draft, projectId, createId("usage"));
 
     const usageId = `idem:${projectId}\u0000${requireExecutionId(draft.idempotencyKey, "idempotencyKey")}`;
     // Reserved SYNCHRONOUSLY (no `await` above this line since entering the function) — two calls
@@ -94,7 +95,11 @@ export class UsageLedger {
     }
   }
 
-  private async persist(draft: UsageDraft, projectId: string, usageId: string): Promise<UsageRecord> {
+  private async persist(
+    draft: UsageDraft,
+    projectId: string,
+    usageId: string,
+  ): Promise<UsageRecord> {
     const record: UsageRecord = {
       usageId,
       projectId,
@@ -111,7 +116,14 @@ export class UsageLedger {
       createdAt: this.clock(),
     };
     try {
-      return await this.ledger.save(KIND, usageId, projectId, record.createdAt, record, "create");
+      return await this.ledger.save(
+        KIND,
+        usageId,
+        projectId,
+        record.createdAt,
+        record,
+        "create",
+      );
     } catch (error) {
       if (draft.idempotencyKey && error instanceof RecordExistsError) {
         const existing = await this.ledger.find<UsageRecord>(KIND, usageId);
@@ -140,8 +152,17 @@ export class UsageLedger {
   async totals(
     principal: OperatorPrincipal,
     projectId: string,
-    windows: { dailySinceIso: string; monthlySinceIso: string; taskId?: string },
-  ): Promise<{ daily: number; monthly: number; task: number; uncosted: number }> {
+    windows: {
+      dailySinceIso: string;
+      monthlySinceIso: string;
+      taskId?: string;
+    },
+  ): Promise<{
+    daily: number;
+    monthly: number;
+    task: number;
+    uncosted: number;
+  }> {
     const id = requireExecutionId(projectId, "projectId");
     this.authorize(principal, id);
     return this.totalsInternal(id, windows);
@@ -159,8 +180,17 @@ export class UsageLedger {
 
   async totalsInternal(
     projectId: string,
-    windows: { dailySinceIso: string; monthlySinceIso: string; taskId?: string },
-  ): Promise<{ daily: number; monthly: number; task: number; uncosted: number }> {
+    windows: {
+      dailySinceIso: string;
+      monthlySinceIso: string;
+      taskId?: string;
+    },
+  ): Promise<{
+    daily: number;
+    monthly: number;
+    task: number;
+    uncosted: number;
+  }> {
     const records = await this.listInternal(projectId, 500);
     const dailyAmounts: number[] = [];
     const monthlyAmounts: number[] = [];
@@ -171,19 +201,32 @@ export class UsageLedger {
       // Only usage inside the widest window in play (monthly, or this task) can affect what is
       // reported now; older unpriced usage is irrelevant to a current evaluation.
       const inScope =
-        r.createdAt >= windows.monthlySinceIso || (windows.taskId !== undefined && r.taskId === windows.taskId);
+        r.createdAt >= windows.monthlySinceIso ||
+        (windows.taskId !== undefined && r.taskId === windows.taskId);
       if (!r.cost.priced && inScope) uncosted += 1;
       if (r.createdAt >= windows.dailySinceIso) dailyAmounts.push(amount);
       if (r.createdAt >= windows.monthlySinceIso) monthlyAmounts.push(amount);
-      if (windows.taskId && r.taskId === windows.taskId) taskAmounts.push(amount);
+      if (windows.taskId && r.taskId === windows.taskId)
+        taskAmounts.push(amount);
     }
     // Kahan summation: plain `+=` over many small USD amounts drifts (MONEY CORRECTNESS).
-    return { daily: sumUsd(dailyAmounts), monthly: sumUsd(monthlyAmounts), task: sumUsd(taskAmounts), uncosted };
+    return {
+      daily: sumUsd(dailyAmounts),
+      monthly: sumUsd(monthlyAmounts),
+      task: sumUsd(taskAmounts),
+      uncosted,
+    };
   }
 
   private authorize(principal: OperatorPrincipal, projectId: string): void {
-    if (!operatorCan(principal, "view") || !operatorCanAccessProject(principal, projectId)) {
-      throw new ExecutionDeniedError("AUTHORIZATION_DENIED", "not authorized to view this project's usage");
+    if (
+      !operatorCan(principal, "view") ||
+      !operatorCanAccessProject(principal, projectId)
+    ) {
+      throw new ExecutionDeniedError(
+        "AUTHORIZATION_DENIED",
+        "not authorized to view this project's usage",
+      );
     }
   }
 }

@@ -47,7 +47,13 @@ export const ONBOARDING_TRANSITIONS = Object.freeze({
     draft: ["draft", "source_configured", "cancelled"],
     source_configured: ["draft", "source_configured", "analyzing", "cancelled"],
     analyzing: ["analyzed", "analysis_failed", "cancelled"],
-    analyzed: ["draft", "source_configured", "planning", "analyzing", "cancelled"],
+    analyzed: [
+        "draft",
+        "source_configured",
+        "planning",
+        "analyzing",
+        "cancelled",
+    ],
     planning: ["review_required", "analyzed", "cancelled"],
     review_required: [
         "review_required",
@@ -92,7 +98,12 @@ export const TERMINAL_ONBOARDING_STATUSES = [
 /* ------------------------------------------------------------------ */
 /* Draft input                                                        */
 /* ------------------------------------------------------------------ */
-export const PROJECT_PRIORITIES = ["low", "normal", "high", "critical"];
+export const PROJECT_PRIORITIES = [
+    "low",
+    "normal",
+    "high",
+    "critical",
+];
 export const ENV_VAR_CLASSES = [
     "public_client",
     "server_secret",

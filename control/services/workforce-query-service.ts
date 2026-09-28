@@ -493,7 +493,12 @@ export class WorkforceQueryService {
       )
       .map((agent) =>
         // EO-8: project-scoped (most-specific-wins over a global disable) — this IS a per-project view.
-        deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id, projectId), audit),
+        deriveAgentView(
+          agent,
+          tasks,
+          this.ctx.agentOps.get(agent.id, projectId),
+          audit,
+        ),
       );
   }
 
@@ -687,7 +692,10 @@ export class WorkforceQueryService {
   }
 
   /** EO-6.2 rule-based Auditor findings (never model-assisted). */
-  async getProjectAuditFindings(principal: OperatorPrincipal, projectId: string) {
+  async getProjectAuditFindings(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ) {
     this.authorizeView(principal);
     if (
       !this.ctx.projects.get(projectId) ||
@@ -698,7 +706,10 @@ export class WorkforceQueryService {
   }
 
   /** EO-6.3 governance policy (provider/model allow-list, approval threshold). */
-  async getProjectGovernancePolicy(principal: OperatorPrincipal, projectId: string) {
+  async getProjectGovernancePolicy(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ) {
     this.authorizeView(principal);
     if (
       !this.ctx.projects.get(projectId) ||
@@ -709,7 +720,10 @@ export class WorkforceQueryService {
   }
 
   /** EO-7 routing decision history (bounded, newest first). */
-  async getProjectRoutingDecisions(principal: OperatorPrincipal, projectId: string) {
+  async getProjectRoutingDecisions(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ) {
     this.authorizeView(principal);
     if (
       !this.ctx.projects.get(projectId) ||
@@ -720,14 +734,23 @@ export class WorkforceQueryService {
   }
 
   /** EO-7 one routing decision — undefined for an unknown id OR one belonging to another project. */
-  async getProjectRoutingDecision(principal: OperatorPrincipal, projectId: string, routingDecisionId: string) {
+  async getProjectRoutingDecision(
+    principal: OperatorPrincipal,
+    projectId: string,
+    routingDecisionId: string,
+  ) {
     this.authorizeView(principal);
     if (
       !this.ctx.projects.get(projectId) ||
       !operatorCanAccessProject(principal, projectId)
     )
       return undefined;
-    return getProjectRoutingDecision(this.ctx, principal, projectId, routingDecisionId);
+    return getProjectRoutingDecision(
+      this.ctx,
+      principal,
+      projectId,
+      routingDecisionId,
+    );
   }
 
   /** EO-4.5 environment execution status (real runners only count). */

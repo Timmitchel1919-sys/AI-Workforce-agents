@@ -5,7 +5,7 @@
  * exact `(action, projectId, requestId)` triple; a stale, wrong-project or
  * wrong-request approval authorizes nothing.
  */
-import { GOVERNANCE_APPROVAL_ACTION } from "../../contracts/index.js";
+import { GOVERNANCE_APPROVAL_ACTION, } from "../../contracts/index.js";
 const canonical = (b) => `${b.action}\u0000${b.projectId}\u0000${b.requestId}`;
 export function requestGovernanceApproval(approvals, binding, requestedBy, reason) {
     return approvals.request({

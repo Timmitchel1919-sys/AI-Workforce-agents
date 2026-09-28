@@ -65,7 +65,9 @@ export class OnboardingControlService {
         const cost = session?.plan?.cost;
         if (!session || !cost)
             return;
-        const hasLimit = cost.dailyLimit !== undefined || cost.monthlyLimit !== undefined || cost.taskLimit !== undefined;
+        const hasLimit = cost.dailyLimit !== undefined ||
+            cost.monthlyLimit !== undefined ||
+            cost.taskLimit !== undefined;
         if (!hasLimit)
             return;
         await this.budgetPolicies.set(principal, session.projectId, {
@@ -109,7 +111,9 @@ export class OnboardingControlService {
         const { session: _session, ...auditDetails } = details;
         void _session;
         const event = this.audit.record("control_command", {
-            projectId: typeof details["projectId"] === "string" ? details["projectId"] : undefined,
+            projectId: typeof details["projectId"] === "string"
+                ? details["projectId"]
+                : undefined,
             data: {
                 ...redact(auditDetails),
                 command,
@@ -132,7 +136,10 @@ export class OnboardingControlService {
             correlationId,
             // The session is already free of secrets by construction; do not
             // redact/truncate it (the browser renders it).
-            details: { ...redact(auditDetails), ...(details["session"] ? { session: details["session"] } : {}) },
+            details: {
+                ...redact(auditDetails),
+                ...(details["session"] ? { session: details["session"] } : {}),
+            },
             auditEventId: event.id,
             timestamp: new Date().toISOString(),
         };
@@ -145,7 +152,12 @@ function classify(error) {
         return {
             outcome: "rejected",
             kind: "invalid_state",
-            details: { code: error.code, ...(error.currentRevision !== undefined ? { currentRevision: error.currentRevision } : {}) },
+            details: {
+                code: error.code,
+                ...(error.currentRevision !== undefined
+                    ? { currentRevision: error.currentRevision }
+                    : {}),
+            },
         };
     }
     if (error instanceof NotFoundError)

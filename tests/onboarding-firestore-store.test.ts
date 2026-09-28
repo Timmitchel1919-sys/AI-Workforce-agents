@@ -28,7 +28,10 @@ function fakeFirestore(): TransactionalFirestoreLike {
     path,
     async get() {
       const value = data.get(path);
-      return { exists: value !== undefined, data: () => (value ? structuredClone(value) : undefined) };
+      return {
+        exists: value !== undefined,
+        data: () => (value ? structuredClone(value) : undefined),
+      };
     },
   });
   const collection = (name: string) => ({
@@ -72,13 +75,29 @@ function fakeFirestore(): TransactionalFirestoreLike {
   } as unknown as TransactionalFirestoreLike;
 }
 
-const project = (id: string, code: string, repositoryKey?: string, onboardingId = id): ProvisionedProject =>
+const project = (
+  id: string,
+  code: string,
+  repositoryKey?: string,
+  onboardingId = id,
+): ProvisionedProject =>
   ({
-    id, code, displayName: id, onboardingId, createdBy: "a", createdAt: "t", readiness: "blocked",
-    ...(repositoryKey ? { repositoryKey } : {}), plan: {} as never, baseline: {} as never, blocking: [], revision: 1,
+    id,
+    code,
+    displayName: id,
+    onboardingId,
+    createdBy: "a",
+    createdAt: "t",
+    readiness: "blocked",
+    ...(repositoryKey ? { repositoryKey } : {}),
+    plan: {} as never,
+    baseline: {} as never,
+    blocking: [],
+    revision: 1,
   }) as ProvisionedProject;
 
-const session = (id: string, revision = 1): OnboardingSession => ({ id, revision }) as OnboardingSession;
+const session = (id: string, revision = 1): OnboardingSession =>
+  ({ id, revision }) as OnboardingSession;
 
 const projectStores: Array<[string, () => ProvisionedProjectStore]> = [
   ["memory", () => new InMemoryProvisionedProjectStore()],
@@ -87,11 +106,26 @@ const projectStores: Array<[string, () => ProvisionedProjectStore]> = [
 for (const [name, make] of projectStores) {
   test(`project store (${name}): claims, idempotency, concurrent duplicates`, async () => {
     const store = make();
-    assert.deepEqual(await store.create(project("p1", "AA", "github.com/a/b")), { result: "created" });
-    assert.deepEqual(await store.create(project("p1", "AA", "github.com/a/b")), { result: "exists", sameOnboarding: true });
-    assert.deepEqual(await store.create(project("p1", "ZZ", undefined, "other")), { result: "exists", sameOnboarding: false });
-    assert.deepEqual(await store.create(project("p2", "AA")), { result: "conflict", reason: "code" });
-    assert.deepEqual(await store.create(project("p3", "BB", "github.com/a/b")), { result: "conflict", reason: "repository" });
+    assert.deepEqual(
+      await store.create(project("p1", "AA", "github.com/a/b")),
+      { result: "created" },
+    );
+    assert.deepEqual(
+      await store.create(project("p1", "AA", "github.com/a/b")),
+      { result: "exists", sameOnboarding: true },
+    );
+    assert.deepEqual(
+      await store.create(project("p1", "ZZ", undefined, "other")),
+      { result: "exists", sameOnboarding: false },
+    );
+    assert.deepEqual(await store.create(project("p2", "AA")), {
+      result: "conflict",
+      reason: "code",
+    });
+    assert.deepEqual(
+      await store.create(project("p3", "BB", "github.com/a/b")),
+      { result: "conflict", reason: "repository" },
+    );
     const [x, y] = await Promise.all([
       store.create(project("p4", "CC", "github.com/c/d")),
       store.create(project("p5", "DD", "github.com/c/d")),
@@ -113,7 +147,10 @@ for (const [name, make] of sessionStores) {
     const store = make();
     assert.equal(await store.create(session("s1")), true);
     assert.equal(await store.create(session("s1")), false);
-    const results = await Promise.all([store.replace(session("s1", 2), 1), store.replace(session("s1", 2), 1)]);
+    const results = await Promise.all([
+      store.replace(session("s1", 2), 1),
+      store.replace(session("s1", 2), 1),
+    ]);
     assert.deepEqual(results.sort(), [false, true]);
     assert.equal((await store.get("s1"))!.revision, 2);
   });

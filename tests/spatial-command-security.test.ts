@@ -36,9 +36,21 @@ const adapter = (projectId: string): ProjectAdapter => ({
 });
 const A = "alpha";
 const B = "beta";
-const inA: OperatorPrincipal = { id: "op-a", role: "operator", allowedProjects: [A] };
-const inB: OperatorPrincipal = { id: "op-b", role: "operator", allowedProjects: [B] };
-const admin: OperatorPrincipal = { id: "adm", role: "admin", allowedProjects: "*" };
+const inA: OperatorPrincipal = {
+  id: "op-a",
+  role: "operator",
+  allowedProjects: [A],
+};
+const inB: OperatorPrincipal = {
+  id: "op-b",
+  role: "operator",
+  allowedProjects: [B],
+};
+const admin: OperatorPrincipal = {
+  id: "adm",
+  role: "admin",
+  allowedProjects: "*",
+};
 
 function harness() {
   const audit = new AuditLog();
@@ -72,27 +84,54 @@ test("an approval BOUND to another project (metadata.projectId only) cannot be a
   const approve = await h.command.approve(inB, { approvalId: bound.id });
   assert.equal(approve.ok, false, "cross-project approve must be denied");
   assert.equal(approve.outcome, "denied");
-  const reject = await h.command.reject(inB, { approvalId: bound.id, reason: "no" });
+  const reject = await h.command.reject(inB, {
+    approvalId: bound.id,
+    reason: "no",
+  });
   assert.equal(reject.outcome, "denied");
-  assert.equal(h.ctx.approvals.require(bound.id).status, "requested", "decision must not be recorded");
+  assert.equal(
+    h.ctx.approvals.require(bound.id).status,
+    "requested",
+    "decision must not be recorded",
+  );
 });
 
 test("the owning project's operator and a wildcard admin can still decide a bound approval", async () => {
   const h = harness();
-  const a1 = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: A } });
+  const a1 = h.ctx.approvals.request({
+    action: "commit",
+    requestedBy: "x",
+    reason: "r",
+    metadata: { projectId: A },
+  });
   assert.equal((await h.command.approve(inA, { approvalId: a1.id })).ok, true);
-  const a2 = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: A } });
-  assert.equal((await h.command.reject(admin, { approvalId: a2.id, reason: "no" })).ok, true);
+  const a2 = h.ctx.approvals.request({
+    action: "commit",
+    requestedBy: "x",
+    reason: "r",
+    metadata: { projectId: A },
+  });
+  assert.equal(
+    (await h.command.reject(admin, { approvalId: a2.id, reason: "no" })).ok,
+    true,
+  );
 });
 
 test("an approval with NO project attribution cannot be decided by a project-scoped operator (fail closed)", async () => {
   const h = harness();
-  const orphan = h.ctx.approvals.request({ action: "tool:x:read", requestedBy: "x", reason: "r" });
+  const orphan = h.ctx.approvals.request({
+    action: "tool:x:read",
+    requestedBy: "x",
+    reason: "r",
+  });
   const denied = await h.command.approve(inA, { approvalId: orphan.id });
   assert.equal(denied.outcome, "denied");
   assert.equal(h.ctx.approvals.require(orphan.id).status, "requested");
   // A wildcard operator (not project-scoped) still may.
-  assert.equal((await h.command.approve(admin, { approvalId: orphan.id })).ok, true);
+  assert.equal(
+    (await h.command.approve(admin, { approvalId: orphan.id })).ok,
+    true,
+  );
 });
 
 /* ------------------------------------------------------------------ */
@@ -122,21 +161,43 @@ async function httpHarness() {
   );
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const { port } = server.address() as AddressInfo;
-  const post = async (name: string, body: unknown, token = "a", corr?: string) => {
+  const post = async (
+    name: string,
+    body: unknown,
+    token = "a",
+    corr?: string,
+  ) => {
     const res = await fetch(`http://127.0.0.1:${port}/api/commands/${name}`, {
       method: "POST",
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(corr ? { "x-correlation-id": corr } : {}) },
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        ...(corr ? { "x-correlation-id": corr } : {}),
+      },
       body: JSON.stringify(body),
     });
     const text = await res.text();
     let json: Record<string, unknown> = {};
-    try { json = JSON.parse(text); } catch { /* not json */ }
+    try {
+      json = JSON.parse(text);
+    } catch {
+      /* not json */
+    }
     return { status: res.status, json };
   };
-  return { ...h, post, base: `http://127.0.0.1:${port}`, close: () => new Promise<void>((r) => server.close(() => r())) };
+  return {
+    ...h,
+    post,
+    base: `http://127.0.0.1:${port}`,
+    close: () => new Promise<void>((r) => server.close(() => r())),
+  };
 }
 
-const mkTask = (h: ReturnType<typeof harness>, projectId: string, status?: "failed" | "queued") => {
+const mkTask = (
+  h: ReturnType<typeof harness>,
+  projectId: string,
+  status?: "failed" | "queued",
+) => {
   const t = h.ctx.tasks.create({ type: "ops", description: "job", projectId });
   if (status === "queued") h.ctx.tasks.transition(t.id, "queued");
   if (status === "failed") {
@@ -150,7 +211,19 @@ const mkTask = (h: ReturnType<typeof harness>, projectId: string, status?: "fail
 test("allowlist: only named commands exist; unknown and prototype-chain names are 404, never executed", async () => {
   const h = await httpHarness();
   try {
-    for (const name of ["shell", "exec", "run", "git-push", "deploy", "constructor", "__proto__", "toString", "hasOwnProperty", "valueOf", "cancel-task/../x"]) {
+    for (const name of [
+      "shell",
+      "exec",
+      "run",
+      "git-push",
+      "deploy",
+      "constructor",
+      "__proto__",
+      "toString",
+      "hasOwnProperty",
+      "valueOf",
+      "cancel-task/../x",
+    ]) {
       const r = await h.post(name, { taskId: "x" });
       assert.ok(r.status === 404, `${name} -> ${r.status}`);
     }
@@ -183,8 +256,18 @@ test("project isolation: a project-B operator cannot cancel or retry a project-A
     assert.equal(c.json.outcome, "denied");
     assert.equal(h.ctx.tasks.get(live.id)!.status, "queued");
     assert.equal(h.ctx.tasks.get(failed.id)!.status, "failed");
-    const events = h.ctx.audit.list().filter((e) => e.type === "control_command");
-    assert.ok(events.some((e) => e.data?.command === "cancel_task" && e.data?.outcome === "denied" && e.data?.actor === "op-b"), "denied attempt is audited");
+    const events = h.ctx.audit
+      .list()
+      .filter((e) => e.type === "control_command");
+    assert.ok(
+      events.some(
+        (e) =>
+          e.data?.command === "cancel_task" &&
+          e.data?.outcome === "denied" &&
+          e.data?.actor === "op-b",
+      ),
+      "denied attempt is audited",
+    );
   } finally {
     await h.close();
   }
@@ -219,7 +302,10 @@ test("stale target: the server re-checks CURRENT state, whatever the graph showe
     assert.equal(bad.status, 409);
     assert.equal(h.ctx.tasks.get(live.id)!.status, "queued");
     // Unknown / vanished target.
-    assert.equal((await h.post("cancel-task", { taskId: "ghost" })).status, 404);
+    assert.equal(
+      (await h.post("cancel-task", { taskId: "ghost" })).status,
+      404,
+    );
   } finally {
     await h.close();
   }
@@ -229,7 +315,10 @@ test("duplicate delivery of a retry does not re-run it (state-machine idempotenc
   const h = await httpHarness();
   try {
     const t = mkTask(h, A, "failed");
-    const [x, y] = await Promise.all([h.post("retry-task", { taskId: t.id }), h.post("retry-task", { taskId: t.id })]);
+    const [x, y] = await Promise.all([
+      h.post("retry-task", { taskId: t.id }),
+      h.post("retry-task", { taskId: t.id }),
+    ]);
     const ok = [x, y].filter((r) => r.status === 200);
     const refused = [x, y].filter((r) => r.status === 409);
     assert.equal(ok.length, 1, "exactly one delivery takes effect");
@@ -243,14 +332,30 @@ test("duplicate delivery of a retry does not re-run it (state-machine idempotenc
 test("approval decisions are recorded once; a second decision is refused", async () => {
   const h = await httpHarness();
   try {
-    const a = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: A } });
+    const a = h.ctx.approvals.request({
+      action: "commit",
+      requestedBy: "x",
+      reason: "r",
+      metadata: { projectId: A },
+    });
     assert.equal((await h.post("approve", { approvalId: a.id })).status, 200);
-    const again = await h.post("reject", { approvalId: a.id, reason: "changed my mind" });
+    const again = await h.post("reject", {
+      approvalId: a.id,
+      reason: "changed my mind",
+    });
     assert.equal(again.status, 409);
     assert.equal(h.ctx.approvals.require(a.id).status, "approved");
     // Cross-project operator, fresh approval: denied.
-    const other = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: A } });
-    assert.equal((await h.post("approve", { approvalId: other.id }, "b")).status, 403);
+    const other = h.ctx.approvals.request({
+      action: "commit",
+      requestedBy: "x",
+      reason: "r",
+      metadata: { projectId: A },
+    });
+    assert.equal(
+      (await h.post("approve", { approvalId: other.id }, "b")).status,
+      403,
+    );
     assert.equal(h.ctx.approvals.require(other.id).status, "requested");
   } finally {
     await h.close();
@@ -261,19 +366,56 @@ test("result + audit: a spatial command returns a structured result and one audi
   const h = await httpHarness();
   try {
     const t = mkTask(h, A, "queued");
-    const r = await h.post("cancel-task", { taskId: t.id, reason: "not needed" }, "a", "sg-test-corr-1");
+    const r = await h.post(
+      "cancel-task",
+      { taskId: t.id, reason: "not needed" },
+      "a",
+      "sg-test-corr-1",
+    );
     assert.equal(r.status, 200);
     assert.deepEqual(
       Object.keys(r.json).sort(),
-      ["auditEventId", "command", "correlationId", "details", "ok", "outcome", "reason", "resourceId", "timestamp"].sort(),
+      [
+        "auditEventId",
+        "command",
+        "correlationId",
+        "details",
+        "ok",
+        "outcome",
+        "reason",
+        "resourceId",
+        "timestamp",
+      ].sort(),
     );
-    assert.equal(r.json.correlationId, "sg-test-corr-1", "the spatial correlation id is preserved end to end");
+    assert.equal(
+      r.json.correlationId,
+      "sg-test-corr-1",
+      "the spatial correlation id is preserved end to end",
+    );
     assert.equal(r.json.ok, true);
-    const ev = h.ctx.audit.list().filter((e) => e.type === "control_command" && e.data?.correlationId === "sg-test-corr-1");
+    const ev = h.ctx.audit
+      .list()
+      .filter(
+        (e) =>
+          e.type === "control_command" &&
+          e.data?.correlationId === "sg-test-corr-1",
+      );
     assert.equal(ev.length, 1);
     assert.deepEqual(
-      { command: ev[0].data?.command, outcome: ev[0].data?.outcome, actor: ev[0].data?.actor, actorRole: ev[0].data?.actorRole, resourceId: ev[0].data?.resourceId },
-      { command: "cancel_task", outcome: "executed", actor: "op-a", actorRole: "operator", resourceId: t.id },
+      {
+        command: ev[0].data?.command,
+        outcome: ev[0].data?.outcome,
+        actor: ev[0].data?.actor,
+        actorRole: ev[0].data?.actorRole,
+        resourceId: ev[0].data?.resourceId,
+      },
+      {
+        command: "cancel_task",
+        outcome: "executed",
+        actor: "op-a",
+        actorRole: "operator",
+        resourceId: t.id,
+      },
     );
     assert.equal(ev[0].projectId, A);
     assert.equal(ev[0].id, r.json.auditEventId);
@@ -285,9 +427,19 @@ test("result + audit: a spatial command returns a structured result and one audi
 test("failure paths never leak internals: malformed bodies and bad ids are 4xx with a message, no stack", async () => {
   const h = await httpHarness();
   try {
-    for (const body of [{}, { taskId: 5 }, { taskId: "" }, { taskId: { $ne: 1 } }, { taskId: "../../etc/passwd" }, null]) {
+    for (const body of [
+      {},
+      { taskId: 5 },
+      { taskId: "" },
+      { taskId: { $ne: 1 } },
+      { taskId: "../../etc/passwd" },
+      null,
+    ]) {
       const r = await h.post("cancel-task", body as never);
-      assert.ok(r.status >= 400 && r.status < 500, JSON.stringify(body) + " -> " + r.status);
+      assert.ok(
+        r.status >= 400 && r.status < 500,
+        JSON.stringify(body) + " -> " + r.status,
+      );
       assert.ok(!JSON.stringify(r.json).includes("    at "), "no stack trace");
     }
   } finally {
@@ -301,18 +453,36 @@ test("a LAPSED approval cannot be approved or rejected, and is marked expired", 
   const h = await httpHarness();
   try {
     const past = new Date(Date.now() - 60_000).toISOString();
-    const lapsed = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", expiresAt: past, metadata: { projectId: A } });
+    const lapsed = h.ctx.approvals.request({
+      action: "commit",
+      requestedBy: "x",
+      reason: "r",
+      expiresAt: past,
+      metadata: { projectId: A },
+    });
     const r = await h.post("approve", { approvalId: lapsed.id });
     assert.equal(r.status, 409);
     assert.equal(r.json.errorKind, "invalid_state");
     assert.match(String(r.json.reason), /expired/);
     assert.equal(h.ctx.approvals.require(lapsed.id).status, "expired");
-    const again = await h.post("reject", { approvalId: lapsed.id, reason: "late" });
+    const again = await h.post("reject", {
+      approvalId: lapsed.id,
+      reason: "late",
+    });
     assert.equal(again.status, 409);
     // A future expiry still works.
     const future = new Date(Date.now() + 3_600_000).toISOString();
-    const live = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", expiresAt: future, metadata: { projectId: A } });
-    assert.equal((await h.post("approve", { approvalId: live.id })).status, 200);
+    const live = h.ctx.approvals.request({
+      action: "commit",
+      requestedBy: "x",
+      reason: "r",
+      expiresAt: future,
+      metadata: { projectId: A },
+    });
+    assert.equal(
+      (await h.post("approve", { approvalId: live.id })).status,
+      200,
+    );
   } finally {
     await h.close();
   }
@@ -321,16 +491,32 @@ test("a LAPSED approval cannot be approved or rejected, and is marked expired", 
 test("a foreign operator learns nothing about another project's approval: no state, no project name", async () => {
   const h = await httpHarness();
   try {
-    const decided = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: A } });
-    assert.equal((await h.post("approve", { approvalId: decided.id })).status, 200); // now 'approved'
-    const pending = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: A } });
+    const decided = h.ctx.approvals.request({
+      action: "commit",
+      requestedBy: "x",
+      reason: "r",
+      metadata: { projectId: A },
+    });
+    assert.equal(
+      (await h.post("approve", { approvalId: decided.id })).status,
+      200,
+    ); // now 'approved'
+    const pending = h.ctx.approvals.request({
+      action: "commit",
+      requestedBy: "x",
+      reason: "r",
+      metadata: { projectId: A },
+    });
     const onDecided = await h.post("approve", { approvalId: decided.id }, "b");
     const onPending = await h.post("approve", { approvalId: pending.id }, "b");
     // Same answer for an already-decided and a pending foreign approval (not 409 vs 403), and it names no project.
     assert.equal(onDecided.status, 403);
     assert.equal(onPending.status, 403);
     assert.equal(onDecided.json.reason, onPending.json.reason);
-    assert.ok(!JSON.stringify(onDecided.json).includes(A), "the other project's name must not leak");
+    assert.ok(
+      !JSON.stringify(onDecided.json).includes(A),
+      "the other project's name must not leak",
+    );
   } finally {
     await h.close();
   }
@@ -340,10 +526,21 @@ test("an approval linked to a task is attributed to the TASK's project", async (
   const h = await httpHarness();
   try {
     const t = mkTask(h, A, "queued");
-    const linked = h.ctx.approvals.request({ action: "task", requestedBy: "x", reason: "r", metadata: { taskId: t.id } });
-    assert.equal((await h.post("approve", { approvalId: linked.id }, "b")).status, 403);
+    const linked = h.ctx.approvals.request({
+      action: "task",
+      requestedBy: "x",
+      reason: "r",
+      metadata: { taskId: t.id },
+    });
+    assert.equal(
+      (await h.post("approve", { approvalId: linked.id }, "b")).status,
+      403,
+    );
     assert.equal(h.ctx.approvals.require(linked.id).status, "requested");
-    assert.equal((await h.post("approve", { approvalId: linked.id }, "a")).status, 200);
+    assert.equal(
+      (await h.post("approve", { approvalId: linked.id }, "a")).status,
+      200,
+    );
   } finally {
     await h.close();
   }
@@ -358,12 +555,28 @@ test("operator free text is validated: non-strings and oversized values are 400 
       assert.equal(r.status, 400, JSON.stringify(reason).slice(0, 30));
     }
     assert.equal(h.ctx.tasks.get(t.id)!.status, "queued");
-    const a = h.ctx.approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: A } });
-    assert.equal((await h.post("approve", { approvalId: a.id, note: { x: 1 } })).status, 400);
-    assert.equal((await h.post("reject", { approvalId: a.id, reason: "y".repeat(501) })).status, 400);
+    const a = h.ctx.approvals.request({
+      action: "commit",
+      requestedBy: "x",
+      reason: "r",
+      metadata: { projectId: A },
+    });
+    assert.equal(
+      (await h.post("approve", { approvalId: a.id, note: { x: 1 } })).status,
+      400,
+    );
+    assert.equal(
+      (await h.post("reject", { approvalId: a.id, reason: "y".repeat(501) }))
+        .status,
+      400,
+    );
     assert.equal(h.ctx.approvals.require(a.id).status, "requested");
     // A normal reason of exactly the limit is fine.
-    assert.equal((await h.post("cancel-task", { taskId: t.id, reason: "z".repeat(500) })).status, 200);
+    assert.equal(
+      (await h.post("cancel-task", { taskId: t.id, reason: "z".repeat(500) }))
+        .status,
+      200,
+    );
   } finally {
     await h.close();
   }
@@ -377,7 +590,7 @@ test("caller-supplied correlation ids are kept only when well-formed; otherwise 
       ["trace_9:a.b-c", true],
       ["x".repeat(129), false],
       ["has space", false],
-      ["evil\"}, \"forged\": {\"x", false],
+      ['evil"}, "forged": {"x', false],
       ["<script>", false],
     ];
     for (const [corr, kept] of cases) {
@@ -396,10 +609,12 @@ test("the inbound correlation header is sanitised on EVERY route, including the 
   const h = await httpHarness();
   try {
     const get = (corr: string) =>
-      fetch(`${h.base}/api/status`, { headers: { authorization: "Bearer a", "x-correlation-id": corr } });
+      fetch(`${h.base}/api/status`, {
+        headers: { authorization: "Bearer a", "x-correlation-id": corr },
+      });
     const good = await get("trace-42");
     assert.equal(good.headers.get("x-correlation-id"), "trace-42");
-    for (const bad of ["bad id with spaces", "x".repeat(200), "quote\"brace}"]) {
+    for (const bad of ["bad id with spaces", "x".repeat(200), 'quote"brace}']) {
       const res = await get(bad);
       const echoed = res.headers.get("x-correlation-id") ?? "";
       assert.notEqual(echoed, bad);
@@ -416,16 +631,48 @@ test("AUDIT INTEGRITY: command payload data can never overwrite the audit facts 
     // Agent enable/disable puts operator text under `details.reason`; cancel-execution puts the
     // domain outcome under `details.outcome`. Neither may replace the audit event's own fields.
     const agentId = "audit-agent";
-    h.ctx.agents.register({ id: agentId, name: agentId, description: "d", capabilities: ["code"], allowedTools: [], allowedProjects: [A], supportedTaskTypes: [], permissions: [] });
-    const r = await h.post("disable-agent", { agentId, reason: "operator says: outcome=fine actor=someone-else" }, "admin", "sg-audit-1");
+    h.ctx.agents.register({
+      id: agentId,
+      name: agentId,
+      description: "d",
+      capabilities: ["code"],
+      allowedTools: [],
+      allowedProjects: [A],
+      supportedTaskTypes: [],
+      permissions: [],
+    });
+    const r = await h.post(
+      "disable-agent",
+      { agentId, reason: "operator says: outcome=fine actor=someone-else" },
+      "admin",
+      "sg-audit-1",
+    );
     assert.equal(r.status, 200);
-    const ev = h.ctx.audit.list().filter((e) => e.type === "control_command" && e.data?.correlationId === "sg-audit-1");
+    const ev = h.ctx.audit
+      .list()
+      .filter(
+        (e) =>
+          e.type === "control_command" &&
+          e.data?.correlationId === "sg-audit-1",
+      );
     assert.equal(ev.length, 1);
-    assert.equal(ev[0]!.data?.actor, "adm", "the actor is the authenticated principal");
+    assert.equal(
+      ev[0]!.data?.actor,
+      "adm",
+      "the actor is the authenticated principal",
+    );
     assert.equal(ev[0]!.data?.outcome, "executed");
     assert.equal(ev[0]!.data?.command, "disable_agent");
-    assert.match(String(ev[0]!.data?.reason), /agent disabled/, "the audit reason is the server's, not the operator's free text");
-    assert.equal(ev[0]!.data?.detailReason, "operator says: outcome=fine actor=someone-else", "the operator's text is kept, under its own key");
+    assert.match(
+      String(ev[0]!.data?.reason),
+      /agent disabled/,
+      "the audit reason is the server's, not the operator's free text",
+    );
+    assert.equal(
+      ev[0]!.data?.detailReason,
+      "operator says: outcome=fine actor=someone-else",
+      "the operator's text is kept, under its own key",
+    );
   } finally {
     await h.close();
   }

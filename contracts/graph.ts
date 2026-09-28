@@ -281,7 +281,8 @@ export const INSIGHT_RECOMMENDATIONS = [
   "review_dependency",
   "review_changeset",
 ] as const;
-export type InsightRecommendationKind = (typeof INSIGHT_RECOMMENDATIONS)[number];
+export type InsightRecommendationKind =
+  (typeof INSIGHT_RECOMMENDATIONS)[number];
 
 /**
  * A suggestion. It carries no command payload and nothing executes it: acting on it is a separate,
@@ -291,7 +292,8 @@ export interface InsightRecommendation {
   kind: InsightRecommendationKind;
   targetNodeId: string;
   /** An existing Control Plane command this suggestion relates to — a label, never invoked. */
-  relatedCommand?: "retry-task" | "cancel-task" | "cancel-execution" | "approve" | "reject";
+  relatedCommand?:
+    "retry-task" | "cancel-task" | "cancel-execution" | "approve" | "reject";
 }
 
 export interface SpatialInsight {

@@ -163,7 +163,7 @@ export class SoftwareFactoryOrchestrator {
         return workstream;
     }
     async planFromObjective(programId, name, objective, projectId = "sf") {
-        const program = this.createProgram(programId, name, objective, projectId);
+        const _program = this.createProgram(programId, name, objective, projectId);
         const workstream = this.createWorkstream(programId, `${programId}-ws1`, "Main Workstream", objective, projectId);
         const planningTask = await this.orchestrator.submit({
             type: "planning",
@@ -175,14 +175,16 @@ export class SoftwareFactoryOrchestrator {
                 objective,
                 context: [],
                 instructions: `Decompose the objective into a sequence of software factory tasks. Return a JSON object with a 'subtasks' array. Each subtask must have: id (string, lowercase alphanumeric), type (string), description (string), requiredCapabilities (string[] array, e.g., ["frontend", "ui-development"], ["backend"], ["testing"], etc.), dependencies (string[] of task ids this subtask depends on).`,
-                acceptanceCriteria: ["Valid JSON returned with subtasks array"]
-            }
+                acceptanceCriteria: ["Valid JSON returned with subtasks array"],
+            },
         });
         if (planningTask.status !== "completed") {
             throw new StateTransitionError(`Planning task failed or blocked: ${planningTask.status}`);
         }
         const output = planningTask.output;
-        const subtasks = output?.subtasks || output?.output?.subtasks || [];
+        const subtasks = output?.subtasks ||
+            output?.output?.subtasks ||
+            [];
         if (!Array.isArray(subtasks)) {
             throw new ValidationError("PM did not return a valid subtasks array");
         }
@@ -190,15 +192,19 @@ export class SoftwareFactoryOrchestrator {
             this.addTask(workstream.id, {
                 type: String(sub.type || "implementation"),
                 description: String(sub.description || ""),
-                requiredCapabilities: Array.isArray(sub.requiredCapabilities) ? sub.requiredCapabilities.map(String) : [],
-                dependencies: Array.isArray(sub.dependencies) ? sub.dependencies.map(String) : [],
+                requiredCapabilities: Array.isArray(sub.requiredCapabilities)
+                    ? sub.requiredCapabilities.map(String)
+                    : [],
+                dependencies: Array.isArray(sub.dependencies)
+                    ? sub.dependencies.map(String)
+                    : [],
                 priority: "normal",
                 input: {
                     objective: String(sub.description || ""),
                     context: [],
                     instructions: "Execute this software factory task based on your specialist capabilities.",
-                    acceptanceCriteria: []
-                }
+                    acceptanceCriteria: [],
+                },
             });
         }
         return this.programDetail(programId, projectId);

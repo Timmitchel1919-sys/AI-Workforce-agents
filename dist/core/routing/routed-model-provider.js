@@ -44,7 +44,8 @@ export class RoutedModelProvider {
             taskId,
         });
         if (!routing.selectedProvider) {
-            throw new ProviderUnavailableError(inner.id, routing.policyDecision?.detail ?? "no qualified model is available for this task");
+            throw new ProviderUnavailableError(inner.id, routing.policyDecision?.detail ??
+                "no qualified model is available for this task");
         }
         const response = await inner.generate(request);
         if (usageLedger) {
@@ -65,7 +66,9 @@ export class RoutedModelProvider {
         // analysis executor, replicated here at the provider layer (no AgentRun exists at this level,
         // so the audit event is written directly, in the same "agent_activity" shape AgentRun.activity
         // produces, rather than skipping the check for lack of one).
-        if (audit && routing.selectedModel !== undefined && routing.selectedModel !== response.model) {
+        if (audit &&
+            routing.selectedModel !== undefined &&
+            routing.selectedModel !== response.model) {
             audit.record("agent_activity", {
                 taskId,
                 agentId: agent.id,

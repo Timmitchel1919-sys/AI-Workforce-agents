@@ -1,5 +1,5 @@
 import { CONTROL_PLANE_ANALYSIS_AGENT_ID, CONTROL_PLANE_ANALYSIS_TASK_TYPE, LazyOpenAIModelProvider, createProductionOpenAIAgentExecutor, } from "../agents/control-plane-analysis/index.js";
-import { DeveloperAgent, makeDeveloperAgentDefinition } from "../agents/developer/index.js";
+import { DeveloperAgent, makeDeveloperAgentDefinition, } from "../agents/developer/index.js";
 import { QaAgent, makeQaAgentDefinition } from "../agents/qa/index.js";
 import { ProjectManagerAgent, makeProjectManagerAgentDefinition, } from "../agents/project-manager/index.js";
 import { AI_WORKFORCE_DISPLAY_NAME, AI_WORKFORCE_REPOSITORY, AiWorkforceProjectAdapter, } from "../adapters/projects/ai-workforce/index.js";
@@ -109,32 +109,42 @@ export function createMoneyMindProductionBinding(env = process.env) {
         metadata: Object.freeze({ sourceAvailable: configured !== undefined }),
     });
 }
-import { V1_SPECIALIST_WORKFORCE } from "../contracts/workforce.js";
+import { V1_SPECIALIST_WORKFORCE, } from "../contracts/workforce.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
-export const createBootstrapSpecialistAgentExecutor = (descriptor) => (audit) => new SpecialistAgent({ descriptor, model: new LazyOpenAIModelProvider(), audit });
+export const createBootstrapSpecialistAgentExecutor = (descriptor) => (audit) => new SpecialistAgent({
+    descriptor,
+    model: new LazyOpenAIModelProvider(),
+    audit,
+});
 export const PRODUCTION_WORKFORCE_CONFIGURATION = Object.freeze({
     agents: Object.freeze([
         Object.freeze({
             definition: CONTROL_PLANE_ANALYSIS_AGENT,
             executorKey: "openai-control-plane-analysis",
         }),
-        Object.freeze({ definition: DEVELOPER_AGENT, executorKey: "openai-developer" }),
+        Object.freeze({
+            definition: DEVELOPER_AGENT,
+            executorKey: "openai-developer",
+        }),
         Object.freeze({ definition: QA_AGENT, executorKey: "openai-qa" }),
-        Object.freeze({ definition: PROJECT_MANAGER_AGENT, executorKey: "openai-project-manager" }),
-        ...V1_SPECIALIST_WORKFORCE.map(agent => Object.freeze({
+        Object.freeze({
+            definition: PROJECT_MANAGER_AGENT,
+            executorKey: "openai-project-manager",
+        }),
+        ...V1_SPECIALIST_WORKFORCE.map((agent) => Object.freeze({
             definition: agent,
-            executorKey: `openai-specialist-${agent.id}`
-        }))
+            executorKey: `openai-specialist-${agent.id}`,
+        })),
     ]),
     executorBindings: Object.freeze({
         "openai-control-plane-analysis": createProductionOpenAIAgentExecutor,
         "openai-developer": createBootstrapDeveloperAgentExecutor,
         "openai-qa": createBootstrapQaAgentExecutor,
         "openai-project-manager": createBootstrapProjectManagerAgentExecutor,
-        ...Object.fromEntries(V1_SPECIALIST_WORKFORCE.map(agent => [
+        ...Object.fromEntries(V1_SPECIALIST_WORKFORCE.map((agent) => [
             `openai-specialist-${agent.id}`,
-            createBootstrapSpecialistAgentExecutor(agent)
-        ]))
+            createBootstrapSpecialistAgentExecutor(agent),
+        ])),
     }),
     tools: Object.freeze([]),
     toolHandlerBindings: Object.freeze({}),

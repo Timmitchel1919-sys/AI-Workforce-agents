@@ -15,7 +15,7 @@ export class KnowledgeEngine {
     async projectKnowledgeStore() {
         console.log("PROJECT KNOWLEDGE STORE: Initializing store.");
     }
-    async sourceIngestion(sources) {
+    async sourceIngestion(_sources) {
         console.log("SOURCE INGESTION: Ingesting sources.");
     }
     async normalization(source) {
@@ -24,7 +24,7 @@ export class KnowledgeEngine {
     }
     async chunkingAndIndexing(data) {
         console.log("CHUNKING / INDEXING: Creating chunks.");
-        return [{ id: 'chunk-1', content: data.text, embedding: [0.1, 0.2] }];
+        return [{ id: "chunk-1", content: data.text, embedding: [0.1, 0.2] }];
     }
     async retrieval(query) {
         console.log("RETRIEVAL: Retrieving chunks for query: " + query);

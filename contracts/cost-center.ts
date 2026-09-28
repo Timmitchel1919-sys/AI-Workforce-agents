@@ -64,11 +64,16 @@ export interface ModelPrice {
  * name pattern.
  */
 export const PRICE_TABLE_VERSION = "2026-09-27";
-export const MODEL_PRICES: Readonly<Record<string, ModelPrice>> = Object.freeze({
-  "claude-sonnet-5": { inputPerMillionUsd: 3, outputPerMillionUsd: 15 },
-  "claude-opus-5-5": { inputPerMillionUsd: 15, outputPerMillionUsd: 75 },
-  "claude-haiku-4-5-20251001": { inputPerMillionUsd: 0.8, outputPerMillionUsd: 4 },
-});
+export const MODEL_PRICES: Readonly<Record<string, ModelPrice>> = Object.freeze(
+  {
+    "claude-sonnet-5": { inputPerMillionUsd: 3, outputPerMillionUsd: 15 },
+    "claude-opus-5-5": { inputPerMillionUsd: 15, outputPerMillionUsd: 75 },
+    "claude-haiku-4-5-20251001": {
+      inputPerMillionUsd: 0.8,
+      outputPerMillionUsd: 4,
+    },
+  },
+);
 
 export interface PriceEstimate {
   priced: true;
@@ -93,13 +98,23 @@ export function estimateCost(
   // identical model id (e.g. "GPT-4o" vs "gpt-4o") must still find its real price, not silently
   // come back "unpriced" (the same bug class fixed in the Model Router's own price lookup).
   const price = MODEL_PRICES[model.toLowerCase()];
-  if (!price) return { priced: false, reason: `no price entry for model "${model}"` };
-  if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined)) {
+  if (!price)
+    return { priced: false, reason: `no price entry for model "${model}"` };
+  if (
+    !usage ||
+    (usage.inputTokens === undefined && usage.outputTokens === undefined)
+  ) {
     return { priced: false, reason: "provider reported no token usage" };
   }
-  const inputUsd = ((usage.inputTokens ?? 0) / 1_000_000) * price.inputPerMillionUsd;
-  const outputUsd = ((usage.outputTokens ?? 0) / 1_000_000) * price.outputPerMillionUsd;
-  return { priced: true, amountUsd: inputUsd + outputUsd, pricingVersion: PRICE_TABLE_VERSION };
+  const inputUsd =
+    ((usage.inputTokens ?? 0) / 1_000_000) * price.inputPerMillionUsd;
+  const outputUsd =
+    ((usage.outputTokens ?? 0) / 1_000_000) * price.outputPerMillionUsd;
+  return {
+    priced: true,
+    amountUsd: inputUsd + outputUsd,
+    pricingVersion: PRICE_TABLE_VERSION,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -161,20 +176,38 @@ export interface BudgetPolicy {
   updatedBy: string;
 }
 
-export function validateBudgetPolicyDraft(input: unknown): Omit<BudgetPolicy, "projectId" | "updatedAt" | "updatedBy"> {
+export function validateBudgetPolicyDraft(
+  input: unknown,
+): Omit<BudgetPolicy, "projectId" | "updatedAt" | "updatedBy"> {
   if (!input || typeof input !== "object") {
     throw new ValidationError("budget policy must be an object");
   }
   const draft = input as Record<string, unknown>;
-  for (const key of ["dailyLimitUsd", "monthlyLimitUsd", "taskLimitUsd"] as const) {
+  for (const key of [
+    "dailyLimitUsd",
+    "monthlyLimitUsd",
+    "taskLimitUsd",
+  ] as const) {
     const v = draft[key];
-    if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) {
-      throw new ValidationError(`budget policy.${key} must be a non-negative number`);
+    if (
+      v !== undefined &&
+      (typeof v !== "number" || !Number.isFinite(v) || v < 0)
+    ) {
+      throw new ValidationError(
+        `budget policy.${key} must be a non-negative number`,
+      );
     }
   }
   const warn = draft.warningThresholdPercent;
-  if (typeof warn !== "number" || !Number.isInteger(warn) || warn < 1 || warn > 100) {
-    throw new ValidationError("budget policy.warningThresholdPercent must be an integer 1-100");
+  if (
+    typeof warn !== "number" ||
+    !Number.isInteger(warn) ||
+    warn < 1 ||
+    warn > 100
+  ) {
+    throw new ValidationError(
+      "budget policy.warningThresholdPercent must be an integer 1-100",
+    );
   }
   if (typeof draft.hardStop !== "boolean") {
     throw new ValidationError("budget policy.hardStop must be a boolean");
@@ -198,7 +231,13 @@ export function validateBudgetPolicyDraft(input: unknown): Omit<BudgetPolicy, "p
  * purpose is to guarantee spend never passes the limit unverified, so
  * "cannot verify" must never be treated as "assumed fine".
  */
-export const BUDGET_STATUSES = ["not_configured", "ok", "warning", "blocked", "unpriced"] as const;
+export const BUDGET_STATUSES = [
+  "not_configured",
+  "ok",
+  "warning",
+  "blocked",
+  "unpriced",
+] as const;
 export type BudgetStatus = (typeof BUDGET_STATUSES)[number];
 
 export interface BudgetEvaluation {
@@ -231,17 +270,30 @@ export function evaluateBudget(
   uncostedUsageCount: number,
 ): BudgetEvaluation {
   if (!policy) {
-    return { status: "not_configured", currency: "USD", detail: "no budget policy is configured for this project" };
+    return {
+      status: "not_configured",
+      currency: "USD",
+      detail: "no budget policy is configured for this project",
+    };
   }
-  const windows: readonly { scope: "daily" | "monthly" | "task"; limit?: number; used: number }[] = [
+  const windows: readonly {
+    scope: "daily" | "monthly" | "task";
+    limit?: number;
+    used: number;
+  }[] = [
     { scope: "task", limit: policy.taskLimitUsd, used: usedUsd.task },
     { scope: "daily", limit: policy.dailyLimitUsd, used: usedUsd.daily },
     { scope: "monthly", limit: policy.monthlyLimitUsd, used: usedUsd.monthly },
   ];
-  const uncostedNote = uncostedUsageCount > 0 ? ` (${uncostedUsageCount} usage event(s) in scope could not be priced)` : "";
+  const uncostedNote =
+    uncostedUsageCount > 0
+      ? ` (${uncostedUsageCount} usage event(s) in scope could not be priced)`
+      : "";
 
   // Pass 1: any window actually at or over its limit — tightest (first in priority order) wins.
-  let breached: { scope: "daily" | "monthly" | "task"; limit: number; used: number } | undefined;
+  let breached:
+    | { scope: "daily" | "monthly" | "task"; limit: number; used: number }
+    | undefined;
   for (const w of windows) {
     if (w.limit !== undefined && w.used >= w.limit) {
       breached = { scope: w.scope, limit: w.limit, used: w.used };
@@ -251,7 +303,14 @@ export function evaluateBudget(
   if (breached) {
     const status: BudgetStatus = policy.hardStop ? "blocked" : "warning";
     const detail = `${breached.scope} spend $${breached.used.toFixed(2)} has reached the $${breached.limit.toFixed(2)} limit${policy.hardStop ? "" : " (not hard-stopped)"}${uncostedNote}`;
-    return { status, scope: breached.scope, limitUsd: breached.limit, usedUsd: breached.used, currency: "USD", detail };
+    return {
+      status,
+      scope: breached.scope,
+      limitUsd: breached.limit,
+      usedUsd: breached.used,
+      currency: "USD",
+      detail,
+    };
   }
 
   // Pass 2: no full breach — the tightest window merely crossing the warning threshold, if any.
@@ -277,7 +336,10 @@ export function evaluateBudget(
     // reporting "ok"/"unpriced" here would let real, unbounded spend continue past a policy whose
     // entire point is to stop it. Fails closed to `blocked`, never silently `allow`ed as a lesser
     // "advisory" state, whenever hardStop is actually configured with something to enforce.
-    const hasLimit = policy.taskLimitUsd !== undefined || policy.dailyLimitUsd !== undefined || policy.monthlyLimitUsd !== undefined;
+    const hasLimit =
+      policy.taskLimitUsd !== undefined ||
+      policy.dailyLimitUsd !== undefined ||
+      policy.monthlyLimitUsd !== undefined;
     if (policy.hardStop && hasLimit) {
       return {
         status: "blocked",
@@ -291,7 +353,11 @@ export function evaluateBudget(
       detail: `${uncostedUsageCount} usage event(s) could not be priced; the budget cannot be fully evaluated`,
     };
   }
-  return { status: "ok", currency: "USD", detail: "within all configured limits" };
+  return {
+    status: "ok",
+    currency: "USD",
+    detail: "within all configured limits",
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -306,10 +372,13 @@ export interface CostCenterCapabilities {
 }
 
 export const COST_CENTER_CAPABILITY_IDS = ["enforcement"] as const;
-export type CostCenterCapabilityId = (typeof COST_CENTER_CAPABILITY_IDS)[number];
+export type CostCenterCapabilityId =
+  (typeof COST_CENTER_CAPABILITY_IDS)[number];
 
 /** Capability ids that exist in this deployment but currently do nothing. INERT != IDLE. */
-export function inertCostCenterCapabilities(caps: CostCenterCapabilities): CostCenterCapabilityId[] {
+export function inertCostCenterCapabilities(
+  caps: CostCenterCapabilities,
+): CostCenterCapabilityId[] {
   const inert: CostCenterCapabilityId[] = [];
   if (!caps.enforcement) inert.push("enforcement");
   return inert;

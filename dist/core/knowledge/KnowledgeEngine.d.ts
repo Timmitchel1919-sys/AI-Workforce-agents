@@ -1,7 +1,7 @@
 export interface KnowledgeSource {
     id: string;
     content: string;
-    metadata: Record<string, any>;
+    metadata: Record<string, unknown>;
 }
 export interface NormalizedData {
     sourceId: string;
@@ -19,7 +19,7 @@ export declare class KnowledgeEngine {
     knowledgeArchitectureAudit(): Promise<void>;
     knowledgeContracts(): Promise<void>;
     projectKnowledgeStore(): Promise<void>;
-    sourceIngestion(sources: KnowledgeSource[]): Promise<void>;
+    sourceIngestion(_sources: KnowledgeSource[]): Promise<void>;
     normalization(source: KnowledgeSource): Promise<NormalizedData>;
     chunkingAndIndexing(data: NormalizedData): Promise<Chunk[]>;
     retrieval(query: string): Promise<Chunk[]>;

@@ -142,7 +142,8 @@ export class UsageLedger {
             const amount = r.cost.priced ? r.cost.amountUsd : 0;
             // Only usage inside the widest window in play (monthly, or this task) can affect what is
             // reported now; older unpriced usage is irrelevant to a current evaluation.
-            const inScope = r.createdAt >= windows.monthlySinceIso || (windows.taskId !== undefined && r.taskId === windows.taskId);
+            const inScope = r.createdAt >= windows.monthlySinceIso ||
+                (windows.taskId !== undefined && r.taskId === windows.taskId);
             if (!r.cost.priced && inScope)
                 uncosted += 1;
             if (r.createdAt >= windows.dailySinceIso)
@@ -153,10 +154,16 @@ export class UsageLedger {
                 taskAmounts.push(amount);
         }
         // Kahan summation: plain `+=` over many small USD amounts drifts (MONEY CORRECTNESS).
-        return { daily: sumUsd(dailyAmounts), monthly: sumUsd(monthlyAmounts), task: sumUsd(taskAmounts), uncosted };
+        return {
+            daily: sumUsd(dailyAmounts),
+            monthly: sumUsd(monthlyAmounts),
+            task: sumUsd(taskAmounts),
+            uncosted,
+        };
     }
     authorize(principal, projectId) {
-        if (!operatorCan(principal, "view") || !operatorCanAccessProject(principal, projectId)) {
+        if (!operatorCan(principal, "view") ||
+            !operatorCanAccessProject(principal, projectId)) {
             throw new ExecutionDeniedError("AUTHORIZATION_DENIED", "not authorized to view this project's usage");
         }
     }

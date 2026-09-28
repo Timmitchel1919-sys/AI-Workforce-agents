@@ -123,8 +123,7 @@ export function buildExecutionFragment(
       ...(safe ? { metadata: safe } : {}),
     });
   };
-  const has = (id: string): boolean =>
-    nodes.has(id) || existingNodeIds.has(id);
+  const has = (id: string): boolean => nodes.has(id) || existingNodeIds.has(id);
   const edge = (
     type: WorkforceGraphEdgeType,
     source: string,
@@ -134,16 +133,46 @@ export function buildExecutionFragment(
     if (!has(source) || !has(target)) return;
     const id = `${type.toLowerCase()}-${source}-${target}`;
     if (!edges.has(id)) {
-      edges.set(id, { id, type, source, target, ...(status ? { status } : {}) });
+      edges.set(id, {
+        id,
+        type,
+        source,
+        target,
+        ...(status ? { status } : {}),
+      });
     }
   };
 
-  const sessions = newest(records.sessions, (s) => s.createdAt, (s) => s.sessionId);
-  const changeSets = newest(records.changeSets, (c) => c.updatedAt, (c) => c.changeSetId);
-  const verifications = newest(records.verifications, (v) => v.createdAt, (v) => v.verificationId);
-  const reviews = newest(records.reviews, (r) => r.createdAt, (r) => r.reviewId);
-  const commits = newest(records.commits, (c) => c.createdAt, (c) => c.receiptId);
-  const releases = newest(records.releases, (r) => r.startedAt, (r) => r.releaseId);
+  const sessions = newest(
+    records.sessions,
+    (s) => s.createdAt,
+    (s) => s.sessionId,
+  );
+  const changeSets = newest(
+    records.changeSets,
+    (c) => c.updatedAt,
+    (c) => c.changeSetId,
+  );
+  const verifications = newest(
+    records.verifications,
+    (v) => v.createdAt,
+    (v) => v.verificationId,
+  );
+  const reviews = newest(
+    records.reviews,
+    (r) => r.createdAt,
+    (r) => r.reviewId,
+  );
+  const commits = newest(
+    records.commits,
+    (c) => c.createdAt,
+    (c) => c.receiptId,
+  );
+  const releases = newest(
+    records.releases,
+    (r) => r.startedAt,
+    (r) => r.releaseId,
+  );
 
   // ---- nodes (every record is same-project; foreign rows are dropped) ----
   for (const s of sessions) {
@@ -178,7 +207,11 @@ export function buildExecutionFragment(
       c.status,
       normalise(CHANGESET_STATE, c.status),
       // Counts only — never paths, hashes or file contents.
-      { fileCount: c.entries.length, baselineCount: c.baseline.length, updatedAt: c.updatedAt },
+      {
+        fileCount: c.entries.length,
+        baselineCount: c.baseline.length,
+        updatedAt: c.updatedAt,
+      },
     );
   }
   for (const v of verifications) {

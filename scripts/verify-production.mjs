@@ -14,7 +14,12 @@
 import { verifyProduction } from "../dist/core/release/production-verifier.js";
 
 const MULTI = new Set(["--base", "--protected", "--allow-host"]);
-const SINGLE = new Set(["--expect-bundle", "--expect-version", "--health-path", "--timeout-ms"]);
+const SINGLE = new Set([
+  "--expect-bundle",
+  "--expect-version",
+  "--health-path",
+  "--timeout-ms",
+]);
 const usage = (message) => {
   console.error(`verify-production: ${message}`);
   process.exit(2);
@@ -26,22 +31,31 @@ for (let i = 0; i < argv.length; i += 2) {
   const flag = argv[i];
   const value = argv[i + 1];
   if (!MULTI.has(flag) && !SINGLE.has(flag)) usage(`unknown argument ${flag}`);
-  if (value === undefined || value === "" || value.startsWith("--")) usage(`${flag} needs a value`);
-  if (SINGLE.has(flag) && opts.has(flag)) usage(`${flag} may be given only once`);
+  if (value === undefined || value === "" || value.startsWith("--"))
+    usage(`${flag} needs a value`);
+  if (SINGLE.has(flag) && opts.has(flag))
+    usage(`${flag} may be given only once`);
   opts.set(flag, [...(opts.get(flag) ?? []), value]);
 }
 const all = (f) => opts.get(f);
 const one = (f) => opts.get(f)?.[0];
 if (!all("--base")) usage("at least one --base is required");
-const timeout = one("--timeout-ms") === undefined ? undefined : Number(one("--timeout-ms"));
-if (timeout !== undefined && !(Number.isInteger(timeout) && timeout > 0 && timeout <= 120000)) usage("--timeout-ms must be 1..120000");
+const timeout =
+  one("--timeout-ms") === undefined ? undefined : Number(one("--timeout-ms"));
+if (
+  timeout !== undefined &&
+  !(Number.isInteger(timeout) && timeout > 0 && timeout <= 120000)
+)
+  usage("--timeout-ms must be 1..120000");
 
 const report = await verifyProduction({
   baseUrls: all("--base"),
   ...(all("--protected") ? { protectedPaths: all("--protected") } : {}),
   ...(all("--allow-host") ? { allowedHostSuffixes: all("--allow-host") } : {}),
   ...(one("--expect-bundle") ? { expectedBundle: one("--expect-bundle") } : {}),
-  ...(one("--expect-version") ? { expectedVersion: one("--expect-version") } : {}),
+  ...(one("--expect-version")
+    ? { expectedVersion: one("--expect-version") }
+    : {}),
   ...(one("--health-path") ? { healthPath: one("--health-path") } : {}),
   ...(timeout ? { timeoutMs: timeout } : {}),
 });

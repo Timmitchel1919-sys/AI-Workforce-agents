@@ -5,7 +5,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { NotFoundError, ValidationError, type AgentExecutor } from "../contracts/index.js";
+import {
+  NotFoundError,
+  ValidationError,
+  type AgentExecutor,
+} from "../contracts/index.js";
 import { RoutingAgentExecutor } from "../core/index.js";
 
 const fake = (tag: string): AgentExecutor => ({ execute: async () => tag });
@@ -20,8 +24,15 @@ test("REPLACE: overwrites an existing registration and execute() uses the NEW ex
 
 test("REPLACE: throws NotFoundError when there was nothing to replace — never silently registers", async () => {
   const router = new RoutingAgentExecutor();
-  assert.throws(() => router.replace("never-registered", fake("x")), NotFoundError);
-  assert.equal(router.has("never-registered"), false, "a failed replace must not leave a registration behind");
+  assert.throws(
+    () => router.replace("never-registered", fake("x")),
+    NotFoundError,
+  );
+  assert.equal(
+    router.has("never-registered"),
+    false,
+    "a failed replace must not leave a registration behind",
+  );
 });
 
 test("REPLACE: an empty agent id is rejected", () => {

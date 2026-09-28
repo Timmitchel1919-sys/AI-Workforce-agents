@@ -1,12 +1,7 @@
 import { Agent } from "./index.js";
 
-export type AgentLifecycleStatus = 
-  | "provisioning"
-  | "idle"
-  | "running"
-  | "suspended"
-  | "errored"
-  | "terminated";
+export type AgentLifecycleStatus =
+  "provisioning" | "idle" | "running" | "suspended" | "errored" | "terminated";
 
 export interface AgentDescriptor extends Agent {
   role: string;
@@ -42,19 +37,26 @@ export interface SpecialistResult {
 }
 
 export function validateSpecialistTask(raw: unknown): SpecialistTask {
-  if (typeof raw !== "object" || raw === null) throw new Error("task must be an object");
+  if (typeof raw !== "object" || raw === null)
+    throw new Error("task must be an object");
   const t = raw as Record<string, unknown>;
-  if (typeof t.objective !== "string") throw new Error("objective must be a string");
+  if (typeof t.objective !== "string")
+    throw new Error("objective must be a string");
   return {
     objective: t.objective,
     context: Array.isArray(t.context) ? t.context.map(String) : [],
     instructions: typeof t.instructions === "string" ? t.instructions : "",
-    acceptanceCriteria: Array.isArray(t.acceptanceCriteria) ? t.acceptanceCriteria.map(String) : []
+    acceptanceCriteria: Array.isArray(t.acceptanceCriteria)
+      ? t.acceptanceCriteria.map(String)
+      : [],
   };
 }
 
-export function validateSpecialistResult(raw: unknown): asserts raw is SpecialistResult {
-  if (typeof raw !== "object" || raw === null) throw new Error("result must be an object");
+export function validateSpecialistResult(
+  raw: unknown,
+): asserts raw is SpecialistResult {
+  if (typeof raw !== "object" || raw === null)
+    throw new Error("result must be an object");
   const r = raw as Record<string, unknown>;
   if (typeof r.taskId !== "string") throw new Error("taskId is required");
   if (typeof r.summary !== "string") throw new Error("summary is required");
@@ -205,5 +207,5 @@ export const V1_SPECIALIST_WORKFORCE: AgentDescriptor[] = [
     allowedProjects: ["money-mind"],
     supportedTaskTypes: ["deployment", "infrastructure"],
     permissions: [],
-  }
+  },
 ];

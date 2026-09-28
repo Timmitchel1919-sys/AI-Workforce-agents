@@ -19,12 +19,23 @@ import { DEFAULT_RETRY_POLICY, NotFoundError, PermissionDeniedError, StateTransi
 import { extractFailureReason, now, } from "../../core/index.js";
 import { resolveCorrelationId } from "../correlation.js";
 import { redact } from "../redaction.js";
-const AUDIT_FACT_KEYS = new Set(["command", "outcome", "errorKind", "correlationId", "actor", "actorRole", "resourceId", "reason"]);
+const AUDIT_FACT_KEYS = new Set([
+    "command",
+    "outcome",
+    "errorKind",
+    "correlationId",
+    "actor",
+    "actorRole",
+    "resourceId",
+    "reason",
+]);
 /** `outcome` -> `detailOutcome`, so payload data never shares a key with an audit fact. */
 function namespaceAuditCollisions(details) {
     const out = {};
     for (const [key, value] of Object.entries(details)) {
-        out[AUDIT_FACT_KEYS.has(key) ? `detail${key[0].toUpperCase()}${key.slice(1)}` : key] = value;
+        out[AUDIT_FACT_KEYS.has(key)
+            ? `detail${key[0].toUpperCase()}${key.slice(1)}`
+            : key] = value;
     }
     return out;
 }
@@ -118,7 +129,8 @@ export class WorkforceCommandService {
         // Fail closed: a project-scoped operator may not decide an approval that cannot be attributed
         // to a project they can act on. (A wildcard operator is not project-scoped.)
         const unattributable = !projectId && principal.allowedProjects !== "*";
-        if (unattributable || (projectId && !operatorCanAccessProject(principal, projectId))) {
+        if (unattributable ||
+            (projectId && !operatorCanAccessProject(principal, projectId))) {
             // Checked BEFORE the status, so a scoped operator cannot learn another project's approval
             // state; and the reason names no project. (The 403 is the established API contract for a
             // foreign approval; ids stay enumerable, which is why nothing else about it is revealed.)
@@ -229,7 +241,9 @@ export class WorkforceCommandService {
             return this.audited(principal, command, "executed", detail.program.id, "program and workstream autonomously planned", { projectId, detail }, run);
         }
         catch (error) {
-            return this.audited(principal, command, "rejected", typeof input?.programId === "string" ? input.programId : "", message(error), { projectId: typeof input?.projectId === "string" ? input.projectId : "" }, run, softwareFactoryKind(error));
+            return this.audited(principal, command, "rejected", typeof input?.programId === "string" ? input.programId : "", message(error), {
+                projectId: typeof input?.projectId === "string" ? input.projectId : "",
+            }, run, softwareFactoryKind(error));
         }
     }
     async createProgram(principal, input, options) {
@@ -838,7 +852,9 @@ export class WorkforceCommandService {
             return this.audited(principal, command, "executed", projectId, "budget policy set", { projectId, policy: saved }, run);
         }
         catch (error) {
-            return this.audited(principal, command, "rejected", projectId, message(error), { projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+            return this.audited(principal, command, "rejected", projectId, message(error), { projectId }, run, error instanceof ValidationError
+                ? "invalid_request"
+                : "command_failure");
         }
     }
     /** Admin-only. Sets the project's governance policy (provider/model allow-list, approval threshold) (EO-6.3). */
@@ -863,7 +879,9 @@ export class WorkforceCommandService {
             return this.audited(principal, command, "executed", projectId, "governance policy set", { projectId, policy: saved }, run);
         }
         catch (error) {
-            return this.audited(principal, command, "rejected", projectId, message(error), { projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+            return this.audited(principal, command, "rejected", projectId, message(error), { projectId }, run, error instanceof ValidationError
+                ? "invalid_request"
+                : "command_failure");
         }
     }
     /**
@@ -897,10 +915,17 @@ export class WorkforceCommandService {
         // GOVERNANCE_UNAVAILABLE fallback) must still be captured in the audit trail, never skip it.
         try {
             const decision = await this.ctx.governance.engine.evaluate(principal, request);
-            return this.audited(principal, command, "executed", request.projectId, decision.detail, { projectId: request.projectId, decision: decision.decision, reasonCode: decision.reasonCode, approvalId: decision.approvalId }, run);
+            return this.audited(principal, command, "executed", request.projectId, decision.detail, {
+                projectId: request.projectId,
+                decision: decision.decision,
+                reasonCode: decision.reasonCode,
+                approvalId: decision.approvalId,
+            }, run);
         }
         catch (error) {
-            return this.audited(principal, command, "rejected", request.projectId, message(error), { projectId: request.projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+            return this.audited(principal, command, "rejected", request.projectId, message(error), { projectId: request.projectId }, run, error instanceof ValidationError
+                ? "invalid_request"
+                : "command_failure");
         }
     }
     /* -------------------------------------------------------------- */

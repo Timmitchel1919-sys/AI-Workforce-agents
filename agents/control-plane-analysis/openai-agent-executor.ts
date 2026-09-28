@@ -12,7 +12,13 @@ import {
   ProviderUnavailableError,
   ValidationError,
 } from "../../contracts/index.js";
-import { AuditLog, AgentRun, GeneralAgent, type ModelRouter, type UsageLedger } from "../../core/index.js";
+import {
+  AuditLog,
+  AgentRun,
+  GeneralAgent,
+  type ModelRouter,
+  type UsageLedger,
+} from "../../core/index.js";
 import { OpenAIModelProvider } from "../../adapters/models/openai-model-provider.js";
 
 export const CONTROL_PLANE_ANALYSIS_AGENT_ID = "control-plane-analysis-agent";
@@ -194,7 +200,9 @@ export class OpenAIAgentExecutor extends GeneralAgent<
         projectId: task.projectId,
         agentId: this.agentId,
         agent,
-        requirement: { requiredCapabilities: ["reasoning", "structured_output"] },
+        requirement: {
+          requiredCapabilities: ["reasoning", "structured_output"],
+        },
         requestId: task.id,
         taskId: task.id,
       });
@@ -203,7 +211,8 @@ export class OpenAIAgentExecutor extends GeneralAgent<
       if (!routing.selectedProvider) {
         throw this.fail(
           "model_unavailable",
-          routing.policyDecision?.detail ?? "no qualified model is available for this task",
+          routing.policyDecision?.detail ??
+            "no qualified model is available for this task",
           { routingDecisionId, reasonCodes: routing.reasonCodes },
         );
       }
@@ -266,7 +275,11 @@ export class OpenAIAgentExecutor extends GeneralAgent<
       this.validateOutput(result);
       if (requestedModel && requestedModel !== response.model) {
         // REQUESTED MODEL != ACTUAL MODEL — a real, auditable mismatch, never silently absorbed.
-        run.activity("model_mismatch", { requestedModel, actualModel: response.model, routingDecisionId });
+        run.activity("model_mismatch", {
+          requestedModel,
+          actualModel: response.model,
+          routingDecisionId,
+        });
       }
       run.activity("model_result", {
         provider: this.options.provider.id,
@@ -307,7 +320,10 @@ export class OpenAIAgentExecutor extends GeneralAgent<
  */
 export function createProductionOpenAIAgentExecutor(
   audit: AuditLog,
-  governance?: { router?: Pick<ModelRouter, "routeInternal">; usageLedger?: Pick<UsageLedger, "record"> },
+  governance?: {
+    router?: Pick<ModelRouter, "routeInternal">;
+    usageLedger?: Pick<UsageLedger, "record">;
+  },
 ): OpenAIAgentExecutor {
   return new OpenAIAgentExecutor({
     provider: new LazyOpenAIModelProvider(),

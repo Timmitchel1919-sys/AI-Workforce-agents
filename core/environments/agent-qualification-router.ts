@@ -98,7 +98,8 @@ export class AgentQualificationRouter {
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((agent) => {
         const reasons: AgentRejectionReason[] = [];
-        if (!isEnabled(agent.id, requirement.projectId)) reasons.push("agent_disabled");
+        if (!isEnabled(agent.id, requirement.projectId))
+          reasons.push("agent_disabled");
         if (
           agent.allowedProjects.length > 0 &&
           !agent.allowedProjects.includes(requirement.projectId)

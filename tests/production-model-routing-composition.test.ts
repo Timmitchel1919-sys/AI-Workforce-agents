@@ -34,10 +34,31 @@ function seeded(): FakeFirestore {
   const firestore = new FakeFirestore();
   const operators = firestore.collection("operators");
   const T = "2026-09-27T00:00:00.000Z";
-  const base = { emailVerified: true, requestedAt: T, updatedAt: T, revision: 1, status: "active" };
-  operators.values.set("admin-1", { ...base, id: "admin-1", role: "admin", allowedProjects: "*" });
-  operators.values.set("mm-1", { ...base, id: "mm-1", role: "operator", allowedProjects: ["money-mind"] });
-  operators.values.set("aiw-1", { ...base, id: "aiw-1", role: "operator", allowedProjects: ["ai-workforce"] });
+  const base = {
+    emailVerified: true,
+    requestedAt: T,
+    updatedAt: T,
+    revision: 1,
+    status: "active",
+  };
+  operators.values.set("admin-1", {
+    ...base,
+    id: "admin-1",
+    role: "admin",
+    allowedProjects: "*",
+  });
+  operators.values.set("mm-1", {
+    ...base,
+    id: "mm-1",
+    role: "operator",
+    allowedProjects: ["money-mind"],
+  });
+  operators.values.set("aiw-1", {
+    ...base,
+    id: "aiw-1",
+    role: "operator",
+    allowedProjects: ["ai-workforce"],
+  });
   return firestore;
 }
 
@@ -47,16 +68,30 @@ interface Body {
   decision?: { routingDecisionId: string; projectId: string };
 }
 type Runtime = Awaited<ReturnType<typeof createProductionControlPlaneRuntime>>;
-async function withServer<T>(runtime: Runtime, fn: (get: (path: string, token?: string) => Promise<{ status: number; json: Body }>) => Promise<T>): Promise<T> {
+async function withServer<T>(
+  runtime: Runtime,
+  fn: (
+    get: (
+      path: string,
+      token?: string,
+    ) => Promise<{ status: number; json: Body }>,
+  ) => Promise<T>,
+): Promise<T> {
   const server = http.createServer(runtime.handler);
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const port = (server.address() as AddressInfo).port;
   try {
     return await fn(async (path, token) => {
-      const res = await fetch(`http://127.0.0.1:${port}${path}`, { headers: token ? { authorization: `Bearer ${token}` } : {} });
+      const res = await fetch(`http://127.0.0.1:${port}${path}`, {
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
       const text = await res.text();
       let json: Body;
-      try { json = JSON.parse(text) as Body; } catch { json = text as unknown as Body; }
+      try {
+        json = JSON.parse(text) as Body;
+      } catch {
+        json = text as unknown as Body;
+      }
       return { status: res.status, json };
     });
   } finally {
@@ -67,7 +102,11 @@ const services = (): FirebaseServices => ({
   firestore: seeded(),
   auth: new FakeAuth(),
   storage: {} as FirebaseServices["storage"],
-  config: { projectId: "ai-workforce-agents", storageBucket: "ai-workforce-agents.appspot.com", emulated: true },
+  config: {
+    projectId: "ai-workforce-agents",
+    storageBucket: "ai-workforce-agents.appspot.com",
+    emulated: true,
+  },
 });
 
 function task(): Task {
@@ -93,7 +132,9 @@ test("EO-7: the control-plane-analysis agent's executor is upgraded to the ROUTE
   delete process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_MODEL;
   try {
-    const rt = await createProductionControlPlaneRuntime({ services: services() });
+    const rt = await createProductionControlPlaneRuntime({
+      services: services(),
+    });
     const agent = rt.context.agents.get(CONTROL_PLANE_ANALYSIS_AGENT_ID)!;
     assert.ok(agent, "the agent is registered");
     assert.ok(rt.bootstrap.agentExecutors.has(CONTROL_PLANE_ANALYSIS_AGENT_ID));
@@ -103,7 +144,9 @@ test("EO-7: the control-plane-analysis agent's executor is upgraded to the ROUTE
     // routing; the point here is that it fails closed for a DIFFERENT reason than routing itself.
     await assert.rejects(
       () => rt.bootstrap.agentExecutors.execute(agent, task()),
-      (error: unknown) => error instanceof AgentExecutionError && error.reason === "invalid_result",
+      (error: unknown) =>
+        error instanceof AgentExecutionError &&
+        error.reason === "invalid_result",
     );
 
     // Routing itself succeeded (a real candidate was selected) — only the ACTUAL call failed,
@@ -114,7 +157,10 @@ test("EO-7: the control-plane-analysis agent's executor is upgraded to the ROUTE
     assert.deepEqual(history[0]!.rejectedCandidates, []);
 
     // No usage was recorded — the provider never actually returned a response to bill.
-    const cost = await rt.context.costCenter!.usage.listByProject({ id: "admin-1", role: "admin", allowedProjects: "*" }, "money-mind");
+    const cost = await rt.context.costCenter!.usage.listByProject(
+      { id: "admin-1", role: "admin", allowedProjects: "*" },
+      "money-mind",
+    );
     assert.deepEqual(cost, []);
     await rt.flush();
   } finally {
@@ -124,7 +170,9 @@ test("EO-7: the control-plane-analysis agent's executor is upgraded to the ROUTE
 });
 
 test("EO-7: costCenterCapabilities.enforcement is honestly true (a real provider is registered) even though nothing has actually been billed yet", async () => {
-  const rt = await createProductionControlPlaneRuntime({ services: services() });
+  const rt = await createProductionControlPlaneRuntime({
+    services: services(),
+  });
   assert.equal(rt.context.costCenterCapabilities?.enforcement, true);
   assert.deepEqual(rt.context.costCenterCapabilities?.providerIds, ["openai"]);
   await rt.flush();
@@ -134,9 +182,13 @@ test("EO-7 HTTP: routing-decision history and PROJECT ISOLATION — an operator 
   const originalKey = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
   try {
-    const rt = await createProductionControlPlaneRuntime({ services: services() });
+    const rt = await createProductionControlPlaneRuntime({
+      services: services(),
+    });
     const agent = rt.context.agents.get(CONTROL_PLANE_ANALYSIS_AGENT_ID)!;
-    await assert.rejects(() => rt.bootstrap.agentExecutors.execute(agent, task()));
+    await assert.rejects(() =>
+      rt.bootstrap.agentExecutors.execute(agent, task()),
+    );
     const [decision] = await rt.routing.router.listByProject("money-mind");
 
     await withServer(rt, async (get) => {
@@ -148,16 +200,28 @@ test("EO-7 HTTP: routing-decision history and PROJECT ISOLATION — an operator 
       assert.equal(own.json.configured, true);
       assert.equal(own.json.decisions?.length, 1);
 
-      const ownOne = await get(`/api/projects/money-mind/routing-decisions/${decision!.routingDecisionId}`, "mm");
+      const ownOne = await get(
+        `/api/projects/money-mind/routing-decisions/${decision!.routingDecisionId}`,
+        "mm",
+      );
       assert.equal(ownOne.status, 200);
-      assert.equal(ownOne.json.decision?.routingDecisionId, decision!.routingDecisionId);
+      assert.equal(
+        ownOne.json.decision?.routingDecisionId,
+        decision!.routingDecisionId,
+      );
 
       // A different operator, scoped to a DIFFERENT project, cannot read money-mind's history at all.
-      const foreign = await get("/api/projects/money-mind/routing-decisions", "aiw");
+      const foreign = await get(
+        "/api/projects/money-mind/routing-decisions",
+        "aiw",
+      );
       assert.equal(foreign.status, 404);
 
       // Nor fetch the SAME, real, valid decision id directly — the route itself denies the project first.
-      const foreignOne = await get(`/api/projects/money-mind/routing-decisions/${decision!.routingDecisionId}`, "aiw");
+      const foreignOne = await get(
+        `/api/projects/money-mind/routing-decisions/${decision!.routingDecisionId}`,
+        "aiw",
+      );
       assert.equal(foreignOne.status, 404);
     });
     await rt.flush();

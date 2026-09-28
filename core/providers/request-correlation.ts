@@ -24,7 +24,9 @@ export function extractCorrelation(request: ModelRequest): {
  * gave none: no key means no dedupe is possible, which is reported honestly
  * by whatever records usage, never assumed safe.
  */
-export function extractIdempotencyKey(request: ModelRequest): string | undefined {
+export function extractIdempotencyKey(
+  request: ModelRequest,
+): string | undefined {
   const key = request.metadata?.idempotencyKey;
   return typeof key === "string" && key.trim() ? key : undefined;
 }

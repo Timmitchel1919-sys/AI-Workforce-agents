@@ -38,7 +38,9 @@ function releaseSources(ctx: ControlPlaneContext) {
     verification: caps && !caps.verification ? undefined : ctx.verification,
     sourceControl: caps && !caps.sourceControl ? undefined : ctx.sourceControl,
     deployments:
-      caps && caps.deploymentAdapters.length === 0 ? undefined : ctx.deployments,
+      caps && caps.deploymentAdapters.length === 0
+        ? undefined
+        : ctx.deployments,
   };
 }
 
@@ -250,7 +252,13 @@ export async function getExecutionSessionDetail(
   const agent = ctx.agents.get(session.agentId);
   const instance = ctx.environments?.getInstance(session.environmentInstanceId);
   const verifications: VerificationResult[] = releaseSources(ctx).verification
-    ? (await releaseSources(ctx).verification!.listHistory(principal, projectId, 200))
+    ? (
+        await releaseSources(ctx).verification!.listHistory(
+          principal,
+          projectId,
+          200,
+        )
+      )
         .filter((v) => v.sourceSessionId === sessionId)
         .slice(0, 20)
     : [];
@@ -428,7 +436,10 @@ export async function getProjectCostReport(
     budgetPolicy: budgetPolicy ?? null,
     evaluation,
     usage,
-    capabilities: { enforcement: caps?.enforcement ?? false, providerIds: caps?.providerIds ?? [] },
+    capabilities: {
+      enforcement: caps?.enforcement ?? false,
+      providerIds: caps?.providerIds ?? [],
+    },
   };
 }
 
@@ -447,20 +458,34 @@ export async function getProjectAuditFindings(
   const id = requireExecutionId(projectId, "projectId");
   if (!ctx.auditor) return { configured: false as const };
   const rel = releaseSources(ctx);
-  const [releases, activity, verifications, sessions, usage] = await Promise.all([
-    rel.deployments ? rel.deployments.listReleases(principal, id, 200) : Promise.resolve([]),
-    rel.sourceControl ? rel.sourceControl.activity(principal, id, 200) : Promise.resolve(undefined),
-    rel.verification ? rel.verification.listHistory(principal, id, 200) : Promise.resolve([]),
-    ctx.execution ? ctx.execution.listSessions(principal, id) : Promise.resolve([]),
-    ctx.costCenter ? ctx.costCenter.usage.listByProject(principal, id, 200) : Promise.resolve([]),
-  ]);
+  const [releases, activity, verifications, sessions, usage] =
+    await Promise.all([
+      rel.deployments
+        ? rel.deployments.listReleases(principal, id, 200)
+        : Promise.resolve([]),
+      rel.sourceControl
+        ? rel.sourceControl.activity(principal, id, 200)
+        : Promise.resolve(undefined),
+      rel.verification
+        ? rel.verification.listHistory(principal, id, 200)
+        : Promise.resolve([]),
+      ctx.execution
+        ? ctx.execution.listSessions(principal, id)
+        : Promise.resolve([]),
+      ctx.costCenter
+        ? ctx.costCenter.usage.listByProject(principal, id, 200)
+        : Promise.resolve([]),
+    ]);
   const result = ctx.auditor.run(id, {
     releases,
     commits: activity?.commits ?? [],
     verifications,
     sessions,
     usage,
-    sourcesConnected: { verification: Boolean(rel.verification), sourceControl: Boolean(rel.sourceControl) },
+    sourcesConnected: {
+      verification: Boolean(rel.verification),
+      sourceControl: Boolean(rel.sourceControl),
+    },
   });
   return { configured: true as const, ...result };
 }
@@ -498,7 +523,10 @@ export async function getProjectRoutingDecision(
 ) {
   const id = requireExecutionId(projectId, "projectId");
   if (!ctx.routing) return undefined;
-  const decision = await ctx.routing.router.get(id, requireExecutionId(routingDecisionId, "routingDecisionId"));
+  const decision = await ctx.routing.router.get(
+    id,
+    requireExecutionId(routingDecisionId, "routingDecisionId"),
+  );
   // A decision id that exists but belongs to a DIFFERENT project must read as "not found" —
   // never leak that it exists elsewhere. `get` is keyed only by decision id in the ledger, so the
   // project match is verified here, not assumed.

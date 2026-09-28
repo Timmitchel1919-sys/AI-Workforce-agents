@@ -63,7 +63,8 @@ export const CONTROL_CAPABILITIES = [
   "deploy_release",
   "rollback_release",
   /* EO-5.1 — Software Factory orchestration. */
-  "plan_from_objective", "create_program",
+  "plan_from_objective",
+  "create_program",
   "create_workstream",
   "add_task_to_workstream",
   "tick_software_factory",
@@ -101,7 +102,8 @@ export const ROLE_CAPABILITIES: Record<
     "review_change",
     // EO-5.1 Software Factory: operators author programs/workstreams/tasks and
     // advance ready work through the governed orchestrator.
-    "plan_from_objective", "create_program",
+    "plan_from_objective",
+    "create_program",
     "create_workstream",
     "add_task_to_workstream",
     "tick_software_factory",
@@ -131,7 +133,8 @@ export const ROLE_CAPABILITIES: Record<
     "deploy_release",
     "rollback_release",
     // EO-5.1 Software Factory orchestrates the governed Orchestrator.
-    "plan_from_objective", "create_program",
+    "plan_from_objective",
+    "create_program",
     "create_workstream",
     "add_task_to_workstream",
     "tick_software_factory",
@@ -220,7 +223,8 @@ export const CONTROL_COMMANDS = [
   "revoke_access",
   "change_operator_role",
   // EO-5.1 — Software Factory orchestration command names.
-  "plan_from_objective", "create_program",
+  "plan_from_objective",
+  "create_program",
   "create_workstream",
   "add_task_to_workstream",
   "tick_software_factory",

@@ -58,15 +58,23 @@ type Rule = (inputs: AuditInputs) => RawFinding[];
 const RULES: Readonly<Record<AuditRuleId, Rule>> = Object.freeze({
   release_without_verification: (inputs) => {
     const commitBySha = new Map(inputs.commits.map((c) => [c.commitSha, c]));
-    const verificationById = new Map(inputs.verifications.map((v) => [v.verificationId, v]));
+    const verificationById = new Map(
+      inputs.verifications.map((v) => [v.verificationId, v]),
+    );
     const out: RawFinding[] = [];
     // A capability this deployment never composed cannot have recorded evidence either way —
     // reporting a bypass here would punish "not connected" as if it were "proven violated".
-    if (!inputs.sourcesConnected.verification || !inputs.sourcesConnected.sourceControl) return out;
+    if (
+      !inputs.sourcesConnected.verification ||
+      !inputs.sourcesConnected.sourceControl
+    )
+      return out;
     for (const r of inputs.releases) {
       if (r.simulated) continue;
       const commit = commitBySha.get(r.commitSha);
-      const verification = commit ? verificationById.get(commit.verificationId) : undefined;
+      const verification = commit
+        ? verificationById.get(commit.verificationId)
+        : undefined;
       if (!verification || verification.status !== "passed") {
         out.push({
           ruleId: "release_without_verification",
@@ -146,7 +154,12 @@ export class RuleAuditor {
     for (const finding of findings) {
       this.audit?.record("audit_finding_raised", {
         projectId,
-        data: { ruleId: finding.ruleId, severity: finding.severity, subjectType: finding.subjectType, subjectId: finding.subjectId },
+        data: {
+          ruleId: finding.ruleId,
+          severity: finding.severity,
+          subjectType: finding.subjectType,
+          subjectId: finding.subjectId,
+        },
       });
     }
     return { projectId, generatedAt, rulesRun: AUDIT_RULE_IDS_LIST, findings };

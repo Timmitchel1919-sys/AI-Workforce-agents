@@ -26,7 +26,8 @@ export function parseOrigin(raw, allowedHostSuffixes = DEFAULT_HOSTS) {
         return undefined;
     const host = url.hostname.toLowerCase();
     const ip = /^[0-9.]+$/.test(host) || host.includes(":");
-    if (ip || !allowedHostSuffixes.some((s) => host.endsWith(s) && host.length > s.length))
+    if (ip ||
+        !allowedHostSuffixes.some((s) => host.endsWith(s) && host.length > s.length))
         return undefined;
     return url;
 }
@@ -69,8 +70,16 @@ export async function verifyProduction(input) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
-            const r = await doFetch(url, { method: "GET", redirect: "manual", signal: controller.signal });
-            return { status: r.status, headers: r.headers, body: await readCapped(r) };
+            const r = await doFetch(url, {
+                method: "GET",
+                redirect: "manual",
+                signal: controller.signal,
+            });
+            return {
+                status: r.status,
+                headers: r.headers,
+                body: await readCapped(r),
+            };
         }
         finally {
             clearTimeout(timer);
@@ -92,7 +101,11 @@ export async function verifyProduction(input) {
     if (protectedPaths.length === 0)
         record("configuration", "protectedPaths", false, "at least one protected route is required");
     for (const p of paths)
-        if (!PATH.test(p) || p.split("/").slice(1).some((seg) => seg === "." || seg === ".."))
+        if (!PATH.test(p) ||
+            p
+                .split("/")
+                .slice(1)
+                .some((seg) => seg === "." || seg === ".."))
             record("configuration", "path", false, "paths must start with / and contain only URL-safe characters");
     if (input.baseUrls.length === 0)
         record("configuration", "baseUrls", false, "no origin to verify");
@@ -110,11 +123,16 @@ export async function verifyProduction(input) {
         for (const base of origins) {
             await guarded("hosting", base, async () => {
                 const r = await get(`${base}/`);
-                const ok = r.status === 200 && (r.headers.get("content-type") ?? "").includes("text/html") && r.body !== undefined;
+                const ok = r.status === 200 &&
+                    (r.headers.get("content-type") ?? "").includes("text/html") &&
+                    r.body !== undefined;
                 const asset = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(r.body ?? "")?.[0];
                 if (asset)
                     bundles[base] = asset;
-                return { ok, detail: `HTTP ${r.status}${ok && !asset ? " (no UI bundle found)" : ""}` };
+                return {
+                    ok,
+                    detail: `HTTP ${r.status}${ok && !asset ? " (no UI bundle found)" : ""}`,
+                };
             });
             await guarded("health", `${base}${health}`, async () => {
                 const r = await get(`${base}${health}`);
@@ -123,7 +141,10 @@ export async function verifyProduction(input) {
                     parsed = JSON.parse(r.body);
                 if (typeof parsed?.version === "string" && VERSION.test(parsed.version))
                     servedVersions[base] = parsed.version;
-                return { ok: r.status === 200 && parsed?.status === "ok", detail: `HTTP ${r.status}` };
+                return {
+                    ok: r.status === 200 && parsed?.status === "ok",
+                    detail: `HTTP ${r.status}`,
+                };
             });
             for (const path of protectedPaths) {
                 await guarded("protected", `${base}${path}`, async () => {
@@ -144,23 +165,36 @@ export async function verifyProduction(input) {
             }
             await guarded("unknown-route", `${base}/api/does-not-exist`, async () => {
                 const r = await get(`${base}/api/does-not-exist`);
-                return { ok: r.status === 401 || r.status === 403 || r.status === 404, detail: `HTTP ${r.status}` };
+                return {
+                    ok: r.status === 401 || r.status === 403 || r.status === 404,
+                    detail: `HTTP ${r.status}`,
+                };
             });
         }
         // Identity is compared PER ORIGIN: a stale second origin must not be masked by a fresh first one.
         for (const base of origins) {
             if (input.expectedBundle !== undefined) {
                 const served = bundles[base];
-                record("version", `${base} ui bundle`, served === input.expectedBundle, served === undefined ? "served bundle could not be identified" : served === input.expectedBundle ? "matches the release" : `serving ${served}`);
+                record("version", `${base} ui bundle`, served === input.expectedBundle, served === undefined
+                    ? "served bundle could not be identified"
+                    : served === input.expectedBundle
+                        ? "matches the release"
+                        : `serving ${served}`);
             }
             if (input.expectedVersion !== undefined) {
                 const served = servedVersions[base];
-                record("version", `${base} reported version`, served === input.expectedVersion, served === undefined ? "the health endpoint reports no version" : served === input.expectedVersion ? "matches the release" : `reporting ${served}`);
+                record("version", `${base} reported version`, served === input.expectedVersion, served === undefined
+                    ? "the health endpoint reports no version"
+                    : served === input.expectedVersion
+                        ? "matches the release"
+                        : `reporting ${served}`);
             }
         }
     }
     return {
-        verdict: checks.length > 0 && checks.every((c) => c.status === "passed") ? "healthy" : "unhealthy",
+        verdict: checks.length > 0 && checks.every((c) => c.status === "passed")
+            ? "healthy"
+            : "unhealthy",
         checkedAt: (input.clock ?? (() => new Date().toISOString()))(),
         baseUrls: origins,
         checks,
@@ -187,10 +221,18 @@ export function toPostDeployVerification(report) {
     const nonVersion = report.checks.filter((c) => !(c.id === "version" && c.subject.endsWith("reported version")));
     const failed = report.checks.filter((c) => c.status === "failed");
     const versions = new Set(Object.values(report.servedVersions));
-    const oneVersion = versions.size === 1 && Object.keys(report.servedVersions).length === report.baseUrls.length;
+    const oneVersion = versions.size === 1 &&
+        Object.keys(report.servedVersions).length === report.baseUrls.length;
     return {
-        reachable: nonVersion.length > 0 && nonVersion.every((c) => c.status === "passed") && report.baseUrls.length > 0,
+        reachable: nonVersion.length > 0 &&
+            nonVersion.every((c) => c.status === "passed") &&
+            report.baseUrls.length > 0,
         ...(oneVersion ? { reportedVersion: [...versions][0] } : {}),
-        detail: failed.length === 0 ? "all production checks passed" : `failed: ${failed.map((c) => `${c.id} ${c.subject}`).join("; ").slice(0, 300)}`,
+        detail: failed.length === 0
+            ? "all production checks passed"
+            : `failed: ${failed
+                .map((c) => `${c.id} ${c.subject}`)
+                .join("; ")
+                .slice(0, 300)}`,
     };
 }

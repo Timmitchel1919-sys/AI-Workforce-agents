@@ -31,13 +31,29 @@ export interface InsightGraph {
 }
 
 const TERMINAL_TASK = new Set(["completed", "cancelled"]);
-const TERMINAL_SESSION = new Set(["succeeded", "failed", "timed_out", "denied", "cancelled"]);
+const TERMINAL_SESSION = new Set([
+  "succeeded",
+  "failed",
+  "timed_out",
+  "denied",
+  "cancelled",
+]);
 const MAX_DEPENDENCIES_NAMED = 1;
 
-const SEVERITY_ORDER: Readonly<Record<InsightSeverity, number>> = { critical: 0, warning: 1, info: 2 };
+const SEVERITY_ORDER: Readonly<Record<InsightSeverity, number>> = {
+  critical: 0,
+  warning: 1,
+  info: 2,
+};
 
 function evidenceOf(n: WorkforceGraphNode): InsightEvidence {
-  return { nodeId: n.id, nodeType: n.type, label: n.label, state: n.state, status: n.status };
+  return {
+    nodeId: n.id,
+    nodeType: n.type,
+    label: n.label,
+    state: n.state,
+    status: n.status,
+  };
 }
 
 interface Draft {
@@ -51,23 +67,36 @@ interface Draft {
   limitations?: InsightLimitation[];
 }
 
-export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[]; truncated: boolean } {
+export function deriveInsights(graph: InsightGraph): {
+  findings: SpatialInsight[];
+  truncated: boolean;
+} {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
   const outgoing = new Map<string, WorkforceGraphEdge[]>();
   const incoming = new Map<string, WorkforceGraphEdge[]>();
   for (const e of graph.edges) {
     if (!byId.has(e.source) || !byId.has(e.target)) continue; // never trust a dangling edge
-    (outgoing.get(e.source) ?? outgoing.set(e.source, []).get(e.source)!).push(e);
-    (incoming.get(e.target) ?? incoming.set(e.target, []).get(e.target)!).push(e);
+    (outgoing.get(e.source) ?? outgoing.set(e.source, []).get(e.source)!).push(
+      e,
+    );
+    (incoming.get(e.target) ?? incoming.set(e.target, []).get(e.target)!).push(
+      e,
+    );
   }
   const drafts: Draft[] = [];
-  const peers = (id: string, dir: "in" | "out", type: WorkforceGraphEdge["type"]): WorkforceGraphNode[] =>
+  const peers = (
+    id: string,
+    dir: "in" | "out",
+    type: WorkforceGraphEdge["type"],
+  ): WorkforceGraphNode[] =>
     ((dir === "in" ? incoming : outgoing).get(id) ?? [])
       .filter((e) => e.type === type)
       .map((e) => byId.get(dir === "in" ? e.source : e.target)!)
       .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-  const nodes = [...graph.nodes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const nodes = [...graph.nodes].sort((a, b) =>
+    a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+  );
 
   /* ---- tasks: blocked, waiting on a dependency, or blocking others ---- */
   for (const task of nodes.filter((n) => n.type === "TASK")) {
@@ -76,7 +105,10 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
       .filter((e) => e.type === "DEPENDS_ON" && e.status === "blocking")
       .map((e) => byId.get(e.target)!)
       .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    if (task.state === "blocked" || (task.state === "queued" && blocking.length > 0)) {
+    if (
+      task.state === "blocked" ||
+      (task.state === "queued" && blocking.length > 0)
+    ) {
       if (blocking.length > 0) {
         const first = blocking[0]!;
         drafts.push({
@@ -91,7 +123,9 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
             count: blocking.length,
           },
           evidence: [task, ...blocking.slice(0, MAX_DEPENDENCIES_NAMED + 4)],
-          recommendations: [{ kind: "review_dependency", targetNodeId: first.id }],
+          recommendations: [
+            { kind: "review_dependency", targetNodeId: first.id },
+          ],
           limitations: ["as_of_revision"],
         });
       } else if (task.status === "awaiting_approval") {
@@ -131,7 +165,11 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
         variant: "waiting",
         severity: "info",
         subject: task,
-        params: { task: truncate(task.label, 120), status: task.status, count: waiting.length },
+        params: {
+          task: truncate(task.label, 120),
+          status: task.status,
+          count: waiting.length,
+        },
         evidence: [task, ...waiting.slice(0, 5)],
         recommendations: [{ kind: "inspect", targetNodeId: task.id }],
         limitations: ["as_of_revision"],
@@ -140,13 +178,23 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
   }
 
   /* ---- execution sessions that failed ---- */
-  for (const session of nodes.filter((n) => n.type === "EXECUTION_SESSION" && n.state === "failed")) {
-    const task = peers(session.id, "in", "EXECUTES").find((n) => n.type === "TASK");
-    const recommendations: InsightRecommendation[] = [{ kind: "inspect", targetNodeId: session.id }];
+  for (const session of nodes.filter(
+    (n) => n.type === "EXECUTION_SESSION" && n.state === "failed",
+  )) {
+    const task = peers(session.id, "in", "EXECUTES").find(
+      (n) => n.type === "TASK",
+    );
+    const recommendations: InsightRecommendation[] = [
+      { kind: "inspect", targetNodeId: session.id },
+    ];
     // A retry is only worth mentioning when the linked task itself is recorded as failed. The
     // suggestion names the existing command as a label; nothing is invoked.
     if (task && task.status === "failed") {
-      recommendations.push({ kind: "consider_retry", targetNodeId: task.id, relatedCommand: "retry-task" });
+      recommendations.push({
+        kind: "consider_retry",
+        targetNodeId: task.id,
+        relatedCommand: "retry-task",
+      });
     }
     drafts.push({
       kind: "FAILED_EXECUTION",
@@ -161,7 +209,9 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
   }
 
   /* ---- approvals waiting for a decision ---- */
-  for (const approval of nodes.filter((n) => n.type === "APPROVAL" && n.state === "awaiting_approval")) {
+  for (const approval of nodes.filter(
+    (n) => n.type === "APPROVAL" && n.state === "awaiting_approval",
+  )) {
     const subjects = (incoming.get(approval.id) ?? [])
       .filter((e) => e.type === "REQUIRES_APPROVAL")
       .map((e) => byId.get(e.source)!)
@@ -173,11 +223,19 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
       severity: first ? "warning" : "info",
       subject: approval,
       params: first
-        ? { subject: truncate(first.label, 120), subjectType: first.type, approval: truncate(approval.label, 120) }
+        ? {
+            subject: truncate(first.label, 120),
+            subjectType: first.type,
+            approval: truncate(approval.label, 120),
+          }
         : { approval: truncate(approval.label, 120) },
       evidence: first ? [approval, first] : [approval],
       recommendations: [
-        { kind: "decide_approval", targetNodeId: approval.id, relatedCommand: "approve" },
+        {
+          kind: "decide_approval",
+          targetNodeId: approval.id,
+          relatedCommand: "approve",
+        },
         { kind: "inspect", targetNodeId: approval.id },
       ],
       limitations: ["as_of_revision"],
@@ -190,14 +248,24 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
   // provisioning / no environment), and its counts say how many tasks needed it. EXECUTES_IN edges
   // exist only for tasks that WERE placed, so they cannot express this. Separately, a session
   // running on an instance that is down is linked by RUNS_ON.
-  for (const env of nodes.filter((n) => n.type === "ENVIRONMENT" && (n.state === "offline" || n.state === "blocked"))) {
+  for (const env of nodes.filter(
+    (n) =>
+      n.type === "ENVIRONMENT" &&
+      (n.state === "offline" || n.state === "blocked"),
+  )) {
     const total = Number(env.metadata?.totalTasks ?? 0);
     const routed = Number(env.metadata?.routedTasks ?? 0);
-    const unplaced = Number.isFinite(total) && Number.isFinite(routed) ? Math.max(0, total - routed) : 0;
+    const unplaced =
+      Number.isFinite(total) && Number.isFinite(routed)
+        ? Math.max(0, total - routed)
+        : 0;
     const sessions = (incoming.get(env.id) ?? [])
       .filter((e) => e.type === "RUNS_ON")
       .map((e) => byId.get(e.source)!)
-      .filter((n) => n.type === "EXECUTION_SESSION" && !TERMINAL_SESSION.has(n.status))
+      .filter(
+        (n) =>
+          n.type === "EXECUTION_SESSION" && !TERMINAL_SESSION.has(n.status),
+      )
       .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     const count = unplaced + sessions.length;
     if (count === 0) continue; // an idle, unavailable environment is not a problem for anyone
@@ -206,7 +274,11 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
       variant: "unspecified",
       severity: "warning",
       subject: env,
-      params: { environment: truncate(env.label, 120), status: env.status, count },
+      params: {
+        environment: truncate(env.label, 120),
+        status: env.status,
+        count,
+      },
       evidence: [env, ...sessions.slice(0, 5)],
       recommendations: [{ kind: "check_environment", targetNodeId: env.id }],
       limitations: ["cause_not_recorded", "as_of_revision"],
@@ -214,14 +286,19 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
   }
 
   /* ---- ChangeSets waiting for review (and a grouped view when several are) ---- */
-  const waitingReview = nodes.filter((n) => n.type === "CHANGESET" && n.state === "awaiting_review");
+  const waitingReview = nodes.filter(
+    (n) => n.type === "CHANGESET" && n.state === "awaiting_review",
+  );
   for (const cs of waitingReview) {
     drafts.push({
       kind: "REVIEW_WAITING",
       variant: "waiting",
       severity: "info",
       subject: cs,
-      params: { changeSet: truncate(cs.label, 120), fileCount: Number(cs.metadata?.fileCount ?? 0) },
+      params: {
+        changeSet: truncate(cs.label, 120),
+        fileCount: Number(cs.metadata?.fileCount ?? 0),
+      },
       evidence: [cs],
       recommendations: [{ kind: "review_changeset", targetNodeId: cs.id }],
       limitations: ["as_of_revision"],
@@ -236,7 +313,9 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
       subject: waitingReview[0]!,
       params: { count: waitingReview.length },
       evidence: waitingReview.slice(0, 6),
-      recommendations: [{ kind: "review_changeset", targetNodeId: waitingReview[0]!.id }],
+      recommendations: [
+        { kind: "review_changeset", targetNodeId: waitingReview[0]!.id },
+      ],
       limitations: ["as_of_revision"],
     });
   }
@@ -258,12 +337,20 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
     drafts.push({
       kind: "DEPLOYMENT_PROBLEM",
       variant,
-      severity: variant === "failed" ? "critical" : variant === "unverified" ? "info" : "warning",
+      severity:
+        variant === "failed"
+          ? "critical"
+          : variant === "unverified"
+            ? "info"
+            : "warning",
       subject: dep,
       params: { deployment: truncate(dep.label, 120), status: dep.status },
       evidence: [dep],
       recommendations: [{ kind: "inspect", targetNodeId: dep.id }],
-      limitations: variant === "unverified" ? ["as_of_revision"] : ["cause_not_recorded", "as_of_revision"],
+      limitations:
+        variant === "unverified"
+          ? ["as_of_revision"]
+          : ["cause_not_recorded", "as_of_revision"],
     });
   }
 
@@ -286,5 +373,8 @@ export function deriveInsights(graph: InsightGraph): { findings: SpatialInsight[
         (a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0) ||
         (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
     );
-  return { findings: findings.slice(0, MAX_INSIGHTS), truncated: findings.length > MAX_INSIGHTS };
+  return {
+    findings: findings.slice(0, MAX_INSIGHTS),
+    truncated: findings.length > MAX_INSIGHTS,
+  };
 }

@@ -265,7 +265,12 @@ export function analyzeRepositoryEvidence(
     message: string,
     proof?: string,
   ): void => {
-    list.push({ code, severity, message, ...(proof ? { evidence: proof } : {}) });
+    list.push({
+      code,
+      severity,
+      message,
+      ...(proof ? { evidence: proof } : {}),
+    });
   };
 
   /* ---- languages, by real source-file counts ---- */
@@ -278,7 +283,11 @@ export function analyzeRepositoryEvidence(
   for (const [language, count] of [...counts].sort((a, b) => b[1] - a[1])) {
     pushUnique(
       languages,
-      finding(language, `${count} ${language} source file(s)`, count >= 3 ? "high" : "medium"),
+      finding(
+        language,
+        `${count} ${language} source file(s)`,
+        count >= 3 ? "high" : "medium",
+      ),
     );
   }
   if (has("tsconfig.json") && !counts.has("TypeScript")) {
@@ -313,15 +322,44 @@ export function analyzeRepositoryEvidence(
       if (area) pushUnique(structure[area], finding(name, proof));
     }
     for (const [dep, name] of TEST_BY_DEPENDENCY) {
-      if (nestedDeps.has(dep)) pushUnique(testFrameworks, finding(name, `${nested.path} dependency "${dep}"`));
+      if (nestedDeps.has(dep))
+        pushUnique(
+          testFrameworks,
+          finding(name, `${nested.path} dependency "${dep}"`),
+        );
     }
     for (const [dep, name] of DATABASE_BY_DEPENDENCY) {
-      if (nestedDeps.has(dep)) pushUnique(structure.database, finding(name, `${nested.path} dependency "${dep}"`));
+      if (nestedDeps.has(dep))
+        pushUnique(
+          structure.database,
+          finding(name, `${nested.path} dependency "${dep}"`),
+        );
     }
-    if (nestedDeps.has("react") || nestedDeps.has("vue") || nestedDeps.has("svelte") || nestedDeps.has("@angular/core") || nestedDeps.has("next")) {
-      pushUnique(applicationKinds, finding("Web application", `${nested.path} frontend framework dependency`, "medium"));
+    if (
+      nestedDeps.has("react") ||
+      nestedDeps.has("vue") ||
+      nestedDeps.has("svelte") ||
+      nestedDeps.has("@angular/core") ||
+      nestedDeps.has("next")
+    ) {
+      pushUnique(
+        applicationKinds,
+        finding(
+          "Web application",
+          `${nested.path} frontend framework dependency`,
+          "medium",
+        ),
+      );
     }
-    if (nestedDeps.has("typescript")) pushUnique(languages, finding("TypeScript", `${nested.path} dependency "typescript"`, "medium"));
+    if (nestedDeps.has("typescript"))
+      pushUnique(
+        languages,
+        finding(
+          "TypeScript",
+          `${nested.path} dependency "typescript"`,
+          "medium",
+        ),
+      );
   }
   if (pkg) {
     runtimeCount = Object.keys(pkg.dependencies ?? {}).length;
@@ -330,17 +368,26 @@ export function analyzeRepositoryEvidence(
       if (!deps.has(dep)) continue;
       pushUnique(frameworks, finding(name, `package.json dependency "${dep}"`));
       if (area) {
-        pushUnique(structure[area], finding(name, `package.json dependency "${dep}"`));
+        pushUnique(
+          structure[area],
+          finding(name, `package.json dependency "${dep}"`),
+        );
       }
     }
     for (const [dep, name] of TEST_BY_DEPENDENCY) {
       if (deps.has(dep)) {
-        pushUnique(testFrameworks, finding(name, `package.json dependency "${dep}"`));
+        pushUnique(
+          testFrameworks,
+          finding(name, `package.json dependency "${dep}"`),
+        );
       }
     }
     for (const [dep, name] of DATABASE_BY_DEPENDENCY) {
       if (deps.has(dep)) {
-        pushUnique(structure.database, finding(name, `package.json dependency "${dep}"`));
+        pushUnique(
+          structure.database,
+          finding(name, `package.json dependency "${dep}"`),
+        );
       }
     }
     if (deps.has("firebase") || deps.has("firebase-admin")) {
@@ -362,10 +409,19 @@ export function analyzeRepositoryEvidence(
       }
     }
     if (deps.has("typescript")) {
-      pushUnique(languages, finding("TypeScript", 'package.json dependency "typescript"', "medium"));
+      pushUnique(
+        languages,
+        finding("TypeScript", 'package.json dependency "typescript"', "medium"),
+      );
     }
-    if (typeof pkg.scripts?.["test"] === "string" && /node\s+--test/.test(pkg.scripts["test"])) {
-      pushUnique(testFrameworks, finding("Node test runner", 'package.json script "test"'));
+    if (
+      typeof pkg.scripts?.["test"] === "string" &&
+      /node\s+--test/.test(pkg.scripts["test"])
+    ) {
+      pushUnique(
+        testFrameworks,
+        finding("Node test runner", 'package.json script "test"'),
+      );
     }
     if (
       deps.has("c8") ||
@@ -376,20 +432,48 @@ export function analyzeRepositoryEvidence(
     ) {
       coverage = true;
     }
-    if (deps.has("react") || deps.has("vue") || deps.has("svelte") || deps.has("@angular/core") || deps.has("next")) {
-      pushUnique(applicationKinds, finding("Web application", "frontend framework dependency", "medium"));
-    } else if (deps.has("express") || deps.has("fastify") || deps.has("@nestjs/core")) {
-      pushUnique(applicationKinds, finding("Backend service", "server framework dependency", "medium"));
+    if (
+      deps.has("react") ||
+      deps.has("vue") ||
+      deps.has("svelte") ||
+      deps.has("@angular/core") ||
+      deps.has("next")
+    ) {
+      pushUnique(
+        applicationKinds,
+        finding("Web application", "frontend framework dependency", "medium"),
+      );
+    } else if (
+      deps.has("express") ||
+      deps.has("fastify") ||
+      deps.has("@nestjs/core")
+    ) {
+      pushUnique(
+        applicationKinds,
+        finding("Backend service", "server framework dependency", "medium"),
+      );
     }
   }
 
   /* ---- package managers ---- */
-  if (has("package-lock.json")) pushUnique(packageManagers, finding("npm", "package-lock.json"));
-  if (has("pnpm-lock.yaml")) pushUnique(packageManagers, finding("pnpm", "pnpm-lock.yaml"));
-  if (has("yarn.lock")) pushUnique(packageManagers, finding("yarn", "yarn.lock"));
+  if (has("package-lock.json"))
+    pushUnique(packageManagers, finding("npm", "package-lock.json"));
+  if (has("pnpm-lock.yaml"))
+    pushUnique(packageManagers, finding("pnpm", "pnpm-lock.yaml"));
+  if (has("yarn.lock"))
+    pushUnique(packageManagers, finding("yarn", "yarn.lock"));
   if (has("package.json") && packageManagers.length === 0) {
-    pushUnique(packageManagers, finding("npm", "package.json (no lockfile)", "low"));
-    note(findings, "warning", "no-lockfile", "package.json has no lockfile; builds are not reproducible.", "package.json");
+    pushUnique(
+      packageManagers,
+      finding("npm", "package.json (no lockfile)", "low"),
+    );
+    note(
+      findings,
+      "warning",
+      "no-lockfile",
+      "package.json has no lockfile; builds are not reproducible.",
+      "package.json",
+    );
   }
   if (has("requirements.txt")) {
     manifests.push("requirements.txt");
@@ -416,8 +500,14 @@ export function analyzeRepositoryEvidence(
     pushUnique(packageManagers, finding("Maven", "pom.xml"));
     pushUnique(buildSystems, finding("Maven", "pom.xml"));
     if (/spring-boot/.test(evidence.files["pom.xml"] ?? "")) {
-      pushUnique(frameworks, finding("Spring", "pom.xml references spring-boot"));
-      pushUnique(structure.backend, finding("Spring", "pom.xml references spring-boot"));
+      pushUnique(
+        frameworks,
+        finding("Spring", "pom.xml references spring-boot"),
+      );
+      pushUnique(
+        structure.backend,
+        finding("Spring", "pom.xml references spring-boot"),
+      );
     }
   }
   const csproj = hasMatch(/\.csproj$/);
@@ -448,8 +538,14 @@ export function analyzeRepositoryEvidence(
     pushUnique(buildSystems, finding("Cargo", "Cargo.toml"));
   }
   if (has("ProjectSettings/ProjectVersion.txt")) {
-    pushUnique(frameworks, finding("Unity", "ProjectSettings/ProjectVersion.txt"));
-    pushUnique(buildSystems, finding("Unity tooling", "ProjectSettings/ProjectVersion.txt"));
+    pushUnique(
+      frameworks,
+      finding("Unity", "ProjectSettings/ProjectVersion.txt"),
+    );
+    pushUnique(
+      buildSystems,
+      finding("Unity tooling", "ProjectSettings/ProjectVersion.txt"),
+    );
   }
   const uproject = hasMatch(/\.uproject$/);
   if (uproject) {
@@ -457,15 +553,35 @@ export function analyzeRepositoryEvidence(
     pushUnique(buildSystems, finding("Unreal tooling", uproject));
   }
   if (has("vite.config.ts") || has("vite.config.js")) {
-    pushUnique(buildSystems, finding("Vite", has("vite.config.ts") ? "vite.config.ts" : "vite.config.js"));
+    pushUnique(
+      buildSystems,
+      finding(
+        "Vite",
+        has("vite.config.ts") ? "vite.config.ts" : "vite.config.js",
+      ),
+    );
   }
   if (pkg && deps.has("typescript") && has("tsconfig.json")) {
-    pushUnique(buildSystems, finding("TypeScript compiler", "tsconfig.json + typescript dependency"));
+    pushUnique(
+      buildSystems,
+      finding("TypeScript compiler", "tsconfig.json + typescript dependency"),
+    );
   }
-  if (deps.has("fastapi") || /fastapi|django|flask/i.test(evidence.files["requirements.txt"] ?? "")) {
-    const match = /(fastapi|django|flask)/i.exec(evidence.files["requirements.txt"] ?? "");
+  if (
+    deps.has("fastapi") ||
+    /fastapi|django|flask/i.test(evidence.files["requirements.txt"] ?? "")
+  ) {
+    const match = /(fastapi|django|flask)/i.exec(
+      evidence.files["requirements.txt"] ?? "",
+    );
     if (match) {
-      pushUnique(frameworks, finding(match[1]![0]!.toUpperCase() + match[1]!.slice(1).toLowerCase(), "requirements.txt"));
+      pushUnique(
+        frameworks,
+        finding(
+          match[1]![0]!.toUpperCase() + match[1]!.slice(1).toLowerCase(),
+          "requirements.txt",
+        ),
+      );
       pushUnique(structure.backend, finding(match[1]!, "requirements.txt"));
     }
   }
@@ -476,13 +592,29 @@ export function analyzeRepositoryEvidence(
     pm === "yarn" ? `yarn ${script}` : `${pm} run ${script}`;
   if (pkg) {
     if (has("package-lock.json")) {
-      commands.push({ purpose: "install", command: "npm ci", evidence: "package-lock.json" });
+      commands.push({
+        purpose: "install",
+        command: "npm ci",
+        evidence: "package-lock.json",
+      });
     } else if (has("pnpm-lock.yaml")) {
-      commands.push({ purpose: "install", command: "pnpm install --frozen-lockfile", evidence: "pnpm-lock.yaml" });
+      commands.push({
+        purpose: "install",
+        command: "pnpm install --frozen-lockfile",
+        evidence: "pnpm-lock.yaml",
+      });
     } else if (has("yarn.lock")) {
-      commands.push({ purpose: "install", command: "yarn install --frozen-lockfile", evidence: "yarn.lock" });
+      commands.push({
+        purpose: "install",
+        command: "yarn install --frozen-lockfile",
+        evidence: "yarn.lock",
+      });
     } else {
-      commands.push({ purpose: "install", command: "npm install", evidence: "package.json (no lockfile)" });
+      commands.push({
+        purpose: "install",
+        command: "npm install",
+        evidence: "package.json (no lockfile)",
+      });
     }
     const scripts = pkg.scripts ?? {};
     const purposeByScript: ReadonlyArray<readonly [string, string[]]> = [
@@ -508,57 +640,126 @@ export function analyzeRepositoryEvidence(
     }
   }
   if (has("requirements.txt")) {
-    commands.push({ purpose: "install", command: "pip install -r requirements.txt", evidence: "requirements.txt" });
+    commands.push({
+      purpose: "install",
+      command: "pip install -r requirements.txt",
+      evidence: "requirements.txt",
+    });
     if (/pytest/i.test(evidence.files["requirements.txt"] ?? "")) {
-      commands.push({ purpose: "test", command: "pytest", evidence: "requirements.txt lists pytest" });
-      pushUnique(testFrameworks, finding("pytest", "requirements.txt lists pytest"));
+      commands.push({
+        purpose: "test",
+        command: "pytest",
+        evidence: "requirements.txt lists pytest",
+      });
+      pushUnique(
+        testFrameworks,
+        finding("pytest", "requirements.txt lists pytest"),
+      );
     }
   }
   if (has("gradlew")) {
-    commands.push({ purpose: "build", command: "./gradlew build", evidence: "gradlew wrapper present" });
+    commands.push({
+      purpose: "build",
+      command: "./gradlew build",
+      evidence: "gradlew wrapper present",
+    });
   }
   if (has("pom.xml")) {
-    commands.push({ purpose: "build", command: "mvn package", evidence: "pom.xml (Maven lifecycle)" });
+    commands.push({
+      purpose: "build",
+      command: "mvn package",
+      evidence: "pom.xml (Maven lifecycle)",
+    });
   }
   if (csproj) {
-    commands.push({ purpose: "build", command: "dotnet build", evidence: csproj });
+    commands.push({
+      purpose: "build",
+      command: "dotnet build",
+      evidence: csproj,
+    });
     if (/Microsoft\.NET\.Test\.Sdk/.test(evidence.files[csproj] ?? "")) {
-      commands.push({ purpose: "test", command: "dotnet test", evidence: `${csproj} references Microsoft.NET.Test.Sdk` });
+      commands.push({
+        purpose: "test",
+        command: "dotnet test",
+        evidence: `${csproj} references Microsoft.NET.Test.Sdk`,
+      });
       pushUnique(testFrameworks, finding(".NET test SDK", csproj));
     }
   }
   if (has("Cargo.toml")) {
-    commands.push({ purpose: "build", command: "cargo build", evidence: "Cargo.toml" });
-    commands.push({ purpose: "test", command: "cargo test", evidence: "Cargo.toml" });
+    commands.push({
+      purpose: "build",
+      command: "cargo build",
+      evidence: "Cargo.toml",
+    });
+    commands.push({
+      purpose: "test",
+      command: "cargo test",
+      evidence: "Cargo.toml",
+    });
   }
   if (has("go.mod")) {
-    commands.push({ purpose: "build", command: "go build ./...", evidence: "go.mod" });
-    commands.push({ purpose: "test", command: "go test ./...", evidence: "go.mod" });
+    commands.push({
+      purpose: "build",
+      command: "go build ./...",
+      evidence: "go.mod",
+    });
+    commands.push({
+      purpose: "test",
+      command: "go test ./...",
+      evidence: "go.mod",
+    });
   }
 
   /* ---- structure from paths ---- */
-  const testPath = hasMatch(/(^|\/)(tests?|__tests__|spec)\//) ?? hasMatch(/\.(test|spec)\.[A-Za-z]+$/);
-  if (testPath) pushUnique(structure.tests, finding("Automated tests present", testPath, "medium"));
+  const testPath =
+    hasMatch(/(^|\/)(tests?|__tests__|spec)\//) ??
+    hasMatch(/\.(test|spec)\.[A-Za-z]+$/);
+  if (testPath)
+    pushUnique(
+      structure.tests,
+      finding("Automated tests present", testPath, "medium"),
+    );
   if (has("index.html")) {
-    pushUnique(structure.frontend, finding("Static entry (index.html)", "index.html", "medium"));
+    pushUnique(
+      structure.frontend,
+      finding("Static entry (index.html)", "index.html", "medium"),
+    );
   }
   const uiIndex = hasMatch(/(^|\/)index\.html$/);
   if (uiIndex && !has("index.html")) {
-    pushUnique(structure.frontend, finding("Web entry point", uiIndex, "medium"));
+    pushUnique(
+      structure.frontend,
+      finding("Web entry point", uiIndex, "medium"),
+    );
   }
   if (hasMatch(/^functions\//)) {
-    pushUnique(structure.functions, finding("functions/ directory", "functions/", "medium"));
+    pushUnique(
+      structure.functions,
+      finding("functions/ directory", "functions/", "medium"),
+    );
   }
   const terraform = hasMatch(/\.tf$/);
-  if (terraform) pushUnique(structure.infrastructure, finding("Terraform", terraform));
+  if (terraform)
+    pushUnique(structure.infrastructure, finding("Terraform", terraform));
   if (has("Dockerfile") || hasMatch(/(^|\/)Dockerfile$/)) {
     pushUnique(structure.infrastructure, finding("Docker", "Dockerfile"));
   }
   if (hasMatch(/(^|\/)(k8s|kubernetes|helm)\//)) {
-    pushUnique(structure.infrastructure, finding("Kubernetes manifests", "k8s/ directory", "medium"));
+    pushUnique(
+      structure.infrastructure,
+      finding("Kubernetes manifests", "k8s/ directory", "medium"),
+    );
   }
   if (hasMatch(/(^|\/)(api|routes|controllers)\//)) {
-    pushUnique(structure.api, finding("API layer", hasMatch(/(^|\/)(api|routes|controllers)\//)!, "medium"));
+    pushUnique(
+      structure.api,
+      finding(
+        "API layer",
+        hasMatch(/(^|\/)(api|routes|controllers)\//)!,
+        "medium",
+      ),
+    );
   }
 
   /* ---- deployment + CI ---- */
@@ -566,40 +767,102 @@ export function analyzeRepositoryEvidence(
   if (has("firebase.json")) {
     pushUnique(deployment, finding("Firebase", "firebase.json"));
     if (firebaseJson !== undefined) {
-      if (/"hosting"/.test(firebaseJson)) pushUnique(deployment, finding("Firebase Hosting", "firebase.json hosting"));
+      if (/"hosting"/.test(firebaseJson))
+        pushUnique(
+          deployment,
+          finding("Firebase Hosting", "firebase.json hosting"),
+        );
       if (/"functions"/.test(firebaseJson)) {
-        pushUnique(deployment, finding("Firebase Functions", "firebase.json functions"));
-        pushUnique(structure.functions, finding("Firebase Functions", "firebase.json functions"));
+        pushUnique(
+          deployment,
+          finding("Firebase Functions", "firebase.json functions"),
+        );
+        pushUnique(
+          structure.functions,
+          finding("Firebase Functions", "firebase.json functions"),
+        );
       }
       if (/"firestore"/.test(firebaseJson)) {
-        pushUnique(structure.database, finding("Firestore", "firebase.json firestore"));
+        pushUnique(
+          structure.database,
+          finding("Firestore", "firebase.json firestore"),
+        );
       }
       if (/"storage"/.test(firebaseJson)) {
-        pushUnique(structure.storage, finding("Cloud Storage", "firebase.json storage"));
+        pushUnique(
+          structure.storage,
+          finding("Cloud Storage", "firebase.json storage"),
+        );
       }
     }
   }
-  if (has("storage.rules")) pushUnique(structure.storage, finding("Cloud Storage rules", "storage.rules"));
-  if (has("firestore.rules")) pushUnique(structure.database, finding("Firestore", "firestore.rules"));
-  if (has("vercel.json")) pushUnique(deployment, finding("Vercel", "vercel.json"));
-  if (has("netlify.toml")) pushUnique(deployment, finding("Netlify", "netlify.toml"));
-  if (has("Dockerfile")) pushUnique(deployment, finding("Container image (Dockerfile)", "Dockerfile", "medium"));
+  if (has("storage.rules"))
+    pushUnique(
+      structure.storage,
+      finding("Cloud Storage rules", "storage.rules"),
+    );
+  if (has("firestore.rules"))
+    pushUnique(structure.database, finding("Firestore", "firestore.rules"));
+  if (has("vercel.json"))
+    pushUnique(deployment, finding("Vercel", "vercel.json"));
+  if (has("netlify.toml"))
+    pushUnique(deployment, finding("Netlify", "netlify.toml"));
+  if (has("Dockerfile"))
+    pushUnique(
+      deployment,
+      finding("Container image (Dockerfile)", "Dockerfile", "medium"),
+    );
   if (has("app.yaml") || has("cloudbuild.yaml")) {
-    pushUnique(deployment, finding("Google Cloud (App Engine / Cloud Build)", has("app.yaml") ? "app.yaml" : "cloudbuild.yaml", "medium"));
+    pushUnique(
+      deployment,
+      finding(
+        "Google Cloud (App Engine / Cloud Build)",
+        has("app.yaml") ? "app.yaml" : "cloudbuild.yaml",
+        "medium",
+      ),
+    );
   }
-  if (has("azure-pipelines.yml")) pushUnique(deployment, finding("Azure Pipelines", "azure-pipelines.yml", "medium"));
-  if (has("serverless.yml")) pushUnique(deployment, finding("Serverless Framework (AWS)", "serverless.yml", "medium"));
-  if (has("fastlane/Fastfile")) pushUnique(deployment, finding("App Store / Play Store (fastlane)", "fastlane/Fastfile", "medium"));
-  const workflows = paths.filter((path) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(path));
+  if (has("azure-pipelines.yml"))
+    pushUnique(
+      deployment,
+      finding("Azure Pipelines", "azure-pipelines.yml", "medium"),
+    );
+  if (has("serverless.yml"))
+    pushUnique(
+      deployment,
+      finding("Serverless Framework (AWS)", "serverless.yml", "medium"),
+    );
+  if (has("fastlane/Fastfile"))
+    pushUnique(
+      deployment,
+      finding(
+        "App Store / Play Store (fastlane)",
+        "fastlane/Fastfile",
+        "medium",
+      ),
+    );
+  const workflows = paths.filter((path) =>
+    /^\.github\/workflows\/[^/]+\.ya?ml$/.test(path),
+  );
   for (const workflow of workflows) {
     pushUnique(structure.ci, finding("GitHub Actions", workflow));
     const content = evidence.files[workflow];
-    if (content && /firebase(?:-tools)?\s+deploy|FirebaseExtended\/action-hosting-deploy/i.test(content)) {
-      pushUnique(deployment, finding("Firebase (via GitHub Actions)", workflow, "medium"));
+    if (
+      content &&
+      /firebase(?:-tools)?\s+deploy|FirebaseExtended\/action-hosting-deploy/i.test(
+        content,
+      )
+    ) {
+      pushUnique(
+        deployment,
+        finding("Firebase (via GitHub Actions)", workflow, "medium"),
+      );
     }
   }
-  if (has(".gitlab-ci.yml")) pushUnique(structure.ci, finding("GitLab CI", ".gitlab-ci.yml"));
-  if (has("azure-pipelines.yml")) pushUnique(structure.ci, finding("Azure Pipelines", "azure-pipelines.yml"));
+  if (has(".gitlab-ci.yml"))
+    pushUnique(structure.ci, finding("GitLab CI", ".gitlab-ci.yml"));
+  if (has("azure-pipelines.yml"))
+    pushUnique(structure.ci, finding("Azure Pipelines", "azure-pipelines.yml"));
   for (const item of deployment) pushUnique(structure.deployment, item);
 
   /* ---- environment variable NAMES ---- */
@@ -610,27 +873,68 @@ export function analyzeRepositoryEvidence(
     for (const name of parseEnvVarNames(content)) {
       if (seenEnv.has(name)) continue;
       seenEnv.add(name);
-      envVars.push({ name, classification: classifyEnvVar(name), evidence: path });
+      envVars.push({
+        name,
+        classification: classifyEnvVar(name),
+        evidence: path,
+      });
     }
   }
   if (envVars.length === 0) {
-    unavailable.push("no .env.example / .env.sample found: required environment variable names are not established");
+    unavailable.push(
+      "no .env.example / .env.sample found: required environment variable names are not established",
+    );
   }
 
   /* ---- security (read-only) ---- */
-  const committedEnv = paths.find((path) => /(^|\/)\.env(\.[A-Za-z]+)?$/.test(path) && !/\.(example|sample|template)$/.test(path));
+  const committedEnv = paths.find(
+    (path) =>
+      /(^|\/)\.env(\.[A-Za-z]+)?$/.test(path) &&
+      !/\.(example|sample|template)$/.test(path),
+  );
   if (committedEnv) {
-    note(security, "warning", "committed-env-file", "An environment file appears to be committed to the repository; review it for secret values.", committedEnv);
+    note(
+      security,
+      "warning",
+      "committed-env-file",
+      "An environment file appears to be committed to the repository; review it for secret values.",
+      committedEnv,
+    );
   }
-  const keyFile = paths.find((path) => /\.(pem|p12|pfx)$/i.test(path) || /service[-_]?account.*\.json$/i.test(path));
+  const keyFile = paths.find(
+    (path) =>
+      /\.(pem|p12|pfx)$/i.test(path) ||
+      /service[-_]?account.*\.json$/i.test(path),
+  );
   if (keyFile) {
-    note(security, "warning", "credential-file-path", "A file whose name suggests a private key or service-account credential is committed.", keyFile);
+    note(
+      security,
+      "warning",
+      "credential-file-path",
+      "A file whose name suggests a private key or service-account credential is committed.",
+      keyFile,
+    );
   }
-  if (/allow\s+(?:read|write|read,\s*write)\s*:\s*if\s+true/.test(evidence.files["firestore.rules"] ?? "")) {
-    note(security, "warning", "open-firestore-rules", "firestore.rules contains a rule that allows access unconditionally.", "firestore.rules");
+  if (
+    /allow\s+(?:read|write|read,\s*write)\s*:\s*if\s+true/.test(
+      evidence.files["firestore.rules"] ?? "",
+    )
+  ) {
+    note(
+      security,
+      "warning",
+      "open-firestore-rules",
+      "firestore.rules contains a rule that allows access unconditionally.",
+      "firestore.rules",
+    );
   }
   if (evidence.visibility === "public") {
-    note(findings, "info", "public-repository", "The repository is public; anything committed is publicly readable.");
+    note(
+      findings,
+      "info",
+      "public-repository",
+      "The repository is public; anything committed is publicly readable.",
+    );
   }
 
   /* ---- documentation ---- */
@@ -640,7 +944,8 @@ export function analyzeRepositoryEvidence(
     if (/^README(\.[A-Za-z]+)?$/i.test(path)) kind = "readme";
     else if (/(^|\/)adr\//i.test(path) && /\.md$/i.test(path)) kind = "adr";
     else if (/architecture[^/]*\.md$/i.test(path)) kind = "architecture";
-    else if (/(coding-standards|contributing)[^/]*\.md$/i.test(path)) kind = "standards";
+    else if (/(coding-standards|contributing)[^/]*\.md$/i.test(path))
+      kind = "standards";
     else if (/^docs\/.+\.md$/i.test(path)) kind = "docs";
     if (kind && documentation.length < 60) documentation.push({ path, kind });
   }
@@ -650,26 +955,66 @@ export function analyzeRepositoryEvidence(
 
   /* ---- architectural findings (reported, never auto-changed) ---- */
   if (!commands.some((command) => command.purpose === "build")) {
-    note(findings, "info", "build-command-unresolved", "No build command could be determined from repository evidence.");
+    note(
+      findings,
+      "info",
+      "build-command-unresolved",
+      "No build command could be determined from repository evidence.",
+    );
   }
   if (structure.tests.length === 0 && testFrameworks.length === 0) {
-    note(findings, "warning", "no-tests-detected", "No automated tests were detected.");
+    note(
+      findings,
+      "warning",
+      "no-tests-detected",
+      "No automated tests were detected.",
+    );
   } else if (!commands.some((command) => command.purpose === "test")) {
-    note(findings, "warning", "test-command-unresolved", "Tests exist but no test command could be determined.");
+    note(
+      findings,
+      "warning",
+      "test-command-unresolved",
+      "Tests exist but no test command could be determined.",
+    );
   }
   if (structure.ci.length === 0) {
-    note(findings, "info", "no-ci-detected", "No CI configuration was detected.");
+    note(
+      findings,
+      "info",
+      "no-ci-detected",
+      "No CI configuration was detected.",
+    );
   }
   if (deployment.length === 0) {
-    note(findings, "info", "no-deployment-detected", "No deployment configuration was detected.");
+    note(
+      findings,
+      "info",
+      "no-deployment-detected",
+      "No deployment configuration was detected.",
+    );
   } else if (structure.ci.length === 0) {
-    note(findings, "info", "deployment-not-verified", "Deployment is configured but no automated verification pipeline was detected.");
+    note(
+      findings,
+      "info",
+      "deployment-not-verified",
+      "Deployment is configured but no automated verification pipeline was detected.",
+    );
   }
   if (documentation.length === 0) {
-    note(findings, "info", "no-documentation", "No README or documentation was detected.");
+    note(
+      findings,
+      "info",
+      "no-documentation",
+      "No README or documentation was detected.",
+    );
   }
   if (evidence.truncated) {
-    note(findings, "warning", "listing-truncated", "The provider truncated the file listing; discovery may be incomplete.");
+    note(
+      findings,
+      "warning",
+      "listing-truncated",
+      "The provider truncated the file listing; discovery may be incomplete.",
+    );
     unavailable.push("complete file listing (provider truncated the tree)");
   }
   if (languages.length === 0) {
@@ -725,7 +1070,13 @@ export function analyzeRepositoryEvidence(
 
 const SPEC_SIGNALS: ReadonlyArray<{
   pattern: RegExp;
-  bucket: "languages" | "frameworks" | "database" | "authentication" | "deployment" | "kinds";
+  bucket:
+    | "languages"
+    | "frameworks"
+    | "database"
+    | "authentication"
+    | "deployment"
+    | "kinds";
   value: string;
 }> = [
   { pattern: /\btypescript\b/i, bucket: "languages", value: "TypeScript" },
@@ -740,15 +1091,35 @@ const SPEC_SIGNALS: ReadonlyArray<{
   { pattern: /\bunreal\b/i, bucket: "frameworks", value: "Unreal Engine" },
   { pattern: /\bfirestore\b/i, bucket: "database", value: "Firestore" },
   { pattern: /\bpostgres(?:ql)?\b/i, bucket: "database", value: "PostgreSQL" },
-  { pattern: /\bfirebase auth(?:entication)?\b/i, bucket: "authentication", value: "Firebase Authentication" },
+  {
+    pattern: /\bfirebase auth(?:entication)?\b/i,
+    bucket: "authentication",
+    value: "Firebase Authentication",
+  },
   { pattern: /\bfirebase\b/i, bucket: "deployment", value: "Firebase" },
   { pattern: /\bvercel\b/i, bucket: "deployment", value: "Vercel" },
-  { pattern: /\b(?:web ?app(?:lication)?|website|dashboard|web portal)\b/i, bucket: "kinds", value: "Web application" },
-  { pattern: /\b(?:ios|iphone|ipad)\b/i, bucket: "kinds", value: "iOS application" },
+  {
+    pattern: /\b(?:web ?app(?:lication)?|website|dashboard|web portal)\b/i,
+    bucket: "kinds",
+    value: "Web application",
+  },
+  {
+    pattern: /\b(?:ios|iphone|ipad)\b/i,
+    bucket: "kinds",
+    value: "iOS application",
+  },
   { pattern: /\bandroid\b/i, bucket: "kinds", value: "Android application" },
   { pattern: /\b(?:game|3d game)\b/i, bucket: "kinds", value: "Game" },
-  { pattern: /\b(?:rest api|api service|backend service)\b/i, bucket: "kinds", value: "Backend service" },
-  { pattern: /\bcommand[- ]line|\bcli tool\b/i, bucket: "kinds", value: "Command-line tool" },
+  {
+    pattern: /\b(?:rest api|api service|backend service)\b/i,
+    bucket: "kinds",
+    value: "Backend service",
+  },
+  {
+    pattern: /\bcommand[- ]line|\bcli tool\b/i,
+    bucket: "kinds",
+    value: "Command-line tool",
+  },
 ];
 
 export function analyzeSpecification(
@@ -787,11 +1158,14 @@ export function analyzeSpecification(
     findings.push({
       code: "specification-too-short",
       severity: "warning",
-      message: "The specification is very short; the proposal will be incomplete.",
+      message:
+        "The specification is very short; the proposal will be incomplete.",
     });
   }
   if (buckets.languages.length === 0 && buckets.frameworks.length === 0) {
-    unavailable.push("technology stack (the specification does not name one; choose or override in review)");
+    unavailable.push(
+      "technology stack (the specification does not name one; choose or override in review)",
+    );
   }
   return {
     basis: "specification",

@@ -221,7 +221,9 @@ export function createControlPlaneApi(options) {
                     const graph = notNull(await options.graphQuery.getWorkforceGraph(principal, parseGraphQueryParams(id, params)));
                     // Conditional poll: authorisation and projection above ran in full,
                     // so `since` can only ever save bandwidth, never widen access.
-                    if (since !== null && since !== "" && Number(since) === graph.revision) {
+                    if (since !== null &&
+                        since !== "" &&
+                        Number(since) === graph.revision) {
                         const unchanged = {
                             projectId: graph.projectId,
                             mode: graph.mode,
@@ -409,7 +411,9 @@ export function createControlPlaneApi(options) {
     async function handleCommand(req, res, name, principal, correlationId) {
         if (name.startsWith("onboarding_") && options.onboarding) {
             const onboarding = options.onboarding;
-            const method = Object.hasOwn(ONBOARDING_METHODS, name) ? ONBOARDING_METHODS[name] : undefined;
+            const method = Object.hasOwn(ONBOARDING_METHODS, name)
+                ? ONBOARDING_METHODS[name]
+                : undefined;
             if (!method) {
                 return send(res, 404, { error: { message: `unknown command: ${name}` } }, correlationId);
             }
@@ -421,7 +425,9 @@ export function createControlPlaneApi(options) {
                 return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
             }
             const fn = onboarding[method];
-            const outcome = await fn.call(onboarding, principal, payload, { correlationId });
+            const outcome = await fn.call(onboarding, principal, payload, {
+                correlationId,
+            });
             return send(res, outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200, outcome, correlationId);
         }
         // Own properties only: inherited names ("constructor", "__proto__", "toString") are not commands.

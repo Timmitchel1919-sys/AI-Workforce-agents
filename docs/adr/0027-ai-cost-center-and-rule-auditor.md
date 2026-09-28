@@ -30,7 +30,7 @@ check is the wrong direction to build in.
   short list of named models. A model with no entry, or a response with no
   reported usage, is **honestly unpriced** (`priced: false, reason: …`) —
   never a guessed number, and never silently treated as zero cost.
-- **`BudgetPolicyStore`** — a project's *enforced* limit, distinct from
+- **`BudgetPolicyStore`** — a project's _enforced_ limit, distinct from
   onboarding's `CostPolicy` (a planning document). Setting one is
   administrator-only (`manage_budget_policy`, a new `ControlCapability`) and
   audited (`budget_policy_set`). Onboarding's policy is **not** automatically
@@ -45,7 +45,7 @@ check is the wrong direction to build in.
   `BudgetEnforcer.evaluateInternal` **before** the inner provider, throws
   `ExecutionDeniedError("RESOURCE_LIMIT", …)` on a block (the inner call never
   happens, nothing is recorded), and on success records real usage from the
-  response. Composed *inside* `AuditedModelProvider` so a denial is still an
+  response. Composed _inside_ `AuditedModelProvider` so a denial is still an
   audited `model_execution_failed`. A request with no `projectId` in its
   metadata is refused outright — never silently ungoverned.
 - **Two authorization paths, deliberately** — `BudgetPolicyStore.get`/`set`

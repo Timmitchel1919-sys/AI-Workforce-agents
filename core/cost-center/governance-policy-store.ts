@@ -30,7 +30,10 @@ export class GovernancePolicyStore {
     this.ledger = new DurableLedger(store, clock);
   }
 
-  async get(principal: OperatorPrincipal, projectId: string): Promise<GovernancePolicy | undefined> {
+  async get(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ): Promise<GovernancePolicy | undefined> {
     const id = requireExecutionId(projectId, "projectId");
     this.authorize(principal, id, "view");
     return this.getInternal(id);
@@ -38,11 +41,18 @@ export class GovernancePolicyStore {
 
   /** No principal: the trusted internal gate reads the policy it evaluates against directly. */
   async getInternal(projectId: string): Promise<GovernancePolicy | undefined> {
-    return this.ledger.find<GovernancePolicy>(KIND, requireExecutionId(projectId, "projectId"));
+    return this.ledger.find<GovernancePolicy>(
+      KIND,
+      requireExecutionId(projectId, "projectId"),
+    );
   }
 
   /** Admin-only. One policy per project; a later call replaces it. */
-  async set(principal: OperatorPrincipal, projectId: string, draft: unknown): Promise<GovernancePolicy> {
+  async set(
+    principal: OperatorPrincipal,
+    projectId: string,
+    draft: unknown,
+  ): Promise<GovernancePolicy> {
     const id = requireExecutionId(projectId, "projectId");
     this.authorize(principal, id, "manage_governance_policy");
     return this.write(id, draft, principal.id);
@@ -57,14 +67,37 @@ export class GovernancePolicyStore {
    * estimate yet, so unknown cost is explicitly allowed here") the same way
    * repository/branch policy is declared, not asked for.
    */
-  async setTrusted(projectId: string, draft: unknown): Promise<GovernancePolicy> {
-    return this.write(requireExecutionId(projectId, "projectId"), draft, "system:composition-root");
+  async setTrusted(
+    projectId: string,
+    draft: unknown,
+  ): Promise<GovernancePolicy> {
+    return this.write(
+      requireExecutionId(projectId, "projectId"),
+      draft,
+      "system:composition-root",
+    );
   }
 
-  private async write(id: string, draft: unknown, updatedBy: string): Promise<GovernancePolicy> {
+  private async write(
+    id: string,
+    draft: unknown,
+    updatedBy: string,
+  ): Promise<GovernancePolicy> {
     const validated = validateGovernancePolicyDraft(draft);
-    const policy: GovernancePolicy = { projectId: id, ...validated, updatedAt: this.clock(), updatedBy };
-    const saved = await this.ledger.save(KIND, id, id, policy.updatedAt, policy, "put");
+    const policy: GovernancePolicy = {
+      projectId: id,
+      ...validated,
+      updatedAt: this.clock(),
+      updatedBy,
+    };
+    const saved = await this.ledger.save(
+      KIND,
+      id,
+      id,
+      policy.updatedAt,
+      policy,
+      "put",
+    );
     this.audit?.record("governance_policy_set", {
       projectId: id,
       data: {
@@ -78,9 +111,19 @@ export class GovernancePolicyStore {
     return saved;
   }
 
-  private authorize(principal: OperatorPrincipal, projectId: string, capability: "view" | "manage_governance_policy"): void {
-    if (!operatorCan(principal, capability) || !operatorCanAccessProject(principal, projectId)) {
-      throw new ExecutionDeniedError("AUTHORIZATION_DENIED", `not authorized to ${capability} for this project`);
+  private authorize(
+    principal: OperatorPrincipal,
+    projectId: string,
+    capability: "view" | "manage_governance_policy",
+  ): void {
+    if (
+      !operatorCan(principal, capability) ||
+      !operatorCanAccessProject(principal, projectId)
+    ) {
+      throw new ExecutionDeniedError(
+        "AUTHORIZATION_DENIED",
+        `not authorized to ${capability} for this project`,
+      );
     }
   }
 }

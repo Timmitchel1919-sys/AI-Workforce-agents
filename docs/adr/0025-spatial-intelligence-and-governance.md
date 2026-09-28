@@ -6,7 +6,7 @@
 ## Context
 
 EO-5.8 closes EO-5. Its purpose is to show that the Spatial Workforce can
-*observe, reason over and help govern* real workforce operations — not to grant
+_observe, reason over and help govern_ real workforce operations — not to grant
 autonomy. This ADR records what was built, the evidence for the governance
 claims, and — equally — what does **not** exist.
 
@@ -34,14 +34,14 @@ Properties (each tested):
 - **Grounded:** every finding carries evidence — real nodes with their state and
   status; a finding without evidence cannot exist, and the UI drops one.
 - **No invention:** a healthy graph yields no findings; there are no
-  probabilities, scores, ETAs or causes. Where the graph records *that* something
-  failed but not *why*, the finding carries the `cause_not_recorded` limitation
+  probabilities, scores, ETAs or causes. Where the graph records _that_ something
+  failed but not _why_, the finding carries the `cause_not_recorded` limitation
   and says so; every finding is `as_of_revision`.
 - **UNKNOWN != ABSENT:** an unreadable execution source is reported
   (`unavailableSources`) and folded into the revision; an empty result with an
   unreadable source reads "the picture is incomplete", never "all clear".
 - **SUGGESTION != COMMAND:** a recommendation is `{kind, targetNodeId,
-  relatedCommand?}` — a label and a target, no payload. `relatedCommand` names an
+relatedCommand?}` — a label and a target, no payload. `relatedCommand` names an
   existing command purely as text ("if you decide to act, the related action is
   ‘Retry task…’ in the inspector"). A retry is only mentioned when the linked
   task is itself recorded as failed. Acting on anything is the separate,
@@ -61,24 +61,24 @@ confirmed commands of ADR-0024.
 
 ## Governance evidence (what was verified, and where)
 
-| Spec item | Evidence |
-|---|---|
-| Detection, explanations, recommendations, evidence (82–85) | `tests/spatial-intelligence.test.ts` (unit, grounding property, mutation-checked), UI `insights.test.tsx` |
-| Autonomy boundary, no unrestricted shell/Git/deploy (86, 93) | structural import test; `spatial-command-security`; `restricted-command-probe`; `eo48-security-gate` (injection, env, paths, SSRF, approval replay, artifact tamper) |
-| Policy-bounded automation, deny by default (87) | `execution-security` (policy deny by default; capabilities never imply each other) |
-| AVAILABLE != QUALIFIED (88) | `tests/eo58-governance.test.ts`; `execution-security` preflight `AGENT_NOT_QUALIFIED`; `execution-planning` "no qualified agent → BLOCKED" |
-| Environment qualification (89) | `eo58-governance` (qualification before placement; no fabricated success); `software-factory-environment` (ROUTED / REQUIRES_PROVISIONING / NO_AVAILABLE / UNSUPPORTED); preflight `ENVIRONMENT_UNAVAILABLE` |
-| Agent != Model != Environment; OpenAI primary (90) | `eo58-governance`: an agent's identity and its qualification do not depend on its model policy; graph node ids do not change with the model; the production configuration names `openai`. (Planning does use `modelPolicy` to judge *model eligibility* — that is a separate decision from qualification, and is not claimed to be independent of it.) |
-| Failure containment (94) | `eo48` PARTIAL DEPLOYMENT, ROLLBACK FAILURE, PERSISTENCE FAILURE, ORPHANED SESSION; `release` DEPLOY/HEALTH FAILURE, REMOTE CHANGED, UNVERIFIED/UNREVIEWED, SELF REVIEW; E2E failing deployment; UI `liveGraph` (event-channel loss → reconnecting/degraded, last-known state kept) |
-| Recovery, no duplicated side effects (95) | `eo48` orphan reconcile + release restart; `release` rollback, commit idempotency; command state-machine tests (ADR-0024) |
-| Cancel path (96) | E2E (viewer denied, operator cancels through the command service, graph shows `cancelled`); `execution-security` cancellation |
-| Audit reconstruction (97) | E2E: plan → assigned agent → environment → session → ChangeSet → verification → review → approval → commit → release → result, all linked by recorded identifiers, plus the audited actions |
-| End-to-end scenario, non-destructive (98) | `release.test.ts` "EO-5.8 E2E": real local Git + bare remote in a temp dir, real orchestrators, **test** deploy adapter (labelled simulated), through the graph and insights. Nothing touches production or a real remote. |
+| Spec item                                                    | Evidence                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Detection, explanations, recommendations, evidence (82–85)   | `tests/spatial-intelligence.test.ts` (unit, grounding property, mutation-checked), UI `insights.test.tsx`                                                                                                                                                                                                                                              |
+| Autonomy boundary, no unrestricted shell/Git/deploy (86, 93) | structural import test; `spatial-command-security`; `restricted-command-probe`; `eo48-security-gate` (injection, env, paths, SSRF, approval replay, artifact tamper)                                                                                                                                                                                   |
+| Policy-bounded automation, deny by default (87)              | `execution-security` (policy deny by default; capabilities never imply each other)                                                                                                                                                                                                                                                                     |
+| AVAILABLE != QUALIFIED (88)                                  | `tests/eo58-governance.test.ts`; `execution-security` preflight `AGENT_NOT_QUALIFIED`; `execution-planning` "no qualified agent → BLOCKED"                                                                                                                                                                                                             |
+| Environment qualification (89)                               | `eo58-governance` (qualification before placement; no fabricated success); `software-factory-environment` (ROUTED / REQUIRES_PROVISIONING / NO_AVAILABLE / UNSUPPORTED); preflight `ENVIRONMENT_UNAVAILABLE`                                                                                                                                           |
+| Agent != Model != Environment; OpenAI primary (90)           | `eo58-governance`: an agent's identity and its qualification do not depend on its model policy; graph node ids do not change with the model; the production configuration names `openai`. (Planning does use `modelPolicy` to judge _model eligibility_ — that is a separate decision from qualification, and is not claimed to be independent of it.) |
+| Failure containment (94)                                     | `eo48` PARTIAL DEPLOYMENT, ROLLBACK FAILURE, PERSISTENCE FAILURE, ORPHANED SESSION; `release` DEPLOY/HEALTH FAILURE, REMOTE CHANGED, UNVERIFIED/UNREVIEWED, SELF REVIEW; E2E failing deployment; UI `liveGraph` (event-channel loss → reconnecting/degraded, last-known state kept)                                                                    |
+| Recovery, no duplicated side effects (95)                    | `eo48` orphan reconcile + release restart; `release` rollback, commit idempotency; command state-machine tests (ADR-0024)                                                                                                                                                                                                                              |
+| Cancel path (96)                                             | E2E (viewer denied, operator cancels through the command service, graph shows `cancelled`); `execution-security` cancellation                                                                                                                                                                                                                          |
+| Audit reconstruction (97)                                    | E2E: plan → assigned agent → environment → session → ChangeSet → verification → review → approval → commit → release → result, all linked by recorded identifiers, plus the audited actions                                                                                                                                                            |
+| End-to-end scenario, non-destructive (98)                    | `release.test.ts` "EO-5.8 E2E": real local Git + bare remote in a temp dir, real orchestrators, **test** deploy adapter (labelled simulated), through the graph and insights. Nothing touches production or a real remote.                                                                                                                             |
 
 ### Found by the scenario, and fixed
 
 **Audit facts could be overwritten by command payload data.** `audited()` spread a
-command's `details` *after* the audit fields, so a details key with the same name
+command's `details` _after_ the audit fields, so a details key with the same name
 replaced them — cancelling an execution audited `outcome: "cancelled"` instead of
 `executed`, and a caller-supplied `reason` replaced the audit reason. Payload data
 is now written first and audit facts last; a colliding key survives under a
@@ -143,7 +143,7 @@ material problem at realistic project sizes.
 ## Consequences / known limits
 
 - **The environment rule was rewritten** after review: an `EXECUTES_IN` edge only
-  exists for tasks that *were* placed, so a rule keyed on it could never fire. It
+  exists for tasks that _were_ placed, so a rule keyed on it could never fire. It
   now uses the environment node's own counts and `RUNS_ON`, and is tested with the
   real fragment builder rather than a hand-drawn graph.
 - An approval's node label carries its action ("Approval: commit") and the

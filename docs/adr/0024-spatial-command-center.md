@@ -14,10 +14,10 @@ AUTHORIZATION**.
 
 ### No second command system
 
-Graph actions are a thin *client* of the existing governed path
+Graph actions are a thin _client_ of the existing governed path
 `POST /api/commands/:name` (`WorkforceCommandService`): the server
 authenticates, authorises (role capability **and** project scope), re-checks the
-target's *current* state, executes through the domain subsystem, and writes a
+target's _current_ state, executes through the domain subsystem, and writes a
 `control_command` audit event. No new server route, command type or approval
 system was added. The UI never talks to Git, Firebase, Firestore or a shell.
 
@@ -26,12 +26,12 @@ system was added. The UI never talks to Git, Firebase, Firestore or a shell.
 Only five existing commands are reachable from the graph, and only where the
 spec lists them for that node type (`ui/.../lib/nodeActions.ts`):
 
-| Node | Command | Offered when (last confirmed state) |
-|---|---|---|
-| Task | `cancel-task` | not completed/cancelled |
-| Task | `retry-task` | failed |
-| Execution session | `cancel-execution` | created/validating/ready/running |
-| Approval | `approve`, `reject` | requested |
+| Node              | Command             | Offered when (last confirmed state) |
+| ----------------- | ------------------- | ----------------------------------- |
+| Task              | `cancel-task`       | not completed/cancelled             |
+| Task              | `retry-task`        | failed                              |
+| Execution session | `cancel-execution`  | created/validating/ready/running    |
+| Approval          | `approve`, `reject` | requested                           |
 
 Deliberately absent: `kill-execution` (admin emergency stop, stays in
 Operations), agent enable/disable, workflow control, and everything the backend
@@ -40,7 +40,7 @@ agent, environment, commit, ChangeSet, verification and review nodes are
 inspect-only. The server allowlist (`COMMAND_METHODS`) is checked with
 `Object.hasOwn`, so inherited names (`constructor`, `__proto__`) are a clean 404.
 
-The action list is a UX *hint* built from the node's last confirmed status and
+The action list is a UX _hint_ built from the node's last confirmed status and
 the account's reported capabilities. A viewer, an unknown status or a missing
 capability list yields no action. It grants no authority: the server decides.
 
@@ -48,11 +48,11 @@ capability list yields no action. It grants no authority: the server decides.
 
 Select node → inspector lists actions (read-only inspection links are separate
 from state-changing actions) → **explicit confirmation** (a real modal
-alertdialog; initial focus on the *safe* choice; reason required for
+alertdialog; initial focus on the _safe_ choice; reason required for
 cancel-execution and reject) → `Requesting…` → the server's structured result.
 
 - Success is only an `executed` outcome; a 200 with anything else is reported as
-  a failure (REQUESTED != EXECUTED). Cancelling a *running* session is shown as
+  a failure (REQUESTED != EXECUTED). Cancelling a _running_ session is shown as
   "requested, not finished".
 - Failures are distinct: sign-in required, not authorized, invalid request,
   target not found / no longer current, not possible in current state, approval
@@ -79,7 +79,7 @@ cancel-execution and reject) → `Requesting…` → the server's structured res
 - **Project switch:** command state is bound to the project; switching resets
   it and drops a late reply.
 - **Focus Mode / a11y / mobile:** the command state machine and its dialog are owned
-  by the *workspace*, not the inspector. The dialog is a direct child of the
+  by the _workspace_, not the inspector. The dialog is a direct child of the
   workspace root, so it is not confined by the inspector panel's `backdrop-filter`
   / `overflow` (which would clip a `position: fixed` overlay), is never made inert
   by Focus Mode, and is never over the canvas. A request in flight survives the
@@ -93,13 +93,13 @@ cancel-execution and reject) → `Requesting…` → the server's structured res
 
 (Reviews added: an approval past its `expiresAt` is refused and marked expired —
 it previously stayed decidable until something else swept it; the project check
-runs *before* the status check and the refusal names no project, so a scoped
+runs _before_ the status check and the refusal names no project, so a scoped
 operator learns neither another project's approval state nor its project name;
 operator free text (`reason`, `note`) must be a string of at most 500
 characters; a caller-supplied correlation id is kept only if it is ≤128 chars of
 `[A-Za-z0-9_.:-]`, otherwise one is minted, so free-form text cannot be forged
 into the audit trail. The UI also reports a recorded approval whose follow-up
-(task/plan/workflow resume) failed as *not* plain success, and "already
+(task/plan/workflow resume) failed as _not_ plain success, and "already
 terminal" cancels as "No change".)
 
 1. **Cross-project approval (IDOR).** `decideApproval` derived an approval's
@@ -122,7 +122,7 @@ terminal" cancels as "No change".)
   projection would remove the misleading offer.
 - **Residual idempotency risk:** duplicate delivery is neutralised by the domain
   state machines. A `retry-task` whose reply timed out, on a task that then
-  failed *again*, could be applied twice if the operator retries. The UI reports
+  failed _again_, could be applied twice if the operator retries. The UI reports
   timeouts as "outcome unknown" and never retries automatically.
 - **Existence oracle:** a foreign task/approval id returns 403 while a missing one
   returns 404 (the established API contract, asserted by existing tests). Ids are

@@ -20,7 +20,12 @@ import { ValidationError, requireExecutionId, requireText } from "./index.js";
 /* ------------------------------------------------------------------ */
 /* Decision                                                            */
 /* ------------------------------------------------------------------ */
-export const POLICY_DECISIONS = ["allow", "deny", "require_approval", "unknown"];
+export const POLICY_DECISIONS = [
+    "allow",
+    "deny",
+    "require_approval",
+    "unknown",
+];
 export const POLICY_REASON_CODES = [
     "PROJECT_ACCESS_DENIED",
     "BUDGET_LIMIT_REACHED",
@@ -50,7 +55,10 @@ export function validateGovernanceRequest(input) {
     }
     const draft = input;
     const estimatedUsd = draft.estimatedUsd;
-    if (estimatedUsd !== undefined && (typeof estimatedUsd !== "number" || !Number.isFinite(estimatedUsd) || estimatedUsd < 0)) {
+    if (estimatedUsd !== undefined &&
+        (typeof estimatedUsd !== "number" ||
+            !Number.isFinite(estimatedUsd) ||
+            estimatedUsd < 0)) {
         throw new ValidationError("governance request.estimatedUsd must be a non-negative finite number");
     }
     return {
@@ -78,13 +86,18 @@ export function validateGovernancePolicyDraft(input) {
         const v = draft[key];
         if (v === undefined)
             return undefined;
-        if (!Array.isArray(v) || v.length === 0 || !v.every((x) => typeof x === "string" && x.trim())) {
+        if (!Array.isArray(v) ||
+            v.length === 0 ||
+            !v.every((x) => typeof x === "string" && x.trim())) {
             throw new ValidationError(`governance policy.${key} must be a non-empty array of non-empty strings`);
         }
         return v.map((x) => x.trim().toLowerCase());
     };
     const threshold = draft.requireApprovalAboveUsd;
-    if (threshold !== undefined && (typeof threshold !== "number" || !Number.isFinite(threshold) || threshold < 0)) {
+    if (threshold !== undefined &&
+        (typeof threshold !== "number" ||
+            !Number.isFinite(threshold) ||
+            threshold < 0)) {
         throw new ValidationError("governance policy.requireApprovalAboveUsd must be a non-negative number");
     }
     if (typeof draft.allowUnknownCost !== "boolean") {

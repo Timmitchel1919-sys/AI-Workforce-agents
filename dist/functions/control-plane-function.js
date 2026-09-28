@@ -86,7 +86,8 @@ function logInitializationFailure(error) {
         ? error.collection
         : undefined;
     console.error("Control Plane runtime initialization failed", {
-        errorType, stack: error instanceof Error ? error.stack : undefined,
+        errorType,
+        stack: error instanceof Error ? error.stack : undefined,
         ...(errorCode === undefined ? {} : { errorCode }),
         ...(typeof safePhase === "string" ? { safePhase } : {}),
         ...(typeof collection === "string" ? { collection } : {}),

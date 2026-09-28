@@ -273,8 +273,14 @@ test("cross-project IDOR is denied: a member of one project cannot read another'
   assert.equal(await query.getProject(mmMember, AI), undefined);
   assert.equal(await query.getProject(aiMember, "money-mind"), undefined);
   assert.equal(await query.getProject(aiMember, "does-not-exist"), undefined);
-  assert.equal(await graph.getWorkforceGraph(mmMember, { projectId: AI }), undefined);
-  assert.equal(await graph.getWorkforceGraph(nobody, { projectId: AI }), undefined);
+  assert.equal(
+    await graph.getWorkforceGraph(mmMember, { projectId: AI }),
+    undefined,
+  );
+  assert.equal(
+    await graph.getWorkforceGraph(nobody, { projectId: AI }),
+    undefined,
+  );
   assert.ok(await graph.getWorkforceGraph(aiMember, { projectId: AI }));
 });
 
@@ -443,7 +449,9 @@ test("graph: the AI Workforce project is the real root; only real relationships;
 
 test("graph: the Money Mind project still resolves its own scoped agent, isolated from AI Workforce", async () => {
   const { graph } = controlPlane();
-  const mm = (await graph.getWorkforceGraph(mmMember, { projectId: "money-mind" }))!;
+  const mm = (await graph.getWorkforceGraph(mmMember, {
+    projectId: "money-mind",
+  }))!;
   assert.ok(
     mm.nodes.some(
       (n) =>

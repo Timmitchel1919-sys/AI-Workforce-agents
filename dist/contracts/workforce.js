@@ -8,7 +8,9 @@ export function validateSpecialistTask(raw) {
         objective: t.objective,
         context: Array.isArray(t.context) ? t.context.map(String) : [],
         instructions: typeof t.instructions === "string" ? t.instructions : "",
-        acceptanceCriteria: Array.isArray(t.acceptanceCriteria) ? t.acceptanceCriteria.map(String) : []
+        acceptanceCriteria: Array.isArray(t.acceptanceCriteria)
+            ? t.acceptanceCriteria.map(String)
+            : [],
     };
 }
 export function validateSpecialistResult(raw) {
@@ -165,5 +167,5 @@ export const V1_SPECIALIST_WORKFORCE = [
         allowedProjects: ["money-mind"],
         supportedTaskTypes: ["deployment", "infrastructure"],
         permissions: [],
-    }
+    },
 ];

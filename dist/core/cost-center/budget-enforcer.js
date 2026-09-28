@@ -4,7 +4,7 @@
  * `evaluateBudget` function in contracts/cost-center.ts; this class only
  * gathers the (already-authorized) inputs it needs.
  */
-import { evaluateBudget, requireExecutionId } from "../../contracts/index.js";
+import { evaluateBudget, requireExecutionId, } from "../../contracts/index.js";
 const DAY_MS = 24 * 60 * 60 * 1000;
 export class BudgetEnforcer {
     policies;

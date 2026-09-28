@@ -123,7 +123,10 @@ export class ProjectProvisioningService {
         });
         this.audit(current, actor, "step_completed", { step: planned.key });
       } catch (error) {
-        if (error instanceof OnboardingConflictError && error.code === "revision_conflict") {
+        if (
+          error instanceof OnboardingConflictError &&
+          error.code === "revision_conflict"
+        ) {
           throw error;
         }
         const message = safeMessage(error);
@@ -186,7 +189,12 @@ export class ProjectProvisioningService {
     // this instance never exposes a project whose durable record is blocked.
     const stored = await this.deps.projects.get(current.projectId);
     if (!stored) {
-      return this.failValidation(current, actor, report, "project record missing");
+      return this.failValidation(
+        current,
+        actor,
+        report,
+        "project record missing",
+      );
     }
     let record = stored;
     if (stored.readiness !== "ready") {
@@ -216,7 +224,12 @@ export class ProjectProvisioningService {
       return this.failValidation(current, actor, report, safeMessage(error));
     }
     if (!this.deps.registry.has(record.id)) {
-      return this.failValidation(current, actor, report, "project is not in the Project Registry");
+      return this.failValidation(
+        current,
+        actor,
+        report,
+        "project is not in the Project Registry",
+      );
     }
     const finalReport: ValidationReport = {
       ...report,
@@ -236,7 +249,9 @@ export class ProjectProvisioningService {
       draft.validation = finalReport;
       draft.failure = undefined;
     });
-    this.audit(current, actor, "project_ready", { projectId: current.projectId });
+    this.audit(current, actor, "project_ready", {
+      projectId: current.projectId,
+    });
     return current;
   }
 
@@ -314,7 +329,9 @@ export class ProjectProvisioningService {
             })
           : undefined;
         if (!ref) {
-          throw new ValidationError("repository reference is invalid or carries credentials");
+          throw new ValidationError(
+            "repository reference is invalid or carries credentials",
+          );
         }
         return `Repository ${repositoryKey(ref)} bound (credential-free reference; read-only, not authorized for writes).`;
       }
@@ -328,11 +345,15 @@ export class ProjectProvisioningService {
         return `${plan.secrets.length} required variable name(s) recorded (names only; no value held).`;
       case "git_workflow":
         if (plan.git.allowDirectDefaultBranchWrites) {
-          throw new ValidationError("direct default-branch writes must not be enabled by onboarding");
+          throw new ValidationError(
+            "direct default-branch writes must not be enabled by onboarding",
+          );
         }
         return "Conservative Git policy recorded (PRs and review required, no direct default-branch writes).";
       case "build_test_pipeline": {
-        const resolved = plan.pipeline.filter((s) => s.status === "resolved").length;
+        const resolved = plan.pipeline.filter(
+          (s) => s.status === "resolved",
+        ).length;
         return `${resolved}/${plan.pipeline.length} pipeline stage(s) resolved from evidence; the rest remain unresolved.`;
       }
       case "deployment_configuration":
@@ -359,7 +380,10 @@ export class ProjectProvisioningService {
     }
   }
 
-  private buildRecord(session: OnboardingSession, actor: string): ProvisionedProject {
+  private buildRecord(
+    session: OnboardingSession,
+    actor: string,
+  ): ProvisionedProject {
     const plan = session.plan!;
     const repositoryUrl = plan.repository.repositoryUrl;
     const ref = repositoryUrl
@@ -373,7 +397,9 @@ export class ProjectProvisioningService {
       code: plan.identity.code,
       displayName: plan.identity.name,
       ...(plan.identity.fullName ? { fullName: plan.identity.fullName } : {}),
-      ...(plan.identity.description ? { description: plan.identity.description } : {}),
+      ...(plan.identity.description
+        ? { description: plan.identity.description }
+        : {}),
       onboardingId: session.id,
       createdBy: actor,
       createdAt: this.clock(),
@@ -486,7 +512,9 @@ export class ProjectProvisioningService {
       "build_command_known",
       "Build command resolved from evidence",
       false,
-      plan.pipeline.some((step) => step.stage === "build" && step.status === "resolved"),
+      plan.pipeline.some(
+        (step) => step.stage === "build" && step.status === "resolved",
+      ),
       "otherwise left unresolved (never guessed)",
     );
     add(

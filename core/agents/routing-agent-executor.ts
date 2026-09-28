@@ -40,7 +40,9 @@ export class RoutingAgentExecutor implements AgentExecutor {
     const key = agentId.trim();
     if (!key) throw new ValidationError("agent id is required");
     if (!this.executors.has(key)) {
-      throw new NotFoundError(`no executor registered for agent "${key}" to replace`);
+      throw new NotFoundError(
+        `no executor registered for agent "${key}" to replace`,
+      );
     }
     this.executors.set(key, executor);
   }

@@ -85,7 +85,13 @@ export const ONBOARDING_TRANSITIONS: Readonly<
   draft: ["draft", "source_configured", "cancelled"],
   source_configured: ["draft", "source_configured", "analyzing", "cancelled"],
   analyzing: ["analyzed", "analysis_failed", "cancelled"],
-  analyzed: ["draft", "source_configured", "planning", "analyzing", "cancelled"],
+  analyzed: [
+    "draft",
+    "source_configured",
+    "planning",
+    "analyzing",
+    "cancelled",
+  ],
   planning: ["review_required", "analyzed", "cancelled"],
   review_required: [
     "review_required",
@@ -138,7 +144,12 @@ export const TERMINAL_ONBOARDING_STATUSES: readonly OnboardingStatus[] = [
 /* Draft input                                                        */
 /* ------------------------------------------------------------------ */
 
-export const PROJECT_PRIORITIES = ["low", "normal", "high", "critical"] as const;
+export const PROJECT_PRIORITIES = [
+  "low",
+  "normal",
+  "high",
+  "critical",
+] as const;
 export type ProjectPriority = (typeof PROJECT_PRIORITIES)[number];
 
 export interface OnboardingIdentity {
@@ -400,7 +411,8 @@ export interface EnvironmentPlanItem {
   /** Declared support (descriptor) — never confused with availability. */
   supported: boolean;
   /** Real registry state: is a qualified, usable instance registered? */
-  availability: "qualified_instance_available" | "no_qualified_instance" | "unsupported";
+  availability:
+    "qualified_instance_available" | "no_qualified_instance" | "unsupported";
   provisioningNeed: string;
 }
 

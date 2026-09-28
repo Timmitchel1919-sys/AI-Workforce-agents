@@ -22,7 +22,9 @@ export interface ReleaseCapabilityInputs {
  * Every field is a getter, evaluated when READ, so a registry that changes after composition (a
  * provider or adapter registered later) is reflected instead of a stale construction-time snapshot.
  */
-export function deriveReleaseCapabilities(i: ReleaseCapabilityInputs): ReleaseCapabilities {
+export function deriveReleaseCapabilities(
+  i: ReleaseCapabilityInputs,
+): ReleaseCapabilities {
   return {
     get verification() {
       return (

@@ -64,13 +64,28 @@ interface CommandRun {
   readonly correlationId: string;
 }
 
-const AUDIT_FACT_KEYS = new Set(["command", "outcome", "errorKind", "correlationId", "actor", "actorRole", "resourceId", "reason"]);
+const AUDIT_FACT_KEYS = new Set([
+  "command",
+  "outcome",
+  "errorKind",
+  "correlationId",
+  "actor",
+  "actorRole",
+  "resourceId",
+  "reason",
+]);
 
 /** `outcome` -> `detailOutcome`, so payload data never shares a key with an audit fact. */
-function namespaceAuditCollisions(details: Record<string, unknown>): Record<string, unknown> {
+function namespaceAuditCollisions(
+  details: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(details)) {
-    out[AUDIT_FACT_KEYS.has(key) ? `detail${key[0]!.toUpperCase()}${key.slice(1)}` : key] = value;
+    out[
+      AUDIT_FACT_KEYS.has(key)
+        ? `detail${key[0]!.toUpperCase()}${key.slice(1)}`
+        : key
+    ] = value;
   }
   return out;
 }
@@ -81,10 +96,16 @@ function auditRef(value: unknown): string | undefined {
 }
 
 /** Optional operator free text: must be a string, at most `max` characters. */
-function boundedText(value: unknown, field: string, max = 500): string | undefined {
+function boundedText(
+  value: unknown,
+  field: string,
+  max = 500,
+): string | undefined {
   if (value === undefined || value === null || value === "") return undefined;
-  if (typeof value !== "string") throw new ValidationError(`${field} must be a string`);
-  if (value.length > max) throw new ValidationError(`${field} must be at most ${max} characters`);
+  if (typeof value !== "string")
+    throw new ValidationError(`${field} must be a string`);
+  if (value.length > max)
+    throw new ValidationError(`${field} must be at most ${max} characters`);
   return value;
 }
 
@@ -116,7 +137,15 @@ export class WorkforceCommandService {
     try {
       note = boundedText(input?.note, "approve.note");
     } catch (error) {
-      return this.audited(principal, "approve", "rejected", auditRef(input?.approvalId), message(error), {}, run);
+      return this.audited(
+        principal,
+        "approve",
+        "rejected",
+        auditRef(input?.approvalId),
+        message(error),
+        {},
+        run,
+      );
     }
     return this.decideApproval(principal, "approve", input?.approvalId, run, {
       decision: "approved",
@@ -210,12 +239,16 @@ export class WorkforceCommandService {
       : undefined;
     // The approval's project: its linked task/plan, else the project a bound approval
     // (commit/push/deployment) was stamped with — the same attribution the approval queue uses.
-    const stamped = typeof meta.projectId === "string" ? meta.projectId : undefined;
+    const stamped =
+      typeof meta.projectId === "string" ? meta.projectId : undefined;
     const projectId = linkedTask?.projectId ?? linkedPlan?.projectId ?? stamped;
     // Fail closed: a project-scoped operator may not decide an approval that cannot be attributed
     // to a project they can act on. (A wildcard operator is not project-scoped.)
     const unattributable = !projectId && principal.allowedProjects !== "*";
-    if (unattributable || (projectId && !operatorCanAccessProject(principal, projectId))) {
+    if (
+      unattributable ||
+      (projectId && !operatorCanAccessProject(principal, projectId))
+    ) {
       // Checked BEFORE the status, so a scoped operator cannot learn another project's approval
       // state; and the reason names no project. (The 403 is the established API contract for a
       // foreign approval; ids stay enumerable, which is why nothing else about it is revealed.)
@@ -378,7 +411,10 @@ export class WorkforceCommandService {
       projectId = requireId(input?.projectId, "plan_from_objective.projectId");
       programId = requireId(input?.programId, "plan_from_objective.programId");
       name = requireText(input?.name, "plan_from_objective.name");
-      objective = requireText(input?.objective, "plan_from_objective.objective");
+      objective = requireText(
+        input?.objective,
+        "plan_from_objective.objective",
+      );
 
       const factory = this.ctx.softwareFactory;
       if (!factory) {
@@ -393,8 +429,13 @@ export class WorkforceCommandService {
           "invalid_state",
         );
       }
-      
-      const detail = await factory.planFromObjective(programId, name, objective, projectId);
+
+      const detail = await factory.planFromObjective(
+        programId,
+        name,
+        objective,
+        projectId,
+      );
 
       return this.audited(
         principal,
@@ -412,7 +453,10 @@ export class WorkforceCommandService {
         "rejected",
         typeof input?.programId === "string" ? input.programId : "",
         message(error),
-        { projectId: typeof input?.projectId === "string" ? input.projectId : "" },
+        {
+          projectId:
+            typeof input?.projectId === "string" ? input.projectId : "",
+        },
         run,
         softwareFactoryKind(error),
       );
@@ -1494,7 +1538,15 @@ export class WorkforceCommandService {
     try {
       reasonText = boundedText(input?.reason, "cancel_task.reason");
     } catch (error) {
-      return this.audited(principal, "cancel_task", "rejected", task.id, message(error), { projectId: task.projectId }, run);
+      return this.audited(
+        principal,
+        "cancel_task",
+        "rejected",
+        task.id,
+        message(error),
+        { projectId: task.projectId },
+        run,
+      );
     }
     const next = this.ctx.tasks.transition(task.id, "cancelled", {
       error: reasonText
@@ -1933,19 +1985,67 @@ export class WorkforceCommandService {
     try {
       projectId = requireId(input?.projectId, `${command}.projectId`);
     } catch (error) {
-      return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        message(error),
+        {},
+        run,
+      );
     }
     if (!operatorCan(principal, "manage_budget_policy")) {
-      return this.audited(principal, command, "denied", projectId, `role "${principal.role}" may not manage a budget policy`, { projectId }, run);
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        projectId,
+        `role "${principal.role}" may not manage a budget policy`,
+        { projectId },
+        run,
+      );
     }
     if (!this.ctx.costCenter) {
-      return this.audited(principal, command, "rejected", projectId, "the Cost Center is not composed in this deployment", { projectId }, run, "not_found");
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        projectId,
+        "the Cost Center is not composed in this deployment",
+        { projectId },
+        run,
+        "not_found",
+      );
     }
     try {
-      const saved = await this.ctx.costCenter.budgetPolicy.set(principal, projectId, input?.policy);
-      return this.audited(principal, command, "executed", projectId, "budget policy set", { projectId, policy: saved }, run);
+      const saved = await this.ctx.costCenter.budgetPolicy.set(
+        principal,
+        projectId,
+        input?.policy,
+      );
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        projectId,
+        "budget policy set",
+        { projectId, policy: saved },
+        run,
+      );
     } catch (error) {
-      return this.audited(principal, command, "rejected", projectId, message(error), { projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        projectId,
+        message(error),
+        { projectId },
+        run,
+        error instanceof ValidationError
+          ? "invalid_request"
+          : "command_failure",
+      );
     }
   }
 
@@ -1961,19 +2061,67 @@ export class WorkforceCommandService {
     try {
       projectId = requireId(input?.projectId, `${command}.projectId`);
     } catch (error) {
-      return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        message(error),
+        {},
+        run,
+      );
     }
     if (!operatorCan(principal, "manage_governance_policy")) {
-      return this.audited(principal, command, "denied", projectId, `role "${principal.role}" may not manage a governance policy`, { projectId }, run);
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        projectId,
+        `role "${principal.role}" may not manage a governance policy`,
+        { projectId },
+        run,
+      );
     }
     if (!this.ctx.governance) {
-      return this.audited(principal, command, "rejected", projectId, "the Governance Policy Engine is not composed in this deployment", { projectId }, run, "not_found");
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        projectId,
+        "the Governance Policy Engine is not composed in this deployment",
+        { projectId },
+        run,
+        "not_found",
+      );
     }
     try {
-      const saved = await this.ctx.governance.policy.set(principal, projectId, input?.policy);
-      return this.audited(principal, command, "executed", projectId, "governance policy set", { projectId, policy: saved }, run);
+      const saved = await this.ctx.governance.policy.set(
+        principal,
+        projectId,
+        input?.policy,
+      );
+      return this.audited(
+        principal,
+        command,
+        "executed",
+        projectId,
+        "governance policy set",
+        { projectId, policy: saved },
+        run,
+      );
     } catch (error) {
-      return this.audited(principal, command, "rejected", projectId, message(error), { projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        projectId,
+        message(error),
+        { projectId },
+        run,
+        error instanceof ValidationError
+          ? "invalid_request"
+          : "command_failure",
+      );
     }
   }
 
@@ -1996,13 +2144,38 @@ export class WorkforceCommandService {
     try {
       request = validateGovernanceRequest(input);
     } catch (error) {
-      return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        undefined,
+        message(error),
+        {},
+        run,
+      );
     }
     if (!this.ctx.governance) {
-      return this.audited(principal, command, "rejected", request.projectId, "the Governance Policy Engine is not composed in this deployment", { projectId: request.projectId }, run, "not_found");
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        request.projectId,
+        "the Governance Policy Engine is not composed in this deployment",
+        { projectId: request.projectId },
+        run,
+        "not_found",
+      );
     }
     if (!operatorCanAccessProject(principal, request.projectId)) {
-      return this.audited(principal, command, "denied", request.projectId, `operator may not act on project "${request.projectId}"`, { projectId: request.projectId }, run);
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        request.projectId,
+        `operator may not act on project "${request.projectId}"`,
+        { projectId: request.projectId },
+        run,
+      );
     }
     // The COMMAND executed successfully whenever the engine finished evaluating — "denied"/"rejected"
     // are about the COMMAND's own authorization, never about the domain answer it produced. An
@@ -2010,18 +2183,37 @@ export class WorkforceCommandService {
     // Wrapped defensively: any unexpected throw from the engine (not just its own internal
     // GOVERNANCE_UNAVAILABLE fallback) must still be captured in the audit trail, never skip it.
     try {
-      const decision = await this.ctx.governance.engine.evaluate(principal, request);
+      const decision = await this.ctx.governance.engine.evaluate(
+        principal,
+        request,
+      );
       return this.audited(
         principal,
         command,
         "executed",
         request.projectId,
         decision.detail,
-        { projectId: request.projectId, decision: decision.decision, reasonCode: decision.reasonCode, approvalId: decision.approvalId },
+        {
+          projectId: request.projectId,
+          decision: decision.decision,
+          reasonCode: decision.reasonCode,
+          approvalId: decision.approvalId,
+        },
         run,
       );
     } catch (error) {
-      return this.audited(principal, command, "rejected", request.projectId, message(error), { projectId: request.projectId }, run, error instanceof ValidationError ? "invalid_request" : "command_failure");
+      return this.audited(
+        principal,
+        command,
+        "rejected",
+        request.projectId,
+        message(error),
+        { projectId: request.projectId },
+        run,
+        error instanceof ValidationError
+          ? "invalid_request"
+          : "command_failure",
+      );
     }
   }
 

@@ -1,6 +1,6 @@
 /** Bounded, read-only production executor for Control Plane analysis tasks. */
 import { estimateCost, DEFAULT_AGENT_LIMITS, AgentExecutionError, ProviderTimeoutError, ProviderUnavailableError, ValidationError, } from "../../contracts/index.js";
-import { GeneralAgent } from "../../core/index.js";
+import { GeneralAgent, } from "../../core/index.js";
 import { OpenAIModelProvider } from "../../adapters/models/openai-model-provider.js";
 export const CONTROL_PLANE_ANALYSIS_AGENT_ID = "control-plane-analysis-agent";
 export const CONTROL_PLANE_ANALYSIS_TASK_TYPE = "control-plane-analysis";
@@ -92,14 +92,17 @@ export class OpenAIAgentExecutor extends GeneralAgent {
                 projectId: task.projectId,
                 agentId: this.agentId,
                 agent,
-                requirement: { requiredCapabilities: ["reasoning", "structured_output"] },
+                requirement: {
+                    requiredCapabilities: ["reasoning", "structured_output"],
+                },
                 requestId: task.id,
                 taskId: task.id,
             });
             routingDecisionId = routing.routingDecisionId;
             requestedModel = routing.selectedModel;
             if (!routing.selectedProvider) {
-                throw this.fail("model_unavailable", routing.policyDecision?.detail ?? "no qualified model is available for this task", { routingDecisionId, reasonCodes: routing.reasonCodes });
+                throw this.fail("model_unavailable", routing.policyDecision?.detail ??
+                    "no qualified model is available for this task", { routingDecisionId, reasonCodes: routing.reasonCodes });
             }
         }
         run.activity("model_call", {
@@ -159,7 +162,11 @@ export class OpenAIAgentExecutor extends GeneralAgent {
             this.validateOutput(result);
             if (requestedModel && requestedModel !== response.model) {
                 // REQUESTED MODEL != ACTUAL MODEL — a real, auditable mismatch, never silently absorbed.
-                run.activity("model_mismatch", { requestedModel, actualModel: response.model, routingDecisionId });
+                run.activity("model_mismatch", {
+                    requestedModel,
+                    actualModel: response.model,
+                    routingDecisionId,
+                });
             }
             run.activity("model_result", {
                 provider: this.options.provider.id,

@@ -206,7 +206,10 @@ const SAFE_CODE = /^[a-z0-9][a-z0-9-]{0,39}$/;
  * Registry instance ids embed a hash of host id + install path, so they are
  * never exposed. The graph id is a per-project opaque digest instead.
  */
-export function opaqueInstanceId(projectId: string, instanceId: string): string {
+export function opaqueInstanceId(
+  projectId: string,
+  instanceId: string,
+): string {
   return createHash("sha256")
     .update(`${projectId}|${instanceId}`)
     .digest("hex")

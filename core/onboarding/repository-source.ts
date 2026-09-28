@@ -16,10 +16,7 @@
  */
 import type { SourceProvider } from "../../contracts/onboarding.js";
 import { parseProjectRepositoryRef } from "../registry/project-repository-ref.js";
-import {
-  isContentAllowlisted,
-  type RepositoryEvidence,
-} from "./discovery.js";
+import { isContentAllowlisted, type RepositoryEvidence } from "./discovery.js";
 
 export type RepositoryReadFailureCode =
   | "invalid_reference"
@@ -125,7 +122,11 @@ export class GitHubRepositoryReader implements RepositorySourceReader {
       };
     }
     if (request.branch !== undefined && !BRANCH.test(request.branch)) {
-      return { ok: false, code: "invalid_reference", message: "invalid branch name" };
+      return {
+        ok: false,
+        code: "invalid_reference",
+        message: "invalid branch name",
+      };
     }
     const { owner, name } = target;
     const base = `${API}/repos/${owner}/${name}`;
@@ -137,23 +138,36 @@ export class GitHubRepositoryReader implements RepositorySourceReader {
       default_branch?: string;
     };
     const defaultBranch =
-      typeof info.default_branch === "string" && BRANCH.test(info.default_branch)
+      typeof info.default_branch === "string" &&
+      BRANCH.test(info.default_branch)
         ? info.default_branch
         : undefined;
     const branch = request.branch ?? defaultBranch;
     if (!branch) {
-      return { ok: false, code: "unavailable", message: "default branch unavailable" };
+      return {
+        ok: false,
+        code: "unavailable",
+        message: "default branch unavailable",
+      };
     }
 
-    const branchInfo = await this.get(`${base}/branches/${encodeURIComponent(branch)}`);
+    const branchInfo = await this.get(
+      `${base}/branches/${encodeURIComponent(branch)}`,
+    );
     if (!branchInfo.ok) return branchInfo.failure;
-    const commit = (branchInfo.value as {
-      commit?: { sha?: string; commit?: { tree?: { sha?: string } } };
-    }).commit;
+    const commit = (
+      branchInfo.value as {
+        commit?: { sha?: string; commit?: { tree?: { sha?: string } } };
+      }
+    ).commit;
     const commitSha = commit?.sha;
     const treeSha = commit?.commit?.tree?.sha;
     if (!isSha(commitSha) || !isSha(treeSha)) {
-      return { ok: false, code: "unavailable", message: "branch commit unavailable" };
+      return {
+        ok: false,
+        code: "unavailable",
+        message: "branch commit unavailable",
+      };
     }
 
     const tree = await this.get(`${base}/git/trees/${treeSha}?recursive=1`);
@@ -191,7 +205,12 @@ export class GitHubRepositoryReader implements RepositorySourceReader {
       evidence: {
         provider: "github",
         url: `https://github.com/${owner}/${name}`,
-        visibility: info.private === true ? "private" : info.private === false ? "public" : "unknown",
+        visibility:
+          info.private === true
+            ? "private"
+            : info.private === false
+              ? "public"
+              : "unknown",
         defaultBranch: defaultBranch ?? branch,
         branch,
         commit: commitSha,
@@ -213,11 +232,16 @@ export class GitHubRepositoryReader implements RepositorySourceReader {
     return headers;
   }
 
-  private async get(
-    url: string,
-  ): Promise<
+  private async get(url: string): Promise<
     | { ok: true; value: unknown }
-    | { ok: false; failure: { ok: false; code: RepositoryReadFailureCode; message: string } }
+    | {
+        ok: false;
+        failure: {
+          ok: false;
+          code: RepositoryReadFailureCode;
+          message: string;
+        };
+      }
   > {
     try {
       const response = await this.fetchImpl(url, {
@@ -225,11 +249,21 @@ export class GitHubRepositoryReader implements RepositorySourceReader {
         signal: AbortSignal.timeout(this.timeoutMs),
       });
       if (response.ok) return { ok: true, value: await response.json() };
-      return { ok: false, failure: this.failureFor(response.status, response.headers.get("x-ratelimit-remaining")) };
+      return {
+        ok: false,
+        failure: this.failureFor(
+          response.status,
+          response.headers.get("x-ratelimit-remaining"),
+        ),
+      };
     } catch {
       return {
         ok: false,
-        failure: { ok: false, code: "unavailable", message: "the repository provider could not be reached" },
+        failure: {
+          ok: false,
+          code: "unavailable",
+          message: "the repository provider could not be reached",
+        },
       };
     }
   }
@@ -260,14 +294,30 @@ export class GitHubRepositoryReader implements RepositorySourceReader {
       };
     }
     if (status === 401) {
-      return { ok: false, code: "unauthorized", message: "the configured GitHub credential was rejected" };
+      return {
+        ok: false,
+        code: "unauthorized",
+        message: "the configured GitHub credential was rejected",
+      };
     }
     if (status === 403 || status === 429) {
       return rateRemaining === "0" || status === 429
-        ? { ok: false, code: "rate_limited", message: "the GitHub API rate limit was reached; retry later" }
-        : { ok: false, code: "unauthorized", message: "access to the repository was denied" };
+        ? {
+            ok: false,
+            code: "rate_limited",
+            message: "the GitHub API rate limit was reached; retry later",
+          }
+        : {
+            ok: false,
+            code: "unauthorized",
+            message: "access to the repository was denied",
+          };
     }
-    return { ok: false, code: "unavailable", message: `the repository provider returned an error (${status})` };
+    return {
+      ok: false,
+      code: "unavailable",
+      message: `the repository provider returned an error (${status})`,
+    };
   }
 }
 

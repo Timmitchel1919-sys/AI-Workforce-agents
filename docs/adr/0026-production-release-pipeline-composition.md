@@ -29,7 +29,7 @@ sees). Every missing capability is an explicit **unavailable port**
 (no workspace ⇒ no ChangeSet) and DENY everything else with the stable code
 `ADAPTER_UNAVAILABLE` — never a no-op that reports success, never simulated.
 
-The control-plane *context* still exposes only read views (`listHistory`,
+The control-plane _context_ still exposes only read views (`listHistory`,
 `activity`, `listReleases`, `listTargets`) — least privilege: the graph and
 Operations layers cannot call commit or deploy, and no HTTP route reaches them.
 The full services are exposed on the trusted runtime object (`runtime.release`).
@@ -39,10 +39,10 @@ The full services are exposed on the trusted runtime object (`runtime.release`).
 `ReleaseCapabilities` (`contracts/release.ts`) is **derived at read time**
 (`core/release/release-capabilities.ts`) from the ports and registries the
 services were composed with — never declared and never a construction-time
-snapshot: `verification` needs a sandbox provider *and* registered operations
-*and* a real workspace *and* a real artifact source (a sandbox alongside the
+snapshot: `verification` needs a sandbox provider _and_ registered operations
+_and_ a real workspace _and_ a real artifact source (a sandbox alongside the
 fail-closed workspace does not advertise verification); `sourceControl` needs a
-real Git port *and* a real workspace; `deploymentAdapters` is the live list from
+real Git port _and_ a real workspace; `deploymentAdapters` is the live list from
 `DeploymentOrchestrator.adapterIds()`. The stand-in ports carry
 `available: false`. Production today: all absent.
 
@@ -55,7 +55,7 @@ real Git port *and* a real workspace; `deploymentAdapters` is the live list from
 - The Operations views keep reading **"not configured"** while the capability is
   absent (their `configured` means "the capability exists").
 
-The control-plane *context* holds **read-only views** (`listHistory`; `activity`;
+The control-plane _context_ holds **read-only views** (`listHistory`; `activity`;
 `listReleases`/`listTargets`) as plain wrapper objects, so the least-privilege
 claim holds at runtime and not only by type. The full services live on
 `runtime.release` for the trusted host.
@@ -73,7 +73,7 @@ Safety: origins must be https on an allowed host (default `*.web.app`,
 `*.firebaseapp.com`), with no credentials, IP literal, port, path, query or
 fragment, and are never echoed when rejected; paths are validated (no `//`, no
 `..`); at least one protected route is required; one timeout covers the whole
-request *including the body*; bodies are capped at 1 MB; redirects are not
+request _including the body_; bodies are capped at 1 MB; redirects are not
 followed; only GETs are sent; no credentials. A check that cannot be performed
 FAILS (UNKNOWN != HEALTHY); the verdict is `healthy` only if every check passed.
 

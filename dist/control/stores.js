@@ -41,7 +41,9 @@ export class AgentOperationalStore {
     /** Every record — global and project-scoped alike. Optionally narrowed to one project's scoped records. */
     list(projectId) {
         const all = this.repo.list();
-        return projectId === undefined ? all : all.filter((r) => r.projectId === projectId);
+        return projectId === undefined
+            ? all
+            : all.filter((r) => r.projectId === projectId);
     }
     disable(agentId, by, reason, projectId) {
         return this.write(agentId, projectId, (previous) => ({

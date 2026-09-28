@@ -400,7 +400,6 @@ export interface DeploymentAdapter {
   rollback?(ctx: DeploymentContext, toProviderReleaseId: string): Promise<void>;
 }
 
-
 /* ------------------------------------------------------------------ */
 /* Release capabilities (production composition)                       */
 /* ------------------------------------------------------------------ */
@@ -422,11 +421,17 @@ export interface ReleaseCapabilities {
 }
 
 /** Capability ids used in reports (graph metadata / insights). */
-export const RELEASE_CAPABILITY_IDS = ["verification", "sourceControl", "deployment"] as const;
+export const RELEASE_CAPABILITY_IDS = [
+  "verification",
+  "sourceControl",
+  "deployment",
+] as const;
 export type ReleaseCapabilityId = (typeof RELEASE_CAPABILITY_IDS)[number];
 
 /** The capabilities a deployment does NOT have, in a stable order. */
-export function inertReleaseCapabilities(c: ReleaseCapabilities): ReleaseCapabilityId[] {
+export function inertReleaseCapabilities(
+  c: ReleaseCapabilities,
+): ReleaseCapabilityId[] {
   const out: ReleaseCapabilityId[] = [];
   if (!c.verification) out.push("verification");
   if (!c.sourceControl) out.push("sourceControl");

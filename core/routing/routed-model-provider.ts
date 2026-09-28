@@ -53,12 +53,16 @@ export class RoutedModelProvider implements ModelProvider {
   }
 
   async generate(request: ModelRequest): Promise<ModelResponse> {
-    const { inner, router, agent, requirement, usageLedger, audit } = this.options;
+    const { inner, router, agent, requirement, usageLedger, audit } =
+      this.options;
     const metadata = (request.metadata ?? {}) as Record<string, unknown>;
     // The metadata this wraps is internally supplied by each agent's own `callModel` (trusted,
     // not attacker-controlled) — validated anyway, since a missing projectId/taskId here would
     // otherwise route (and record usage) against an empty string rather than failing loudly.
-    const projectId = requireText(metadata.projectId, "request.metadata.projectId");
+    const projectId = requireText(
+      metadata.projectId,
+      "request.metadata.projectId",
+    );
     const taskId = requireText(metadata.taskId, "request.metadata.taskId");
 
     const routing = await router.routeInternal({
@@ -72,7 +76,8 @@ export class RoutedModelProvider implements ModelProvider {
     if (!routing.selectedProvider) {
       throw new ProviderUnavailableError(
         inner.id,
-        routing.policyDecision?.detail ?? "no qualified model is available for this task",
+        routing.policyDecision?.detail ??
+          "no qualified model is available for this task",
       );
     }
 
@@ -97,7 +102,11 @@ export class RoutedModelProvider implements ModelProvider {
     // analysis executor, replicated here at the provider layer (no AgentRun exists at this level,
     // so the audit event is written directly, in the same "agent_activity" shape AgentRun.activity
     // produces, rather than skipping the check for lack of one).
-    if (audit && routing.selectedModel !== undefined && routing.selectedModel !== response.model) {
+    if (
+      audit &&
+      routing.selectedModel !== undefined &&
+      routing.selectedModel !== response.model
+    ) {
       audit.record("agent_activity", {
         taskId,
         agentId: agent.id,

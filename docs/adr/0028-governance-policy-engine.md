@@ -27,7 +27,7 @@ an optional per-project provider/model allow-list
 approval threshold. `unknown` is a first-class outcome: a request with no
 cost estimate and a policy that does not explicitly allow unknown cost comes
 back `unknown/UNKNOWN_COST_NOT_ALLOWED` — never silently `allow` (as if free)
-and never `deny` (a policy that was never actually asked). Any *unexpected*
+and never `deny` (a policy that was never actually asked). Any _unexpected_
 internal failure — a thrown error, not a normal decision — is caught and
 returned as `unknown/GOVERNANCE_UNAVAILABLE`; the engine never defaults to
 `allow` because it could not finish evaluating (mutation-tested).

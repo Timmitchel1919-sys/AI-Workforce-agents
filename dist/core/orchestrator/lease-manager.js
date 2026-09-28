@@ -55,7 +55,9 @@ export class WriteScopeLeaseManager {
         });
     }
     hasValidLease(workspaceId, agentId, path) {
-        const active = this.leases.list().filter((l) => l.workspaceId === workspaceId &&
+        const active = this.leases
+            .list()
+            .filter((l) => l.workspaceId === workspaceId &&
             l.agentId === agentId &&
             l.status === "active" &&
             new Date(l.expiresAt).getTime() > Date.now());

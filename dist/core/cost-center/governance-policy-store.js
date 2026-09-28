@@ -45,7 +45,12 @@ export class GovernancePolicyStore {
     }
     async write(id, draft, updatedBy) {
         const validated = validateGovernancePolicyDraft(draft);
-        const policy = { projectId: id, ...validated, updatedAt: this.clock(), updatedBy };
+        const policy = {
+            projectId: id,
+            ...validated,
+            updatedAt: this.clock(),
+            updatedBy,
+        };
         const saved = await this.ledger.save(KIND, id, id, policy.updatedAt, policy, "put");
         this.audit?.record("governance_policy_set", {
             projectId: id,
@@ -60,7 +65,8 @@ export class GovernancePolicyStore {
         return saved;
     }
     authorize(principal, projectId, capability) {
-        if (!operatorCan(principal, capability) || !operatorCanAccessProject(principal, projectId)) {
+        if (!operatorCan(principal, capability) ||
+            !operatorCanAccessProject(principal, projectId)) {
             throw new ExecutionDeniedError("AUTHORIZATION_DENIED", `not authorized to ${capability} for this project`);
         }
     }

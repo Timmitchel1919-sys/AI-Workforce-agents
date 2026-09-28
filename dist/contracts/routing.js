@@ -21,7 +21,7 @@
  * (core/cost-center/governance-policy-engine.ts) for policy/budget — this is
  * not a second policy or cost system.
  */
-import { ValidationError, requireExecutionId, requireText } from "./index.js";
+import { ValidationError, requireExecutionId, requireText, } from "./index.js";
 /* ------------------------------------------------------------------ */
 /* Model status — never a fabricated live health signal                */
 /* ------------------------------------------------------------------ */
@@ -33,11 +33,23 @@ import { ValidationError, requireExecutionId, requireText } from "./index.js";
  * report into, never as a placeholder guess. `unknown` is for when even
  * availability cannot be determined, not a softer way to say "unavailable".
  */
-export const MODEL_STATUSES = ["available", "unavailable", "degraded", "disabled", "unknown"];
+export const MODEL_STATUSES = [
+    "available",
+    "unavailable",
+    "degraded",
+    "disabled",
+    "unknown",
+];
 /* ------------------------------------------------------------------ */
 /* Routing profiles — policies, never hardcoded model aliases          */
 /* ------------------------------------------------------------------ */
-export const ROUTING_PROFILES = ["balanced", "cost_efficient", "quality_first", "low_latency", "high_assurance"];
+export const ROUTING_PROFILES = [
+    "balanced",
+    "cost_efficient",
+    "quality_first",
+    "low_latency",
+    "high_assurance",
+];
 /* ------------------------------------------------------------------ */
 /* Candidate rejection — explainable, machine-readable                 */
 /* ------------------------------------------------------------------ */

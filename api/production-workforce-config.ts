@@ -17,7 +17,10 @@ import {
   LazyOpenAIModelProvider,
   createProductionOpenAIAgentExecutor,
 } from "../agents/control-plane-analysis/index.js";
-import { DeveloperAgent, makeDeveloperAgentDefinition } from "../agents/developer/index.js";
+import {
+  DeveloperAgent,
+  makeDeveloperAgentDefinition,
+} from "../agents/developer/index.js";
 import { QaAgent, makeQaAgentDefinition } from "../agents/qa/index.js";
 import {
   ProjectManagerAgent,
@@ -116,11 +119,15 @@ export const PROJECT_MANAGER_AGENT: Agent = Object.freeze(
  * Router exists (see `production-control-plane.ts`); nothing reaches this
  * unrouted, ungoverned binding for a real request.
  */
-export const createBootstrapDeveloperAgentExecutor = (audit: AuditLog): DeveloperAgent =>
+export const createBootstrapDeveloperAgentExecutor = (
+  audit: AuditLog,
+): DeveloperAgent =>
   new DeveloperAgent({ model: new LazyOpenAIModelProvider(), audit });
 export const createBootstrapQaAgentExecutor = (audit: AuditLog): QaAgent =>
   new QaAgent({ model: new LazyOpenAIModelProvider(), audit });
-export const createBootstrapProjectManagerAgentExecutor = (audit: AuditLog): ProjectManagerAgent =>
+export const createBootstrapProjectManagerAgentExecutor = (
+  audit: AuditLog,
+): ProjectManagerAgent =>
   new ProjectManagerAgent({ model: new LazyOpenAIModelProvider(), audit });
 
 /**
@@ -163,11 +170,20 @@ export function createMoneyMindProductionBinding(
   });
 }
 
-import { V1_SPECIALIST_WORKFORCE, type AgentDescriptor } from "../contracts/workforce.js";
+import {
+  V1_SPECIALIST_WORKFORCE,
+  type AgentDescriptor,
+} from "../contracts/workforce.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
 
-export const createBootstrapSpecialistAgentExecutor = (descriptor: AgentDescriptor) => (audit: AuditLog): SpecialistAgent =>
-  new SpecialistAgent({ descriptor, model: new LazyOpenAIModelProvider(), audit });
+export const createBootstrapSpecialistAgentExecutor =
+  (descriptor: AgentDescriptor) =>
+  (audit: AuditLog): SpecialistAgent =>
+    new SpecialistAgent({
+      descriptor,
+      model: new LazyOpenAIModelProvider(),
+      audit,
+    });
 
 export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguration =
   Object.freeze({
@@ -176,13 +192,21 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguratio
         definition: CONTROL_PLANE_ANALYSIS_AGENT,
         executorKey: "openai-control-plane-analysis",
       }),
-      Object.freeze({ definition: DEVELOPER_AGENT, executorKey: "openai-developer" }),
+      Object.freeze({
+        definition: DEVELOPER_AGENT,
+        executorKey: "openai-developer",
+      }),
       Object.freeze({ definition: QA_AGENT, executorKey: "openai-qa" }),
-      Object.freeze({ definition: PROJECT_MANAGER_AGENT, executorKey: "openai-project-manager" }),
-      ...V1_SPECIALIST_WORKFORCE.map(agent => Object.freeze({
-        definition: agent,
-        executorKey: `openai-specialist-${agent.id}`
-      }))
+      Object.freeze({
+        definition: PROJECT_MANAGER_AGENT,
+        executorKey: "openai-project-manager",
+      }),
+      ...V1_SPECIALIST_WORKFORCE.map((agent) =>
+        Object.freeze({
+          definition: agent,
+          executorKey: `openai-specialist-${agent.id}`,
+        }),
+      ),
     ]),
     executorBindings: Object.freeze({
       "openai-control-plane-analysis": createProductionOpenAIAgentExecutor,
@@ -190,11 +214,11 @@ export const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguratio
       "openai-qa": createBootstrapQaAgentExecutor,
       "openai-project-manager": createBootstrapProjectManagerAgentExecutor,
       ...Object.fromEntries(
-        V1_SPECIALIST_WORKFORCE.map(agent => [
+        V1_SPECIALIST_WORKFORCE.map((agent) => [
           `openai-specialist-${agent.id}`,
-          createBootstrapSpecialistAgentExecutor(agent)
-        ])
-      )
+          createBootstrapSpecialistAgentExecutor(agent),
+        ]),
+      ),
     }),
     tools: Object.freeze([]),
     toolHandlerBindings: Object.freeze({}),

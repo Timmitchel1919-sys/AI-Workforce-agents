@@ -24,7 +24,9 @@ function releaseSources(ctx) {
     return {
         verification: caps && !caps.verification ? undefined : ctx.verification,
         sourceControl: caps && !caps.sourceControl ? undefined : ctx.sourceControl,
-        deployments: caps && caps.deploymentAdapters.length === 0 ? undefined : ctx.deployments,
+        deployments: caps && caps.deploymentAdapters.length === 0
+            ? undefined
+            : ctx.deployments,
     };
 }
 function summarize(s) {
@@ -335,7 +337,10 @@ export async function getProjectCostReport(ctx, principal, projectId) {
         budgetPolicy: budgetPolicy ?? null,
         evaluation,
         usage,
-        capabilities: { enforcement: caps?.enforcement ?? false, providerIds: caps?.providerIds ?? [] },
+        capabilities: {
+            enforcement: caps?.enforcement ?? false,
+            providerIds: caps?.providerIds ?? [],
+        },
     };
 }
 /**
@@ -351,11 +356,21 @@ export async function getProjectAuditFindings(ctx, principal, projectId) {
         return { configured: false };
     const rel = releaseSources(ctx);
     const [releases, activity, verifications, sessions, usage] = await Promise.all([
-        rel.deployments ? rel.deployments.listReleases(principal, id, 200) : Promise.resolve([]),
-        rel.sourceControl ? rel.sourceControl.activity(principal, id, 200) : Promise.resolve(undefined),
-        rel.verification ? rel.verification.listHistory(principal, id, 200) : Promise.resolve([]),
-        ctx.execution ? ctx.execution.listSessions(principal, id) : Promise.resolve([]),
-        ctx.costCenter ? ctx.costCenter.usage.listByProject(principal, id, 200) : Promise.resolve([]),
+        rel.deployments
+            ? rel.deployments.listReleases(principal, id, 200)
+            : Promise.resolve([]),
+        rel.sourceControl
+            ? rel.sourceControl.activity(principal, id, 200)
+            : Promise.resolve(undefined),
+        rel.verification
+            ? rel.verification.listHistory(principal, id, 200)
+            : Promise.resolve([]),
+        ctx.execution
+            ? ctx.execution.listSessions(principal, id)
+            : Promise.resolve([]),
+        ctx.costCenter
+            ? ctx.costCenter.usage.listByProject(principal, id, 200)
+            : Promise.resolve([]),
     ]);
     const result = ctx.auditor.run(id, {
         releases,
@@ -363,7 +378,10 @@ export async function getProjectAuditFindings(ctx, principal, projectId) {
         verifications,
         sessions,
         usage,
-        sourcesConnected: { verification: Boolean(rel.verification), sourceControl: Boolean(rel.sourceControl) },
+        sourcesConnected: {
+            verification: Boolean(rel.verification),
+            sourceControl: Boolean(rel.sourceControl),
+        },
     });
     return { configured: true, ...result };
 }

@@ -44,7 +44,7 @@ non-project-scoped events, so neither can serve as an isolated live channel.
    `deployed` (provider accepted) is distinct from `healthy` (post-deploy
    verified, mapped to `completed`): **DEPLOYED != VERIFIED**.
 5. If a source read fails the projection reports `metadata.unavailableSources`
-   and the UI says the missing activity is *unknown, not absent*. Error detail
+   and the UI says the missing activity is _unknown, not absent_. Error detail
    is not exposed. A source the deployment does not have at all is reported
    separately as `metadata.notConfiguredSources` (see ADR-0025: in production the
    release pipeline is not wired).
@@ -119,8 +119,8 @@ An independent security review (no BLOCKER/CRITICAL) and a correctness review
   `generatedAt` and match the requested project/mode. One older reply is
   discarded as stale; a persistent older reply is accepted (server clock behind)
   so the view never freezes. 401/403 stop polling until a manual refresh.
-- **Execution path tracing:** selecting a node highlights its *ancestors* (walking
-  edges backwards) and *descendants* (walking forwards) along real lifecycle edges,
+- **Execution path tracing:** selecting a node highlights its _ancestors_ (walking
+  edges backwards) and _descendants_ (walking forwards) along real lifecycle edges,
   never mixing the two, so a shared agent or environment is not a pass-through
   hub to unrelated sibling work.
 - **Announcements** count by an uncapped running total (the visible history is

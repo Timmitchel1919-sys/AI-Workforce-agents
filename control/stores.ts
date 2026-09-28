@@ -49,10 +49,17 @@ export class AgentOperationalStore {
   /** Every record — global and project-scoped alike. Optionally narrowed to one project's scoped records. */
   list(projectId?: string): AgentOperationalRecord[] {
     const all = this.repo.list();
-    return projectId === undefined ? all : all.filter((r) => r.projectId === projectId);
+    return projectId === undefined
+      ? all
+      : all.filter((r) => r.projectId === projectId);
   }
 
-  disable(agentId: string, by: string, reason: string, projectId?: string): AgentOperationalRecord {
+  disable(
+    agentId: string,
+    by: string,
+    reason: string,
+    projectId?: string,
+  ): AgentOperationalRecord {
     return this.write(agentId, projectId, (previous) => ({
       enabled: false,
       disabledBy: by,
@@ -63,7 +70,11 @@ export class AgentOperationalStore {
     }));
   }
 
-  enable(agentId: string, by: string, projectId?: string): AgentOperationalRecord {
+  enable(
+    agentId: string,
+    by: string,
+    projectId?: string,
+  ): AgentOperationalRecord {
     return this.write(agentId, projectId, (previous) => ({
       enabled: true,
       disabledBy: previous?.disabledBy,
@@ -77,9 +88,16 @@ export class AgentOperationalStore {
   private write(
     agentId: string,
     projectId: string | undefined,
-    fields: (previous: AgentOperationalRecord | undefined) => Pick<
+    fields: (
+      previous: AgentOperationalRecord | undefined,
+    ) => Pick<
       AgentOperationalRecord,
-      "enabled" | "disabledBy" | "disabledReason" | "disabledAt" | "enabledBy" | "enabledAt"
+      | "enabled"
+      | "disabledBy"
+      | "disabledReason"
+      | "disabledAt"
+      | "enabledBy"
+      | "enabledAt"
     >,
   ): AgentOperationalRecord {
     const id = projectId === undefined ? agentId : scopedId(agentId, projectId);

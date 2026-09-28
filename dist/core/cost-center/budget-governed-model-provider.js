@@ -12,7 +12,7 @@
  * any project's budget and is refused — never silently ungoverned.
  */
 import { ExecutionDeniedError, ValidationError, estimateCost, } from "../../contracts/index.js";
-import { extractCorrelation, extractIdempotencyKey } from "../providers/request-correlation.js";
+import { extractCorrelation, extractIdempotencyKey, } from "../providers/request-correlation.js";
 export class BudgetGovernedModelProvider {
     inner;
     enforcer;
@@ -35,7 +35,12 @@ export class BudgetGovernedModelProvider {
         if (evaluation.status === "blocked") {
             this.audit?.record("budget_blocked", {
                 ...correlation,
-                data: { provider: this.inner.id, model: request.model ?? null, scope: evaluation.scope, detail: evaluation.detail },
+                data: {
+                    provider: this.inner.id,
+                    model: request.model ?? null,
+                    scope: evaluation.scope,
+                    detail: evaluation.detail,
+                },
             });
             throw new ExecutionDeniedError("RESOURCE_LIMIT", evaluation.detail);
         }
@@ -55,7 +60,12 @@ export class BudgetGovernedModelProvider {
         });
         this.audit?.record("usage_recorded", {
             ...correlation,
-            data: { usageId: usage.usageId, provider: usage.provider, model: usage.model, cost: usage.cost },
+            data: {
+                usageId: usage.usageId,
+                provider: usage.provider,
+                model: usage.model,
+                cost: usage.cost,
+            },
         });
         return response;
     }

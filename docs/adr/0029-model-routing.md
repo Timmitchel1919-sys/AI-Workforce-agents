@@ -208,7 +208,7 @@ lowercase; no change was needed there.
 
 **CRITICAL — a hard-stop budget could never actually stop real, unpriced
 spend.** `evaluateBudget` (`contracts/cost-center.ts`) only ever summed
-*priced* usage into the dollar totals it compared against a project's
+_priced_ usage into the dollar totals it compared against a project's
 configured limits; unpriced usage (every real OpenAI call today, since
 `MODEL_PRICES` has no OpenAI entries) was reported only as an advisory
 `"unpriced"` note alongside whatever the priced total happened to be — so a

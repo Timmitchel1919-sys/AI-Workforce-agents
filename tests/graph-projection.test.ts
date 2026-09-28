@@ -357,8 +357,14 @@ test("GraphQueryService enforces project authorisation before projecting", async
   };
 
   assert.ok(await service.getWorkforceGraph(viewer, { projectId: A }));
-  assert.equal(await service.getWorkforceGraph(scoped, { projectId: A }), undefined);
-  assert.equal(await service.getWorkforceGraph(none, { projectId: A }), undefined);
+  assert.equal(
+    await service.getWorkforceGraph(scoped, { projectId: A }),
+    undefined,
+  );
+  assert.equal(
+    await service.getWorkforceGraph(none, { projectId: A }),
+    undefined,
+  );
   await assert.rejects(() =>
     service.getWorkforceGraph(
       { id: "", role: "viewer", allowedProjects: "*" },

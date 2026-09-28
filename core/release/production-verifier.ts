@@ -64,7 +64,10 @@ const PATH = /^\/(?!\/)(?!.*\/\/)[A-Za-z0-9._~\-/]*$/;
 const VERSION = /^[A-Za-z0-9._-]{1,80}$/;
 
 /** A strict https origin on an allowed host, with no credentials, port, path, query or fragment. */
-export function parseOrigin(raw: string, allowedHostSuffixes: readonly string[] = DEFAULT_HOSTS): URL | undefined {
+export function parseOrigin(
+  raw: string,
+  allowedHostSuffixes: readonly string[] = DEFAULT_HOSTS,
+): URL | undefined {
   let url: URL;
   try {
     url = new URL(raw);
@@ -84,7 +87,11 @@ export function parseOrigin(raw: string, allowedHostSuffixes: readonly string[] 
   if (!clean) return undefined;
   const host = url.hostname.toLowerCase();
   const ip = /^[0-9.]+$/.test(host) || host.includes(":");
-  if (ip || !allowedHostSuffixes.some((s) => host.endsWith(s) && host.length > s.length)) return undefined;
+  if (
+    ip ||
+    !allowedHostSuffixes.some((s) => host.endsWith(s) && host.length > s.length)
+  )
+    return undefined;
   return url;
 }
 
@@ -119,16 +126,35 @@ export async function verifyProduction(
   const checks: ProductionCheck[] = [];
   const bundles: Record<string, string> = {};
   const servedVersions: Record<string, string> = {};
-  const record = (id: string, subject: string, ok: boolean, detail: string): void => {
+  const record = (
+    id: string,
+    subject: string,
+    ok: boolean,
+    detail: string,
+  ): void => {
     checks.push({ id, subject, status: ok ? "passed" : "failed", detail });
   };
   /** One request, its body read, all under ONE timeout. `redirect: manual`: a redirect is a finding. */
-  const get = async (url: string): Promise<{ status: number; headers: Headers; body: string | undefined }> => {
+  const get = async (
+    url: string,
+  ): Promise<{
+    status: number;
+    headers: Headers;
+    body: string | undefined;
+  }> => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const r = await doFetch(url, { method: "GET", redirect: "manual", signal: controller.signal });
-      return { status: r.status, headers: r.headers, body: await readCapped(r) };
+      const r = await doFetch(url, {
+        method: "GET",
+        redirect: "manual",
+        signal: controller.signal,
+      });
+      return {
+        status: r.status,
+        headers: r.headers,
+        body: await readCapped(r),
+      };
     } finally {
       clearTimeout(timer);
     }
@@ -143,22 +169,54 @@ export async function verifyProduction(
       record(id, subject, r.ok, r.detail);
     } catch (error) {
       // Could not be performed => not verified => failed.
-      record(id, subject, false, `could not be checked: ${error instanceof Error ? error.name : "error"}`);
+      record(
+        id,
+        subject,
+        false,
+        `could not be checked: ${error instanceof Error ? error.name : "error"}`,
+      );
     }
   };
-  const isJson = (h: Headers) => (h.get("content-type") ?? "").includes("application/json");
+  const isJson = (h: Headers) =>
+    (h.get("content-type") ?? "").includes("application/json");
 
   // Configuration is validated before ANY request, and every path is validated as a path.
   const paths = [health, ...protectedPaths];
-  if (protectedPaths.length === 0) record("configuration", "protectedPaths", false, "at least one protected route is required");
-  for (const p of paths) if (!PATH.test(p) || p.split("/").slice(1).some((seg) => seg === "." || seg === "..")) record("configuration", "path", false, "paths must start with / and contain only URL-safe characters");
-  if (input.baseUrls.length === 0) record("configuration", "baseUrls", false, "no origin to verify");
+  if (protectedPaths.length === 0)
+    record(
+      "configuration",
+      "protectedPaths",
+      false,
+      "at least one protected route is required",
+    );
+  for (const p of paths)
+    if (
+      !PATH.test(p) ||
+      p
+        .split("/")
+        .slice(1)
+        .some((seg) => seg === "." || seg === "..")
+    )
+      record(
+        "configuration",
+        "path",
+        false,
+        "paths must start with / and contain only URL-safe characters",
+      );
+  if (input.baseUrls.length === 0)
+    record("configuration", "baseUrls", false, "no origin to verify");
   const origins: string[] = [];
   for (const raw of input.baseUrls) {
     const u = parseOrigin(raw, input.allowedHostSuffixes);
     if (u) origins.push(u.origin);
     // The rejected value is NOT echoed (it could carry credentials).
-    else record("configuration", "origin", false, "origin must be an https origin on an allowed host, without credentials, port, path, query or fragment");
+    else
+      record(
+        "configuration",
+        "origin",
+        false,
+        "origin must be an https origin on an allowed host, without credentials, port, path, query or fragment",
+      );
   }
   const configured = checks.every((c) => c.status === "passed");
 
@@ -166,24 +224,40 @@ export async function verifyProduction(
     for (const base of origins) {
       await guarded("hosting", base, async () => {
         const r = await get(`${base}/`);
-        const ok = r.status === 200 && (r.headers.get("content-type") ?? "").includes("text/html") && r.body !== undefined;
-        const asset = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(r.body ?? "")?.[0];
+        const ok =
+          r.status === 200 &&
+          (r.headers.get("content-type") ?? "").includes("text/html") &&
+          r.body !== undefined;
+        const asset = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(
+          r.body ?? "",
+        )?.[0];
         if (asset) bundles[base] = asset;
-        return { ok, detail: `HTTP ${r.status}${ok && !asset ? " (no UI bundle found)" : ""}` };
+        return {
+          ok,
+          detail: `HTTP ${r.status}${ok && !asset ? " (no UI bundle found)" : ""}`,
+        };
       });
       await guarded("health", `${base}${health}`, async () => {
         const r = await get(`${base}${health}`);
         let parsed: { status?: unknown; version?: unknown } | undefined;
-        if (r.status === 200 && isJson(r.headers) && r.body !== undefined) parsed = JSON.parse(r.body) as typeof parsed;
-        if (typeof parsed?.version === "string" && VERSION.test(parsed.version)) servedVersions[base] = parsed.version;
-        return { ok: r.status === 200 && parsed?.status === "ok", detail: `HTTP ${r.status}` };
+        if (r.status === 200 && isJson(r.headers) && r.body !== undefined)
+          parsed = JSON.parse(r.body) as typeof parsed;
+        if (typeof parsed?.version === "string" && VERSION.test(parsed.version))
+          servedVersions[base] = parsed.version;
+        return {
+          ok: r.status === 200 && parsed?.status === "ok",
+          detail: `HTTP ${r.status}`,
+        };
       });
       for (const path of protectedPaths) {
         await guarded("protected", `${base}${path}`, async () => {
           const r = await get(`${base}${path}`);
           // A denial must be the API's own JSON denial — a CDN/hosting error page is not the API.
-          const denied = (r.status === 401 || r.status === 403) && isJson(r.headers);
-          const noStore = (r.headers.get("cache-control") ?? "").includes("no-store");
+          const denied =
+            (r.status === 401 || r.status === 403) && isJson(r.headers);
+          const noStore = (r.headers.get("cache-control") ?? "").includes(
+            "no-store",
+          );
           const cacheOk = input.requireNoStore === false || !denied || noStore;
           return {
             ok: denied && cacheOk,
@@ -197,23 +271,47 @@ export async function verifyProduction(
       }
       await guarded("unknown-route", `${base}/api/does-not-exist`, async () => {
         const r = await get(`${base}/api/does-not-exist`);
-        return { ok: r.status === 401 || r.status === 403 || r.status === 404, detail: `HTTP ${r.status}` };
+        return {
+          ok: r.status === 401 || r.status === 403 || r.status === 404,
+          detail: `HTTP ${r.status}`,
+        };
       });
     }
     // Identity is compared PER ORIGIN: a stale second origin must not be masked by a fresh first one.
     for (const base of origins) {
       if (input.expectedBundle !== undefined) {
         const served = bundles[base];
-        record("version", `${base} ui bundle`, served === input.expectedBundle, served === undefined ? "served bundle could not be identified" : served === input.expectedBundle ? "matches the release" : `serving ${served}`);
+        record(
+          "version",
+          `${base} ui bundle`,
+          served === input.expectedBundle,
+          served === undefined
+            ? "served bundle could not be identified"
+            : served === input.expectedBundle
+              ? "matches the release"
+              : `serving ${served}`,
+        );
       }
       if (input.expectedVersion !== undefined) {
         const served = servedVersions[base];
-        record("version", `${base} reported version`, served === input.expectedVersion, served === undefined ? "the health endpoint reports no version" : served === input.expectedVersion ? "matches the release" : `reporting ${served}`);
+        record(
+          "version",
+          `${base} reported version`,
+          served === input.expectedVersion,
+          served === undefined
+            ? "the health endpoint reports no version"
+            : served === input.expectedVersion
+              ? "matches the release"
+              : `reporting ${served}`,
+        );
       }
     }
   }
   return {
-    verdict: checks.length > 0 && checks.every((c) => c.status === "passed") ? "healthy" : "unhealthy",
+    verdict:
+      checks.length > 0 && checks.every((c) => c.status === "passed")
+        ? "healthy"
+        : "unhealthy",
     checkedAt: (input.clock ?? (() => new Date().toISOString()))(),
     baseUrls: origins,
     checks,
@@ -240,13 +338,26 @@ export function toPostDeployVerification(
 ): { reachable: boolean; reportedVersion?: string; detail: string } {
   // Only the REPORTED-version check is delegated to the orchestrator (it compares against the commit);
   // a stale UI bundle is a version-id check too, but nothing else judges it, so it must fail here.
-  const nonVersion = report.checks.filter((c) => !(c.id === "version" && c.subject.endsWith("reported version")));
+  const nonVersion = report.checks.filter(
+    (c) => !(c.id === "version" && c.subject.endsWith("reported version")),
+  );
   const failed = report.checks.filter((c) => c.status === "failed");
   const versions = new Set(Object.values(report.servedVersions));
-  const oneVersion = versions.size === 1 && Object.keys(report.servedVersions).length === report.baseUrls.length;
+  const oneVersion =
+    versions.size === 1 &&
+    Object.keys(report.servedVersions).length === report.baseUrls.length;
   return {
-    reachable: nonVersion.length > 0 && nonVersion.every((c) => c.status === "passed") && report.baseUrls.length > 0,
+    reachable:
+      nonVersion.length > 0 &&
+      nonVersion.every((c) => c.status === "passed") &&
+      report.baseUrls.length > 0,
     ...(oneVersion ? { reportedVersion: [...versions][0] } : {}),
-    detail: failed.length === 0 ? "all production checks passed" : `failed: ${failed.map((c) => `${c.id} ${c.subject}`).join("; ").slice(0, 300)}`,
+    detail:
+      failed.length === 0
+        ? "all production checks passed"
+        : `failed: ${failed
+            .map((c) => `${c.id} ${c.subject}`)
+            .join("; ")
+            .slice(0, 300)}`,
   };
 }

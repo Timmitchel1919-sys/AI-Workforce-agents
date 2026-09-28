@@ -18,7 +18,10 @@ import {
   VERIFICATION_STATE,
   normalise,
 } from "../core/orchestrator/graph-execution-state.js";
-import { WorkforceGraphProjectionService, mixRevision } from "../core/orchestrator/graph-projection.js";
+import {
+  WorkforceGraphProjectionService,
+  mixRevision,
+} from "../core/orchestrator/graph-projection.js";
 import { AgentRegistry, ProjectRegistry, TaskSystem } from "../core/index.js";
 import { GRAPH_LIMITS } from "../contracts/graph.js";
 import type {
@@ -150,18 +153,15 @@ test("no records → no nodes and no edges (sparse real data, nothing invented)"
 
 test("full lifecycle is projected with only authoritative relationships", () => {
   const f = build(full);
-  assert.deepEqual(
-    f.nodes.map((n) => n.type).sort(),
-    [
-      "APPROVAL",
-      "CHANGESET",
-      "COMMIT",
-      "DEPLOYMENT",
-      "EXECUTION_SESSION",
-      "REVIEW",
-      "VERIFICATION",
-    ],
-  );
+  assert.deepEqual(f.nodes.map((n) => n.type).sort(), [
+    "APPROVAL",
+    "CHANGESET",
+    "COMMIT",
+    "DEPLOYMENT",
+    "EXECUTION_SESSION",
+    "REVIEW",
+    "VERIFICATION",
+  ]);
   assert.deepEqual(edgeKeys(f), [
     "COMMITTED_AS:changeset-c1>commit-k1",
     "DEPLOYED_TO:commit-k1>deployment-d1",
@@ -268,11 +268,13 @@ test("a lifecycle node whose parent is missing hangs off the project so it stays
 });
 
 test("each record family is bounded and newest-first", () => {
-  const many = Array.from({ length: GRAPH_LIMITS.maxExecutionRecords + 25 }, (_, i) =>
-    session({
-      sessionId: `s${String(i).padStart(3, "0")}`,
-      createdAt: `2026-01-01T00:${String(i % 60).padStart(2, "0")}:00.000Z`,
-    }),
+  const many = Array.from(
+    { length: GRAPH_LIMITS.maxExecutionRecords + 25 },
+    (_, i) =>
+      session({
+        sessionId: `s${String(i).padStart(3, "0")}`,
+        createdAt: `2026-01-01T00:${String(i % 60).padStart(2, "0")}:00.000Z`,
+      }),
   );
   const f = build({ ...EMPTY_EXECUTION_RECORDS, sessions: many });
   assert.equal(
@@ -330,7 +332,15 @@ test("EXECUTION mode shows lifecycle nodes; without records it says so honestly"
     { ...full, sessions: [session({ approvalIds: ["ap1"] })] },
   );
   const types = new Set(live.nodes.map((n) => n.type));
-  for (const t of ["EXECUTION_SESSION", "CHANGESET", "VERIFICATION", "REVIEW", "APPROVAL", "COMMIT", "DEPLOYMENT"]) {
+  for (const t of [
+    "EXECUTION_SESSION",
+    "CHANGESET",
+    "VERIFICATION",
+    "REVIEW",
+    "APPROVAL",
+    "COMMIT",
+    "DEPLOYMENT",
+  ]) {
     assert.ok(types.has(t as never), t);
   }
 });
@@ -339,12 +349,18 @@ test("revision is stable on re-read and moves when authoritative content changes
   const svc = service();
   const opts = { projectId: A, mode: "EXECUTION" as const };
   const r1 = svc.getProjection(opts, full).revision;
-  assert.equal(svc.getProjection(opts, full).revision, r1, "a read must not mutate revision");
+  assert.equal(
+    svc.getProjection(opts, full).revision,
+    r1,
+    "a read must not mutate revision",
+  );
   assert.equal(svc.getProjection(opts, full).revision, r1);
 
   const statusChange = svc.getProjection(opts, {
     ...full,
-    sessions: [session({ taskId: "t1", approvalIds: ["ap1"], status: "succeeded" })],
+    sessions: [
+      session({ taskId: "t1", approvalIds: ["ap1"], status: "succeeded" }),
+    ],
   }).revision;
   assert.notEqual(statusChange, r1);
 
@@ -352,15 +368,28 @@ test("revision is stable on re-read and moves when authoritative content changes
     ...full,
     changeSets: [changeSet({ entries: [{ path: "x" }] as never })],
   }).revision;
-  assert.notEqual(metadataOnly, r1, "metadata-only change (file count) must move revision");
+  assert.notEqual(
+    metadataOnly,
+    r1,
+    "metadata-only change (file count) must move revision",
+  );
 });
 
 test("execution nodes never appear in modes that do not include them", () => {
   const svc = service();
-  for (const mode of ["WORKFORCE", "PROJECT", "WORKFLOW", "DEPENDENCY", "ENVIRONMENT", "KNOWLEDGE"] as const) {
+  for (const mode of [
+    "WORKFORCE",
+    "PROJECT",
+    "WORKFLOW",
+    "DEPENDENCY",
+    "ENVIRONMENT",
+    "KNOWLEDGE",
+  ] as const) {
     const g = svc.getProjection({ projectId: A, mode }, full);
     assert.ok(
-      !g.nodes.some((n) => ["CHANGESET", "COMMIT", "DEPLOYMENT", "REVIEW"].includes(n.type)),
+      !g.nodes.some((n) =>
+        ["CHANGESET", "COMMIT", "DEPLOYMENT", "REVIEW"].includes(n.type),
+      ),
       mode,
     );
   }
@@ -373,7 +402,10 @@ test("executionNodeId is the single source of node ids", () => {
 
 /* ---- GraphQueryService: authorised collection, honest failure ---- */
 
-import { GraphQueryService, type ControlPlaneContext } from "../control/index.js";
+import {
+  GraphQueryService,
+  type ControlPlaneContext,
+} from "../control/index.js";
 import { ApprovalSystem, type OperatorPrincipal } from "../core/index.js";
 
 function queryService(overrides: Record<string, unknown> = {}) {
@@ -410,7 +442,13 @@ function queryService(overrides: Record<string, unknown> = {}) {
     },
     verification: { listHistory: async () => [verification()] },
     sourceControl: {
-      activity: async () => ({ reviews: [review()], commits: [commit({ approvalIds: [] })], stageSets: [], pushes: [], pullRequests: [] }),
+      activity: async () => ({
+        reviews: [review()],
+        commits: [commit({ approvalIds: [] })],
+        stageSets: [],
+        pushes: [],
+        pullRequests: [],
+      }),
     },
     deployments: { listReleases: async () => [release()] },
     ...overrides,
@@ -418,11 +456,18 @@ function queryService(overrides: Record<string, unknown> = {}) {
   return { svc: new GraphQueryService(ctx), calls };
 }
 
-const member: OperatorPrincipal = { id: "m", role: "viewer", allowedProjects: [A] };
+const member: OperatorPrincipal = {
+  id: "m",
+  role: "viewer",
+  allowedProjects: [A],
+};
 
 test("GraphQueryService reads lifecycle records with the caller's principal, project-scoped", async () => {
   const { svc, calls } = queryService();
-  const g = await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
+  const g = await svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  });
   assert.ok(g);
   assert.deepEqual(calls, ["sessions:m:proj-a", "changeset:m:s1"]);
   assert.ok(g.nodes.some((n) => n.type === "DEPLOYMENT"));
@@ -431,16 +476,30 @@ test("GraphQueryService reads lifecycle records with the caller's principal, pro
 
 test("an unauthorised operator triggers NO source read (authorise before fetching)", async () => {
   const { svc, calls } = queryService();
-  const outsider: OperatorPrincipal = { id: "o", role: "operator", allowedProjects: [B] };
-  assert.equal(await svc.getWorkforceGraph(outsider, { projectId: A, mode: "EXECUTION" }), undefined);
+  const outsider: OperatorPrincipal = {
+    id: "o",
+    role: "operator",
+    allowedProjects: [B],
+  };
+  assert.equal(
+    await svc.getWorkforceGraph(outsider, { projectId: A, mode: "EXECUTION" }),
+    undefined,
+  );
   assert.deepEqual(calls, []);
 });
 
 test("a failing source is reported as unavailable, never as an empty history", async () => {
   const { svc } = queryService({
-    deployments: { listReleases: async () => { throw new Error("boom"); } },
+    deployments: {
+      listReleases: async () => {
+        throw new Error("boom");
+      },
+    },
   });
-  const g = await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
+  const g = await svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  });
   assert.ok(g);
   assert.equal(g.metadata?.unavailableSources, "releases");
   assert.ok(!g.nodes.some((n) => n.type === "DEPLOYMENT"));
@@ -454,8 +513,14 @@ test("non-execution modes do not fetch lifecycle records", async () => {
 });
 
 test("sources not wired in this deployment are skipped, not reported as failed", async () => {
-  const { svc } = queryService({ execution: undefined, deployments: undefined });
-  const g = await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
+  const { svc } = queryService({
+    execution: undefined,
+    deployments: undefined,
+  });
+  const g = await svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  });
   assert.ok(g);
   assert.equal(g.metadata?.unavailableSources, undefined);
 });
@@ -465,11 +530,17 @@ test("sources not wired in this deployment are skipped, not reported as failed",
 test("bounding keeps the NEWEST records, not merely a count", () => {
   const n = GRAPH_LIMITS.maxExecutionRecords + 10;
   const sessions = Array.from({ length: n }, (_, i) =>
-    session({ sessionId: `s${String(i).padStart(3, "0")}`, createdAt: `2026-01-01T00:00:${String(i).padStart(2, "0")}.000Z` }),
+    session({
+      sessionId: `s${String(i).padStart(3, "0")}`,
+      createdAt: `2026-01-01T00:00:${String(i).padStart(2, "0")}.000Z`,
+    }),
   );
   const f = build({ ...EMPTY_EXECUTION_RECORDS, sessions });
   const ids = new Set(f.nodes.map((x) => x.id));
-  assert.ok(ids.has(`session-s${String(n - 1).padStart(3, "0")}`), "newest survives");
+  assert.ok(
+    ids.has(`session-s${String(n - 1).padStart(3, "0")}`),
+    "newest survives",
+  );
   assert.ok(!ids.has("session-s000"), "oldest is dropped");
 });
 
@@ -481,7 +552,10 @@ test("known terminal outcomes are never 'unavailable' (which means unknown)", ()
   assert.equal(normalise(RELEASE_STATE, "degraded"), "degraded");
   assert.equal(normalise(APPROVAL_STATE, "expired"), "blocked");
   const cs = (status: string) =>
-    build({ ...EMPTY_EXECUTION_RECORDS, changeSets: [changeSet({ status: status as never })] }).nodes[0].state;
+    build({
+      ...EMPTY_EXECUTION_RECORDS,
+      changeSets: [changeSet({ status: status as never })],
+    }).nodes[0].state;
   assert.equal(cs("verified"), "active", "verified is not committed/completed");
   assert.equal(cs("rolled_back"), "rolled_back");
   assert.equal(cs("abandoned"), "cancelled");
@@ -489,7 +563,10 @@ test("known terminal outcomes are never 'unavailable' (which means unknown)", ()
 
 test("a simulated deployment can never read as a real one", () => {
   const label = (simulated: boolean) =>
-    build({ ...EMPTY_EXECUTION_RECORDS, releases: [release({ simulated, status: "healthy" })] }).nodes[0].label;
+    build({
+      ...EMPTY_EXECUTION_RECORDS,
+      releases: [release({ simulated, status: "healthy" })],
+    }).nodes[0].label;
   assert.match(label(true), /\(simulated\)/);
   assert.doesNotMatch(label(false), /simulated/);
 });
@@ -498,97 +575,181 @@ test("revision moves for label, edge-status and truncation changes, not just nod
   const svc = service();
   const opts = { projectId: A, mode: "EXECUTION" as const };
   const r0 = svc.getProjection(opts, full).revision;
-  const relabelled = svc.getProjection(opts, { ...full, releases: [release({ simulated: true })] }).revision;
+  const relabelled = svc.getProjection(opts, {
+    ...full,
+    releases: [release({ simulated: true })],
+  }).revision;
   assert.notEqual(relabelled, r0, "label change (simulated) moves revision");
 });
 
 test("mixRevision makes an unavailable-sources change visible to conditional polls", () => {
   assert.notEqual(mixRevision(5, "unavailable:releases"), 5);
-  assert.notEqual(mixRevision(5, "unavailable:releases"), mixRevision(5, "unavailable:sessions"));
+  assert.notEqual(
+    mixRevision(5, "unavailable:releases"),
+    mixRevision(5, "unavailable:sessions"),
+  );
   assert.equal(mixRevision(5, "x"), mixRevision(5, "x"));
 });
 
 test("sessions are ordered newest-first BEFORE the cap, whatever order the store returns", async () => {
   const cap = GRAPH_LIMITS.maxExecutionRecords;
   const oldestFirst = Array.from({ length: cap + 5 }, (_, i) =>
-    session({ sessionId: `s${String(i).padStart(3, "0")}`, createdAt: `2026-01-01T00:00:${String(i).padStart(2, "0")}.000Z` }),
+    session({
+      sessionId: `s${String(i).padStart(3, "0")}`,
+      createdAt: `2026-01-01T00:00:${String(i).padStart(2, "0")}.000Z`,
+    }),
   );
   const asked: string[] = [];
   const { svc } = queryService({
     execution: {
-      async listSessions() { return oldestFirst; },
-      async getChangeSet(_p: unknown, id: string) { asked.push(id); return undefined; },
+      async listSessions() {
+        return oldestFirst;
+      },
+      async getChangeSet(_p: unknown, id: string) {
+        asked.push(id);
+        return undefined;
+      },
     },
   });
-  const g = await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
+  const g = await svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  });
   assert.ok(g);
   assert.equal(asked.length, cap, "ChangeSet fan-out is bounded");
-  assert.ok(asked.includes(`s${String(cap + 4).padStart(3, "0")}`), "newest session is kept");
+  assert.ok(
+    asked.includes(`s${String(cap + 4).padStart(3, "0")}`),
+    "newest session is kept",
+  );
   assert.ok(!asked.includes("s000"), "oldest is dropped");
 });
 
 test("one failing ChangeSet read does not blank the others, and is reported", async () => {
   const { svc } = queryService({
     execution: {
-      async listSessions() { return [session({ sessionId: "s1" }), session({ sessionId: "s2", createdAt: "2026-01-02T00:00:00.000Z" })]; },
+      async listSessions() {
+        return [
+          session({ sessionId: "s1" }),
+          session({ sessionId: "s2", createdAt: "2026-01-02T00:00:00.000Z" }),
+        ];
+      },
       async getChangeSet(_p: unknown, id: string) {
         if (id === "s2") throw new Error("boom");
         return changeSet({ changeSetId: "c1", sessionId: "s1" });
       },
     },
   });
-  const g = await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
+  const g = await svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  });
   assert.ok(g);
-  assert.ok(g.nodes.some((n) => n.id === "changeset-c1"), "the readable ChangeSet survives");
+  assert.ok(
+    g.nodes.some((n) => n.id === "changeset-c1"),
+    "the readable ChangeSet survives",
+  );
   assert.equal(g.metadata?.unavailableSources, "changeSets");
 });
 
 test("a source failing or recovering changes the revision (no false 'unchanged')", async () => {
   const ok = queryService();
-  const bad = queryService({ deployments: { listReleases: async () => { throw new Error("x"); } } });
-  const a = await ok.svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
-  const b = await bad.svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
+  const bad = queryService({
+    deployments: {
+      listReleases: async () => {
+        throw new Error("x");
+      },
+    },
+  });
+  const a = await ok.svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  });
+  const b = await bad.svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  });
   assert.notEqual(a!.revision, b!.revision);
 });
 
 test("concurrent polls share one read within the TTL and re-read after it", async () => {
   let clock = 1_000;
   const { svc, calls } = queryService({ clock: () => clock });
-  await Promise.all([1, 2, 3].map(() => svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" })));
-  assert.equal(calls.filter((c) => c.startsWith("sessions")).length, 1, "three polls, one read");
+  await Promise.all(
+    [1, 2, 3].map(() =>
+      svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" }),
+    ),
+  );
+  assert.equal(
+    calls.filter((c) => c.startsWith("sessions")).length,
+    1,
+    "three polls, one read",
+  );
   clock += 10_000;
   await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
-  assert.equal(calls.filter((c) => c.startsWith("sessions")).length, 2, "re-read after TTL");
+  assert.equal(
+    calls.filter((c) => c.startsWith("sessions")).length,
+    2,
+    "re-read after TTL",
+  );
 });
 
 test("a warm cache never serves an unauthorised caller", async () => {
   const { svc, calls } = queryService({ clock: () => 1_000 });
   await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" }); // warms the cache
   const before = calls.length;
-  const outsider: OperatorPrincipal = { id: "o", role: "operator", allowedProjects: [B] };
-  assert.equal(await svc.getWorkforceGraph(outsider, { projectId: A, mode: "EXECUTION" }), undefined);
+  const outsider: OperatorPrincipal = {
+    id: "o",
+    role: "operator",
+    allowedProjects: [B],
+  };
+  assert.equal(
+    await svc.getWorkforceGraph(outsider, { projectId: A, mode: "EXECUTION" }),
+    undefined,
+  );
   assert.equal(calls.length, before);
 });
 
 test("an approval stamped for another project is dropped", async () => {
   const approvals = new ApprovalSystem();
-  const mine = approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: A } });
-  const theirs = approvals.request({ action: "commit", requestedBy: "x", reason: "r", metadata: { projectId: B } });
+  const mine = approvals.request({
+    action: "commit",
+    requestedBy: "x",
+    reason: "r",
+    metadata: { projectId: A },
+  });
+  const theirs = approvals.request({
+    action: "commit",
+    requestedBy: "x",
+    reason: "r",
+    metadata: { projectId: B },
+  });
   const { svc } = queryService({
     approvals,
     execution: {
-      async listSessions() { return [session({ approvalIds: [mine.id, theirs.id] })]; },
-      async getChangeSet() { return undefined; },
+      async listSessions() {
+        return [session({ approvalIds: [mine.id, theirs.id] })];
+      },
+      async getChangeSet() {
+        return undefined;
+      },
     },
   });
-  const g = await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
-  const approvalIds = g!.nodes.filter((n) => n.type === "APPROVAL").map((n) => n.referenceId);
+  const g = await svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  });
+  const approvalIds = g!.nodes
+    .filter((n) => n.type === "APPROVAL")
+    .map((n) => n.referenceId);
   assert.deepEqual(approvalIds, [mine.id]);
 });
 
 test("a cancelled verification is a known outcome, never 'unavailable'", () => {
   assert.equal(normalise(VERIFICATION_STATE, "cancelled"), "cancelled");
-  const f = build({ ...EMPTY_EXECUTION_RECORDS, verifications: [verification({ status: "cancelled" })] });
+  const f = build({
+    ...EMPTY_EXECUTION_RECORDS,
+    verifications: [verification({ status: "cancelled" })],
+  });
   assert.equal(f.nodes[0].state, "cancelled");
 });
 
@@ -598,13 +759,23 @@ test("a cache entry with a NEGATIVE age (clock stepped back) is not served as fr
   await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
   clock = 1_000; // clock went backwards
   await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" });
-  assert.equal(calls.filter((c) => c.startsWith("sessions")).length, 2, "re-read, not stale");
+  assert.equal(
+    calls.filter((c) => c.startsWith("sessions")).length,
+    2,
+    "re-read, not stale",
+  );
 });
 
 test("an unknown project id creates no cache entry and triggers no source reads", async () => {
   const { svc, calls } = queryService();
-  const wildcard: OperatorPrincipal = { id: "w", role: "operator", allowedProjects: "*" };
-  await assert.rejects(() => svc.getWorkforceGraph(wildcard, { projectId: "ghost", mode: "EXECUTION" }));
+  const wildcard: OperatorPrincipal = {
+    id: "w",
+    role: "operator",
+    allowedProjects: "*",
+  };
+  await assert.rejects(() =>
+    svc.getWorkforceGraph(wildcard, { projectId: "ghost", mode: "EXECUTION" }),
+  );
   assert.deepEqual(calls, []);
 });
 
@@ -612,35 +783,82 @@ test("an unknown project id creates no cache entry and triggers no source reads"
 
 test("a source this deployment does not have is reported as NOT CONFIGURED — never as 'nothing happened'", async () => {
   // Production wires execution but NOT verification / source control / deployments.
-  const { svc } = queryService({ verification: undefined, sourceControl: undefined, deployments: undefined });
-  const g = (await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" }))!;
-  assert.equal(g.metadata?.notConfiguredSources, "releases,sourceControl,verifications");
-  assert.equal(g.metadata?.unavailableSources, undefined, "not wired is distinct from a failed read");
-  assert.ok(!g.nodes.some((n) => ["VERIFICATION", "REVIEW", "COMMIT", "DEPLOYMENT"].includes(n.type)));
-  assert.ok(g.nodes.some((n) => n.type === "EXECUTION_SESSION"), "what IS wired still shows");
+  const { svc } = queryService({
+    verification: undefined,
+    sourceControl: undefined,
+    deployments: undefined,
+  });
+  const g = (await svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  }))!;
+  assert.equal(
+    g.metadata?.notConfiguredSources,
+    "releases,sourceControl,verifications",
+  );
+  assert.equal(
+    g.metadata?.unavailableSources,
+    undefined,
+    "not wired is distinct from a failed read",
+  );
+  assert.ok(
+    !g.nodes.some((n) =>
+      ["VERIFICATION", "REVIEW", "COMMIT", "DEPLOYMENT"].includes(n.type),
+    ),
+  );
+  assert.ok(
+    g.nodes.some((n) => n.type === "EXECUTION_SESSION"),
+    "what IS wired still shows",
+  );
 });
 
 test("a fully wired deployment reports neither list", async () => {
   const { svc } = queryService();
-  const g = (await svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" }))!;
+  const g = (await svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  }))!;
   assert.equal(g.metadata?.notConfiguredSources, undefined);
   assert.equal(g.metadata?.unavailableSources, undefined);
 });
 
 test("wiring or unwiring a source changes the revision (no false 'unchanged')", async () => {
-  const wired = (await queryService().svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" }))!;
-  const unwired = (await queryService({ deployments: undefined }).svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" }))!;
+  const wired = (await queryService().svc.getWorkforceGraph(member, {
+    projectId: A,
+    mode: "EXECUTION",
+  }))!;
+  const unwired = (await queryService({
+    deployments: undefined,
+  }).svc.getWorkforceGraph(member, { projectId: A, mode: "EXECUTION" }))!;
   assert.notEqual(wired.revision, unwired.revision);
 });
 
 test("insights carry the same distinction, so an empty result cannot be read as 'all clear'", async () => {
-  const { svc } = queryService({ execution: undefined, verification: undefined, sourceControl: undefined, deployments: undefined });
+  const { svc } = queryService({
+    execution: undefined,
+    verification: undefined,
+    sourceControl: undefined,
+    deployments: undefined,
+  });
   const r = (await svc.getInsights(member, A))!;
-  assert.deepEqual(r.notConfiguredSources, ["changeSets", "releases", "sessions", "sourceControl", "verifications"]);
+  assert.deepEqual(r.notConfiguredSources, [
+    "changeSets",
+    "releases",
+    "sessions",
+    "sourceControl",
+    "verifications",
+  ]);
   assert.equal(r.unavailableSources, undefined);
 });
 
 test("an approval node names WHAT is being approved", () => {
-  const f = build({ ...EMPTY_EXECUTION_RECORDS, sessions: [session({ approvalIds: ["ap1"] })], approvals: [approval({ action: "deployment" })] });
-  assert.equal(f.nodes.find((x) => x.type === "APPROVAL")!.label, "Approval: deployment");
+  const f = build({
+    ...EMPTY_EXECUTION_RECORDS,
+    sessions: [session({ approvalIds: ["ap1"] })],
+    approvals: [approval({ action: "deployment" })],
+  });
+  assert.equal(
+    f.nodes.find((x) => x.type === "APPROVAL")!.label,
+    "Approval: deployment",
+  );
 });

@@ -40,12 +40,16 @@ export class FirestoreOnboardingSessionStore implements OnboardingSessionStore {
 
   async get(id: string): Promise<OnboardingSession | undefined> {
     const snap = await this.col.doc(id).get();
-    return snap.exists ? (structuredClone(snap.data()) as unknown as OnboardingSession) : undefined;
+    return snap.exists
+      ? (structuredClone(snap.data()) as unknown as OnboardingSession)
+      : undefined;
   }
 
   async list(): Promise<OnboardingSession[]> {
     const snap = await this.col.get();
-    return snap.docs.map((d) => structuredClone(d.data()) as unknown as OnboardingSession);
+    return snap.docs.map(
+      (d) => structuredClone(d.data()) as unknown as OnboardingSession,
+    );
   }
 
   async create(session: OnboardingSession): Promise<boolean> {
@@ -57,11 +61,16 @@ export class FirestoreOnboardingSessionStore implements OnboardingSessionStore {
     });
   }
 
-  async replace(session: OnboardingSession, expectedRevision: number): Promise<boolean> {
+  async replace(
+    session: OnboardingSession,
+    expectedRevision: number,
+  ): Promise<boolean> {
     const ref = this.col.doc(session.id);
     return this.firestore.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
-      const current = snap.exists ? (snap.data() as unknown as OnboardingSession) : undefined;
+      const current = snap.exists
+        ? (snap.data() as unknown as OnboardingSession)
+        : undefined;
       if (!current || current.revision !== expectedRevision) return false;
       tx.set(ref, plain(session));
       return true;
@@ -83,12 +92,16 @@ export class FirestoreProvisionedProjectStore implements ProvisionedProjectStore
 
   async get(id: string): Promise<ProvisionedProject | undefined> {
     const snap = await this.projects.doc(id).get();
-    return snap.exists ? (structuredClone(snap.data()) as unknown as ProvisionedProject) : undefined;
+    return snap.exists
+      ? (structuredClone(snap.data()) as unknown as ProvisionedProject)
+      : undefined;
   }
 
   async list(): Promise<ProvisionedProject[]> {
     const snap = await this.projects.get();
-    return snap.docs.map((d) => structuredClone(d.data()) as unknown as ProvisionedProject);
+    return snap.docs.map(
+      (d) => structuredClone(d.data()) as unknown as ProvisionedProject,
+    );
   }
 
   async create(project: ProvisionedProject): Promise<ProvisionedProjectCommit> {
@@ -104,10 +117,15 @@ export class FirestoreProvisionedProjectStore implements ProvisionedProjectStore
       const repoClaim = repoRef ? await tx.get(repoRef) : undefined;
       if (existing.exists) {
         const data = existing.data() as unknown as ProvisionedProject;
-        return { result: "exists", sameOnboarding: data.onboardingId === project.onboardingId } as const;
+        return {
+          result: "exists",
+          sameOnboarding: data.onboardingId === project.onboardingId,
+        } as const;
       }
-      if (codeClaim.exists) return { result: "conflict", reason: "code" } as const;
-      if (repoClaim?.exists) return { result: "conflict", reason: "repository" } as const;
+      if (codeClaim.exists)
+        return { result: "conflict", reason: "code" } as const;
+      if (repoClaim?.exists)
+        return { result: "conflict", reason: "repository" } as const;
       tx.create(ref, plain(project));
       tx.create(codeRef, { projectId: project.id });
       if (repoRef) tx.create(repoRef, { projectId: project.id });
@@ -115,11 +133,16 @@ export class FirestoreProvisionedProjectStore implements ProvisionedProjectStore
     });
   }
 
-  async replace(project: ProvisionedProject, expectedRevision: number): Promise<boolean> {
+  async replace(
+    project: ProvisionedProject,
+    expectedRevision: number,
+  ): Promise<boolean> {
     const ref = this.projects.doc(project.id);
     return this.firestore.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
-      const current = snap.exists ? (snap.data() as unknown as ProvisionedProject) : undefined;
+      const current = snap.exists
+        ? (snap.data() as unknown as ProvisionedProject)
+        : undefined;
       if (!current || current.revision !== expectedRevision) return false;
       tx.set(ref, plain(project));
       return true;

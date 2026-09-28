@@ -67,7 +67,9 @@ export class SpecialistAgent extends GeneralAgent<
     }
   }
 
-  protected validateOutput(output: unknown): asserts output is SpecialistResult {
+  protected validateOutput(
+    output: unknown,
+  ): asserts output is SpecialistResult {
     try {
       validateSpecialistResult(output);
     } catch (error) {
@@ -98,13 +100,14 @@ export class SpecialistAgent extends GeneralAgent<
         `${this.role} model returned no parseable JSON`,
       );
     }
-    
+
     run.activity("task_completed", {});
 
     return {
       taskId: task.id,
       agentId: this.agentId,
-      summary: typeof parsed.summary === "string" ? parsed.summary : "Task completed",
+      summary:
+        typeof parsed.summary === "string" ? parsed.summary : "Task completed",
       output: parsed,
       createdAt: new Date(this.now()).toISOString(),
     };
@@ -121,7 +124,7 @@ export class SpecialistAgent extends GeneralAgent<
       throw this.fail("model_unavailable", "no model provider configured");
     }
 
-    const system = 
+    const system =
       `You are the ${this.descriptor.name} (${this.descriptor.role}) in the ${this.descriptor.department} department.\n` +
       `Description: ${this.descriptor.description}\n` +
       `Your capabilities: ${this.descriptor.capabilities.join(", ")}\n` +
@@ -147,7 +150,7 @@ export class SpecialistAgent extends GeneralAgent<
         ? { promptPreview: truncate(`${system}\n${user}`, 300) }
         : {}),
     });
-    
+
     try {
       const response = await this.model.generate({
         messages: [

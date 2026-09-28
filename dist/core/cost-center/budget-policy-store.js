@@ -55,7 +55,8 @@ export class BudgetPolicyStore {
         return saved;
     }
     authorize(principal, projectId, capability) {
-        if (!operatorCan(principal, capability) || !operatorCanAccessProject(principal, projectId)) {
+        if (!operatorCan(principal, capability) ||
+            !operatorCanAccessProject(principal, projectId)) {
             throw new ExecutionDeniedError("AUTHORIZATION_DENIED", `not authorized to ${capability} for this project`);
         }
     }

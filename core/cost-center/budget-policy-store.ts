@@ -31,7 +31,10 @@ export class BudgetPolicyStore {
     this.ledger = new DurableLedger(store, clock);
   }
 
-  async get(principal: OperatorPrincipal, projectId: string): Promise<BudgetPolicy | undefined> {
+  async get(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ): Promise<BudgetPolicy | undefined> {
     const id = requireExecutionId(projectId, "projectId");
     this.authorize(principal, id, "view");
     return this.getInternal(id);
@@ -43,11 +46,18 @@ export class BudgetPolicyStore {
    * fabricates) an operator identity to read the policy it enforces.
    */
   async getInternal(projectId: string): Promise<BudgetPolicy | undefined> {
-    return this.ledger.find<BudgetPolicy>(KIND, requireExecutionId(projectId, "projectId"));
+    return this.ledger.find<BudgetPolicy>(
+      KIND,
+      requireExecutionId(projectId, "projectId"),
+    );
   }
 
   /** Admin-only. One policy per project; a later call replaces it (not create-only — it is a setting, not evidence). */
-  async set(principal: OperatorPrincipal, projectId: string, draft: unknown): Promise<BudgetPolicy> {
+  async set(
+    principal: OperatorPrincipal,
+    projectId: string,
+    draft: unknown,
+  ): Promise<BudgetPolicy> {
     const id = requireExecutionId(projectId, "projectId");
     this.authorize(principal, id, "manage_budget_policy");
     const validated = validateBudgetPolicyDraft(draft);
@@ -57,7 +67,14 @@ export class BudgetPolicyStore {
       updatedAt: this.clock(),
       updatedBy: principal.id,
     };
-    const saved = await this.ledger.save(KIND, id, id, policy.updatedAt, policy, "put");
+    const saved = await this.ledger.save(
+      KIND,
+      id,
+      id,
+      policy.updatedAt,
+      policy,
+      "put",
+    );
     this.audit?.record("budget_policy_set", {
       projectId: id,
       data: {
@@ -76,8 +93,14 @@ export class BudgetPolicyStore {
     projectId: string,
     capability: "view" | "manage_budget_policy",
   ): void {
-    if (!operatorCan(principal, capability) || !operatorCanAccessProject(principal, projectId)) {
-      throw new ExecutionDeniedError("AUTHORIZATION_DENIED", `not authorized to ${capability} for this project`);
+    if (
+      !operatorCan(principal, capability) ||
+      !operatorCanAccessProject(principal, projectId)
+    ) {
+      throw new ExecutionDeniedError(
+        "AUTHORIZATION_DENIED",
+        `not authorized to ${capability} for this project`,
+      );
     }
   }
 }

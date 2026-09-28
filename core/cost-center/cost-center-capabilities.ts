@@ -12,7 +12,9 @@ export interface CostCenterCapabilityInputs {
   providers: { list(): string[] };
 }
 
-export function deriveCostCenterCapabilities(inputs: CostCenterCapabilityInputs): CostCenterCapabilities {
+export function deriveCostCenterCapabilities(
+  inputs: CostCenterCapabilityInputs,
+): CostCenterCapabilities {
   return {
     get enforcement() {
       return inputs.providers.list().length > 0;

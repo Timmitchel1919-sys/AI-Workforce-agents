@@ -23,7 +23,9 @@ export class FirestoreOnboardingSessionStore {
     }
     async get(id) {
         const snap = await this.col.doc(id).get();
-        return snap.exists ? structuredClone(snap.data()) : undefined;
+        return snap.exists
+            ? structuredClone(snap.data())
+            : undefined;
     }
     async list() {
         const snap = await this.col.get();
@@ -42,7 +44,9 @@ export class FirestoreOnboardingSessionStore {
         const ref = this.col.doc(session.id);
         return this.firestore.runTransaction(async (tx) => {
             const snap = await tx.get(ref);
-            const current = snap.exists ? snap.data() : undefined;
+            const current = snap.exists
+                ? snap.data()
+                : undefined;
             if (!current || current.revision !== expectedRevision)
                 return false;
             tx.set(ref, plain(session));
@@ -62,7 +66,9 @@ export class FirestoreProvisionedProjectStore {
     }
     async get(id) {
         const snap = await this.projects.doc(id).get();
-        return snap.exists ? structuredClone(snap.data()) : undefined;
+        return snap.exists
+            ? structuredClone(snap.data())
+            : undefined;
     }
     async list() {
         const snap = await this.projects.get();
@@ -80,7 +86,10 @@ export class FirestoreProvisionedProjectStore {
             const repoClaim = repoRef ? await tx.get(repoRef) : undefined;
             if (existing.exists) {
                 const data = existing.data();
-                return { result: "exists", sameOnboarding: data.onboardingId === project.onboardingId };
+                return {
+                    result: "exists",
+                    sameOnboarding: data.onboardingId === project.onboardingId,
+                };
             }
             if (codeClaim.exists)
                 return { result: "conflict", reason: "code" };
@@ -97,7 +106,9 @@ export class FirestoreProvisionedProjectStore {
         const ref = this.projects.doc(project.id);
         return this.firestore.runTransaction(async (tx) => {
             const snap = await tx.get(ref);
-            const current = snap.exists ? snap.data() : undefined;
+            const current = snap.exists
+                ? snap.data()
+                : undefined;
             if (!current || current.revision !== expectedRevision)
                 return false;
             tx.set(ref, plain(project));

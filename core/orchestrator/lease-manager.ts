@@ -26,7 +26,7 @@ export class WriteScopeLeaseManager {
     agentId: string,
     workspaceId: string,
     scope: string[],
-    ttlMs: number = 3600000
+    ttlMs: number = 3600000,
   ): WriteScopeLease {
     const timestamp = now();
     const expiresAt = new Date(Date.now() + ttlMs).toISOString();
@@ -82,13 +82,15 @@ export class WriteScopeLeaseManager {
   }
 
   hasValidLease(workspaceId: string, agentId: string, path: string): boolean {
-    const active = this.leases.list().filter(
-      (l: WriteScopeLease) =>
-        l.workspaceId === workspaceId &&
-        l.agentId === agentId &&
-        l.status === "active" &&
-        new Date(l.expiresAt).getTime() > Date.now()
-    );
+    const active = this.leases
+      .list()
+      .filter(
+        (l: WriteScopeLease) =>
+          l.workspaceId === workspaceId &&
+          l.agentId === agentId &&
+          l.status === "active" &&
+          new Date(l.expiresAt).getTime() > Date.now(),
+      );
 
     for (const lease of active) {
       if (

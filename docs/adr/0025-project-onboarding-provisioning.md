@@ -1,9 +1,11 @@
 # ADR-0025: Project onboarding & provisioning
 
 ## Status
+
 Accepted (PROJECT-2)
 
 ## Decision
+
 Projects are created through a governed flow, never directly:
 
 `draft → source → analysis → plan → human approval → provisioning → validation → READY`
@@ -17,4 +19,5 @@ Projects are created through a governed flow, never directly:
 - **Authorization**: new `create_project` capability (admin only, and only unscoped operators). Sessions/projects are written only by the Control Plane; Firestore rules stay deny-all.
 
 ## Known gaps (reported, not hidden)
+
 Local import (needs a Desktop Agent bridge), GitHub repository creation, Firebase auto-provisioning, AI Cost Center enforcement (policy is recorded, not enforced), execution of agents/objectives (future Software Factory layer).

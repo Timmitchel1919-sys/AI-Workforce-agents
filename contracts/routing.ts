@@ -21,7 +21,12 @@
  * (core/cost-center/governance-policy-engine.ts) for policy/budget — this is
  * not a second policy or cost system.
  */
-import { ValidationError, requireExecutionId, requireText, type ModelCapability } from "./index.js";
+import {
+  ValidationError,
+  requireExecutionId,
+  requireText,
+  type ModelCapability,
+} from "./index.js";
 
 /* ------------------------------------------------------------------ */
 /* Model status — never a fabricated live health signal                */
@@ -35,14 +40,26 @@ import { ValidationError, requireExecutionId, requireText, type ModelCapability 
  * report into, never as a placeholder guess. `unknown` is for when even
  * availability cannot be determined, not a softer way to say "unavailable".
  */
-export const MODEL_STATUSES = ["available", "unavailable", "degraded", "disabled", "unknown"] as const;
+export const MODEL_STATUSES = [
+  "available",
+  "unavailable",
+  "degraded",
+  "disabled",
+  "unknown",
+] as const;
 export type ModelStatus = (typeof MODEL_STATUSES)[number];
 
 /* ------------------------------------------------------------------ */
 /* Routing profiles — policies, never hardcoded model aliases          */
 /* ------------------------------------------------------------------ */
 
-export const ROUTING_PROFILES = ["balanced", "cost_efficient", "quality_first", "low_latency", "high_assurance"] as const;
+export const ROUTING_PROFILES = [
+  "balanced",
+  "cost_efficient",
+  "quality_first",
+  "low_latency",
+  "high_assurance",
+] as const;
 export type RoutingProfile = (typeof ROUTING_PROFILES)[number];
 
 /* ------------------------------------------------------------------ */
@@ -77,7 +94,8 @@ export const CANDIDATE_REJECTION_REASONS = [
   "ENVIRONMENT_INCOMPATIBLE",
   "MODEL_DISABLED",
 ] as const;
-export type CandidateRejectionReason = (typeof CANDIDATE_REJECTION_REASONS)[number];
+export type CandidateRejectionReason =
+  (typeof CANDIDATE_REJECTION_REASONS)[number];
 
 export interface RejectedCandidate {
   profileId: string;
@@ -112,7 +130,8 @@ export interface RoutingDecision {
   selectedModel?: string;
   /** Empty when a candidate was selected; non-empty explains a "no valid model" outcome. */
   reasonCodes: readonly CandidateRejectionReason[];
-  costEstimate?: { priced: true; amountUsd: number } | { priced: false; reason: string };
+  costEstimate?:
+    { priced: true; amountUsd: number } | { priced: false; reason: string };
   policyDecision?: { decision: string; reasonCode?: string; detail: string };
   fallbackPolicy: "none" | "governed";
   /** Set only when this decision is itself a fallback of an earlier one. */
@@ -139,15 +158,21 @@ const MAX_TEXT = 200;
 function optionalText(v: unknown, field: string): string | undefined {
   if (v === undefined) return undefined;
   if (typeof v !== "string" || v.length > MAX_TEXT) {
-    throw new ValidationError(`routing request.${field} must be a string of at most ${MAX_TEXT} characters`);
+    throw new ValidationError(
+      `routing request.${field} must be a string of at most ${MAX_TEXT} characters`,
+    );
   }
   return requireText(v, `routing request.${field}`);
 }
 
 /** Untrusted input → a well-formed override REQUEST. Validating it is not authorizing it. */
-export function validateManualModelOverride(input: unknown): ManualModelOverrideRequest {
+export function validateManualModelOverride(
+  input: unknown,
+): ManualModelOverrideRequest {
   if (!input || typeof input !== "object") {
-    throw new ValidationError("manual model override request must be an object");
+    throw new ValidationError(
+      "manual model override request must be an object",
+    );
   }
   const draft = input as Record<string, unknown>;
   return {

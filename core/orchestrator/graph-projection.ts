@@ -108,7 +108,8 @@ function contentRevision(
     if (n.metadata) feed(JSON.stringify(n.metadata));
     feed(";");
   }
-  for (const e of edges) feed(`${e.id}|${e.source}|${e.target}|${e.status ?? ""};`);
+  for (const e of edges)
+    feed(`${e.id}|${e.source}|${e.target}|${e.status ?? ""};`);
   // A view that is cut short differs from one that is complete, even with equal nodes.
   feed(truncated ? "T" : "F");
   return hash;
@@ -258,7 +259,11 @@ export class WorkforceGraphProjectionService {
     const mode = options.mode ?? DEFAULT_GRAPH_MODE;
     const projectNodeId = `project-${project.projectId}`;
 
-    const builder = this.buildFullGraph(options.projectId, projectNodeId, execution);
+    const builder = this.buildFullGraph(
+      options.projectId,
+      projectNodeId,
+      execution,
+    );
     const baseNodes = [...builder.nodes.values()].sort(byId);
     const baseEdges = [...builder.edges.values()];
 
@@ -336,13 +341,27 @@ export class WorkforceGraphProjectionService {
   public getInsightGraph(
     projectId: string,
     execution?: ExecutionGraphRecords,
-  ): { nodes: WorkforceGraphNode[]; edges: WorkforceGraphEdge[]; revision: number; generatedAt: string } {
+  ): {
+    nodes: WorkforceGraphNode[];
+    edges: WorkforceGraphEdge[];
+    revision: number;
+    generatedAt: string;
+  } {
     const project = this.projectRegistry.get(projectId);
     if (!project) throw new NotFoundError("project not found");
-    const builder = this.buildFullGraph(projectId, `project-${project.projectId}`, execution);
+    const builder = this.buildFullGraph(
+      projectId,
+      `project-${project.projectId}`,
+      execution,
+    );
     const nodes = [...builder.nodes.values()].sort(byId);
     const edges = [...builder.edges.values()].sort(byId);
-    return { nodes, edges, revision: contentRevision(nodes, edges, false), generatedAt: this.clock().toISOString() };
+    return {
+      nodes,
+      edges,
+      revision: contentRevision(nodes, edges, false),
+      generatedAt: this.clock().toISOString(),
+    };
   }
 
   private buildBaseGraph(

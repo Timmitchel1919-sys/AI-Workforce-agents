@@ -2,7 +2,7 @@ import { deriveInsights } from "../../core/orchestrator/graph-insights.js";
 import { WorkforceGraphProjectionService, mixRevision, } from "../../core/orchestrator/graph-projection.js";
 import { GRAPH_MODES, } from "../../contracts/graph.js";
 import { EMPTY_EXECUTION_RECORDS, } from "../../core/orchestrator/graph-execution-fragment.js";
-import { GRAPH_LIMITS } from "../../contracts/graph.js";
+import { GRAPH_LIMITS, } from "../../contracts/graph.js";
 import { inertReleaseCapabilities } from "../../contracts/release.js";
 import { operatorCanAccessProject, validateOperatorPrincipal, operatorCan, PermissionDeniedError, ValidationError, } from "../../contracts/index.js";
 const ID_PATTERN = /^[A-Za-z0-9._:-]{1,200}$/;
@@ -98,7 +98,9 @@ export class GraphQueryService {
         // so they are folded into the revision: a `since` poll can never answer "unchanged" across a
         // source failing, recovering or being wired.
         const inert = this.inertCapabilities();
-        if (unavailable.length === 0 && notConfigured.length === 0 && inert.length === 0) {
+        if (unavailable.length === 0 &&
+            notConfigured.length === 0 &&
+            inert.length === 0) {
             return projection;
         }
         return {
@@ -106,8 +108,12 @@ export class GraphQueryService {
             revision: mixRevision(projection.revision, `unavailable:${unavailable.join(",")}|notConfigured:${notConfigured.join(",")}|inert:${inert.join(",")}`),
             metadata: {
                 ...projection.metadata,
-                ...(unavailable.length > 0 ? { unavailableSources: unavailable.join(",") } : {}),
-                ...(notConfigured.length > 0 ? { notConfiguredSources: notConfigured.join(",") } : {}),
+                ...(unavailable.length > 0
+                    ? { unavailableSources: unavailable.join(",") }
+                    : {}),
+                ...(notConfigured.length > 0
+                    ? { notConfiguredSources: notConfigured.join(",") }
+                    : {}),
                 ...(inert.length > 0 ? { inertCapabilities: inert.join(",") } : {}),
             },
         };
@@ -131,15 +137,21 @@ export class GraphQueryService {
         const { findings, truncated } = deriveInsights(graph);
         return {
             projectId,
-            graphRevision: unavailable.length === 0 && notConfigured.length === 0 && this.inertCapabilities().length === 0
+            graphRevision: unavailable.length === 0 &&
+                notConfigured.length === 0 &&
+                this.inertCapabilities().length === 0
                 ? graph.revision
                 : mixRevision(graph.revision, `unavailable:${unavailable.join(",")}|notConfigured:${notConfigured.join(",")}|inert:${this.inertCapabilities().join(",")}`),
             generatedAt: graph.generatedAt,
             findings,
             truncated,
             ...(unavailable.length > 0 ? { unavailableSources: unavailable } : {}),
-            ...(notConfigured.length > 0 ? { notConfiguredSources: notConfigured } : {}),
-            ...(this.inertCapabilities().length > 0 ? { inertCapabilities: this.inertCapabilities() } : {}),
+            ...(notConfigured.length > 0
+                ? { notConfiguredSources: notConfigured }
+                : {}),
+            ...(this.inertCapabilities().length > 0
+                ? { inertCapabilities: this.inertCapabilities() }
+                : {}),
             basis: "observed_state",
         };
     }

@@ -26,7 +26,11 @@ import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/prov
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import type { BudgetPolicy } from "../contracts/index.js";
 
-const ADMIN: OperatorPrincipal = { id: "admin-1", role: "admin", allowedProjects: "*" };
+const ADMIN: OperatorPrincipal = {
+  id: "admin-1",
+  role: "admin",
+  allowedProjects: "*",
+};
 
 const EVIDENCE = {
   provider: "github" as const,
@@ -37,14 +41,26 @@ const EVIDENCE = {
   commit: "a".repeat(40),
   truncated: false,
   paths: ["package.json"],
-  files: { "package.json": JSON.stringify({ scripts: {}, dependencies: {}, devDependencies: {} }) },
+  files: {
+    "package.json": JSON.stringify({
+      scripts: {},
+      dependencies: {},
+      devDependencies: {},
+    }),
+  },
 };
 
 function readerReturning(result: RepositoryReadResult): RepositorySourceReader {
-  return { providers: ["github"], privateAccess: true, read: async () => result };
+  return {
+    providers: ["github"],
+    privateAccess: true,
+    read: async () => result,
+  };
 }
 
-function setup(budgetPolicies?: { set: (...args: never[]) => Promise<BudgetPolicy> }) {
+function setup(budgetPolicies?: {
+  set: (...args: never[]) => Promise<BudgetPolicy>;
+}) {
   const audit = new AuditLog();
   const registry = new ProjectRegistry();
   const sessions = new InMemoryOnboardingSessionStore();
@@ -63,14 +79,34 @@ function setup(budgetPolicies?: { set: (...args: never[]) => Promise<BudgetPolic
     audit,
     reader: readerReturning({ ok: true, evidence: EVIDENCE }),
     provisioning,
-    platform: () => ({ descriptors: [], usableDescriptorIds: new Set(), agents: [] }),
+    platform: () => ({
+      descriptors: [],
+      usableDescriptorIds: new Set(),
+      agents: [],
+    }),
   });
-  return { control: new OnboardingControlService(service, audit, budgetPolicies as never) };
+  return {
+    control: new OnboardingControlService(
+      service,
+      audit,
+      budgetPolicies as never,
+    ),
+  };
 }
 
-async function planWithCost(control: OnboardingControlService, costPolicy: Record<string, unknown> | undefined, code: string) {
-  const created = await control.onboardingCreate(ADMIN, { mode: "guided", kind: "import_existing" });
-  const session = created.details["session"] as { id: string; revision: number };
+async function planWithCost(
+  control: OnboardingControlService,
+  costPolicy: Record<string, unknown> | undefined,
+  code: string,
+) {
+  const created = await control.onboardingCreate(ADMIN, {
+    mode: "guided",
+    kind: "import_existing",
+  });
+  const session = created.details["session"] as {
+    id: string;
+    revision: number;
+  };
   const updated = await control.onboardingUpdate(ADMIN, {
     id: session.id,
     expectedRevision: session.revision,
@@ -81,10 +117,20 @@ async function planWithCost(control: OnboardingControlService, costPolicy: Recor
     },
   });
   const u = updated.details["session"] as { id: string; revision: number };
-  const analyzed = await control.onboardingAnalyze(ADMIN, { id: u.id, expectedRevision: u.revision });
+  const analyzed = await control.onboardingAnalyze(ADMIN, {
+    id: u.id,
+    expectedRevision: u.revision,
+  });
   const a = analyzed.details["session"] as { id: string; revision: number };
-  const planned = await control.onboardingPlan(ADMIN, { id: a.id, expectedRevision: a.revision });
-  return planned.details["session"] as { id: string; revision: number; plan: { planVersion: number; planHash: string } };
+  const planned = await control.onboardingPlan(ADMIN, {
+    id: a.id,
+    expectedRevision: a.revision,
+  });
+  return planned.details["session"] as {
+    id: string;
+    revision: number;
+    plan: { planVersion: number; planHash: string };
+  };
 }
 
 test("BRIDGE: approving a plan with an actual budget limit sets the REAL enforced BudgetPolicy", async () => {
@@ -92,11 +138,22 @@ test("BRIDGE: approving a plan with an actual budget limit sets the REAL enforce
   const budgetPolicies = {
     set: async (...args: never[]) => {
       calls.push(args);
-      return { projectId: "p", allowUnknownCost: false, warningThresholdPercent: 80, hardStop: true, updatedAt: "t", updatedBy: "admin-1" } as unknown as BudgetPolicy;
+      return {
+        projectId: "p",
+        allowUnknownCost: false,
+        warningThresholdPercent: 80,
+        hardStop: true,
+        updatedAt: "t",
+        updatedBy: "admin-1",
+      } as unknown as BudgetPolicy;
     },
   };
   const { control } = setup(budgetPolicies);
-  const planned = await planWithCost(control, { dailyLimit: 5, warningThresholdPercent: 80, hardStop: true }, "AAA1");
+  const planned = await planWithCost(
+    control,
+    { dailyLimit: 5, warningThresholdPercent: 80, hardStop: true },
+    "AAA1",
+  );
   const result = await control.onboardingApprovePlan(ADMIN, {
     id: planned.id,
     expectedRevision: planned.revision,
@@ -104,8 +161,16 @@ test("BRIDGE: approving a plan with an actual budget limit sets the REAL enforce
     planHash: planned.plan.planHash,
   });
   assert.equal(result.outcome, "executed");
-  assert.equal(calls.length, 1, "the bridge called BudgetPolicyStore.set exactly once");
-  const [principal, projectId, draft] = calls[0] as [OperatorPrincipal, string, { dailyLimitUsd?: number; hardStop?: boolean }];
+  assert.equal(
+    calls.length,
+    1,
+    "the bridge called BudgetPolicyStore.set exactly once",
+  );
+  const [principal, projectId, draft] = calls[0] as [
+    OperatorPrincipal,
+    string,
+    { dailyLimitUsd?: number; hardStop?: boolean },
+  ];
   assert.equal(principal.id, "admin-1");
   assert.equal(typeof projectId, "string");
   assert.equal(draft.dailyLimitUsd, 5);
@@ -114,7 +179,12 @@ test("BRIDGE: approving a plan with an actual budget limit sets the REAL enforce
 
 test("BRIDGE: a plan with NO budget limit configured bridges nothing — never a fabricated policy", async () => {
   const calls: unknown[] = [];
-  const budgetPolicies = { set: async (...args: never[]) => { calls.push(args); return {} as BudgetPolicy; } };
+  const budgetPolicies = {
+    set: async (...args: never[]) => {
+      calls.push(args);
+      return {} as BudgetPolicy;
+    },
+  };
   const { control } = setup(budgetPolicies);
   const planned = await planWithCost(control, undefined, "BBB1");
   const result = await control.onboardingApprovePlan(ADMIN, {
@@ -124,25 +194,45 @@ test("BRIDGE: a plan with NO budget limit configured bridges nothing — never a
     planHash: planned.plan.planHash,
   });
   assert.equal(result.outcome, "executed");
-  assert.equal(calls.length, 0, "no limit was configured — the bridge must not invent one");
+  assert.equal(
+    calls.length,
+    0,
+    "no limit was configured — the bridge must not invent one",
+  );
 });
 
 test("BRIDGE: a bridging failure never undoes the onboarding approval that already succeeded", async () => {
-  const budgetPolicies = { set: async (..._args: never[]) => { throw new Error("boom — the store is unavailable"); } };
+  const budgetPolicies = {
+    set: async (..._args: never[]) => {
+      throw new Error("boom — the store is unavailable");
+    },
+  };
   const { control } = setup(budgetPolicies);
-  const planned = await planWithCost(control, { dailyLimit: 5, warningThresholdPercent: 80, hardStop: true }, "CCC1");
+  const planned = await planWithCost(
+    control,
+    { dailyLimit: 5, warningThresholdPercent: 80, hardStop: true },
+    "CCC1",
+  );
   const result = await control.onboardingApprovePlan(ADMIN, {
     id: planned.id,
     expectedRevision: planned.revision,
     planVersion: planned.plan.planVersion,
     planHash: planned.plan.planHash,
   });
-  assert.equal(result.outcome, "executed", "the approval itself still succeeded despite the bridge throwing");
+  assert.equal(
+    result.outcome,
+    "executed",
+    "the approval itself still succeeded despite the bridge throwing",
+  );
 });
 
 test("BRIDGE: with no BudgetPolicyStore injected at all, approval still works (backward compatible, no crash)", async () => {
   const { control } = setup(undefined);
-  const planned = await planWithCost(control, { dailyLimit: 5, warningThresholdPercent: 80, hardStop: true }, "DDD1");
+  const planned = await planWithCost(
+    control,
+    { dailyLimit: 5, warningThresholdPercent: 80, hardStop: true },
+    "DDD1",
+  );
   const result = await control.onboardingApprovePlan(ADMIN, {
     id: planned.id,
     expectedRevision: planned.revision,

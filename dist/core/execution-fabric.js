@@ -1,16 +1,24 @@
 export class SecureExecutionFabric {
     constructor() { }
-    execute() { return "Securely executed"; }
+    execute() {
+        return "Securely executed";
+    }
 }
 export class Sandbox {
     constructor() { }
-    isolate() { return true; }
+    isolate() {
+        return true;
+    }
 }
 export class CloudRunnerAdapter {
     constructor() { }
-    run() { return true; }
+    run() {
+        return true;
+    }
 }
 export class ToolExecutionPipeline {
     constructor() { }
-    process() { return true; }
+    process() {
+        return true;
+    }
 }

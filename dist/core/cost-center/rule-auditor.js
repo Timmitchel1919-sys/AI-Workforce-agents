@@ -22,13 +22,16 @@ const RULES = Object.freeze({
         const out = [];
         // A capability this deployment never composed cannot have recorded evidence either way —
         // reporting a bypass here would punish "not connected" as if it were "proven violated".
-        if (!inputs.sourcesConnected.verification || !inputs.sourcesConnected.sourceControl)
+        if (!inputs.sourcesConnected.verification ||
+            !inputs.sourcesConnected.sourceControl)
             return out;
         for (const r of inputs.releases) {
             if (r.simulated)
                 continue;
             const commit = commitBySha.get(r.commitSha);
-            const verification = commit ? verificationById.get(commit.verificationId) : undefined;
+            const verification = commit
+                ? verificationById.get(commit.verificationId)
+                : undefined;
             if (!verification || verification.status !== "passed") {
                 out.push({
                     ruleId: "release_without_verification",
@@ -106,7 +109,12 @@ export class RuleAuditor {
         for (const finding of findings) {
             this.audit?.record("audit_finding_raised", {
                 projectId,
-                data: { ruleId: finding.ruleId, severity: finding.severity, subjectType: finding.subjectType, subjectId: finding.subjectId },
+                data: {
+                    ruleId: finding.ruleId,
+                    severity: finding.severity,
+                    subjectType: finding.subjectType,
+                    subjectId: finding.subjectId,
+                },
             });
         }
         return { projectId, generatedAt, rulesRun: AUDIT_RULE_IDS_LIST, findings };

@@ -15,25 +15,25 @@ export class SandboxEnforcer {
     workspaceId: string,
     agentId: string,
     operation: ExecutionOperationDefinition,
-    input: Record<string, unknown>
+    input: Record<string, unknown>,
   ): void {
     if (operation.workspaceAccess === "write") {
       const path = input.path as string;
       if (!path) {
         throw new ExecutionDeniedError(
           "POLICY_DENIED",
-          "Workspace write operations require a path input."
+          "Workspace write operations require a path input.",
         );
       }
 
       if (!this.leaseManager.hasValidLease(workspaceId, agentId, path)) {
         throw new ExecutionDeniedError(
           "POLICY_DENIED",
-          `Agent ${agentId} lacks an explicit write lease for path ${path} in workspace ${workspaceId}.`
+          `Agent ${agentId} lacks an explicit write lease for path ${path} in workspace ${workspaceId}.`,
         );
       }
     }
-    
+
     // Check if network access is authorized (stubbed for future expansion)
     if (operation.networkAccess !== "none") {
       // Further checks could go here.

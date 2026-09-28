@@ -85,7 +85,10 @@ test("the authoritative production configuration resolves its real OpenAI-backed
     bootstrap.agents.require("control-plane-analysis-agent").name,
     "Control Plane Analysis Agent",
   );
-  assert.equal(bootstrap.agents.require("developer-agent").name, "Developer Agent");
+  assert.equal(
+    bootstrap.agents.require("developer-agent").name,
+    "Developer Agent",
+  );
   assert.equal(bootstrap.agents.require("qa-agent").name, "QA Agent");
   assert.equal(
     bootstrap.agents.require("project-manager-agent").name,
@@ -97,7 +100,11 @@ test("the authoritative production configuration resolves its real OpenAI-backed
     "qa-agent",
     "project-manager-agent",
   ]) {
-    assert.equal(bootstrap.agentExecutors.has(id), true, `expected an executor bound for ${id}`);
+    assert.equal(
+      bootstrap.agentExecutors.has(id),
+      true,
+      `expected an executor bound for ${id}`,
+    );
   }
 });
 

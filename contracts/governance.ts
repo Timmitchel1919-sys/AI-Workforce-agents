@@ -22,7 +22,12 @@ import { ValidationError, requireExecutionId, requireText } from "./index.js";
 /* Decision                                                            */
 /* ------------------------------------------------------------------ */
 
-export const POLICY_DECISIONS = ["allow", "deny", "require_approval", "unknown"] as const;
+export const POLICY_DECISIONS = [
+  "allow",
+  "deny",
+  "require_approval",
+  "unknown",
+] as const;
 export type PolicyDecision = (typeof POLICY_DECISIONS)[number];
 
 export const POLICY_REASON_CODES = [
@@ -58,7 +63,9 @@ const MAX_TEXT = 500;
 function optionalText(v: unknown, field: string): string | undefined {
   if (v === undefined) return undefined;
   if (typeof v !== "string" || v.length > MAX_TEXT) {
-    throw new ValidationError(`governance request.${field} must be a string of at most ${MAX_TEXT} characters`);
+    throw new ValidationError(
+      `governance request.${field} must be a string of at most ${MAX_TEXT} characters`,
+    );
   }
   return requireText(v, `governance request.${field}`);
 }
@@ -75,8 +82,15 @@ export function validateGovernanceRequest(input: unknown): GovernanceRequest {
   }
   const draft = input as Record<string, unknown>;
   const estimatedUsd = draft.estimatedUsd;
-  if (estimatedUsd !== undefined && (typeof estimatedUsd !== "number" || !Number.isFinite(estimatedUsd) || estimatedUsd < 0)) {
-    throw new ValidationError("governance request.estimatedUsd must be a non-negative finite number");
+  if (
+    estimatedUsd !== undefined &&
+    (typeof estimatedUsd !== "number" ||
+      !Number.isFinite(estimatedUsd) ||
+      estimatedUsd < 0)
+  ) {
+    throw new ValidationError(
+      "governance request.estimatedUsd must be a non-negative finite number",
+    );
   }
   return {
     // Same strictness the engine itself re-checks (`requireExecutionId`), validated HERE so a
@@ -128,20 +142,37 @@ export function validateGovernancePolicyDraft(
     throw new ValidationError("governance policy must be an object");
   }
   const draft = input as Record<string, unknown>;
-  const listField = (key: "allowedProviders" | "allowedModels"): readonly string[] | undefined => {
+  const listField = (
+    key: "allowedProviders" | "allowedModels",
+  ): readonly string[] | undefined => {
     const v = draft[key];
     if (v === undefined) return undefined;
-    if (!Array.isArray(v) || v.length === 0 || !v.every((x) => typeof x === "string" && x.trim())) {
-      throw new ValidationError(`governance policy.${key} must be a non-empty array of non-empty strings`);
+    if (
+      !Array.isArray(v) ||
+      v.length === 0 ||
+      !v.every((x) => typeof x === "string" && x.trim())
+    ) {
+      throw new ValidationError(
+        `governance policy.${key} must be a non-empty array of non-empty strings`,
+      );
     }
     return v.map((x) => x.trim().toLowerCase());
   };
   const threshold = draft.requireApprovalAboveUsd;
-  if (threshold !== undefined && (typeof threshold !== "number" || !Number.isFinite(threshold) || threshold < 0)) {
-    throw new ValidationError("governance policy.requireApprovalAboveUsd must be a non-negative number");
+  if (
+    threshold !== undefined &&
+    (typeof threshold !== "number" ||
+      !Number.isFinite(threshold) ||
+      threshold < 0)
+  ) {
+    throw new ValidationError(
+      "governance policy.requireApprovalAboveUsd must be a non-negative number",
+    );
   }
   if (typeof draft.allowUnknownCost !== "boolean") {
-    throw new ValidationError("governance policy.allowUnknownCost must be a boolean");
+    throw new ValidationError(
+      "governance policy.allowUnknownCost must be a boolean",
+    );
   }
   return {
     allowedProviders: listField("allowedProviders"),

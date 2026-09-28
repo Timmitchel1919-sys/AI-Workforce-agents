@@ -12,9 +12,9 @@ import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
 import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
 import { CONTROL_PLANE_ANALYSIS_AGENT_ID, LazyOpenAIModelProvider, createProductionOpenAIAgentExecutor, } from "../agents/control-plane-analysis/index.js";
-import { DEVELOPER_AGENT_ID, DeveloperAgent } from "../agents/developer/index.js";
+import { DEVELOPER_AGENT_ID, DeveloperAgent, } from "../agents/developer/index.js";
 import { QA_AGENT_ID, QaAgent } from "../agents/qa/index.js";
-import { PROJECT_MANAGER_AGENT_ID, ProjectManagerAgent } from "../agents/project-manager/index.js";
+import { PROJECT_MANAGER_AGENT_ID, ProjectManagerAgent, } from "../agents/project-manager/index.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
 import { V1_SPECIALIST_WORKFORCE } from "../contracts/workforce.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
@@ -66,7 +66,11 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     // profile matches whatever `OPENAI_MODEL` the provider is actually configured with at call
     // time, which this composition root never reads (that stays inside the provider adapter).
     const modelCapabilities = new ModelCapabilityRegistry([
-        { id: "openai-default", providerId: "openai", capabilities: ["reasoning", "structured_output"] },
+        {
+            id: "openai-default",
+            providerId: "openai",
+            capabilities: ["reasoning", "structured_output"],
+        },
     ]);
     const bootstrap = createProductionWorkforceBootstrap(options.configuration ?? PRODUCTION_WORKFORCE_CONFIGURATION, audit);
     const tasks = new TaskSystem(taskRepository, {
@@ -241,7 +245,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const budgetPolicies = new BudgetPolicyStore(executionRecords, now, audit);
     const budgetEnforcer = new BudgetEnforcer(budgetPolicies, usageLedger, now);
     const ruleAuditor = new RuleAuditor(now, audit);
-    const costCenterCapabilities = deriveCostCenterCapabilities({ providers: modelProviders });
+    const costCenterCapabilities = deriveCostCenterCapabilities({
+        providers: modelProviders,
+    });
     const governancePolicies = new GovernancePolicyStore(executionRecords, now, audit);
     const governanceEngine = new GovernancePolicyEngine(governancePolicies, budgetEnforcer, now, approvals, audit);
     const modelRouter = new ModelRouter(modelCapabilities, modelProviders, governanceEngine, now, executionRecords, audit, budgetEnforcer, governancePolicies);
@@ -250,7 +256,10 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     // applies regardless (`BudgetEnforcer.evaluateInternal`, checked unconditionally). Every OTHER
     // project stays fail-closed by default (EO-6.3's reviewed, unchanged behavior).
     await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
-    bootstrap.agentExecutors.replace(CONTROL_PLANE_ANALYSIS_AGENT_ID, createProductionOpenAIAgentExecutor(audit, { router: modelRouter, usageLedger }));
+    bootstrap.agentExecutors.replace(CONTROL_PLANE_ANALYSIS_AGENT_ID, createProductionOpenAIAgentExecutor(audit, {
+        router: modelRouter,
+        usageLedger,
+    }));
     // EO-8: the three specialist agents (Developer/QA/Project Manager) were fully implemented and
     // tested but never wired into any production composition root. Same two-phase pattern as the
     // control-plane analysis agent above: `production-workforce-config.ts` binds each to a real but
@@ -259,7 +268,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     // after a successful one, requested-vs-actual model mismatches audited — the SAME reviewed EO-7
     // pipeline, generalized to any plain `ModelProvider`-based agent. Nothing reaches the unrouted
     // binding for a real request; it exists only for the instant between bootstrap and this call.
-    const specialistRequirement = { requiredCapabilities: ["reasoning", "structured_output"] };
+    const specialistRequirement = {
+        requiredCapabilities: ["reasoning", "structured_output"],
+    };
     bootstrap.agentExecutors.replace(DEVELOPER_AGENT_ID, new DeveloperAgent({
         audit,
         model: new RoutedModelProvider({
@@ -335,21 +346,29 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         },
         releaseCapabilities,
         costCenter: {
-            usage: { listByProject: (...a) => usageLedger.listByProject(...a) },
+            usage: {
+                listByProject: (...a) => usageLedger.listByProject(...a),
+            },
             budgetPolicy: {
                 get: (...a) => budgetPolicies.get(...a),
                 set: (...a) => budgetPolicies.set(...a),
             },
-            enforcer: { evaluate: (...a) => budgetEnforcer.evaluate(...a) },
+            enforcer: {
+                evaluate: (...a) => budgetEnforcer.evaluate(...a),
+            },
         },
         costCenterCapabilities,
-        auditor: { run: (...a) => ruleAuditor.run(...a) },
+        auditor: {
+            run: (...a) => ruleAuditor.run(...a),
+        },
         governance: {
             policy: {
                 get: (...a) => governancePolicies.get(...a),
                 set: (...a) => governancePolicies.set(...a),
             },
-            engine: { evaluate: (...a) => governanceEngine.evaluate(...a) },
+            engine: {
+                evaluate: (...a) => governanceEngine.evaluate(...a),
+            },
         },
         routing: {
             router: {

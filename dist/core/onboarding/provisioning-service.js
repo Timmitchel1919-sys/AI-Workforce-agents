@@ -76,7 +76,8 @@ export class ProjectProvisioningService {
                 this.audit(current, actor, "step_completed", { step: planned.key });
             }
             catch (error) {
-                if (error instanceof OnboardingConflictError && error.code === "revision_conflict") {
+                if (error instanceof OnboardingConflictError &&
+                    error.code === "revision_conflict") {
                     throw error;
                 }
                 const message = safeMessage(error);
@@ -182,7 +183,9 @@ export class ProjectProvisioningService {
             draft.validation = finalReport;
             draft.failure = undefined;
         });
-        this.audit(current, actor, "project_ready", { projectId: current.projectId });
+        this.audit(current, actor, "project_ready", {
+            projectId: current.projectId,
+        });
         return current;
     }
     /* -------------------------------------------------------------- */
@@ -303,7 +306,9 @@ export class ProjectProvisioningService {
             code: plan.identity.code,
             displayName: plan.identity.name,
             ...(plan.identity.fullName ? { fullName: plan.identity.fullName } : {}),
-            ...(plan.identity.description ? { description: plan.identity.description } : {}),
+            ...(plan.identity.description
+                ? { description: plan.identity.description }
+                : {}),
             onboardingId: session.id,
             createdBy: actor,
             createdAt: this.clock(),
