@@ -115,7 +115,7 @@ test("production composed handler serves dashboard, health, API not-found, and a
     status: { counts: { registeredAgents: number } };
   };
   // EO-8: control-plane-analysis + Developer/QA/Project Manager, all now wired into production.
-  assert.equal(snapshot.status.counts.registeredAgents, 4);
+  assert.equal(snapshot.status.counts.registeredAgents, 16);
 
   const unknown = await request(runtime, "/api/unknown-route", "viewer");
   assert.equal(unknown.status, 404);

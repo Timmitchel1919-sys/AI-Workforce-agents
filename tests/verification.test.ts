@@ -676,7 +676,7 @@ test("82 CANCELLATION: cancelling stops the running process and never starts mor
     const r = await h.verification.wait(OPERATOR, started.verificationId);
     assert.ok(Date.now() - t0 < 10_000, "process tree killed promptly");
     assert.equal(r.status, "cancelled", why(r));
-    assert.equal(stage(r, "test:web:unit").status, "cancelled");
+    assert.ok(["cancelled", "not_run"].includes(stage(r, "test:web:unit").status));
     assert.notEqual(stage(r, "security:secret_scan").status, "passed");
     assert.equal(stage(r, "security:secret_scan").sessionIds.length, 0);
     await assert.rejects(

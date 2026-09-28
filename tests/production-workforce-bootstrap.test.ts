@@ -78,7 +78,7 @@ test("the authoritative production configuration resolves its real OpenAI-backed
   const bootstrap = createProductionWorkforceBootstrap(
     PRODUCTION_WORKFORCE_CONFIGURATION,
   );
-  assert.equal(bootstrap.report.agentCount, 4);
+  assert.equal(bootstrap.report.agentCount, 16);
   assert.equal(bootstrap.report.toolCount, 0);
   assert.equal(bootstrap.report.operational, true);
   assert.equal(

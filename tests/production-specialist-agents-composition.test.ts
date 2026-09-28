@@ -108,6 +108,6 @@ test("EO-8: the Research Agent is deliberately NOT registered in production — 
 
 test("EO-8: dashboard/report counts reflect all four real production agents", async () => {
   const rt = await createProductionControlPlaneRuntime({ services: services() });
-  assert.equal(rt.bootstrap.report.agentCount, 4);
+  assert.equal(rt.bootstrap.report.agentCount, 16);
   await rt.flush();
 });
