@@ -47,6 +47,8 @@ export const en = {
     knowledge: "Knowledge",
     infrastructure: "Infrastructure",
     softwareFactory: "Software Factory",
+    governanceControls: "Governance",
+    costCenter: "Cost Center",
     auditLog: "Audit Log",
     settings: "Settings",
     designSystem: "Design System",

@@ -46,6 +46,8 @@ export const nl: Messages = {
     knowledge: "Kennis",
     infrastructure: "Infrastructuur",
     softwareFactory: "Softwarefabriek",
+    governanceControls: "Governance",
+    costCenter: "Kostenplaats",
     auditLog: "Auditlog",
     settings: "Instellingen",
     designSystem: "Designsysteem",

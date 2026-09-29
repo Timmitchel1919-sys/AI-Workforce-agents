@@ -2,7 +2,7 @@ export interface KnowledgeRecord {
   id: string;
   domain: string;
   content: string;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, any>;
   provenance: {
     source: string;
     timestamp: number;
