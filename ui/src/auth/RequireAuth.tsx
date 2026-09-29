@@ -31,6 +31,15 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
 
+  if (access === "unavailable") {
+    return (
+      <div className="auth-guard-loading" role="status" aria-live="polite">
+        <Spinner />
+        <span>{t("shell.connectionLost", "Connection lost, reconnecting to Control Plane...")}</span>
+      </div>
+    );
+  }
+
   if (!user || access !== "granted") {
     return <Navigate to={loginPathFor(location)} replace />;
   }
