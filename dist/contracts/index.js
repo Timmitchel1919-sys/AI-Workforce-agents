@@ -209,6 +209,7 @@ export function validateApprovalRequest(draft) {
     requireText(draft.reason, "approval.reason");
 }
 export * from "./storage.js";
+export * from "./operations.js";
 export * from "./research.js";
 export * from "./tools.js";
 export * from "./workflow.js";

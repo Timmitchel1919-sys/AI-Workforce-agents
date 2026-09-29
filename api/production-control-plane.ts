@@ -12,6 +12,8 @@ import {
   type EnvironmentInstance,
   type Handoff,
   type HostInstance,
+  type OperationalEvent,
+  type OperationalOutcome,
   type Task,
   type Workflow,
   type WorkflowControlRecord,
@@ -36,6 +38,8 @@ import {
   EnvironmentRegistry,
   HandoffSystem,
   Orchestrator,
+  OperationalAuditSink,
+  OperationalDataSystem,
   ProbeRegistry,
   TaskSystem,
   WorkflowEngine,
@@ -63,6 +67,8 @@ export interface ProductionControlPlaneRuntime {
   readonly command: WorkforceCommandService;
   /** Environment discovery orchestration (no live probes wired in EO-2A). */
   readonly environmentDetector: EnvironmentDetector;
+  /** Operational facts/outcomes backing future readiness-gated analytics. */
+  readonly operations: OperationalDataSystem;
   /** Flushes pending Firestore-backed writes on an explicit graceful shutdown. */
   flush(): Promise<void>;
 }
@@ -93,6 +99,10 @@ export async function createProductionControlPlaneRuntime(
   const approvalRepository = repositories.repository<Approval>("approvals");
   const handoffRepository = repositories.repository<Handoff>("handoffs");
   const auditRepository = repositories.repository<AuditEvent>("audit_events");
+  const operationalEventsRepository =
+    repositories.repository<OperationalEvent>("operational_events");
+  const operationalOutcomesRepository =
+    repositories.repository<OperationalOutcome>("operational_outcomes");
   const agentOpsRepository =
     repositories.repository<AgentOperationalRecord>("agent_operations");
   const workflowControlRepository =
@@ -104,7 +114,14 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<EnvironmentInstance>("environment_instances");
   await repositories.hydrateAll();
 
-  const audit = new AuditLog(undefined, auditRepository);
+  const operations = new OperationalDataSystem({
+    events: operationalEventsRepository,
+    outcomes: operationalOutcomesRepository,
+  });
+  const audit = new AuditLog(
+    new OperationalAuditSink(operations),
+    auditRepository,
+  );
   const environmentRegistry = new EnvironmentRegistry({
     hosts: hostRepository,
     instances: environmentInstanceRepository,
@@ -163,6 +180,7 @@ export async function createProductionControlPlaneRuntime(
     tools: bootstrap.tools,
     projects: bootstrap.projects,
     audit,
+    operations,
     agentOps,
     workflowControl,
     environments: environmentRegistry,
@@ -189,6 +207,7 @@ export async function createProductionControlPlaneRuntime(
     query,
     command,
     environmentDetector,
+    operations,
     flush: () => repositories.flushAll(),
   });
 }

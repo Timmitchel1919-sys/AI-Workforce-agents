@@ -359,6 +359,7 @@ export declare function validateHandoffDraft(draft: HandoffDraft): void;
 export declare function validateApprovalRequest(draft: ApprovalRequestDraft): void;
 export type { Entity, Repository, AsyncRepository, PersistenceProvider, } from "./persistence.js";
 export * from "./storage.js";
+export * from "./operations.js";
 export * from "./research.js";
 export * from "./tools.js";
 export * from "./workflow.js";

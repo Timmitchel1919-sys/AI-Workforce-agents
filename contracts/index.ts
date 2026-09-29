@@ -652,6 +652,7 @@ export type {
   PersistenceProvider,
 } from "./persistence.js";
 export * from "./storage.js";
+export * from "./operations.js";
 
 export * from "./research.js";
 export * from "./tools.js";

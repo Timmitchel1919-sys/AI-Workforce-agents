@@ -9,6 +9,7 @@ import {
   AuditLog,
   EnvironmentRegistry,
   Orchestrator,
+  OperationalDataSystem,
   PermissionSystem,
   ProjectRegistry,
   TaskSystem,
@@ -29,6 +30,8 @@ export interface ControlPlaneContext {
   tools: ToolRegistry;
   projects: ProjectRegistry;
   audit: AuditLog;
+  /** Immutable project-scoped observations and actual outcomes for analytics. */
+  operations?: OperationalDataSystem;
   agentOps: AgentOperationalStore;
   workflowControl: WorkflowControlStore;
   /**

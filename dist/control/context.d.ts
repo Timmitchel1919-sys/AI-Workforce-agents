@@ -3,7 +3,7 @@
  * services read from and act through. Everything is injected — the Control
  * Plane owns none of it and constructs none of it.
  */
-import { AgentRegistry, ApprovalSystem, AuditLog, EnvironmentRegistry, Orchestrator, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
+import { AgentRegistry, ApprovalSystem, AuditLog, EnvironmentRegistry, Orchestrator, OperationalDataSystem, PermissionSystem, ProjectRegistry, TaskSystem, ToolRegistry, WorkflowEngine, WorkflowSystem } from "../core/index.js";
 import { type HealthProbe } from "./health.js";
 import { type ControlEventPublisher } from "./ports.js";
 import { AgentOperationalStore, WorkflowControlStore } from "./stores.js";
@@ -16,6 +16,8 @@ export interface ControlPlaneContext {
     tools: ToolRegistry;
     projects: ProjectRegistry;
     audit: AuditLog;
+    /** Immutable project-scoped observations and actual outcomes for analytics. */
+    operations?: OperationalDataSystem;
     agentOps: AgentOperationalStore;
     workflowControl: WorkflowControlStore;
     /**
