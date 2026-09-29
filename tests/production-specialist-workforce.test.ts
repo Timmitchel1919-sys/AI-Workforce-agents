@@ -26,7 +26,7 @@ import type { AddressInfo } from "node:net";
 import { createProductionControlPlaneRuntime } from "../api/index.js";
 import { V1_SPECIALIST_WORKFORCE } from "../agents/specialists/v1-specialist-workforce.js";
 import type { FirebaseAuthLike, FirebaseServices } from "../adapters/index.js";
-import type { TaskRequirements } from "../contracts/index.js";
+import type { Handoff, TaskRequirements } from "../contracts/index.js";
 import { FakeFirestore } from "./fixtures/fake-firestore.js";
 
 class FakeAuth implements FirebaseAuthLike {
@@ -352,5 +352,140 @@ test("PRODUCTION: an assignment created on the host is immediately visible throu
     // The agent's stated limitations travel with the assignment, so a reader
     // can see what the agent was not supposed to be doing.
     assert.ok(rows[0]!.qualification.consideredLimitations.length > 0);
+  });
+});
+
+test("PRODUCTION: the assignment-history route is reachable, and reports failed attempts too", async () => {
+  const rt = await createProductionControlPlaneRuntime({ services: services() });
+  const first = rt.specialist.assignments.assign(req(), {
+    taskId: "hist-1",
+    assignedBy: "system:test",
+  });
+  assert.equal(first.status, "assigned");
+  if (first.status !== "assigned") return;
+  // A second attempt on the same task, so history has more than one entry.
+  rt.specialist.assignments.transition(first.assignment.assignmentId, "reassigned");
+  const second = rt.specialist.assignments.assign(req(), {
+    taskId: "hist-1",
+    assignedBy: "system:test",
+  });
+  assert.equal(second.status, "assigned");
+
+  await withServer(rt, async (call) => {
+    const res = await call("GET", "/api/workforce/assignments/hist-1/history");
+    // The route shape is /workforce/assignments/:taskId/history — four segments.
+    // An earlier matcher expected three, so this route 404d for every task and
+    // the history was simply unreachable in production.
+    assert.equal(res.status, 200);
+    const rows = res.body as { taskId: string; status: string }[];
+    assert.equal(rows.length, 2);
+    assert.ok(rows.every((row) => row.taskId === "hist-1"));
+    assert.ok(
+      rows.some((row) => row.status === "reassigned"),
+      "history must include the superseded attempt, not only the current holder",
+    );
+  });
+});
+
+test("PRODUCTION: a malformed tasks field is rejected instead of planned as 'fully staffed'", async () => {
+  const rt = await createProductionControlPlaneRuntime({ services: services() });
+  await withServer(rt, async (call) => {
+    // Each of these describes no work at all. Defaulting them to `[]` returned
+    // 200 with status "fully_staffed" — a staffing claim about a request that
+    // never named a task.
+    for (const tasks of [undefined, null, "t1", 42, { t1: true }]) {
+      const res = await call("POST", "/api/workforce/plan", {
+        projectId: "money-mind",
+        tasks,
+      });
+      assert.equal(res.status, 400, `tasks=${JSON.stringify(tasks)} must be rejected`);
+    }
+    // A genuinely empty task list is a real statement: the caller asked about
+    // zero tasks, so there is nothing to staff and nothing to fail.
+    const empty = await call("POST", "/api/workforce/plan", {
+      projectId: "money-mind",
+      tasks: [],
+    });
+    assert.equal(empty.status, 200);
+  });
+});
+
+test("PRODUCTION: a plan task entry without requirements is rejected", async () => {
+  const rt = await createProductionControlPlaneRuntime({ services: services() });
+  await withServer(rt, async (call) => {
+    for (const entry of [
+      { taskId: "t1" },
+      { taskId: "t1", requirements: "everything" },
+      { taskId: "t1", requirements: [] },
+      { requirements: req() },
+      "not-an-object",
+      ["t1"],
+    ]) {
+      const res = await call("POST", "/api/workforce/plan", {
+        projectId: "money-mind",
+        tasks: [entry],
+      });
+      assert.equal(res.status, 400, `${JSON.stringify(entry)} must be rejected`);
+    }
+  });
+});
+
+test("PRODUCTION: a handoff with no project scope is withheld, not shown to every operator", async () => {
+  const rt = await createProductionControlPlaneRuntime({ services: services() });
+  // A LEGACY-shaped handoff: no projectId, and free-text task content in the
+  // body. Its scope is unknown, so it cannot be authorised for an operator who
+  // may only see one project.
+  const generic = rt.specialist.handoffs.propose({
+    draft: {
+      taskId: "unscoped-1",
+      sourceAgentId: "research-agent",
+      destinationAgentId: "reviewer-v1",
+      completedWork: "confidential findings from another project",
+      remainingWork: "do not disclose",
+      acceptanceCriteria: [],
+    }
+  });
+  assert.ok(generic);
+
+  await withServer(rt, async (call) => {
+    const res = await call("GET", "/api/workforce/handoffs");
+    assert.equal(res.status, 200);
+    const rows = res.body as { id: string; completedWork: string }[];
+    assert.equal(
+      rows.some((row) => row.id === generic.id),
+      false,
+      "an unscoped handoff must not be listed to an operator who cannot be authorised for it",
+    );
+    assert.equal(
+      rows.some((row) => row.completedWork.includes("confidential findings")),
+      false,
+      "unscoped handoff content must not leak",
+    );
+  });
+});
+
+test("PRODUCTION: a project-scoped handoff is listed to an operator who may see that project", async () => {
+  const rt = await createProductionControlPlaneRuntime({ services: services() });
+  const handoff = rt.specialist.handoffs.propose({
+    draft: {
+      taskId: "scoped-1",
+      projectId: "money-mind",
+      sourceAgentId: "backend-dev-v1",
+      destinationAgentId: "reviewer-v1",
+      requiredCapabilities: ["software.review"],
+      completedWork: "implemented the ledger endpoint",
+      remainingWork: "review it",
+      acceptanceCriteria: ["reviewer approves"],
+    }
+  });
+  assert.ok(handoff);
+
+  await withServer(rt, async (call) => {
+    const res = await call("GET", "/api/workforce/handoffs");
+    assert.equal(res.status, 200);
+    const rows = res.body as { id: string; projectId?: string }[];
+    const found = rows.find((row) => row.id === handoff.id);
+    assert.ok(found, "a project-scoped handoff must be visible to an authorised operator");
+    assert.equal(found!.projectId, "money-mind");
   });
 });
