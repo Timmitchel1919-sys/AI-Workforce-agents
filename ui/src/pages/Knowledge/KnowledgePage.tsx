@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Book, Search, FileText, Database, Activity } from "lucide-react";
+import { Book, Activity } from "lucide-react";
 import { useI18n } from "../../i18n";
-import { Button, Input, Card, Badge, EmptyState, Tabs } from "../../components/ui";
-import { Section } from "../../components/layout/Section";
+import { Button, Input, Card, Badge, Tabs } from "../../components/ui";
 
 export function KnowledgePage() {
   const { t } = useI18n();
@@ -19,13 +18,12 @@ export function KnowledgePage() {
         </p>
       </header>
       
-      <div className="gov-toolbar" style={{ marginBottom: "2rem", display: "flex", gap: "1rem" }}>
+      <div className="gov-toolbar" style={{ marginBottom: "2rem", display: "flex", gap: "1rem", alignItems: "flex-end" }}>
         <div style={{ flex: 1, position: "relative" }}>
           <Input 
             placeholder="Search knowledge base..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            leftIcon={<Search size={18} />}
           />
         </div>
         <Button variant="primary">
@@ -34,30 +32,34 @@ export function KnowledgePage() {
       </div>
 
       <Tabs 
-        tabs={[
+        activeId={activeTab} 
+        onChange={(id) => setActiveTab(id as any)}
+        items={[
           { id: "records", label: "Knowledge Records" },
           { id: "candidates", label: "Memory Candidates" }
         ]} 
-        activeTab={activeTab} 
-        onChange={(id) => setActiveTab(id as any)} 
       />
 
       <div style={{ marginTop: "2rem" }}>
         {activeTab === "records" ? (
-          <Section title="Knowledge Records" description="Verified information available to all agents.">
+          <section>
+            <h2>Knowledge Records</h2>
+            <p className="gov-muted" style={{ marginBottom: "1rem" }}>Verified information available to all agents.</p>
             <div className="infra-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
               <KnowledgeCard title="Architecture Guidelines" type="Document" date="2 hours ago" />
               <KnowledgeCard title="API Authentication" type="Snippet" date="1 day ago" />
               <KnowledgeCard title="Deployment Procedures" type="Runbook" date="3 days ago" />
             </div>
-          </Section>
+          </section>
         ) : (
-          <Section title="Memory Candidates" description="Insights waiting to be promoted to global knowledge.">
+          <section>
+            <h2>Memory Candidates</h2>
+            <p className="gov-muted" style={{ marginBottom: "1rem" }}>Insights waiting to be promoted to global knowledge.</p>
             <div className="infra-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
               <KnowledgeCard title="Recent Bug Fix - Redis" type="Observation" date="1 hour ago" isCandidate />
               <KnowledgeCard title="User Feedback Summary" type="Analysis" date="5 hours ago" isCandidate />
             </div>
-          </Section>
+          </section>
         )}
       </div>
     </div>
@@ -79,7 +81,7 @@ function KnowledgeCard({ title, type, date, isCandidate = false }: { title: stri
       </div>
       <div className="gov-card__footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "0.75rem", marginTop: "1rem" }}>
         <span className="gov-muted" style={{ fontSize: "0.75rem" }}>{date}</span>
-        {isCandidate && <Button variant="secondary" size="sm">Promote</Button>}
+        {isCandidate && <Button variant="secondary" size="small">Promote</Button>}
       </div>
     </Card>
   );

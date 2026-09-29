@@ -3,7 +3,7 @@ import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n } from "../i18n";
 import RouteError from "./RouteError";
 import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding } from "./routeModules";
 
@@ -58,20 +58,7 @@ function withSuspense(node: ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
 }
 
-function PlaceholderPage({ titleKey }: { titleKey: MessageKey }) {
-  const { t } = useI18n();
-  return (
-    <div className="page">
-      <section className="page-header">
-        <p className="eyebrow">{t("common.brand")}</p>
-        <h1>{t(titleKey)}</h1>
-        <p className="page-description">
-          {t("shell.reservedDescription")}
-        </p>
-      </section>
-    </div>
-  );
-}
+// Removed PlaceholderPage
 
 /** Every page gets the in-app error state (the shell stays usable). */
 function withErrorElements<T extends { errorElement?: ReactNode; children?: T[] }>(routes: T[]): T[] {
