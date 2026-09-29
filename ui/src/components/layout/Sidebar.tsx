@@ -10,9 +10,12 @@ import {
   ListTodo,
   PanelLeftClose,
   PanelLeftOpen,
+  Scale,
   ScrollText,
   Server,
   Settings,
+  Wallet,
+  BrainCircuit,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -33,9 +36,12 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   approvals: ClipboardCheck,
   "audit-log": ScrollText,
   knowledge: BookOpen,
-  "spatial-graph": Network as any,
+  intelligence: BrainCircuit,
+  "spatial-graph": Network,
   infrastructure: Server,
   "software-factory": Factory,
+  governance: Scale,
+  "cost-center": Wallet,
   settings: Settings,
 };
 

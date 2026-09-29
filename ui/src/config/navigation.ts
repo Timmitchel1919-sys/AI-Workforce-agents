@@ -14,7 +14,10 @@ export type NavigationIconId =
   | "infrastructure"
   | "software-factory"
   | "settings"
-  | "spatial-graph";
+  | "spatial-graph"
+  | "governance"
+  | "cost-center"
+  | "intelligence";
 
 export type NavigationBadge = number | string;
 
@@ -46,8 +49,9 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.softwareFactory", route: "/software-factory", icon: "software-factory", section: "workspace" },
   { labelKey: "nav.spatialGraph" , route: "/graph", icon: "spatial-graph", section: "main" },
   { labelKey: "nav.knowledge", route: "/knowledge", icon: "knowledge", section: "intelligence" },
-  { labelKey: "nav.governanceControls" as MessageKey, route: "/governance", icon: "audit-log", section: "governance" },
-  { labelKey: "nav.costCenter" as MessageKey, route: "/cost", icon: "settings", section: "governance" },
+  { labelKey: "nav.intelligence", route: "/intelligence", icon: "intelligence", section: "intelligence" },
+  { labelKey: "nav.governanceControls", route: "/governance", icon: "governance", section: "governance" },
+  { labelKey: "nav.costCenter", route: "/cost", icon: "cost-center", section: "governance" },
   { labelKey: "nav.auditLog", route: "/audit-log", icon: "audit-log", section: "governance" },
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },
 ];

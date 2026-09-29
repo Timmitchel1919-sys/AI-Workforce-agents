@@ -44,6 +44,7 @@ export const nl: Messages = {
     approvals: "Goedkeuringen",
     spatialGraph: "Ruimtelijke Netwerkgrafiek",
     knowledge: "Kennis",
+    intelligence: "Voorspellende Intelligentie",
     infrastructure: "Infrastructuur",
     softwareFactory: "Softwarefabriek",
     governanceControls: "Governance",
@@ -1596,8 +1597,40 @@ export const nl: Messages = {
     envNotConfigured: "Niet geconfigureerd",
     envUnsupported: "Niet ondersteund",
   },
+  projectScope: {
+    label: "Project",
+    forbidden: "Je hebt geen toestemming om projecten te bekijken.",
+    unauthenticated: "Meld je aan om projecten te bekijken.",
+    loadFailed: "Projecten konden niet worden geladen.",
+    noProjects: "Nog geen projecten",
+    noProjectsDesc: "Een project verschijnt hier zodra het bij het Control Plane is geregistreerd.",
+  },
+  governance: {
+    pageDescription:
+      "Het beleid dat het Control Plane voor een project handhaaft, de goedkeuringen die aan governance-acties zijn gebonden, en de governancedecisies in het auditlog.",
+    policyPanelDescription:
+      "De toegestane providers en modellen en de goedkeuringsdrempel die worden toegepast voordat een modelaanroep wordt geautoriseerd.",
+    approvalsTitle: "Wacht op een beslissing",
+    approvalsDescription:
+      "Goedkeuringen die aan dit project zijn gebonden. Een beslissing wordt vastgelegd in het auditlog.",
+    approvalsEmpty: "Er wacht niets op een beslissing.",
+    approvalsLink: "Goedkeuringswachtrij openen",
+    auditTitle: "Recente beslissingen",
+    auditDescription:
+      "De meest recente gebeurtenissen die het Control Plane voor dit project heeft vastgelegd. Details worden server-side geredigeerd.",
+    auditEmpty: "Er zijn nog geen gebeurtenissen voor dit project vastgelegd.",
+    auditLink: "Auditlog openen",
+    loading: "Governancegegevens laden",
+    errorTitle: "Governancegegevens niet beschikbaar",
+    errorDescription: "Het Control Plane kon de governancestatus niet leveren.",
+    forbiddenDescription: "Je hebt geen toestemming om governancegegevens van dit project te bekijken.",
+    notFoundDescription: "Dit project bestaat niet, of je hebt er geen toegang toe.",
+    policyUpdated: "Bijgewerkt {date} door {actor}",
+  },
   costCenter: {
     tab: "Kostencentrum",
+    pageDescription:
+      "Gezaghebbende besteding, budgetstatus en Auditor-bevindingen voor een project, rechtstreeks uit het Control Plane.",
     description: "AI-kostencentrum en op regels gebaseerde Auditor — uitsluitend gezaghebbende Control Plane-gegevens. Niets hier is geschat of afgedwongen buiten wat de backend rapporteert.",
     refresh: "Vernieuwen",
     budgetTitle: "Budgetstatus",
@@ -2137,6 +2170,9 @@ export const nl: Messages = {
     "repository": "Repository",
     "defaultBranch": "standaardbranch",
     "opensInNewTab": "(opent in een nieuw tabblad)"
+  },
+  intelligence: {
+    pageDescription: "Voorspellende beslissings- en optimalisatie-engine. Bewaakt afwijkingen, anomalieën en voert voorspellingen uit."
   },
   onboarding: onboardingNl,
 };

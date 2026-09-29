@@ -45,6 +45,7 @@ export const en = {
     approvals: "Approvals",
     spatialGraph: "Spatial Graph",
     knowledge: "Knowledge",
+    intelligence: "Predictive Intelligence",
     infrastructure: "Infrastructure",
     softwareFactory: "Software Factory",
     governanceControls: "Governance",
@@ -1597,8 +1598,40 @@ export const en = {
     envNotConfigured: "Not configured",
     envUnsupported: "Unsupported",
   },
+  projectScope: {
+    label: "Project",
+    forbidden: "You do not have permission to list projects.",
+    unauthenticated: "Sign in to list projects.",
+    loadFailed: "Projects could not be loaded.",
+    noProjects: "No projects yet",
+    noProjectsDesc: "A project appears here once it is registered with the Control Plane.",
+  },
+  governance: {
+    pageDescription:
+      "The policy the Control Plane enforces for one project, the approvals bound to governance actions, and the governance decisions recorded in the audit trail.",
+    policyPanelDescription:
+      "The allow-list and approval threshold evaluated before a model call is authorized.",
+    approvalsTitle: "Awaiting a decision",
+    approvalsDescription:
+      "Approvals bound to this project. Deciding one is recorded in the audit trail.",
+    approvalsEmpty: "Nothing is waiting for a decision.",
+    approvalsLink: "Open the approval queue",
+    auditTitle: "Recent decisions",
+    auditDescription:
+      "The latest events the Control Plane recorded for this project. Details are redacted server-side.",
+    auditEmpty: "No events have been recorded for this project yet.",
+    auditLink: "Open the audit log",
+    loading: "Loading governance data",
+    errorTitle: "Governance data unavailable",
+    errorDescription: "The Control Plane could not return governance state.",
+    forbiddenDescription: "You do not have permission to view governance data for this project.",
+    notFoundDescription: "This project does not exist, or you do not have access to it.",
+    policyUpdated: "Updated {date} by {actor}",
+  },
   costCenter: {
     tab: "Cost Center",
+    pageDescription:
+      "Authoritative spend, budget status and Auditor findings for one project, read straight from the Control Plane.",
     description: "AI Cost Center and rule-based Auditor — authoritative Control Plane data only. Nothing here is estimated or enforced beyond what the backend reports.",
     refresh: "Refresh",
     budgetTitle: "Budget status",
@@ -2138,6 +2171,9 @@ export const en = {
     "repository": "Repository",
     "defaultBranch": "default branch",
     "opensInNewTab": "(opens in a new tab)"
+  },
+  intelligence: {
+    pageDescription: "Predictive decision and optimization engine. Monitors drift, anomalies, and performs forecasting."
   },
   onboarding: onboardingEn,
 };

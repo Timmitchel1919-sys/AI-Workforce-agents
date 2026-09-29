@@ -41,6 +41,7 @@ const ProjectDetailPage = fromChunk(loadControlCenterRoutes, "ProjectDetailPage"
 const SpatialGraphPage = fromChunk(loadControlCenterRoutes, "SpatialGraphPage");
 const GovernancePage = fromChunk(loadControlCenterRoutes, "GovernancePage");
 const CostCenterPage = fromChunk(loadControlCenterRoutes, "CostCenterPage");
+const IntelligencePage = fromChunk(loadControlCenterRoutes, "IntelligencePage");
 const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 
@@ -128,6 +129,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "audit-log", element: withSuspense(<AuditLogPage />) },
       { path: "governance", element: withSuspense(<GovernancePage />) },
       { path: "cost", element: withSuspense(<CostCenterPage />) },
+      { path: "intelligence", element: withSuspense(<IntelligencePage />) },
       { path: "infrastructure", element: withSuspense(<InfrastructurePage />) },
       { path: "infrastructure/hosts", element: withSuspense(<InfrastructurePage />) },
       { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },

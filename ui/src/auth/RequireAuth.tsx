@@ -35,7 +35,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return (
       <div className="auth-guard-loading" role="status" aria-live="polite">
         <Spinner />
-        <span>{t("shell.connectionLost", "Connection lost, reconnecting to Control Plane...")}</span>
+        <span>Connection lost, reconnecting to Control Plane...</span>
       </div>
     );
   }

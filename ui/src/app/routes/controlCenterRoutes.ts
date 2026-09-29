@@ -19,7 +19,8 @@ export { default as UsersAccessPage } from "../../pages/Settings/UsersAccessPage
 export { default as ApprovalsPage } from "../../pages/Approvals/ApprovalsPage";
 export { default as AuditLogPage } from "../../pages/AuditLog/AuditLogPage";
 export { default as SpatialGraphPage } from "../../pages/SpatialGraph/SpatialGraphPage";
-export { default as KnowledgePage } from '../../pages/Knowledge/KnowledgePage';
-export { default as ExecutionFabricPage } from '../../pages/ExecutionFabric/ExecutionFabricPage';
+export { KnowledgePage } from '../../pages/Knowledge/KnowledgePage';
+export { ExecutionFabricPage } from '../../pages/ExecutionFabric/ExecutionFabricPage';
 export { default as GovernancePage } from "../../pages/Governance/GovernancePage";
 export { default as CostCenterPage } from "../../pages/CostCenter/CostCenterPage";
+export { default as IntelligencePage } from "../../pages/Intelligence/IntelligencePage";

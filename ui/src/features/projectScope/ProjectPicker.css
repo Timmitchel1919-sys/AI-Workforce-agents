@@ -1,0 +1,34 @@
+.project-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.project-picker__label {
+  color: var(--color-text-secondary);
+}
+
+.project-picker__static {
+  font-weight: 600;
+  color: var(--color-text-heading);
+}
+
+.project-picker__select {
+  font: inherit;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.3rem 0.6rem;
+  color: var(--color-text);
+  background: var(--color-surface-solid);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+}
+
+.project-picker__select:focus-visible {
+  outline: 3px solid var(--color-border-selected);
+  outline-offset: 2px;
+}
