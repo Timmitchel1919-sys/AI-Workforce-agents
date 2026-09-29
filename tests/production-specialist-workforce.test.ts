@@ -435,17 +435,25 @@ test("PRODUCTION: a handoff with no project scope is withheld, not shown to ever
   // A LEGACY-shaped handoff: no projectId, and free-text task content in the
   // body. Its scope is unknown, so it cannot be authorised for an operator who
   // may only see one project.
-  const generic = rt.specialist.handoffs.propose({
-    draft: {
-      taskId: "unscoped-1",
-      sourceAgentId: "research-agent",
-      destinationAgentId: "reviewer-v1",
-      completedWork: "confidential findings from another project",
-      remainingWork: "do not disclose",
-      acceptanceCriteria: [],
-    }
-  });
-  assert.ok(generic);
+  //
+  // The specialist `propose` REQUIRES a projectId, so the only way an unscoped
+  // record can exist is the generic pre-specialist path. That is exactly why the
+  // read has to fail closed on it rather than treating "no scope" as "public".
+  const generic: Handoff = {
+    id: "handoff_unscoped_1",
+    taskId: "unscoped-1",
+    sourceAgentId: "research-agent",
+    destinationAgentId: "reviewer-v1",
+    status: "proposed",
+    context: {},
+    completedWork: "confidential findings from another project",
+    remainingWork: "do not disclose",
+    acceptanceCriteria: [],
+    artifacts: [],
+    risks: [],
+    createdAt: "2026-09-27T00:00:00.000Z",
+  };
+  rt.repositories.repository<Handoff>("handoffs").upsert(generic);
 
   await withServer(rt, async (call) => {
     const res = await call("GET", "/api/workforce/handoffs");

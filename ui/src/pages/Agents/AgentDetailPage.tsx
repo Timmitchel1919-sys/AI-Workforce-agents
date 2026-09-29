@@ -3,30 +3,15 @@ import { formatDateTime, translateStatus, useI18n } from "../../i18n";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
 import PageSection from "../../components/layout/PageSection";
-import { Badge, StatusBadge } from "../../components/ui";
+import { Badge } from "../../components/ui";
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { useAgents } from "../../features/agents";
 import { AgentsLoadingState } from "./components/AgentsLoadingState";
-
-function mapAgentStatusForBadge(status: string) {
-  switch (status) {
-    case "active":
-      return "active";
-    case "idle":
-      return "idle";
-    case "paused":
-      return "paused";
-    case "offline":
-      return "offline";
-    case "error":
-      return "blocked";
-    case "provisioning":
-      return "pending";
-    default:
-      return "offline";
-  }
-}
+import { AgentsErrorState } from "./components/AgentsErrorState";
+import { AxisBadges, LabelledValue, PolicyBadgeList } from "./components/agentPresentation";
+import { mapOperationalStateToBadge } from "./components/agentStatus";
+import { StatusBadge } from "../../components/ui";
 
 export default function AgentDetailPage() {
   const { t, language } = useI18n();
@@ -47,7 +32,22 @@ export default function AgentDetailPage() {
     );
   }
 
-  if (status === "error" || status === "unauthorized" || status === "degraded") {
+  // "Not composed" and "not configured" are not "agent not found": they mean
+  // this view cannot be answered at all, so they are not reported as a missing
+  // agent, which would imply a lookup had actually happened.
+  if (status !== "ready" && status !== "empty") {
+    if (status === "notComposed" || status === "notConfigured") {
+      return (
+        <PageContainer>
+          <PageHeader
+            eyebrow={t("common.brand")}
+            title={t("agents.detailTitle")}
+            description={t("agents.detailDescription")}
+          />
+          <AgentsErrorState state={status} onRetry={refetch} />
+        </PageContainer>
+      );
+    }
     return (
       <PageContainer>
         <PageHeader
@@ -60,7 +60,9 @@ export default function AgentDetailPage() {
           description={
             status === "unauthorized"
               ? t("agents.accessRestrictedDescription")
-              : t("agents.detailErrorDescription")
+              : status === "degraded"
+                ? t("agents.degradedDescription")
+                : t("agents.detailErrorDescription")
           }
           onRetry={refetch}
         />
@@ -88,15 +90,14 @@ export default function AgentDetailPage() {
     );
   }
 
-  const capabilities = agent.capabilities.length > 0 ? agent.capabilities : [t("agents.noCapabilities")];
-  const healthLabel = agent.health ?? t("common.unavailable");
-  const executions = agent.recentExecutions ?? [];
+  const specialist = agent.specialist;
+  const operationalState = specialist ? specialist.operationalState : agent.status;
 
   return (
     <PageContainer>
       <PageHeader
         eyebrow={t("common.brand")}
-        title={agent.name}
+        title={specialist?.displayName ?? agent.name}
         description={agent.description ?? t("agents.noDescription")}
         breadcrumbs={[{ label: t("agents.title"), href: "/agents" }, { label: agent.name, current: true }]}
       />
@@ -105,101 +106,203 @@ export default function AgentDetailPage() {
         <PageSection title={t("agents.identity")} description={t("agents.identityDescription")}>
           <div className="agent-detail-identity">
             <div className="agent-detail-identify">
-              <StatusBadge status={mapAgentStatusForBadge(agent.status)}>{translateStatus(t, agent.status)}</StatusBadge>
+              {/* Both axes, always. A single badge here would let a suspended
+                  agent or an instance-less agent read as available. */}
+              {specialist ? (
+                <AxisBadges agent={agent} t={t} />
+              ) : (
+                <StatusBadge status={mapOperationalStateToBadge(operationalState)}>
+                  {translateStatus(t, operationalState)}
+                </StatusBadge>
+              )}
               <p className="agent-detail-id">{t("agents.agentId", { id: agent.id })}</p>
             </div>
             <div className="agent-detail-metadata">
-              <div>
-                <span className="agent-detail-label">{t("agents.model")}</span>
-                <strong>{agent.model ?? t("common.unavailable")}</strong>
-              </div>
-              <div>
-                <span className="agent-detail-label">{t("common.project")}</span>
-                <strong>{agent.projectId ?? t("common.unassigned")}</strong>
-              </div>
-              <div>
-                <span className="agent-detail-label">{t("common.updated")}</span>
-                <strong>{formatTimestamp(agent.updatedAt)}</strong>
-              </div>
+              <LabelledValue label={t("agents.department")}>
+                {specialist?.department ?? t("common.unavailable")}
+              </LabelledValue>
+              <LabelledValue label={t("agents.instances")}>
+                {specialist
+                  ? specialist.instanceCount > 0
+                    ? t("agents.instanceCountLabel", { count: specialist.instanceCount })
+                    : t("agents.noInstances")
+                  : t("common.unavailable")}
+              </LabelledValue>
+              <LabelledValue label={t("common.updated")}>{formatTimestamp(agent.lastActivityAt)}</LabelledValue>
             </div>
+          </div>
+
+          <div className="agent-axis-explanations">
+            <p>
+              <strong>{t("agents.administrativeStatus")}:</strong>{" "}
+              {specialist ? t("agents.administrativeStatusDescription") : t("agents.legacyAgentDescription")}
+            </p>
+            <p>
+              <strong>{t("agents.operationalStatus")}:</strong> {t("agents.operationalStatusDescription")}
+            </p>
           </div>
         </PageSection>
 
-        <div className="agent-detail-grid">
-          <PageSection title={t("agents.capabilities")} description={t("agents.capabilitiesDescription")}>
+        <PageSection title={t("agents.capabilities")} description={t("agents.capabilitiesDescription")}>
+          <div className="agent-detail-tags">
+            <PolicyBadgeList
+              values={agent.capabilities}
+              variant="info"
+              emptyLabel={t("agents.noCapabilities")}
+            />
+          </div>
+          {specialist && specialist.supportedTaskTypes.length > 0 ? (
             <div className="agent-detail-tags">
-              {capabilities.map((capability) => (
-                <Badge key={capability} variant="info">
-                  {capability}
-                </Badge>
-              ))}
+              <span className="agent-detail-label">{t("agents.supportedTaskTypes")}</span>
+              <PolicyBadgeList
+                values={specialist.supportedTaskTypes}
+                variant="neutral"
+                emptyLabel={t("agents.noCapabilities")}
+              />
             </div>
+          ) : null}
+        </PageSection>
+
+        <div className="agent-detail-grid">
+          <PageSection title={t("agents.currentAssignment")} description={t("agents.qualifiedNoticeDescription")}>
+            {specialist?.currentAssignmentId ? (
+              <dl className="agent-detail-config">
+                <div>
+                  <dt>{t("agents.currentAssignment")}</dt>
+                  <dd>{specialist.currentAssignmentId}</dd>
+                </div>
+                <div>
+                  <dt>{t("agents.currentTask")}</dt>
+                  <dd>{specialist.currentTaskId ?? t("common.unavailable")}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="agent-detail-muted">{t("agents.noAssignment")}</p>
+            )}
+            <p className="agent-detail-caveat">{t("agents.qualifiedNoticeDescription")}</p>
           </PageSection>
 
           <PageSection title={t("agents.workload")} description={t("agents.workloadDescription")}>
             <div className="agent-detail-stat-block">
-              <strong>{agent.activeTasks ?? 0}</strong>
-              <span>{t("agents.activeTasks")}</span>
+              <strong>{agent.taskCount}</strong>
+              <span>{t("agents.colTasks")}</span>
             </div>
-          </PageSection>
-
-          <PageSection title={t("agents.health")} description={t("agents.healthDescription")}>
             <div className="agent-detail-stat-block">
-              <strong>{healthLabel}</strong>
-              <span>{t("agents.heartbeatUnavailable")}</span>
+              <strong>{agent.completed}</strong>
+              <span>{t("status.completed")}</span>
             </div>
-          </PageSection>
-
-          <PageSection title={t("agents.configuration")} description={t("agents.configurationDescription")}>
-            <dl className="agent-detail-config">
-              <div>
-                <dt>{t("common.status")}</dt>
-                <dd>{translateStatus(t, agent.status)}</dd>
-              </div>
-              <div>
-                <dt>{t("agents.model")}</dt>
-                <dd>{agent.model ?? t("common.unavailable")}</dd>
-              </div>
-              <div>
-                <dt>{t("common.project")}</dt>
-                <dd>{agent.projectId ?? t("common.unassigned")}</dd>
-              </div>
-              <div>
-                <dt>{t("common.updated")}</dt>
-                <dd>{formatTimestamp(agent.updatedAt)}</dd>
-              </div>
-            </dl>
+            <div className="agent-detail-stat-block">
+              <strong>{agent.failed}</strong>
+              <span>{t("status.failed")}</span>
+            </div>
           </PageSection>
         </div>
 
-        <PageSection title={t("agents.executions")} description={t("agents.executionsDescription")}>
-          {executions.length === 0 ? (
-            <EmptyState
-              title={t("agents.noExecutionsTitle")}
-              description={t("agents.noExecutionsDescription")}
-            />
-          ) : (
-            <ul className="agent-detail-executions">
-              {executions.map((execution) => (
-                <li key={execution.id} className="agent-detail-execution-item">
-                  <div>
-                    <strong>{execution.name}</strong>
-                    <span>{execution.task ?? t("agents.noTaskLabel")}</span>
-                  </div>
-                  <div>
-                    <Badge variant={execution.status === "completed" ? "success" : execution.status === "failed" ? "danger" : "neutral"}>
-                      {translateStatus(t, execution.status)}
-                    </Badge>
-                  </div>
-                  <div>
-                    <span>{execution.startedAt ? formatTimestamp(execution.startedAt) : t("agents.startUnavailable")}</span>
-                    <small>{execution.duration ?? t("agents.durationUnavailable")}</small>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </PageSection>
+        {specialist ? (
+          <>
+            <PageSection title={t("agents.limitations")} description={t("agents.limitationsDescription")}>
+              {specialist.limitations.length > 0 ? (
+                <ul className="agent-detail-limitations">
+                  {specialist.limitations.map((limitation) => (
+                    <li key={limitation}>{limitation}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="agent-detail-caveat">{t("agents.noLimitationsReported")}</p>
+              )}
+            </PageSection>
+
+            <PageSection title={t("agents.policies")} description={t("agents.policiesDescription")}>
+              <dl className="agent-detail-config">
+                <div>
+                  <dt>{t("agents.descriptorVersion")}</dt>
+                  <dd>{specialist.descriptorVersion}</dd>
+                </div>
+                <div>
+                  <dt>{t("agents.riskCeiling")}</dt>
+                  <dd>
+                    {specialist.riskCeiling === "unknown"
+                      ? t("agents.riskCeilingUnknown")
+                      : specialist.riskCeiling}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t("agents.modelPolicy")}</dt>
+                  <dd>
+                    {specialist.modelPolicy.model
+                      ? `${specialist.modelPolicy.provider} · ${specialist.modelPolicy.model}`
+                      : specialist.modelPolicy.provider === "unscoped"
+                        ? t("agents.modelUnscoped")
+                        : t("agents.providerOnly")}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t("agents.reviewPolicy")}</dt>
+                  <dd>
+                    {specialist.reviewPolicy.requiresIndependentReview
+                      ? t("agents.independentReviewRequired")
+                      : t("agents.selfReviewAllowed")}
+                    {" · "}
+                    {specialist.reviewPolicy.selfReviewAllowed
+                      ? t("agents.selfReviewAllowed")
+                      : t("agents.neverSelfReview")}
+                    {" · "}
+                    {t("agents.minimumReviewers", { count: specialist.reviewPolicy.minimumReviewers })}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t("agents.toolPolicy")}</dt>
+                  <dd>
+                    <div className="agent-detail-policy">
+                      <span className="agent-detail-label">{t("agents.allowedCapabilities")}</span>
+                      <PolicyBadgeList
+                        values={specialist.toolPolicy.maxExecutionCapabilities}
+                        variant="success"
+                        emptyLabel={t("agents.noDeniedCapabilities")}
+                      />
+                    </div>
+                    <div className="agent-detail-policy">
+                      <span className="agent-detail-label">{t("agents.deniedCapabilities")}</span>
+                      <PolicyBadgeList
+                        values={specialist.toolPolicy.deniedExecutionCapabilities}
+                        variant="danger"
+                        emptyLabel={t("agents.noDeniedCapabilities")}
+                      />
+                    </div>
+                    <div className="agent-detail-policy">
+                      <span className="agent-detail-label">
+                        {t("agents.unrestrictedShell")}:{" "}
+                        {specialist.toolPolicy.allowsUnrestrictedShell
+                          ? t("status.online")
+                          : t("agents.unrestrictedShellDenied")}
+                      </span>
+                    </div>
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t("agents.projectPolicy")}</dt>
+                  <dd>
+                    <div className="agent-detail-policy">
+                      <span className="agent-detail-label">{t("agents.projectAllowList")}</span>
+                      <PolicyBadgeList
+                        values={specialist.projectPolicy.projects}
+                        variant="info"
+                        emptyLabel={t("agents.noProjectScope")}
+                      />
+                    </div>
+                  </dd>
+                </div>
+              </dl>
+            </PageSection>
+          </>
+        ) : (
+          <PageSection title={t("agents.legacyAgentTitle")} description={t("agents.legacyAgentDescription")}>
+            <div className="agent-detail-tags">
+              <Badge variant="warning">{t("agents.legacyAgentTitle")}</Badge>
+            </div>
+            <p className="agent-detail-caveat">{t("agents.legacyAgentDescription")}</p>
+          </PageSection>
+        )}
 
         <PageSection title={t("agents.actions")} description={t("agents.actionsDescription")}>
           <p className="agent-detail-actions">{t("agents.actionsNote")}</p>

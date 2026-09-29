@@ -7,3 +7,4 @@ test("SecureExecutionFabric runs full lifecycle without throwing", async () => {
     await fabric.runFullLifecycle();
     assert.ok(true);
 });
+

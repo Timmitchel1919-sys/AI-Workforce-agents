@@ -19,3 +19,5 @@ export { default as UsersAccessPage } from "../../pages/Settings/UsersAccessPage
 export { default as ApprovalsPage } from "../../pages/Approvals/ApprovalsPage";
 export { default as AuditLogPage } from "../../pages/AuditLog/AuditLogPage";
 export { default as SpatialGraphPage } from "../../pages/SpatialGraph/SpatialGraphPage";
+export { KnowledgePage } from '../../pages/Knowledge/KnowledgePage';
+export { ExecutionFabricPage } from '../../pages/ExecutionFabric/ExecutionFabricPage';

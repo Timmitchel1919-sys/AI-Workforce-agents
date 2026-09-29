@@ -1,73 +1,83 @@
+/**
+ * SAMPLE agent data for local UI work only.
+ *
+ * This is NOT a fallback. Nothing in the app returns it automatically: the
+ * client raises a distinct, visible state instead whenever the Control Plane
+ * cannot answer, because "we do not know" and "here are twelve agents" are
+ * different facts and only one of them is true.
+ *
+ * `getSampleAgentsSnapshot()` marks its result `authoritative: false` so a
+ * consumer cannot present it as a real roster by accident. These entries are
+ * also shaped to match the real `AgentView` — including a legacy flat agent
+ * with NO `specialist` block — so the two-render paths are exercised locally.
+ */
 import type { AgentListItem, AgentsSnapshot } from "./agentsTypes";
 
 const developmentAgents: AgentListItem[] = [
   {
     id: "research-agent",
     name: "Research Agent",
-    description: "Investigates market signals, monitors research topics, and synthesizes findings for planning workflows.",
+    description:
+      "Investigates market signals, monitors research topics, and synthesizes findings for planning workflows.",
     status: "active",
-    model: "GPT-4.1",
-    capabilities: ["Research", "Web Search", "Document Processing"],
-    activeTasks: 6,
-    health: "healthy",
-    projectId: "research-ops",
-    updatedAt: "2026-09-10T14:42:00Z",
-    recentExecutions: [
-      {
-        id: "exec-101",
-        name: "Market briefing",
-        status: "completed",
-        startedAt: "2026-09-10T14:10:00Z",
-        duration: "14 min",
-        task: "Competitive scan",
-        result: "Succeeded",
-      },
-      {
-        id: "exec-102",
-        name: "Trend review",
-        status: "running",
-        startedAt: "2026-09-10T14:30:00Z",
-        duration: "3 min",
-        task: "Topic summarization",
-        result: "In progress",
-      },
-    ],
+    capabilities: ["research"],
+    enabled: true,
+    allowedProjects: ["research-ops"],
+    lastActivityAt: "2026-09-10T14:30:00Z",
+    taskCount: 6,
+    completed: 4,
+    failed: 1,
+    // No `specialist` block: a legacy flat agent with no qualification profile,
+    // policies or limitations. Rendered as such, not as "an agent with none".
   },
   {
-    id: "finance-agent",
-    name: "Finance Agent",
-    description: "Tracks spend, reviews budget variance, and highlights operational anomalies for finance reporting.",
-    status: "idle",
-    model: "Claude 3.7",
-    capabilities: ["Data Analysis", "Forecasting", "Reporting"],
-    activeTasks: 2,
-    health: "healthy",
-    projectId: "finance",
-    updatedAt: "2026-09-10T13:18:00Z",
-  },
-  {
-    id: "ops-coordinator",
-    name: "Ops Coordinator",
-    description: "Coordinates execution routing, escalations, and operational status updates across the workforce.",
-    status: "active",
-    model: "GPT-4o",
-    capabilities: ["Workflow Orchestration", "Escalation", "Monitoring"],
-    activeTasks: 4,
-    health: "degraded",
-    projectId: "operations",
-    updatedAt: "2026-09-10T12:58:00Z",
-  },
-  {
-    id: "data-pipeline-agent",
-    name: "Data Pipeline Agent",
-    description: "Maintains extraction, transformation, and delivery flows for workspace data and downstream reporting.",
+    id: "backend-dev-v1",
+    name: "Backend Engineer",
+    description:
+      "API implementation, domain services, persistence, authorization, integrations, background processing and backend testing.",
     status: "offline",
-    model: "Llama 3.1",
-    capabilities: ["ETL", "Data Quality", "Pipelines"],
-    activeTasks: 0,
-    health: "unavailable",
-    projectId: "data-platform",
-    updatedAt: "2026-09-10T11:05:00Z",
+    capabilities: ["software.backend"],
+    enabled: true,
+    allowedProjects: ["money-mind"],
+    lastActivityAt: "2026-09-10T11:05:00Z",
+    taskCount: 0,
+    completed: 0,
+    failed: 0,
+    specialist: {
+      descriptorVersion: 1,
+      displayName: "Backend Engineer",
+      department: "Engineering",
+      description:
+        "API implementation, domain services, persistence, authorization, integrations, background processing and backend testing.",
+      limitations: [
+        "Backend code capability does not grant production deployment authority.",
+        "No source-control push authority; a change set is reviewed before it lands.",
+        "Cannot approve its own authorization changes.",
+      ],
+      administrativeStatus: "active",
+      // Offline: no instance exists. An agent with no instance is not "idle".
+      operationalState: "offline",
+      supportedTaskTypes: ["backend_implementation", "implementation"],
+      projectPolicy: { mode: "allow_list", projects: ["money-mind"] },
+      toolPolicy: {
+        maxExecutionCapabilities: [
+          "filesystem.read",
+          "filesystem.write.workspace",
+          "repository.read",
+          "repository.write",
+        ],
+        deniedExecutionCapabilities: ["process.invoke.bounded"],
+        allowsUnrestrictedShell: false,
+      },
+      riskCeiling: "high",
+      reviewPolicy: {
+        requiresIndependentReview: true,
+        minimumReviewers: 1,
+        selfReviewAllowed: false,
+      },
+      modelPolicy: { provider: "openai" },
+      instanceCount: 0,
+    },
   },
 ];
 
@@ -77,11 +87,14 @@ export function getDevelopmentAgentsFallback(): AgentsSnapshot {
     active: developmentAgents.filter((agent) => agent.status === "active").length,
     idle: developmentAgents.filter((agent) => agent.status === "idle").length,
     offline: developmentAgents.filter((agent) => agent.status === "offline").length,
-    healthy: developmentAgents.filter((agent) => agent.health === "healthy").length,
+    specialists: developmentAgents.filter((agent) => agent.specialist).length,
+    acceptingWork: developmentAgents.filter((agent) => agent.enabled).length,
   };
 
   return {
     agents: developmentAgents,
     summary,
+    authoritative: false,
+    source: "development-sample",
   };
 }

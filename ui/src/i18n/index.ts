@@ -13,3 +13,4 @@ export type { Language } from "./languages";
 export { translate } from "./messages";
 export type { MessageKey, MessageParams, Messages } from "./messages";
 export { formatDateTime, translateStatus, translatePriority } from "./format";
+export type { Translate } from "./format";

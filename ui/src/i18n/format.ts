@@ -2,7 +2,7 @@ import { en } from "./locales/en";
 import type { Language } from "./languages";
 import type { MessageKey, MessageParams } from "./messages";
 
-type Translate = (key: MessageKey, params?: MessageParams) => string;
+export type Translate = (key: MessageKey, params?: MessageParams) => string;
 
 const LOCALE_TAGS: Record<Language, string> = { en: "en-GB", nl: "nl-NL" };
 

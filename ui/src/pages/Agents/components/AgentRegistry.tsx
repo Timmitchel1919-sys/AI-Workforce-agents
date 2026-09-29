@@ -11,11 +11,11 @@ export function AgentRegistry({ agents }: { agents: AgentListItem[] }) {
         <thead>
           <tr>
             <th scope="col">{t("agents.colAgent")}</th>
-            <th scope="col">{t("common.status")}</th>
+            <th scope="col">{t("agents.administrativeStatus")}</th>
             <th scope="col">{t("agents.colModel")}</th>
             <th scope="col">{t("agents.colCapabilities")}</th>
+            <th scope="col">{t("agents.colAssignment")}</th>
             <th scope="col">{t("agents.colTasks")}</th>
-            <th scope="col">{t("agents.colHealth")}</th>
             <th scope="col">{t("common.updated")}</th>
           </tr>
         </thead>

@@ -309,13 +309,35 @@ export function createControlPlaneApi(
             correlationId,
           );
         }
-        const rawTasks = Array.isArray(body.tasks) ? body.tasks : [];
+        // A malformed `tasks` field must be REJECTED, not treated as "no tasks".
+        // Defaulting it to `[]` answered "fully staffed" for a request that never
+        // described any work, which is a staffing claim the caller did not ask
+        // for and the server cannot support.
+        if (!Array.isArray(body.tasks)) {
+          return send(
+            res,
+            400,
+            { error: { message: "tasks must be an array" } },
+            correlationId,
+          );
+        }
+        const rawTasks = body.tasks;
         let tasks: { taskId: string; requirements: TaskRequirements }[];
         try {
           tasks = rawTasks.map((entry, index) => {
+            if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+              throw new ValidationError(`tasks[${index}] must be an object`);
+            }
             const record = entry as Record<string, unknown>;
             if (typeof record.taskId !== "string" || !record.taskId) {
               throw new ValidationError(`tasks[${index}].taskId is required`);
+            }
+            if (
+              typeof record.requirements !== "object" ||
+              record.requirements === null ||
+              Array.isArray(record.requirements)
+            ) {
+              throw new ValidationError(`tasks[${index}].requirements is required`);
             }
             return {
               taskId: record.taskId,
@@ -474,8 +496,15 @@ export function createControlPlaneApi(
         }
         // `/api/workforce/assignments/:taskId/history` — every attempt,
         // including the ones that failed.
-        if (segs.length === 3 && segs[1] === "assignments" && segs[2]!.endsWith("/history")) {
-          const taskId = segs[2]!.slice(0, -"/history".length);
+        //
+        // The path splits into FOUR segments ("workforce", "assignments",
+        // ":taskId", "history"); the task id is one segment on its own, so a
+        // `segs[2].endsWith("/history")` test could never match and this route
+        // silently 404d for every task. The id is therefore taken as its own
+        // segment, which also rejects ids containing a slash instead of
+        // guessing where the boundary was.
+        if (segs.length === 4 && segs[1] === "assignments" && segs[3] === "history") {
+          const taskId = segs[2]!;
           const history = query.getAssignmentHistory(principal, taskId);
           if (!history) {
             return send(

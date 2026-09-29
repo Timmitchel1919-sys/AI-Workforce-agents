@@ -124,3 +124,13 @@
     animation: none;
   }
 }
+
+/* A caveat that qualifies the state itself (e.g. "this is sample data").
+   Rendered smaller and muted so it can never be mistaken for the primary
+   message, while still being read before any action is taken. */
+.state__secondary-message {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}

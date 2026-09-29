@@ -1,5 +1,4 @@
 // Secure Execution Fabric, Sandboxes & Cloud Runners layer
-
 export class SecureExecutionFabric {
     async preflight() { console.log("PREFLIGHT"); }
     async verifyPriorLayers() { console.log("VERIFY PRIOR LAYERS"); }
@@ -24,7 +23,6 @@ export class SecureExecutionFabric {
     async recovery() { console.log("RECOVERY"); }
     async environmentAdapters() { console.log("ENVIRONMENT ADAPTERS"); }
     async integration() { console.log("INTEGRATION"); }
-    
     async runFullLifecycle() {
         await this.preflight();
         await this.verifyPriorLayers();
@@ -51,4 +49,3 @@ export class SecureExecutionFabric {
         await this.integration();
     }
 }
-

@@ -39,6 +39,8 @@ const AuditLogPage = fromChunk(loadControlCenterRoutes, "AuditLogPage");
 const ProjectsPage = fromChunk(loadControlCenterRoutes, "ProjectsPage");
 const ProjectDetailPage = fromChunk(loadControlCenterRoutes, "ProjectDetailPage");
 const SpatialGraphPage = fromChunk(loadControlCenterRoutes, "SpatialGraphPage");
+const KnowledgePage = fromChunk(loadControlCenterRoutes, "KnowledgePage");
+const ExecutionFabricPage = fromChunk(loadControlCenterRoutes, "ExecutionFabricPage");
 const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 
@@ -129,7 +131,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },
       { path: "software-factory", element: withSuspense(<SoftwareFactoryPage />) },
       { path: "software-factory/:projectId/:programId", element: withSuspense(<SoftwareFactoryProgramPage />) },
-      { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
+      { path: "knowledge", element: withSuspense(<KnowledgePage />) },
+      { path: "execution-fabric", element: withSuspense(<ExecutionFabricPage />) },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },

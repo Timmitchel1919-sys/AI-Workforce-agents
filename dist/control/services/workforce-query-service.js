@@ -219,8 +219,16 @@ export class WorkforceQueryService {
         const specialist = this.ctx.specialist;
         if (!specialist)
             return undefined;
+        // Authorise against the TASK, not only against the history. Deriving the
+        // project from the first assignment would let a caller with no access to
+        // the project learn "this task exists but has no assignments" from the
+        // difference between a 404 and an empty list, and would say nothing at all
+        // about a task that has never been assigned.
+        const task = this.ctx.tasks.get(taskId);
+        if (task && !operatorCanAccessProject(principal, task.projectId))
+            return undefined;
         const history = specialist.assignments.historyForTask(taskId);
-        const projectId = history[0]?.projectId;
+        const projectId = history[0]?.projectId ?? task?.projectId;
         if (projectId && !operatorCanAccessProject(principal, projectId))
             return undefined;
         return history.map(projectAssignment);
@@ -234,7 +242,13 @@ export class WorkforceQueryService {
             ? specialist.handoffs.forTask(filter.taskId)
             : specialist.handoffs.list();
         return all
-            .filter((h) => (h.projectId ? operatorCanAccessProject(principal, h.projectId) : true))
+            // A handoff with no project scope is NOT treated as public. Its
+            // `completedWork` / `remainingWork` fields are free-text task content, so
+            // "unscoped" means "of unknown scope", and unknown scope cannot be
+            // authorised for an operator who may only see one project. Every handoff
+            // created through the specialist service carries a projectId, so this
+            // only withholds legacy unscoped records.
+            .filter((h) => h.projectId !== undefined && operatorCanAccessProject(principal, h.projectId))
             .map((h) => ({
             id: h.id,
             taskId: h.taskId,

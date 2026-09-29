@@ -151,3 +151,108 @@
   }
 }
 
+
+/* --- Authoritative specialist surface -------------------------------------
+   Added for the descriptor-driven view: the two status axes, the stated
+   limitations, and the policy surface. Every colour resolves from the existing
+   token set so both themes and any future theme keep working. */
+
+.agents-qualification-note {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.agent-axis-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.agent-row__scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.agent-row__assignment {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.agent-axis-explanations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.agent-axis-explanations p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.agent-axis-explanations strong {
+  color: var(--color-text);
+}
+
+.agent-detail-metadata__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.agent-detail-limitations {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.agent-detail-policy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.agent-detail-caveat {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.agent-detail-muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 720px) {
+  .agents-loading__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .agent-axis-badges {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
