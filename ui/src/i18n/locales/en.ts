@@ -45,7 +45,6 @@ export const en = {
     approvals: "Approvals",
     spatialGraph: "Spatial Graph",
     knowledge: "Knowledge",
-    executionFabric: "Execution Fabric",
     infrastructure: "Infrastructure",
     softwareFactory: "Software Factory",
     auditLog: "Audit Log",

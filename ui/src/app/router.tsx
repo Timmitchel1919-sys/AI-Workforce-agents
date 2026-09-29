@@ -3,7 +3,7 @@ import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
-import { useI18n } from "../i18n";
+import { useI18n, type MessageKey } from "../i18n";
 import RouteError from "./RouteError";
 import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding } from "./routeModules";
 
@@ -39,8 +39,6 @@ const AuditLogPage = fromChunk(loadControlCenterRoutes, "AuditLogPage");
 const ProjectsPage = fromChunk(loadControlCenterRoutes, "ProjectsPage");
 const ProjectDetailPage = fromChunk(loadControlCenterRoutes, "ProjectDetailPage");
 const SpatialGraphPage = fromChunk(loadControlCenterRoutes, "SpatialGraphPage");
-const KnowledgePage = fromChunk(loadControlCenterRoutes, "KnowledgePage");
-const ExecutionFabricPage = fromChunk(loadControlCenterRoutes, "ExecutionFabricPage");
 const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 
@@ -58,7 +56,20 @@ function withSuspense(node: ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
 }
 
-// Removed PlaceholderPage
+function PlaceholderPage({ titleKey }: { titleKey: MessageKey }) {
+  const { t } = useI18n();
+  return (
+    <div className="page">
+      <section className="page-header">
+        <p className="eyebrow">{t("common.brand")}</p>
+        <h1>{t(titleKey)}</h1>
+        <p className="page-description">
+          {t("shell.reservedDescription")}
+        </p>
+      </section>
+    </div>
+  );
+}
 
 /** Every page gets the in-app error state (the shell stays usable). */
 function withErrorElements<T extends { errorElement?: ReactNode; children?: T[] }>(routes: T[]): T[] {
@@ -118,8 +129,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },
       { path: "software-factory", element: withSuspense(<SoftwareFactoryPage />) },
       { path: "software-factory/:projectId/:programId", element: withSuspense(<SoftwareFactoryProgramPage />) },
-      { path: "knowledge", element: withSuspense(<KnowledgePage />) },
-      { path: "execution-fabric", element: withSuspense(<ExecutionFabricPage />) },
+      { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },
