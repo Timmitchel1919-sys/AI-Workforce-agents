@@ -103,6 +103,19 @@ export interface ControlPlaneContext {
      * methods are used, so a test can pass a stub.
      */
     orchestrator?: Pick<Orchestrator, "recordApprovalDecision" | "resume">;
+    /**
+     * The authoritative specialist workforce layer. Optional, but every route
+     * that answers "who can do this work" reads from HERE and nowhere else.
+     * Absent => specialist routes report "not composed" (404), never an empty
+     * list that would read as "no agents exist" or "the project is staffable".
+     */
+    specialist?: {
+        assignments: Pick<import("../core/orchestrator/assignment-system.js").SpecialistAssignmentService, "currentForTask" | "historyForTask" | "require" | "mayWrite">;
+        listAssignments: () => readonly import("../contracts/index.js").Assignment[];
+        plan: (input: import("../core/orchestrator/project-workforce-planner.js").PlanInput) => import("../core/orchestrator/project-workforce-planner.js").ProjectWorkforcePlan;
+        handoffs: Pick<import("../core/handoffs/handoff-system.js").SpecialistHandoffService, "list" | "forTask">;
+        listInstances: () => readonly import("../contracts/index.js").AgentInstance[];
+    };
     softwareFactory?: import("../core/orchestrator/software-factory-orchestrator.js").SoftwareFactoryOrchestrator;
     workflowEngine?: Pick<WorkflowEngine, "resume">;
     /** Health probes. Anything not listed is reported as `unknown` (unmeasured). */

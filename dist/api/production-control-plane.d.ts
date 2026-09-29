@@ -1,6 +1,6 @@
 import { type FirebaseServices } from "../adapters/firebase/index.js";
 import { WorkforceCommandService, WorkforceQueryService, type ControlPlaneContext } from "../control/index.js";
-import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
+import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, SpecialistHandoffService, InMemoryAssignmentRepository, SpecialistAssignmentService, WriteScopeLeaseManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { type ApiHandler } from "./http-api.js";
 import { type ProductionWorkforceBootstrap, type ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
@@ -16,6 +16,19 @@ export interface ProductionControlPlaneRuntime {
      * The FULL release services. The control-plane context exposes only their read views; the
      * trusted host (and tests) hold the whole thing. No HTTP route reaches the mutating methods.
      */
+    /**
+     * The FULL specialist workforce services, including the MUTATING methods.
+     * The control-plane context exposes only read views; no HTTP route can
+     * create an assignment, take a write lease, or accept a handoff. Only the
+     * trusted host (and tests) can, which is what keeps "assigned" a decision
+     * rather than a side effect of a read.
+     */
+    readonly specialist: {
+        readonly assignments: SpecialistAssignmentService;
+        readonly assignmentRepository: InMemoryAssignmentRepository;
+        readonly handoffs: SpecialistHandoffService;
+        readonly writeLeases: WriteScopeLeaseManager;
+    };
     readonly release: {
         readonly verification: VerificationService;
         readonly sourceControl: SourceControlOrchestrator;

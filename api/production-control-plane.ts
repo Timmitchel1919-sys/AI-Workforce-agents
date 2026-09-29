@@ -59,7 +59,9 @@ import {
   SpecialistHandoffService,
   InMemoryAssignmentRepository,
   InMemoryLeaseRepository,
+  ProjectWorkforcePlanner,
   SpecialistAssignmentService,
+  WriteScopeLeaseManager,
   Orchestrator,
   ProbeRegistry,
   SoftwareFactoryOrchestrator,
@@ -141,6 +143,19 @@ export interface ProductionControlPlaneRuntime {
    * The FULL release services. The control-plane context exposes only their read views; the
    * trusted host (and tests) hold the whole thing. No HTTP route reaches the mutating methods.
    */
+  /**
+   * The FULL specialist workforce services, including the MUTATING methods.
+   * The control-plane context exposes only read views; no HTTP route can
+   * create an assignment, take a write lease, or accept a handoff. Only the
+   * trusted host (and tests) can, which is what keeps "assigned" a decision
+   * rather than a side effect of a read.
+   */
+  readonly specialist: {
+    readonly assignments: SpecialistAssignmentService;
+    readonly assignmentRepository: InMemoryAssignmentRepository;
+    readonly handoffs: SpecialistHandoffService;
+    readonly writeLeases: WriteScopeLeaseManager;
+  };
   readonly release: {
     readonly verification: VerificationService;
     readonly sourceControl: SourceControlOrchestrator;
@@ -269,6 +284,10 @@ export async function createProductionControlPlaneRuntime(
     () => new Date().toISOString(),
     audit,
     environmentRegistry,
+  );
+  const projectWorkforcePlanner = new ProjectWorkforcePlanner(
+    specialistAssignments,
+    () => bootstrap.agents.listDescriptors(),
   );
   const specialistHandoffs = new SpecialistHandoffService(
     () => bootstrap.agents.listDescriptors(),
@@ -644,6 +663,28 @@ export async function createProductionControlPlaneRuntime(
     executionReceipts,
     executionRecords,
     environmentAdapters,
+    // The specialist layer, exposed to the Control Plane as READ-ONLY ports.
+    // Queries can read assignments, handoffs, instances and staffing plans;
+    // only the trusted host (`runtime.specialist`) can create or change them.
+    specialist: {
+      assignments: {
+        currentForTask: (taskId: string) =>
+          specialistAssignments.currentForTask(taskId),
+        historyForTask: (taskId: string) =>
+          specialistAssignments.historyForTask(taskId),
+        require: (assignmentId: string) =>
+          specialistAssignments.require(assignmentId),
+        mayWrite: (workspaceId: string, agentId: string, path: string) =>
+          specialistAssignments.mayWrite(workspaceId, agentId, path),
+      },
+      listAssignments: () => assignmentRepository.list(),
+      plan: (planInput) => projectWorkforcePlanner.plan(planInput),
+      handoffs: {
+        list: () => specialistHandoffs.list(),
+        forTask: (taskId: string) => specialistHandoffs.forTask(taskId),
+      },
+      listInstances: () => bootstrap.agents.listInstances(),
+    },
     access,
     orchestrator,
     softwareFactory: new SoftwareFactoryOrchestrator(

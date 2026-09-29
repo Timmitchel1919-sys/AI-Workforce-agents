@@ -5,8 +5,9 @@
  * capability, and returns only data for projects the operator may access.
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
-import { type ExecutionOperationDefinition, type ExecutionSession, type PreflightResult, type ApprovalQuery, type ApprovalView, type AuditEventQuery, type AuditEventView, type AgentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus, type SoftwareFactoryOverview, type SoftwareFactoryProgramDetail } from "../../contracts/index.js";
+import { type ExecutionOperationDefinition, type ExecutionSession, type PreflightResult, type ApprovalQuery, type ApprovalView, type AuditEventQuery, type AuditEventView, type AgentView, type AssignmentView, type DashboardSnapshot, type ExecutionPlanQuery, type OperatorAccountView, type TechnologyCatalogEntryView, type ExecutionPlanSummaryView, type ExecutionPlanView, type OperatorPrincipal, type PageResult, type ProjectView, type SystemHealth, type TaskQuery, type TaskView, type ToolView, type WorkflowQuery, type WorkflowView, type WorkforceStatus, type SoftwareFactoryOverview, type SoftwareFactoryProgramDetail, type TaskRequirements } from "../../contracts/index.js";
 import type { EnvironmentDescriptor, EnvironmentInstance, HostCapabilitySnapshot, HostInstance } from "../../contracts/index.js";
+import type { ProjectWorkforcePlan } from "../../core/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import { redact } from "../redaction.js";
 export declare class WorkforceQueryService {
@@ -20,6 +21,49 @@ export declare class WorkforceQueryService {
     getHealth(principal: OperatorPrincipal): SystemHealth;
     getSystemHealth(principal: OperatorPrincipal): SystemHealth;
     getAgents(principal: OperatorPrincipal): AgentView[];
+    /**
+     * The honest staffing answer for a project: which specialists are eligible,
+     * which the plan uses, and which tasks are blocked.
+     *
+     * Returns `undefined` when the specialist layer is not composed, so the API
+     * can answer 404 ("not composed") instead of an empty plan that would read
+     * as "this project has no specialists" — two very different statements.
+     */
+    getProjectWorkforce(principal: OperatorPrincipal, projectId: string, tasks: readonly {
+        taskId: string;
+        requirements: TaskRequirements;
+    }[]): Promise<{
+        readonly project: ProjectView | undefined;
+        readonly plan: ProjectWorkforcePlan;
+    } | undefined>;
+    getAssignments(principal: OperatorPrincipal, filter?: {
+        projectId?: string;
+        taskId?: string;
+        agentId?: string;
+    }): AssignmentView[] | undefined;
+    /**
+     * The full reassignment history for a task, so a reader can see every attempt
+     * — including the ones that failed — rather than only the current holder.
+     */
+    getAssignmentHistory(principal: OperatorPrincipal, taskId: string): readonly AssignmentView[] | undefined;
+    getSpecialistHandoffs(principal: OperatorPrincipal, filter?: {
+        taskId?: string;
+    }): readonly {
+        id: string;
+        taskId: string;
+        projectId?: string;
+        sourceAgentId: string;
+        destinationAgentId: string;
+        status: string;
+        requiredCapabilities?: readonly string[];
+        destinationQualified?: boolean;
+        completedWork: string;
+        remainingWork: string;
+        acceptanceCriteria: readonly string[];
+        createdAt: string;
+        resolvedAt?: string;
+    }[] | undefined;
+    private specialistSummary;
     getAgent(principal: OperatorPrincipal, agentId: string): AgentView | undefined;
     getTasks(principal: OperatorPrincipal, query?: TaskQuery): PageResult<TaskView>;
     getTask(principal: OperatorPrincipal, taskId: string): TaskView | undefined;

@@ -19,6 +19,7 @@ import {
   PermissionDeniedError,
   StateTransitionError,
   ValidationError,
+  type TaskRequirements,
   WorkforceError,
   type AuditEventQuery,
   type ControlErrorKind,
@@ -283,6 +284,68 @@ export function createControlPlaneApi(
           correlationId,
         );
       }
+      // `POST /workforce/plan` — the honest staffing answer for a project.
+      // Always a DRY RUN: this endpoint plans and reports, it never binds an
+      // agent to work. Creating an assignment is a host-side decision, not a
+      // side effect of a read.
+      if (method === "POST" && route === "/workforce/plan") {
+        let body: Record<string, unknown>;
+        try {
+          body = await readJsonBody(req, maxBody);
+        } catch (error) {
+          return send(
+            res,
+            400,
+            { error: { message: errorMessage(error) } },
+            correlationId,
+          );
+        }
+        const projectId = typeof body.projectId === "string" ? body.projectId : "";
+        if (!projectId) {
+          return send(
+            res,
+            400,
+            { error: { message: "projectId is required" } },
+            correlationId,
+          );
+        }
+        const rawTasks = Array.isArray(body.tasks) ? body.tasks : [];
+        let tasks: { taskId: string; requirements: TaskRequirements }[];
+        try {
+          tasks = rawTasks.map((entry, index) => {
+            const record = entry as Record<string, unknown>;
+            if (typeof record.taskId !== "string" || !record.taskId) {
+              throw new ValidationError(`tasks[${index}].taskId is required`);
+            }
+            return {
+              taskId: record.taskId,
+              requirements: record.requirements as TaskRequirements,
+            };
+          });
+        } catch (error) {
+          return send(
+            res,
+            400,
+            { error: { message: errorMessage(error) } },
+            correlationId,
+          );
+        }
+        const workload = await query.getProjectWorkforce(principal, projectId, tasks);
+        if (!workload) {
+          return send(
+            res,
+            404,
+            {
+              error: {
+                message:
+                  "specialist workforce is not composed, or the project is not accessible",
+              },
+            },
+            correlationId,
+          );
+        }
+        return send(res, 200, workload, correlationId);
+      }
       if (method === "POST" && segs[0] === "commands" && segs.length === 2) {
         return await handleCommand(
           req,
@@ -390,6 +453,62 @@ export function createControlPlaneApi(
             : query.getAgents(principal),
           correlationId,
         );
+      // ---- Specialist workforce (authoritative reads) ----
+      case "workforce": {
+        // `/api/workforce/assignments` — every assignment the operator may see.
+        if (segs.length === 2 && segs[1] === "assignments") {
+          const assignments = query.getAssignments(principal, {
+            projectId: params.get("projectId") ?? undefined,
+            taskId: params.get("taskId") ?? undefined,
+            agentId: params.get("agentId") ?? undefined,
+          });
+          if (!assignments) {
+            return send(
+              res,
+              404,
+              { error: { message: "specialist workforce is not composed" } },
+              correlationId,
+            );
+          }
+          return send(res, 200, assignments, correlationId);
+        }
+        // `/api/workforce/assignments/:taskId/history` — every attempt,
+        // including the ones that failed.
+        if (segs.length === 3 && segs[1] === "assignments" && segs[2]!.endsWith("/history")) {
+          const taskId = segs[2]!.slice(0, -"/history".length);
+          const history = query.getAssignmentHistory(principal, taskId);
+          if (!history) {
+            return send(
+              res,
+              404,
+              {
+                error: {
+                  message:
+                    "specialist workforce is not composed, or the task is not accessible",
+                },
+              },
+              correlationId,
+            );
+          }
+          return send(res, 200, history, correlationId);
+        }
+        // `/api/workforce/handoffs` — transfers and their destination evidence.
+        if (segs.length === 2 && segs[1] === "handoffs") {
+          const handoffs = query.getSpecialistHandoffs(principal, {
+            taskId: params.get("taskId") ?? undefined,
+          });
+          if (!handoffs) {
+            return send(
+              res,
+              404,
+              { error: { message: "specialist workforce is not composed" } },
+              correlationId,
+            );
+          }
+          return send(res, 200, handoffs, correlationId);
+        }
+        return send(res, 404, { error: { message: "not found" } }, correlationId);
+      }
       case "tasks":
         return send(
           res,

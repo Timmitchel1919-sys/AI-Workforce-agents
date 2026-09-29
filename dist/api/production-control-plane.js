@@ -10,7 +10,7 @@ import { randomUUID } from "node:crypto";
 import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, SpecialistAssignmentService, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
 import { CONTROL_PLANE_ANALYSIS_AGENT_ID, LazyOpenAIModelProvider, createProductionOpenAIAgentExecutor, } from "../agents/control-plane-analysis/index.js";
 import { DEVELOPER_AGENT_ID, DeveloperAgent, } from "../agents/developer/index.js";
 import { QA_AGENT_ID, QaAgent } from "../agents/qa/index.js";
@@ -86,6 +86,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const agentOps = new AgentOperationalStore(agentOpsRepository);
     const assignmentRepository = new InMemoryAssignmentRepository();
     const specialistAssignments = new SpecialistAssignmentService(assignmentRepository, () => bootstrap.agents.listDescriptors(), new InMemoryLeaseRepository(), () => new Date().toISOString(), audit, environmentRegistry);
+    const projectWorkforcePlanner = new ProjectWorkforcePlanner(specialistAssignments, () => bootstrap.agents.listDescriptors());
     const specialistHandoffs = new SpecialistHandoffService(() => bootstrap.agents.listDescriptors(), (agentId, projectId) => agentOps.isEnabled(agentId, projectId), handoffRepository);
     const workflowControl = new WorkflowControlStore(workflowControlRepository);
     const orchestrator = new Orchestrator(bootstrap.agents, tasks, handoffs, audit, bootstrap.agentExecutors, approvals, {
@@ -386,6 +387,24 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         executionReceipts,
         executionRecords,
         environmentAdapters,
+        // The specialist layer, exposed to the Control Plane as READ-ONLY ports.
+        // Queries can read assignments, handoffs, instances and staffing plans;
+        // only the trusted host (`runtime.specialist`) can create or change them.
+        specialist: {
+            assignments: {
+                currentForTask: (taskId) => specialistAssignments.currentForTask(taskId),
+                historyForTask: (taskId) => specialistAssignments.historyForTask(taskId),
+                require: (assignmentId) => specialistAssignments.require(assignmentId),
+                mayWrite: (workspaceId, agentId, path) => specialistAssignments.mayWrite(workspaceId, agentId, path),
+            },
+            listAssignments: () => assignmentRepository.list(),
+            plan: (planInput) => projectWorkforcePlanner.plan(planInput),
+            handoffs: {
+                list: () => specialistHandoffs.list(),
+                forTask: (taskId) => specialistHandoffs.forTask(taskId),
+            },
+            listInstances: () => bootstrap.agents.listInstances(),
+        },
         access,
         orchestrator,
         softwareFactory: new SoftwareFactoryOrchestrator(orchestrator, tasks, await buildSoftwareFactoryEnvironmentProvider(environmentRegistry), {

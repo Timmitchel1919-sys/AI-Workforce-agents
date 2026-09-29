@@ -30,6 +30,11 @@ import type {
   PlanApprovalState,
   PlanStatus,
 } from "./planning.js";
+import type {
+  AgentAdministrativeStatus,
+  AgentInstanceState,
+  AgentRiskLevel,
+} from "./workforce.js";
 
 /* ------------------------------------------------------------------ */
 /* Operator authorization                                             */
@@ -425,6 +430,74 @@ export interface AgentView {
   allowedProjects: readonly string[];
   lastActivityAt?: string;
   stats: AgentStats;
+  /**
+   * Present only when this agent has a full specialist descriptor. Its absence
+   * is meaningful: it means "this is a legacy flat agent with no qualification
+   * profile", NOT "this agent has no policies".
+   */
+  specialist?: SpecialistAgentSummary;
+}
+
+/**
+ * The authoritative, read-only projection of one specialist descriptor.
+ *
+ * Everything the Control Center shows about a specialist comes from here, so
+ * the UI can never present a name and a role as if they were a qualification.
+ * The distinction it preserves:
+ *
+ *   ADMINISTRATIVE  is the agent allowed to receive NEW work at all.
+ *   OPERATIONAL     is what it is doing right now.
+ *   QUALIFIED       is per-task evidence, carried on the assignment — never a
+ *                   property of the agent, and therefore NOT a field here.
+ */
+export interface SpecialistAgentSummary {
+  readonly descriptorVersion: number;
+  readonly displayName: string;
+  readonly department: string;
+  readonly description: string;
+  /** Stated in prose, verbatim. Shown so a reader learns what it cannot do. */
+  readonly limitations: readonly string[];
+  readonly administrativeStatus: AgentAdministrativeStatus;
+  readonly operationalState: AgentInstanceState;
+  readonly supportedTaskTypes: readonly string[];
+  readonly projectPolicy: { readonly mode: "allow_list"; readonly projects: readonly string[] };
+  readonly toolPolicy: {
+    readonly maxExecutionCapabilities: readonly string[];
+    readonly deniedExecutionCapabilities: readonly string[];
+    readonly allowsUnrestrictedShell: boolean;
+  };
+  readonly riskCeiling: AgentRiskLevel;
+  readonly reviewPolicy: {
+    readonly requiresIndependentReview: boolean;
+    readonly minimumReviewers: number;
+    readonly selfReviewAllowed: false;
+  };
+  readonly modelPolicy: { readonly provider: string; readonly model?: string };
+  readonly instanceCount: number;
+  readonly currentAssignmentId?: string;
+  readonly currentTaskId?: string;
+}
+
+/** One assignment, projected for the Control Center. */
+export interface AssignmentView {
+  readonly assignmentId: string;
+  readonly projectId: string;
+  readonly taskId: string;
+  readonly agentId: string;
+  readonly descriptorVersion: number;
+  readonly status: string;
+  readonly assignedAt: string;
+  readonly assignedBy: string;
+  readonly replacesAssignmentId?: string;
+  readonly failureReason?: string;
+  /** The evidence that justified this assignment, verbatim. */
+  readonly qualification: {
+    readonly qualified: boolean;
+    readonly matchedCapabilities: readonly string[];
+    readonly missingCapabilities: readonly string[];
+    readonly consideredLimitations: readonly string[];
+    readonly evaluatedAt: string;
+  };
 }
 
 export interface TaskView {

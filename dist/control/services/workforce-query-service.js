@@ -163,7 +163,160 @@ export class WorkforceQueryService {
         return this.ctx.agents
             .list()
             .filter((agent) => this.agentVisible(principal, agent.allowedProjects))
-            .map((agent) => deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit));
+            .map((agent) => {
+            const view = deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit);
+            // Enrich from the descriptor when one exists. A legacy flat agent
+            // simply has no `specialist` block — absence is reported as absence
+            // rather than filled in with a plausible-looking default.
+            const summary = this.specialistSummary(agent.id);
+            return summary ? { ...view, specialist: summary } : view;
+        });
+    }
+    /* -------------------------------------------------------------- */
+    /* Specialist workforce (authoritative)                           */
+    /* -------------------------------------------------------------- */
+    /**
+     * The honest staffing answer for a project: which specialists are eligible,
+     * which the plan uses, and which tasks are blocked.
+     *
+     * Returns `undefined` when the specialist layer is not composed, so the API
+     * can answer 404 ("not composed") instead of an empty plan that would read
+     * as "this project has no specialists" — two very different statements.
+     */
+    async getProjectWorkforce(principal, projectId, tasks) {
+        this.authorizeView(principal);
+        const specialist = this.ctx.specialist;
+        if (!specialist)
+            return undefined;
+        if (!operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return {
+            project: (await this.getProjects(principal)).find((p) => p.projectId === projectId),
+            // A read of a plan must never create an assignment.
+            plan: specialist.plan({ projectId, tasks, dryRun: true }),
+        };
+    }
+    getAssignments(principal, filter = {}) {
+        this.authorizeView(principal);
+        const specialist = this.ctx.specialist;
+        if (!specialist)
+            return undefined;
+        return specialist
+            .listAssignments()
+            .filter((a) => (filter.projectId ? a.projectId === filter.projectId : true))
+            .filter((a) => (filter.taskId ? a.taskId === filter.taskId : true))
+            .filter((a) => (filter.agentId ? a.agentId === filter.agentId : true))
+            .filter((a) => operatorCanAccessProject(principal, a.projectId))
+            .map(projectAssignment)
+            .sort((a, b) => b.assignedAt.localeCompare(a.assignedAt));
+    }
+    /**
+     * The full reassignment history for a task, so a reader can see every attempt
+     * — including the ones that failed — rather than only the current holder.
+     */
+    getAssignmentHistory(principal, taskId) {
+        this.authorizeView(principal);
+        const specialist = this.ctx.specialist;
+        if (!specialist)
+            return undefined;
+        const history = specialist.assignments.historyForTask(taskId);
+        const projectId = history[0]?.projectId;
+        if (projectId && !operatorCanAccessProject(principal, projectId))
+            return undefined;
+        return history.map(projectAssignment);
+    }
+    getSpecialistHandoffs(principal, filter = {}) {
+        this.authorizeView(principal);
+        const specialist = this.ctx.specialist;
+        if (!specialist)
+            return undefined;
+        const all = filter.taskId
+            ? specialist.handoffs.forTask(filter.taskId)
+            : specialist.handoffs.list();
+        return all
+            .filter((h) => (h.projectId ? operatorCanAccessProject(principal, h.projectId) : true))
+            .map((h) => ({
+            id: h.id,
+            taskId: h.taskId,
+            projectId: h.projectId,
+            sourceAgentId: h.sourceAgentId,
+            destinationAgentId: h.destinationAgentId,
+            status: h.status,
+            requiredCapabilities: h.requiredCapabilities,
+            destinationQualified: h.destinationQualification?.qualified ?? false,
+            completedWork: h.completedWork,
+            remainingWork: h.remainingWork,
+            acceptanceCriteria: h.acceptanceCriteria,
+            createdAt: h.createdAt,
+            resolvedAt: h.resolvedAt,
+        }))
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }
+    specialistSummary(agentId) {
+        const descriptor = this.ctx.agents.hasDescriptor(agentId)
+            ? this.ctx.agents.requireDescriptor(agentId)
+            : undefined;
+        if (!descriptor)
+            return undefined;
+        const instances = (this.ctx.specialist?.listInstances() ?? []).filter((i) => i.descriptorId === agentId);
+        const current = this.ctx.specialist
+            ? this.ctx.specialist
+                .listAssignments()
+                .find((a) => a.agentId === agentId &&
+                a.status !== "completed" &&
+                a.status !== "failed" &&
+                a.status !== "cancelled" &&
+                a.status !== "reassigned")
+            : undefined;
+        const live = instances.find((i) => i.currentAssignmentId);
+        const primary = live ?? instances[0];
+        return {
+            descriptorVersion: descriptor.version,
+            displayName: descriptor.displayName,
+            department: descriptor.department,
+            description: descriptor.description,
+            limitations: [...descriptor.limitations],
+            administrativeStatus: descriptor.administrativeStatus,
+            // With no instance, the agent is OFFLINE — never "available". An agent
+            // that does not exist as an instance cannot be doing anything.
+            operationalState: primary?.operationalState ?? "offline",
+            supportedTaskTypes: [...descriptor.supportedTaskTypes],
+            projectPolicy: {
+                mode: descriptor.projectPolicy.mode,
+                projects: [...descriptor.projectPolicy.projects],
+            },
+            toolPolicy: {
+                maxExecutionCapabilities: [
+                    ...descriptor.toolPolicy.maxExecutionCapabilities,
+                ],
+                deniedExecutionCapabilities: [
+                    ...descriptor.toolPolicy.deniedExecutionCapabilities,
+                ],
+                allowsUnrestrictedShell: descriptor.toolPolicy.allowsUnrestrictedShell,
+            },
+            riskCeiling: descriptor.qualification.maxRiskLevel,
+            reviewPolicy: {
+                requiresIndependentReview: descriptor.reviewPolicy.requiresIndependentReview,
+                minimumReviewers: descriptor.reviewPolicy.minimumReviewers,
+                selfReviewAllowed: descriptor.reviewPolicy.selfReviewAllowed,
+            },
+            modelPolicy: {
+                // A descriptor with no provider has no routable model. Reported as
+                // `unscoped` rather than as an empty string that might read as a
+                // provider named "".
+                provider: descriptor.modelPolicy.provider ?? "unscoped",
+                ...(descriptor.modelPolicy.model
+                    ? { model: descriptor.modelPolicy.model }
+                    : {}),
+            },
+            instanceCount: instances.length,
+            ...(current
+                ? {
+                    currentAssignmentId: current.assignmentId,
+                    currentTaskId: current.taskId,
+                }
+                : {}),
+        };
     }
     getAgent(principal, agentId) {
         return this.getAgents(principal).find((a) => a.agentId === agentId);
@@ -812,3 +965,24 @@ export class WorkforceQueryService {
 }
 /** Re-export so callers can `redact` before logging their own diagnostics. */
 export { redact };
+function projectAssignment(a) {
+    return {
+        assignmentId: a.assignmentId,
+        projectId: a.projectId,
+        taskId: a.taskId,
+        agentId: a.agentId,
+        descriptorVersion: a.descriptorVersion,
+        status: a.status,
+        assignedAt: a.assignedAt,
+        assignedBy: a.assignedBy,
+        replacesAssignmentId: a.replacesAssignmentId,
+        failureReason: a.failureReason,
+        qualification: {
+            qualified: a.qualification.qualified,
+            matchedCapabilities: a.qualification.matchedCapabilities,
+            missingCapabilities: a.qualification.missingCapabilities,
+            consideredLimitations: a.qualification.consideredLimitations,
+            evaluatedAt: a.qualification.evaluatedAt,
+        },
+    };
+}
