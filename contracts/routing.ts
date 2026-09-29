@@ -93,6 +93,13 @@ export const CANDIDATE_REJECTION_REASONS = [
   "CONTEXT_REQUIREMENT_NOT_MET",
   "ENVIRONMENT_INCOMPATIBLE",
   "MODEL_DISABLED",
+  /**
+   * The agent's own `modelPolicy` scoped in no declared profile at all — it
+   * named no provider, or a provider this deployment has no profile for. This
+   * is a defect in the agent definition, not a capability shortfall, and is
+   * reported separately so the diagnostic names the actual cause.
+   */
+  "AGENT_MODEL_POLICY_UNSCOPED",
 ] as const;
 export type CandidateRejectionReason =
   (typeof CANDIDATE_REJECTION_REASONS)[number];

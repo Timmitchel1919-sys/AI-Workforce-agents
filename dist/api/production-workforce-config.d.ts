@@ -45,7 +45,7 @@ export declare function createAiWorkforceProductionBinding(): ProductionWorkforc
  * is ever substituted and no filesystem path is probed.
  */
 export declare function createMoneyMindProductionBinding(env?: Record<string, string | undefined>): ProductionWorkforceConfiguration["projectAdapters"][number];
-import { type AgentDescriptor } from "../contracts/workforce.js";
+import type { AgentDescriptor } from "../contracts/workforce.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
 export declare const createBootstrapSpecialistAgentExecutor: (descriptor: AgentDescriptor) => (audit: AuditLog) => SpecialistAgent;
 export declare const PRODUCTION_WORKFORCE_CONFIGURATION: ProductionWorkforceConfiguration;

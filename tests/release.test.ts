@@ -95,6 +95,8 @@ function git(cwd: string, ...args: string[]) {
       "commit.gpgsign=false",
       "-c",
       "core.autocrlf=false",
+      "-c",
+      "safe.bareRepository=all",
       ...args,
     ],
     {

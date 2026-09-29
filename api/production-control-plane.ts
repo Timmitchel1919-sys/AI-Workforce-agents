@@ -56,6 +56,10 @@ import {
   EnvironmentRegistry,
   EnvironmentRouter,
   HandoffSystem,
+  SpecialistHandoffService,
+  InMemoryAssignmentRepository,
+  InMemoryLeaseRepository,
+  SpecialistAssignmentService,
   Orchestrator,
   ProbeRegistry,
   SoftwareFactoryOrchestrator,
@@ -110,7 +114,7 @@ import {
   ProjectManagerAgent,
 } from "../agents/project-manager/index.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
-import { V1_SPECIALIST_WORKFORCE } from "../contracts/workforce.js";
+import { V1_SPECIALIST_WORKFORCE } from "../agents/specialists/v1-specialist-workforce.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
@@ -252,7 +256,25 @@ export async function createProductionControlPlaneRuntime(
   const workflows = new WorkflowSystem(workflowRepository);
   const approvals = new ApprovalSystem(approvalRepository);
   const handoffs = new HandoffSystem(handoffRepository);
+  // The specialist layer, composed against the SAME registry the executor uses.
+  // A second, independent copy of the workforce here would let routing and
+  // execution disagree about who exists and who is enabled — which is precisely
+  // the failure this layer exists to remove.
   const agentOps = new AgentOperationalStore(agentOpsRepository);
+  const assignmentRepository = new InMemoryAssignmentRepository();
+  const specialistAssignments = new SpecialistAssignmentService(
+    assignmentRepository,
+    () => bootstrap.agents.listDescriptors(),
+    new InMemoryLeaseRepository(),
+    () => new Date().toISOString(),
+    audit,
+    environmentRegistry,
+  );
+  const specialistHandoffs = new SpecialistHandoffService(
+    () => bootstrap.agents.listDescriptors(),
+    (agentId, projectId) => agentOps.isEnabled(agentId, projectId),
+    handoffRepository,
+  );
   const workflowControl = new WorkflowControlStore(workflowControlRepository);
 
   const orchestrator = new Orchestrator(
@@ -720,6 +742,17 @@ export async function createProductionControlPlaneRuntime(
     bootstrap,
     query,
     command,
+    /**
+     * The authoritative specialist workforce layer. Exposed so the API reads
+     * assignments and handoffs from the same services that create them,
+     * rather than reconstructing state from denormalised task fields.
+     */
+    specialist: {
+      assignments: specialistAssignments,
+      assignmentRepository,
+      handoffs: specialistHandoffs,
+      writeLeases: specialistAssignments.leases,
+    },
     release: { verification, sourceControl, deployments },
     costCenter: {
       modelProviders,

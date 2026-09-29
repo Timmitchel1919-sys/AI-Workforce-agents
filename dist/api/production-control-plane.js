@@ -10,13 +10,13 @@ import { randomUUID } from "node:crypto";
 import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, SpecialistAssignmentService, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
 import { CONTROL_PLANE_ANALYSIS_AGENT_ID, LazyOpenAIModelProvider, createProductionOpenAIAgentExecutor, } from "../agents/control-plane-analysis/index.js";
 import { DEVELOPER_AGENT_ID, DeveloperAgent, } from "../agents/developer/index.js";
 import { QA_AGENT_ID, QaAgent } from "../agents/qa/index.js";
 import { PROJECT_MANAGER_AGENT_ID, ProjectManagerAgent, } from "../agents/project-manager/index.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
-import { V1_SPECIALIST_WORKFORCE } from "../contracts/workforce.js";
+import { V1_SPECIALIST_WORKFORCE } from "../agents/specialists/v1-specialist-workforce.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
@@ -79,7 +79,14 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const workflows = new WorkflowSystem(workflowRepository);
     const approvals = new ApprovalSystem(approvalRepository);
     const handoffs = new HandoffSystem(handoffRepository);
+    // The specialist layer, composed against the SAME registry the executor uses.
+    // A second, independent copy of the workforce here would let routing and
+    // execution disagree about who exists and who is enabled — which is precisely
+    // the failure this layer exists to remove.
     const agentOps = new AgentOperationalStore(agentOpsRepository);
+    const assignmentRepository = new InMemoryAssignmentRepository();
+    const specialistAssignments = new SpecialistAssignmentService(assignmentRepository, () => bootstrap.agents.listDescriptors(), new InMemoryLeaseRepository(), () => new Date().toISOString(), audit, environmentRegistry);
+    const specialistHandoffs = new SpecialistHandoffService(() => bootstrap.agents.listDescriptors(), (agentId, projectId) => agentOps.isEnabled(agentId, projectId), handoffRepository);
     const workflowControl = new WorkflowControlStore(workflowControlRepository);
     const orchestrator = new Orchestrator(bootstrap.agents, tasks, handoffs, audit, bootstrap.agentExecutors, approvals, {
         approvalPolicy: bootstrap.approvalPolicy,
@@ -463,6 +470,17 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         bootstrap,
         query,
         command,
+        /**
+         * The authoritative specialist workforce layer. Exposed so the API reads
+         * assignments and handoffs from the same services that create them,
+         * rather than reconstructing state from denormalised task fields.
+         */
+        specialist: {
+            assignments: specialistAssignments,
+            assignmentRepository,
+            handoffs: specialistHandoffs,
+            writeLeases: specialistAssignments.leases,
+        },
         release: { verification, sourceControl, deployments },
         costCenter: {
             modelProviders,

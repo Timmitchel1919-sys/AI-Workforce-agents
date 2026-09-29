@@ -122,7 +122,7 @@ export interface AgentRequirement {
     requiredCapabilities: readonly string[];
     modelCapabilities: readonly ModelCapability[];
 }
-export declare const AGENT_REJECTION_REASONS: readonly ["agent_disabled", "project_not_allowed", "missing_capability"];
+export declare const AGENT_REJECTION_REASONS: readonly ["agent_disabled", "project_not_allowed", "missing_capability", "no_agent_descriptor", "administratively_inactive", "risk_above_ceiling", "technology_mismatch", "tool_capability_denied", "environment_incompatible", "agent_excluded", "review_independence_violated"];
 export type AgentRejectionReason = (typeof AGENT_REJECTION_REASONS)[number];
 export interface AgentCandidateEvidence {
     agentId: string;

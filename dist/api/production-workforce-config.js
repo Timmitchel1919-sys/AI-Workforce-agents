@@ -109,8 +109,8 @@ export function createMoneyMindProductionBinding(env = process.env) {
         metadata: Object.freeze({ sourceAvailable: configured !== undefined }),
     });
 }
-import { V1_SPECIALIST_WORKFORCE, } from "../contracts/workforce.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
+import { V1_SPECIALIST_WORKFORCE } from "../agents/specialists/v1-specialist-workforce.js";
 export const createBootstrapSpecialistAgentExecutor = (descriptor) => (audit) => new SpecialistAgent({
     descriptor,
     model: new LazyOpenAIModelProvider(),

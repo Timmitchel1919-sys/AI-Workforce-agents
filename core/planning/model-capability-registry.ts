@@ -19,6 +19,20 @@ import {
 export interface ModelEligibility {
   eligibleProfileIds: string[];
   missingCapabilities: ModelCapability[];
+  /**
+   * True when the agent's own `modelPolicy` scoped in NO profile at all — the
+   * agent declared no provider, or a provider this deployment has no declared
+   * profile for.
+   *
+   * This is deliberately distinct from "the profiles in scope lack the required
+   * capabilities". Without it, an agent with no model policy is reported as
+   * `CAPABILITY_MISMATCH` with a list of capabilities that the candidate
+   * profile actually declares — a diagnostic that points at the wrong cause
+   * and sends the operator to fix the wrong thing.
+   */
+  policyScopeEmpty: boolean;
+  /** The provider the agent's policy named, for an honest diagnostic. */
+  policyProvider?: string;
 }
 
 export class ModelCapabilityRegistry {
@@ -66,6 +80,8 @@ export class ModelCapabilityRegistry {
       eligibleProfileIds: eligible.map((p) => p.id),
       missingCapabilities:
         eligible.length > 0 ? [] : required.filter((c) => !offered.has(c)),
+      policyScopeEmpty: usable.length === 0,
+      policyProvider: provider,
     };
   }
 }

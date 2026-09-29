@@ -170,11 +170,9 @@ export function createMoneyMindProductionBinding(
   });
 }
 
-import {
-  V1_SPECIALIST_WORKFORCE,
-  type AgentDescriptor,
-} from "../contracts/workforce.js";
+import type { AgentDescriptor } from "../contracts/workforce.js";
 import { SpecialistAgent } from "../agents/specialists/index.js";
+import { V1_SPECIALIST_WORKFORCE } from "../agents/specialists/v1-specialist-workforce.js";
 
 export const createBootstrapSpecialistAgentExecutor =
   (descriptor: AgentDescriptor) =>

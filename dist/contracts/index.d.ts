@@ -114,6 +114,13 @@ export type HandoffStatus = "proposed" | "accepted" | "rejected";
 export interface Handoff {
     id: string;
     taskId: string;
+    /**
+     * The project that OWNS this work. Required for a specialist handoff: a
+     * handoff must never carry work across a project boundary, because the
+     * destination agent is scoped by an allow-list and the source's context may
+     * contain another project's data.
+     */
+    projectId?: string;
     sourceAgentId: string;
     destinationAgentId: string;
     status: HandoffStatus;
@@ -123,12 +130,31 @@ export interface Handoff {
     acceptanceCriteria: readonly string[];
     artifacts: readonly string[];
     risks: readonly string[];
+    /** Capabilities the REMAINING work needs. The destination must cover them. */
+    requiredCapabilities?: readonly string[];
+    /** The assignment whose work is being transferred, if any. */
+    sourceAssignmentId?: string;
+    /**
+     * Why the destination was eligible. Recorded at PROPOSAL time and
+     * re-verified at ACCEPTANCE time, because eligibility can lapse (the agent
+     * may be suspended, or the project policy may change) between the two.
+     */
+    destinationQualification?: {
+        qualified: boolean;
+        matchedCapabilities: readonly string[];
+        missingCapabilities: readonly string[];
+        reasonCodes: readonly string[];
+        descriptorVersion: number;
+        evaluatedAt: string;
+    };
+    acceptedBy?: string;
     createdAt: string;
     resolvedAt?: string;
     resolution?: string;
 }
 export interface HandoffDraft {
     taskId: string;
+    projectId?: string;
     sourceAgentId: string;
     destinationAgentId: string;
     context?: Record<string, unknown>;
@@ -137,6 +163,8 @@ export interface HandoffDraft {
     acceptanceCriteria: readonly string[];
     artifacts?: readonly string[];
     risks?: readonly string[];
+    requiredCapabilities?: readonly string[];
+    sourceAssignmentId?: string;
 }
 export type ApprovalStatus = "requested" | "approved" | "rejected" | "expired";
 export interface Approval {
@@ -191,7 +219,7 @@ export interface AgentContext {
     values: Record<string, unknown>;
 }
 export type Context = TaskContext | ProjectContext | AgentContext;
-export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event", "execution_event", "onboarding_event", "usage_recorded", "budget_blocked", "budget_policy_set", "audit_finding_raised", "governance_decision", "governance_policy_set", "routing_decision_made", "routing_no_candidate"];
+export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event", "execution_event", "onboarding_event", "usage_recorded", "budget_blocked", "budget_policy_set", "audit_finding_raised", "governance_decision", "governance_policy_set", "routing_decision_made", "routing_no_candidate", "assignment_created", "assignment_transitioned", "assignment_reassigned", "assignment_blocked", "write_lease_acquired", "write_lease_released", "write_lease_denied"];
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
 export interface AuditEvent {
     id: string;
@@ -435,3 +463,5 @@ export * from "./cost-center.js";
 export * from "./governance.js";
 export * from "./routing.js";
 export * from "./workforce.js";
+export * from "./capabilities.js";
+export * from "./assignment.js";

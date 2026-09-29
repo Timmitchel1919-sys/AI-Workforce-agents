@@ -41,6 +41,8 @@ export class ModelCapabilityRegistry {
         return {
             eligibleProfileIds: eligible.map((p) => p.id),
             missingCapabilities: eligible.length > 0 ? [] : required.filter((c) => !offered.has(c)),
+            policyScopeEmpty: usable.length === 0,
+            policyProvider: provider,
         };
     }
 }

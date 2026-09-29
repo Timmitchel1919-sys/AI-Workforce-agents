@@ -174,6 +174,20 @@ export class ModelRouter {
         const pending = [];
         for (const profile of inScope) {
             if (!eligibleIds.has(profile.id)) {
+                // The agent's model policy itself scoped in nothing. Say so plainly
+                // rather than blaming the profile for capabilities it does declare.
+                if (eligibility.policyScopeEmpty) {
+                    rejectedCandidates.push({
+                        profileId: profile.id,
+                        providerId: profile.providerId,
+                        model: profile.model,
+                        reasonCode: "AGENT_MODEL_POLICY_UNSCOPED",
+                        detail: eligibility.policyProvider
+                            ? `agent "${request.agent.id}" restricts routing to provider "${eligibility.policyProvider}", which has no declared model capability profile in this deployment`
+                            : `agent "${request.agent.id}" declares no modelPolicy.provider, so no model may be selected for it`,
+                    });
+                    continue;
+                }
                 rejectedCandidates.push({
                     profileId: profile.id,
                     providerId: profile.providerId,

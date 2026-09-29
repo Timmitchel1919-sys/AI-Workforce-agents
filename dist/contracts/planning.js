@@ -57,6 +57,27 @@ export const AGENT_REJECTION_REASONS = [
     "agent_disabled",
     "project_not_allowed",
     "missing_capability",
+    /**
+     * The agent has no full specialist descriptor, so it states no qualification
+     * profile, no tool ceiling and no review policy. It cannot be QUALIFIED for
+     * specialist work on evidence it does not have — it is merely not a
+     * candidate, which is a different and honest answer from "disqualified".
+     */
+    "no_agent_descriptor",
+    /** Administrative status is `draft`, `suspended`, `disabled` or `retired`. */
+    "administratively_inactive",
+    /** Task risk exceeds the agent's declared maximum risk. */
+    "risk_above_ceiling",
+    /** Task names a technology the agent's qualification profile does not cover. */
+    "technology_mismatch",
+    /** Task needs an execution capability the agent's tool ceiling does not allow. */
+    "tool_capability_denied",
+    /** Task needs an environment the agent does not accept. */
+    "environment_incompatible",
+    /** The agent is excluded by name (for example: self-review of its own change). */
+    "agent_excluded",
+    /** Task requires an independent reviewer and the agent is the implementer. */
+    "review_independence_violated",
 ];
 export const MODEL_CAPABILITIES = [
     "reasoning",

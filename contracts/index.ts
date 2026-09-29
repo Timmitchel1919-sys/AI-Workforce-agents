@@ -177,6 +177,13 @@ export type HandoffStatus = "proposed" | "accepted" | "rejected";
 export interface Handoff {
   id: string;
   taskId: string;
+  /**
+   * The project that OWNS this work. Required for a specialist handoff: a
+   * handoff must never carry work across a project boundary, because the
+   * destination agent is scoped by an allow-list and the source's context may
+   * contain another project's data.
+   */
+  projectId?: string;
   sourceAgentId: string;
   destinationAgentId: string;
   status: HandoffStatus;
@@ -186,6 +193,24 @@ export interface Handoff {
   acceptanceCriteria: readonly string[];
   artifacts: readonly string[];
   risks: readonly string[];
+  /** Capabilities the REMAINING work needs. The destination must cover them. */
+  requiredCapabilities?: readonly string[];
+  /** The assignment whose work is being transferred, if any. */
+  sourceAssignmentId?: string;
+  /**
+   * Why the destination was eligible. Recorded at PROPOSAL time and
+   * re-verified at ACCEPTANCE time, because eligibility can lapse (the agent
+   * may be suspended, or the project policy may change) between the two.
+   */
+  destinationQualification?: {
+    qualified: boolean;
+    matchedCapabilities: readonly string[];
+    missingCapabilities: readonly string[];
+    reasonCodes: readonly string[];
+    descriptorVersion: number;
+    evaluatedAt: string;
+  };
+  acceptedBy?: string;
   createdAt: string;
   resolvedAt?: string;
   resolution?: string;
@@ -193,6 +218,7 @@ export interface Handoff {
 
 export interface HandoffDraft {
   taskId: string;
+  projectId?: string;
   sourceAgentId: string;
   destinationAgentId: string;
   context?: Record<string, unknown>;
@@ -201,6 +227,8 @@ export interface HandoffDraft {
   acceptanceCriteria: readonly string[];
   artifacts?: readonly string[];
   risks?: readonly string[];
+  requiredCapabilities?: readonly string[];
+  sourceAssignmentId?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -317,6 +345,14 @@ export const AUDIT_EVENT_TYPES = [
   /* EO-7 — Model Routing. */
   "routing_decision_made",
   "routing_no_candidate",
+  /* Specialist workforce — assignment, qualification and write-scope leases. */
+  "assignment_created",
+  "assignment_transitioned",
+  "assignment_reassigned",
+  "assignment_blocked",
+  "write_lease_acquired",
+  "write_lease_released",
+  "write_lease_denied",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -808,6 +844,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+const FORBIDDEN_RESOURCE_KEYS: ReadonlySet<string> = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+]);
+
+function isSafeResourceId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 64 &&
+    !FORBIDDEN_RESOURCE_KEYS.has(value) &&
+    /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)
+  );
+}
+
 export function validateHandoffDraft(draft: HandoffDraft): void {
   requireText(draft.taskId, "handoff.taskId");
   requireText(draft.sourceAgentId, "handoff.sourceAgentId");
@@ -823,6 +875,23 @@ export function validateHandoffDraft(draft: HandoffDraft): void {
   }
   if (draft.acceptanceCriteria.length === 0) {
     throw new ValidationError("handoff.acceptanceCriteria must not be empty");
+  }
+  // Local id check: `workforce.ts` imports from this barrel, so it cannot be
+  // imported back here. The rule is kept identical to `isSafeIdentifier`.
+  if (draft.projectId !== undefined && !isSafeResourceId(draft.projectId)) {
+    throw new ValidationError("handoff.projectId is invalid");
+  }
+  if (draft.requiredCapabilities !== undefined) {
+    requireArray(draft.requiredCapabilities, "handoff.requiredCapabilities");
+    for (const capability of draft.requiredCapabilities) {
+      requireText(capability, "handoff.requiredCapabilities entry");
+    }
+  }
+  if (
+    draft.sourceAssignmentId !== undefined &&
+    !isSafeResourceId(draft.sourceAssignmentId)
+  ) {
+    throw new ValidationError("handoff.sourceAssignmentId is invalid");
   }
 }
 
@@ -871,3 +940,5 @@ export * from "./cost-center.js";
 export * from "./governance.js";
 export * from "./routing.js";
 export * from "./workforce.js";
+export * from "./capabilities.js";
+export * from "./assignment.js";

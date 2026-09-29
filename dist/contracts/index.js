@@ -65,6 +65,14 @@ export const AUDIT_EVENT_TYPES = [
     /* EO-7 — Model Routing. */
     "routing_decision_made",
     "routing_no_candidate",
+    /* Specialist workforce — assignment, qualification and write-scope leases. */
+    "assignment_created",
+    "assignment_transitioned",
+    "assignment_reassigned",
+    "assignment_blocked",
+    "write_lease_acquired",
+    "write_lease_released",
+    "write_lease_denied",
 ];
 export const DEFAULT_AGENT_LIMITS = {
     maxIterations: 3,
@@ -311,6 +319,18 @@ function requireStringArray(value, field) {
 function isRecord(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
+const FORBIDDEN_RESOURCE_KEYS = new Set([
+    "__proto__",
+    "constructor",
+    "prototype",
+]);
+function isSafeResourceId(value) {
+    return (typeof value === "string" &&
+        value.length > 0 &&
+        value.length <= 64 &&
+        !FORBIDDEN_RESOURCE_KEYS.has(value) &&
+        /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value));
+}
 export function validateHandoffDraft(draft) {
     requireText(draft.taskId, "handoff.taskId");
     requireText(draft.sourceAgentId, "handoff.sourceAgentId");
@@ -323,6 +343,21 @@ export function validateHandoffDraft(draft) {
     }
     if (draft.acceptanceCriteria.length === 0) {
         throw new ValidationError("handoff.acceptanceCriteria must not be empty");
+    }
+    // Local id check: `workforce.ts` imports from this barrel, so it cannot be
+    // imported back here. The rule is kept identical to `isSafeIdentifier`.
+    if (draft.projectId !== undefined && !isSafeResourceId(draft.projectId)) {
+        throw new ValidationError("handoff.projectId is invalid");
+    }
+    if (draft.requiredCapabilities !== undefined) {
+        requireArray(draft.requiredCapabilities, "handoff.requiredCapabilities");
+        for (const capability of draft.requiredCapabilities) {
+            requireText(capability, "handoff.requiredCapabilities entry");
+        }
+    }
+    if (draft.sourceAssignmentId !== undefined &&
+        !isSafeResourceId(draft.sourceAssignmentId)) {
+        throw new ValidationError("handoff.sourceAssignmentId is invalid");
     }
 }
 export function validateApprovalRequest(draft) {
@@ -358,3 +393,5 @@ export * from "./cost-center.js";
 export * from "./governance.js";
 export * from "./routing.js";
 export * from "./workforce.js";
+export * from "./capabilities.js";
+export * from "./assignment.js";
