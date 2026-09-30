@@ -1,0 +1,93 @@
+.liquid-glass-container {
+  background: rgba(15, 20, 30, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  color: #e0e6ed;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  margin-top: 24px;
+}
+
+.liquid-glass-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.liquid-glass-tab {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #a0aec0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.liquid-glass-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.liquid-glass-tab.active {
+  background: rgba(100, 150, 255, 0.15);
+  border-color: rgba(100, 150, 255, 0.4);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(100, 150, 255, 0.2);
+}
+
+.liquid-glass-panel {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.liquid-glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.liquid-glass-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+
+.liquid-glass-card p {
+  margin: 0;
+  color: #a0aec0;
+}
+
+.liquid-glass-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+
+.liquid-glass-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.liquid-glass-btn.primary {
+  background: rgba(100, 150, 255, 0.2);
+  border-color: rgba(100, 150, 255, 0.5);
+}
+
+.liquid-glass-btn.primary:hover {
+  background: rgba(100, 150, 255, 0.3);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

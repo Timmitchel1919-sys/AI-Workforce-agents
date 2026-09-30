@@ -14,12 +14,19 @@ export declare class DefaultCredentialBroker implements CredentialBroker {
     storeCredentials(connectorId: string, credentials: any, context: InvocationContext): Promise<void>;
     revokeCredentials(connectorId: string, context: InvocationContext): Promise<void>;
 }
+import { ExecutionOrchestrator } from './foundation/execution-chain.js';
+import { AnalyticsTracker } from './foundation/analytics-tracker.js';
+import { DataQualityEngine } from './foundation/data-quality.js';
 export declare class ToolInvocationEngine {
     private registry;
     private credentialBroker;
     private governance;
     private validator;
-    constructor(registry: ConnectorRegistry, credentialBroker: CredentialBroker, governance: GovernancePolicy, validator: ResultValidator);
+    private orchestrator?;
+    private analytics?;
+    private dataQuality?;
+    constructor(registry: ConnectorRegistry, credentialBroker: CredentialBroker, governance: GovernancePolicy, validator: ResultValidator, orchestrator?: ExecutionOrchestrator | undefined, analytics?: AnalyticsTracker | undefined, dataQuality?: DataQualityEngine | undefined);
     invoke(connectorId: string, capabilityId: string, input: any, context: InvocationContext): Promise<InvocationResult>;
+    private trackOutcome;
     private errorResult;
 }

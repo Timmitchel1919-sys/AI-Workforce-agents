@@ -28,6 +28,8 @@ export interface Connector {
 export interface InvocationContext {
     userId: string;
     workspaceId: string;
+    projectId?: string;
+    deliveryPlanId?: string;
     roles: string[];
     traceId: string;
     timestamp: number;
