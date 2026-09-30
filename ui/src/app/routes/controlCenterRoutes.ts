@@ -26,3 +26,4 @@ export { default as CostCenterPage } from "../../pages/CostCenter/CostCenterPage
 export { default as IntelligencePage } from "../../pages/Intelligence/IntelligencePage";
 export { default as IntegrationsPage } from "../../pages/Integrations/IntegrationsPage";
 
+export { default as ExtensionsPage } from "../../pages/Extensions/ExtensionsPage";

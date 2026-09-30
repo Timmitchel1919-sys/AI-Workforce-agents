@@ -45,6 +45,7 @@ const IntelligencePage = fromChunk(loadControlCenterRoutes, "IntelligencePage");
 const IntegrationsPage = fromChunk(loadControlCenterRoutes, "IntegrationsPage");
 const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
+const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -142,6 +143,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },
       { path: "design-system", element: withSuspense(<DesignSystemPage />) },
+      { path: "extensions", element: withSuspense(<ExtensionsPage />) },
     ],
   },
 ]));
