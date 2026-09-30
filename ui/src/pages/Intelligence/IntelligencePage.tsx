@@ -1,4 +1,4 @@
-import { BrainCircuit, LineChart, AlertTriangle, Activity, CheckSquare, Settings, Zap, Shuffle } from "lucide-react";
+import { BrainCircuit, LineChart, AlertTriangle, Activity, CheckSquare, Settings, Zap, Shuffle, type LucideIcon } from "lucide-react";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
 import { useI18n } from "../../i18n";
@@ -11,7 +11,7 @@ const GlassCard = ({ children, className = "" }: { children: React.ReactNode; cl
   </div>
 );
 
-const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
+const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: LucideIcon, label: string }) => (
   <button
     onClick={onClick}
     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${

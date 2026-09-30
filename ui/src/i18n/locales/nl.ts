@@ -40,6 +40,7 @@ export const nl: Messages = {
     agents: "Agents",
     tasks: "Taken",
     workflows: "Workflows",
+    integrations: "Integraties",
     projects: "Projecten",
     approvals: "Goedkeuringen",
     spatialGraph: "Ruimtelijke Netwerkgrafiek",
@@ -2175,4 +2176,16 @@ export const nl: Messages = {
     pageDescription: "Voorspellende beslissings- en optimalisatie-engine. Bewaakt afwijkingen, anomalieën en voert voorspellingen uit."
   },
   onboarding: onboardingNl,
+  integrations: {
+    title: "Integraties",
+    description: "Beheer enterprise integraties, MCP-servers en externe tools.",
+    tabs: {
+      connectors: "Connectors",
+      capabilities: "Mogelijkheden",
+      mcp: "MCP-servers",
+      webhooks: "Webhooks",
+      credentials: "Referenties",
+      activity: "Activiteit"
+    }
+  }
 };

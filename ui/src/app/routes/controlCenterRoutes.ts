@@ -24,3 +24,5 @@ export { ExecutionFabricPage } from '../../pages/ExecutionFabric/ExecutionFabric
 export { default as GovernancePage } from "../../pages/Governance/GovernancePage";
 export { default as CostCenterPage } from "../../pages/CostCenter/CostCenterPage";
 export { default as IntelligencePage } from "../../pages/Intelligence/IntelligencePage";
+export { default as IntegrationsPage } from "../../pages/Integrations/IntegrationsPage";
+

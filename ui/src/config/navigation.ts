@@ -1,6 +1,6 @@
 import type { MessageKey } from "../i18n";
 
-export type NavigationSectionId = "main" | "workspace" | "intelligence" | "governance";
+export type NavigationSectionId = "main" | "workspace" | "intelligence" | "integrations" | "governance";
 
 export type NavigationIconId =
   | "overview"
@@ -17,7 +17,8 @@ export type NavigationIconId =
   | "spatial-graph"
   | "governance"
   | "cost-center"
-  | "intelligence";
+  | "intelligence"
+  | "integrations";
 
 export type NavigationBadge = number | string;
 
@@ -34,6 +35,7 @@ export const navigationSections: Array<{ id: NavigationSectionId; labelKey: Mess
   { id: "main", labelKey: "nav.sections.main" },
   { id: "workspace", labelKey: "nav.sections.workspace" },
   { id: "intelligence", labelKey: "nav.sections.intelligence" },
+  { id: "integrations", labelKey: "nav.integrations" },
   { id: "governance", labelKey: "nav.sections.governance" },
 ];
 
@@ -54,4 +56,5 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.costCenter", route: "/cost", icon: "cost-center", section: "governance" },
   { labelKey: "nav.auditLog", route: "/audit-log", icon: "audit-log", section: "governance" },
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },
+  { labelKey: "nav.integrations", route: "/integrations", icon: "integrations", section: "integrations" },
 ];

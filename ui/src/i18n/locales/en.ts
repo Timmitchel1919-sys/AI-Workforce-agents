@@ -41,6 +41,7 @@ export const en = {
     agents: "Agents",
     tasks: "Tasks",
     workflows: "Workflows",
+    integrations: "Integrations",
     projects: "Projects",
     approvals: "Approvals",
     spatialGraph: "Spatial Graph",
@@ -2176,4 +2177,16 @@ export const en = {
     pageDescription: "Predictive decision and optimization engine. Monitors drift, anomalies, and performs forecasting."
   },
   onboarding: onboardingEn,
+  integrations: {
+    title: "Integrations",
+    description: "Manage enterprise integrations, MCP servers, and external tools.",
+    tabs: {
+      connectors: "Connectors",
+      capabilities: "Capabilities",
+      mcp: "MCP Servers",
+      webhooks: "Webhooks",
+      credentials: "Credentials",
+      activity: "Activity"
+    }
+  }
 };

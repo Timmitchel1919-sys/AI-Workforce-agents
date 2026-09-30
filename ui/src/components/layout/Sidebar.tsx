@@ -16,6 +16,7 @@ import {
   Settings,
   Wallet,
   BrainCircuit,
+  Blocks,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -43,6 +44,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   governance: Scale,
   "cost-center": Wallet,
   settings: Settings,
+  integrations: Blocks,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";
