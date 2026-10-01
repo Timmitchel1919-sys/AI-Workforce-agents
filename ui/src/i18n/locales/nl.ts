@@ -55,6 +55,7 @@ export const nl: Messages = {
     designSystem: "Designsysteem",
     organization: "Organisaties",
     billing: "Facturatie & Abonnementen",
+    sso: "SSO & Identiteit",
     platformAdmin: "Platformbeheer",
     commercialAdmin: "Commercieel Beheer",
     customerOps: "Klantoperaties",

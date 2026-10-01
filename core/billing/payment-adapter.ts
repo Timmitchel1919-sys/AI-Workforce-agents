@@ -44,3 +44,4 @@ export class TestPaymentAdapter implements PaymentProviderAdapter {
     return false;
   }
 }
+

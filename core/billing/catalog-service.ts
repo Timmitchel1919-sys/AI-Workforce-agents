@@ -56,3 +56,4 @@ export class CatalogService {
     return resolved;
   }
 }
+

@@ -1,34 +1,32 @@
 # Final Report
 
-ENTERPRISE CUSTOMER & ADMINISTRATION PLATFORM
+ENTERPRISE IDENTITY & SINGLE SIGN-ON (SSO)
 
 STATUS:
 COMPLETE
 
 ## 1. Repository State
-The `ENTERPRISE BILLING` changes were successfully committed and deployed. Preflight confirmed branch readiness for this layer.
+The CRM module changes were successfully committed and deployed. Preflight confirmed branch readiness for this identity layer.
 
-## 2. Customer Architecture
-The architecture unifies the customer 360-degree view without entangling billing and operational components:
-- **CustomerProfile**: Tracks lifecycle (ONBOARDING, ACTIVE, AT_RISK, CHURNED), health score, and success managers.
-- **CustomerContact**: Tracks specific individuals mapped to their enterprise role.
-- **SupportCase & SLA**: Provides helpdesk functionalities tied to standard and custom SLA plans (response targets, dedicated support).
-- **IncidentCommunication**: Centralized mechanism for investigating and broadcasting platform events to affected services/customers.
+## 2. Identity Architecture
+The architecture unifies federated enterprise access and directory synchronization:
+- **IdentityProvider**: Connects external SAML/OIDC providers to domain mappings.
+- **UserIdentity**: Normalizes the mapped profile into a unified `UserIdentity` compatible with the platform.
+- **SsoSession**: Enforces absolute maximum lifespans, IP restrictions, and instant revocation.
+- **ScimProvisioningEvent**: Provides deterministic queuing of directory sync events to ensure users are suspended automatically when removed from the corporate directory.
 
 ## Implementation Details
 
-- **Contracts**: Defined domain in `contracts/customer.ts`.
+- **Contracts**: Defined domain in `contracts/identity.ts`.
 - **Services**: 
-  - `CustomerService`: Manages profiles and checks health threshold drops to auto-flag at-risk accounts.
-  - `SupportService`: Creates, manages, and escalates cases based on severity.
-  - `IncidentService`: Exposes status and incident update queues.
-- **Tests**: Core logic validated via `customer.test.ts`. Verified transitions from ONBOARDING to AT_RISK, SLA mapping, case escalation, and incident resolution mechanics. (4/4 tests passed).
-- **UI**: Added `CustomerProfilePage` and `IncidentsPage`.
-- **Navigation**: Registered `customer-ops` and `incidents` with the core `controlCenterRoutes` and Sidebar (using `HeartHandshake` and `AlertTriangle` icons).
-- **Localization**: Added translation string mappings to `en.ts` and `nl.ts`.
+  - `SsoService`: Handles IdP registration, domain collision detection, session creation, and time-based invalidation.
+  - `ScimService`: Integrates with `SsoService` to map SCIM standard lifecycle events (Create, Update, Delete) into real-time role and status adjustments.
+- **Tests**: Validated in `identity.test.ts`. Ensured domain collisions throw, sessions expire correctly, and SCIM deletion immediately suspends active users.
+- **UI**: Added `SsoSettingsPage` containing federation management, SCIM token issuance, and strict conditional access toggles.
+- **Navigation**: Registered `sso` with the core `controlCenterRoutes` and Sidebar (using `KeyRound`).
 
 ## Next Steps
 All source code changes were reviewed, successfully typechecked, committed, and pushed. Deployment is triggering.
 
 Next identified dependency:
-ENTERPRISE SINGLE SIGN-ON (SSO) & FEDERATED IDENTITY
+ENTERPRISE AUDIT & COMPLIANCE (or further ML Ops maturity)

@@ -56,6 +56,7 @@ export const en = {
     designSystem: "Design System",
     organization: "Organizations",
     billing: "Billing & Subscriptions",
+    sso: "SSO & Identity",
     platformAdmin: "Platform Admin",
     commercialAdmin: "Commercial Admin",
     customerOps: "Customer Operations",

@@ -23,6 +23,7 @@ import {
   Landmark,
   HeartHandshake,
   AlertTriangle,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -53,6 +54,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   integrations: Blocks,
   organization: Building2,
   billing: CreditCard,
+  sso: KeyRound,
   admin: Shield,
   "commercial-admin": Landmark,
   "customer-ops": HeartHandshake,

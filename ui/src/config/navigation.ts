@@ -21,6 +21,7 @@ export type NavigationIconId =
   | "integrations"
   | "organization"
   | "billing"
+  | "sso"
   | "admin"
   | "commercial-admin"
   | "customer-ops"
@@ -65,6 +66,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.integrations", route: "/integrations", icon: "integrations", section: "integrations" },
   { labelKey: "nav.organization", route: "/organizations", icon: "organization", section: "main" },
   { labelKey: "nav.billing", route: "/billing", icon: "billing", section: "main" },
+  { labelKey: "nav.sso", route: "/sso-settings", icon: "sso", section: "main" },
   { labelKey: "nav.platformAdmin", route: "/admin", icon: "admin", section: "governance" },
   { labelKey: "nav.commercialAdmin", route: "/commercial-admin", icon: "commercial-admin", section: "governance" },
   { labelKey: "nav.customerOps", route: "/customer-operations", icon: "customer-ops", section: "main" },

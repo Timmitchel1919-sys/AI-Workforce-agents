@@ -74,3 +74,4 @@ export const CommercialAdminPage: React.FC = () => {
     </div>
   );
 };
+

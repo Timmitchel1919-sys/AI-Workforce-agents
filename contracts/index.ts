@@ -947,3 +947,4 @@ export * from "./assignment.js";
 export * from "./tenancy.js";
 export * from "./billing.js";
 export * from "./customer.js";
+export * from "./identity.js";

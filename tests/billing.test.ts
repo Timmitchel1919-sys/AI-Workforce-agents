@@ -312,3 +312,4 @@ test("Billing: Dunning and Restrictions", () => {
   dunning.handlePaymentRecovery("org_1", "sub_1");
   assert.equal(sub?.status, "ACTIVE");
 });
+
