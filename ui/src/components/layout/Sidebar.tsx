@@ -19,6 +19,8 @@ import {
   Blocks,
   Building2,
   Shield,
+  CreditCard,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -48,7 +50,9 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   settings: Settings,
   integrations: Blocks,
   organization: Building2,
+  billing: CreditCard,
   admin: Shield,
+  "commercial-admin": Landmark,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";

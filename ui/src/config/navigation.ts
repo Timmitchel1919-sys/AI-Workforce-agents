@@ -20,7 +20,9 @@ export type NavigationIconId =
   | "intelligence"
   | "integrations"
   | "organization"
-  | "admin";
+  | "billing"
+  | "admin"
+  | "commercial-admin";
 
 export type NavigationBadge = number | string;
 
@@ -60,5 +62,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },
   { labelKey: "nav.integrations", route: "/integrations", icon: "integrations", section: "integrations" },
   { labelKey: "nav.organization", route: "/organizations", icon: "organization", section: "main" },
+  { labelKey: "nav.billing", route: "/billing", icon: "billing", section: "main" },
   { labelKey: "nav.platformAdmin", route: "/admin", icon: "admin", section: "governance" },
+  { labelKey: "nav.commercialAdmin", route: "/commercial-admin", icon: "commercial-admin", section: "governance" },
 ];

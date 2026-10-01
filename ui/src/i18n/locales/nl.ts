@@ -54,7 +54,9 @@ export const nl: Messages = {
     settings: "Instellingen",
     designSystem: "Designsysteem",
     organization: "Organisaties",
+    billing: "Facturatie & Abonnementen",
     platformAdmin: "Platformbeheer",
+    commercialAdmin: "Commercieel Beheer",
     sectionNavigation: "Navigatie {section}",
   },
   shell: {

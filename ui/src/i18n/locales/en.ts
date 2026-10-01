@@ -55,7 +55,9 @@ export const en = {
     settings: "Settings",
     designSystem: "Design System",
     organization: "Organizations",
+    billing: "Billing & Subscriptions",
     platformAdmin: "Platform Admin",
+    commercialAdmin: "Commercial Admin",
     sectionNavigation: "{section} navigation",
   },
   shell: {
