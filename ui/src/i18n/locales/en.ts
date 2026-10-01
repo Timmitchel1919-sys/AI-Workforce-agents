@@ -54,6 +54,8 @@ export const en = {
     auditLog: "Audit Log",
     settings: "Settings",
     designSystem: "Design System",
+    organization: "Organizations",
+    platformAdmin: "Platform Admin",
     sectionNavigation: "{section} navigation",
   },
   shell: {

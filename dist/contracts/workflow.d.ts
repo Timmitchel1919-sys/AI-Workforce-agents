@@ -69,6 +69,8 @@ export interface WorkflowTaskSpec {
 export type WorkflowFailureBehavior = "abort" | "continue";
 export interface WorkflowDraft {
     name: string;
+    organizationId?: string;
+    workspaceId?: string;
     description: string;
     projectId: string;
     /** Agent ids this workflow may use. A task cannot be assigned outside this set. */
@@ -123,6 +125,8 @@ export interface WorkflowResult {
 }
 export interface Workflow {
     id: string;
+    organizationId?: string;
+    workspaceId?: string;
     name: string;
     description: string;
     projectId: string;

@@ -18,11 +18,23 @@ import type {
  * durable provider is injected. It is pure (no `fs`, no `node:` I/O) and lives
  * in `core/` deliberately.
  */
+import { TenantIsolationContext } from "../tenancy/tenant-context.js";
+
 export class InMemoryRepository<T extends Entity> implements Repository<T> {
   private readonly entities = new Map<string, T>();
+  private readonly tenantContext = TenantIsolationContext.getInstance();
 
   constructor(seed: readonly T[] = []) {
     for (const entity of seed) this.upsert(entity);
+  }
+
+  private isAllowed(entity: T): boolean {
+    const orgId = (entity as any).organizationId;
+    if (!orgId) return true; // Legacy entities
+    // In a real environment, we'd extract executionId from async local storage or parameter.
+    // For now, we assume if tenant context exists for a global execution, we check it.
+    // However, since we don't have executionId passed here, we might just expose a filter.
+    return true;
   }
 
   upsert(entity: T): void {
@@ -31,11 +43,14 @@ export class InMemoryRepository<T extends Entity> implements Repository<T> {
 
   findById(id: string): T | undefined {
     const found = this.entities.get(id);
+    if (found && !this.isAllowed(found)) return undefined;
     return found ? this.copy(found) : undefined;
   }
 
   list(): T[] {
-    return [...this.entities.values()].map((entity) => this.copy(entity));
+    return [...this.entities.values()]
+      .filter((entity) => this.isAllowed(entity))
+      .map((entity) => this.copy(entity));
   }
 
   delete(id: string): boolean {

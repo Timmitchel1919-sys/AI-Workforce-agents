@@ -48,6 +48,8 @@ export interface ModelPolicy {
  */
 export interface Agent {
     id: string;
+    organizationId?: string;
+    workspaceId?: string;
     name: string;
     description: string;
     capabilities: readonly string[];

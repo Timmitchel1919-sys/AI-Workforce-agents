@@ -443,6 +443,8 @@ export interface OnboardingSession extends Entity {
 /** The registered, READY (or blocked) project produced by provisioning. */
 export interface ProvisionedProject extends Entity {
     id: string;
+    organizationId?: string;
+    workspaceId?: string;
     code: string;
     displayName: string;
     fullName?: string;

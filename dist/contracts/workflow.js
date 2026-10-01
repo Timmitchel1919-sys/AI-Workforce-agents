@@ -113,6 +113,7 @@ export function validateWorkflowDraft(draft) {
     if (!draft || typeof draft !== "object") {
         throw new ValidationError("workflow draft must be an object");
     }
+    requireText(draft.organizationId, "workflow.organizationId");
     requireText(draft.name, "workflow.name");
     requireText(draft.description, "workflow.description");
     requireText(draft.projectId, "workflow.projectId");

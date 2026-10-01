@@ -27,3 +27,5 @@ export { default as IntelligencePage } from "../../pages/Intelligence/Intelligen
 export { default as IntegrationsPage } from "../../pages/Integrations/IntegrationsPage";
 
 export { default as ExtensionsPage } from "../../pages/Extensions/ExtensionsPage";
+export { default as OrganizationPage } from "../../pages/Organizations/OrganizationPage";
+export { default as PlatformAdminPage } from "../../pages/Admin/PlatformAdminPage";

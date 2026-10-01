@@ -107,6 +107,8 @@ export type WorkflowFailureBehavior = "abort" | "continue";
 
 export interface WorkflowDraft {
   name: string;
+  organizationId?: string;
+  workspaceId?: string;
   description: string;
   projectId: string;
   /** Agent ids this workflow may use. A task cannot be assigned outside this set. */
@@ -191,6 +193,8 @@ export interface WorkflowResult {
 
 export interface Workflow {
   id: string;
+  organizationId?: string;
+  workspaceId?: string;
   name: string;
   description: string;
   projectId: string;
@@ -299,6 +303,7 @@ export function validateWorkflowDraft(draft: WorkflowDraft): void {
   if (!draft || typeof draft !== "object") {
     throw new ValidationError("workflow draft must be an object");
   }
+  requireText(draft.organizationId, "workflow.organizationId");
   requireText(draft.name, "workflow.name");
   requireText(draft.description, "workflow.description");
   requireText(draft.projectId, "workflow.projectId");

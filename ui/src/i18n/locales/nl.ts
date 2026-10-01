@@ -53,6 +53,8 @@ export const nl: Messages = {
     auditLog: "Auditlog",
     settings: "Instellingen",
     designSystem: "Designsysteem",
+    organization: "Organisaties",
+    platformAdmin: "Platformbeheer",
     sectionNavigation: "Navigatie {section}",
   },
   shell: {
