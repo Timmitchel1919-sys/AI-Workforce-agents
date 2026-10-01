@@ -17,7 +17,7 @@ import { GovernancePosture } from "./GovernancePosture";
  * `configured: false` means the capability is not composed on this deployment,
  * which is never collapsed into "nothing is restricted".
  */
-export default function GovernancePage() {
+export default function GovernancePage(): import("react").JSX.Element {
   const { t } = useI18n();
   const { projectId, projects, status, failed, loading, refetch, select } = useActiveProject();
 
