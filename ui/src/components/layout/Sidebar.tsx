@@ -21,6 +21,8 @@ import {
   Shield,
   CreditCard,
   Landmark,
+  HeartHandshake,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -53,6 +55,8 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   billing: CreditCard,
   admin: Shield,
   "commercial-admin": Landmark,
+  "customer-ops": HeartHandshake,
+  incidents: AlertTriangle,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";

@@ -31,3 +31,5 @@ export { default as OrganizationPage } from "../../pages/Organizations/Organizat
 export { BillingPortalPage } from "../../pages/Organizations/BillingPortalPage";
 export { default as PlatformAdminPage } from "../../pages/Admin/PlatformAdminPage";
 export { CommercialAdminPage } from "../../pages/Admin/CommercialAdminPage";
+export { CustomerProfilePage } from "../../pages/CustomerOperations/CustomerProfilePage";
+export { IncidentsPage } from "../../pages/CustomerOperations/IncidentsPage";

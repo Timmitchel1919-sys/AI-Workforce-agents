@@ -22,7 +22,9 @@ export type NavigationIconId =
   | "organization"
   | "billing"
   | "admin"
-  | "commercial-admin";
+  | "commercial-admin"
+  | "customer-ops"
+  | "incidents";
 
 export type NavigationBadge = number | string;
 
@@ -65,4 +67,6 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.billing", route: "/billing", icon: "billing", section: "main" },
   { labelKey: "nav.platformAdmin", route: "/admin", icon: "admin", section: "governance" },
   { labelKey: "nav.commercialAdmin", route: "/commercial-admin", icon: "commercial-admin", section: "governance" },
+  { labelKey: "nav.customerOps", route: "/customer-operations", icon: "customer-ops", section: "main" },
+  { labelKey: "nav.incidents", route: "/incidents", icon: "incidents", section: "governance" },
 ];

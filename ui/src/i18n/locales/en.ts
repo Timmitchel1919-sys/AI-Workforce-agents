@@ -58,6 +58,8 @@ export const en = {
     billing: "Billing & Subscriptions",
     platformAdmin: "Platform Admin",
     commercialAdmin: "Commercial Admin",
+    customerOps: "Customer Operations",
+    incidents: "Incidents & Status",
     sectionNavigation: "{section} navigation",
   },
   shell: {

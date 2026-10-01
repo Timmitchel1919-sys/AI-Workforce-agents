@@ -1,39 +1,34 @@
 # Final Report
 
-ENTERPRISE BILLING, SUBSCRIPTIONS, ENTITLEMENTS & COMMERCIAL SaaS
+ENTERPRISE CUSTOMER & ADMINISTRATION PLATFORM
 
 STATUS:
 COMPLETE
 
 ## 1. Repository State
-Preflight git analysis succeeded. Previous tasks (`tenancy` and `cost-center`) were merged correctly and their logic remains intact on `main`.
+The `ENTERPRISE BILLING` changes were successfully committed and deployed. Preflight confirmed branch readiness for this layer.
 
-## 2. Prior-layer Audit
-The actual previous layers for AI Workforce (Workspaces, Cost Center, Governance) were audited. Multi-Tenancy prerequisite was confirmed to exist (using `tenant-context.ts` and `migration.ts`).
-
-## 3. Commercial Architecture
-The architecture is fully provider-neutral, establishing a clear line between internal platform costs (Cost Center) and commercial SaaS billing to the end-users.
+## 2. Customer Architecture
+The architecture unifies the customer 360-degree view without entangling billing and operational components:
+- **CustomerProfile**: Tracks lifecycle (ONBOARDING, ACTIVE, AT_RISK, CHURNED), health score, and success managers.
+- **CustomerContact**: Tracks specific individuals mapped to their enterprise role.
+- **SupportCase & SLA**: Provides helpdesk functionalities tied to standard and custom SLA plans (response targets, dedicated support).
+- **IncidentCommunication**: Centralized mechanism for investigating and broadcasting platform events to affected services/customers.
 
 ## Implementation Details
 
-- **Product Catalog, Plans, and Prices**: Implemented `CatalogService`. Plans, Products, and Prices are versioned entities separate from UI code.
-- **Currencies**: `amountMinorUnits` integers are used across all prices, charges, and invoices to prevent floating-point drift.
-- **Entitlements**: `EntitlementService` implemented. Distinguishes Boolean access from Usage Quotas, and computes effective entitlements based on Plan, Subscription state, and Enterprise Overrides.
-- **Subscription Lifecycle**: `SubscriptionService` manages the state machine (ACTIVE, PAST_DUE, GRACE_PERIOD, RESTRICTED, CANCELLED).
-- **Billing Accounts & Usage**: `RatingEngine` converts raw usage into `RatedCharge` records deterministically.
-- **Invoices**: `InvoiceService` safely finalizes invoices, sums up line items exactly, and handles credits/adjustments without overwriting historical immutable totals.
-- **Payment Provider Abstraction**: A neutral `PaymentProviderAdapter` is in place. No production merchant credentials were required or used. The system works with a `TestPaymentAdapter`.
-- **Live Payment Provider**: NOT CONFIGURED.
-- **Real Payment Collection**: NOT ENABLED.
-- **Webhook Security**: `WebhookHandler` uses strict idempotency (`processedEvents` set) and signature verification.
-- **Dunning**: `DunningService` restricts subscriptions when payments fail, allowing a grace period, without deleting any customer resources or workspaces.
-- **Tenant Isolation**: Billing interfaces demand explicitly scoped queries.
-- **Tests**: 8/8 newly added unit tests passed confirming Catalog resolution, Entitlement calculation, Subscription state, Rating Engine logic (including tiered usage), Invoice math, and Webhook idempotency.
-- **Commercial UI**: `BillingPortalPage` added for tenant consumers, and `CommercialAdminPage` added for global operators. Seamlessly injected into the Navigation routing table.
+- **Contracts**: Defined domain in `contracts/customer.ts`.
+- **Services**: 
+  - `CustomerService`: Manages profiles and checks health threshold drops to auto-flag at-risk accounts.
+  - `SupportService`: Creates, manages, and escalates cases based on severity.
+  - `IncidentService`: Exposes status and incident update queues.
+- **Tests**: Core logic validated via `customer.test.ts`. Verified transitions from ONBOARDING to AT_RISK, SLA mapping, case escalation, and incident resolution mechanics. (4/4 tests passed).
+- **UI**: Added `CustomerProfilePage` and `IncidentsPage`.
+- **Navigation**: Registered `customer-ops` and `incidents` with the core `controlCenterRoutes` and Sidebar (using `HeartHandshake` and `AlertTriangle` icons).
+- **Localization**: Added translation string mappings to `en.ts` and `nl.ts`.
 
-## Remaining Risks
-- **Tax/Legal**: Jurisdiction-specific legal tax invoicing is NOT VERIFIED. It must be implemented and audited by a legal tax provider.
-- **Email Delivery**: NOT CONFIGURED. Notification events exist but external dispatching is required.
+## Next Steps
+All source code changes were reviewed, successfully typechecked, committed, and pushed. Deployment is triggering.
 
-## Next Dependency
-ENTERPRISE CUSTOMER & ADMINISTRATION PLATFORM (CRM, CUSTOMER SUCCESS, SUPPORT & SERVICE MANAGEMENT)
+Next identified dependency:
+ENTERPRISE SINGLE SIGN-ON (SSO) & FEDERATED IDENTITY

@@ -57,6 +57,8 @@ export const nl: Messages = {
     billing: "Facturatie & Abonnementen",
     platformAdmin: "Platformbeheer",
     commercialAdmin: "Commercieel Beheer",
+    customerOps: "Klantoperaties",
+    incidents: "Incidenten & Status",
     sectionNavigation: "Navigatie {section}",
   },
   shell: {

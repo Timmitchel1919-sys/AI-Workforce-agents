@@ -50,6 +50,8 @@ const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
 const BillingPortalPage = fromChunk(loadControlCenterRoutes, "BillingPortalPage");
 const PlatformAdminPage = fromChunk(loadControlCenterRoutes, "PlatformAdminPage");
 const CommercialAdminPage = fromChunk(loadControlCenterRoutes, "CommercialAdminPage");
+const CustomerProfilePage = fromChunk(loadControlCenterRoutes, "CustomerProfilePage");
+const IncidentsPage = fromChunk(loadControlCenterRoutes, "IncidentsPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -152,6 +154,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "billing", element: withSuspense(<BillingPortalPage />) },
       { path: "admin", element: withSuspense(<PlatformAdminPage />) },
       { path: "commercial-admin", element: withSuspense(<CommercialAdminPage />) },
+      { path: "customer-operations", element: withSuspense(<CustomerProfilePage />) },
+      { path: "incidents", element: withSuspense(<IncidentsPage />) },
     ],
   },
 ]));
