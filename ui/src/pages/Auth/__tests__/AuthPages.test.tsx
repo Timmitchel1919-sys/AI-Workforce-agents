@@ -364,3 +364,50 @@ describe("Awaiting access states (AUTHZ-1)", () => {
     expect(refreshAccess).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("Unreachable Control Plane on a protected route", () => {
+  it("stays on the route and never redirects to the gateway", async () => {
+    render(<Harness path="/overview" user={TEST_USER} access="unavailable" />);
+
+    expect(await screen.findByRole("heading", { name: /Access could not be checked/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Welcome back/i })).toBeNull();
+    expect(screen.queryByText("Control Center")).toBeNull();
+    expect(screen.getByTestId("location")).toHaveTextContent("/overview");
+  });
+
+  it("does not assume an account, so the masked email is stated", async () => {
+    render(<Harness path="/overview" user={TEST_USER} access="unavailable" />);
+
+    expect(await screen.findByText(/t••@example\.com/)).toBeInTheDocument();
+  });
+
+  it("recovers in place when a re-check reaches the Control Plane", async () => {
+    const user = userEvent.setup();
+    const refreshAccess = vi.fn(async () => "granted" as const);
+    render(<Harness path="/overview" user={TEST_USER} access="unavailable" refreshAccess={refreshAccess} />);
+
+    await user.click(await screen.findByRole("button", { name: /Check access again/i }));
+    expect(await screen.findByText("Control Center")).toBeInTheDocument();
+    expect(refreshAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the stated screen when the re-check itself fails", async () => {
+    const user = userEvent.setup();
+    const refreshAccess = vi.fn(async (): Promise<AccessState> => {
+      throw new Error("network down");
+    });
+    render(<Harness path="/overview" user={TEST_USER} access="unavailable" refreshAccess={refreshAccess} />);
+
+    await user.click(await screen.findByRole("button", { name: /Check access again/i }));
+
+    expect(refreshAccess).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("heading", { name: /Access could not be checked/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Check access again/i })).not.toBeDisabled();
+  });
+
+  it("offers an explicit way out instead of stranding the user", async () => {
+    render(<Harness path="/overview" user={TEST_USER} access="unavailable" />);
+
+    expect(await screen.findByRole("button", { name: /Sign out/i })).toBeInTheDocument();
+  });
+});

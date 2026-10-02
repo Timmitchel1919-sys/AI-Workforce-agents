@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { Spinner } from "../components/ui";
+import { AccessUnavailable } from "./AccessUnavailable";
 import { loginPathFor } from "./redirect";
 import { useAuth } from "./useAuth";
 import { useI18n } from "../i18n";
@@ -31,13 +32,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
 
+  // A Control Plane that cannot be reached is not a lost session, so the user
+  // stays on this route and is given a way to retry rather than being bounced
+  // back to the gateway.
   if (access === "unavailable") {
-    return (
-      <div className="auth-guard-loading" role="status" aria-live="polite">
-        <Spinner />
-        <span>Connection lost, reconnecting to Control Plane...</span>
-      </div>
-    );
+    return <AccessUnavailable />;
   }
 
   if (!user || access !== "granted") {
