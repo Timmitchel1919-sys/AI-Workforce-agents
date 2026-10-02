@@ -65,6 +65,7 @@ export const nl: Messages = {
     secops: "Beveiligingsoperaties",
     trustCenter: "Trustcentrum & GRC",
     extensions: "Extensies & Plugins",
+    marketing: "Marketing & Groei",
     sectionNavigation: "Navigatie {section}",
   },
   shell: {

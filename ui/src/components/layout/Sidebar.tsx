@@ -27,8 +27,8 @@ import {
   ShieldCheck,
   Code,
   ShieldAlert,
-
   Puzzle,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -68,6 +68,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   privacy: ShieldCheck,
   developer: Code,
   secops: ShieldAlert,
+  marketing: Megaphone,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";

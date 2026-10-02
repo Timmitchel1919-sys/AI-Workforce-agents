@@ -29,7 +29,8 @@ export type NavigationIconId =
   | "incidents"
   | "privacy"
   | "developer"
-  | "secops";
+  | "secops"
+  | "marketing";
 
 export type NavigationBadge = number | string;
 
@@ -79,5 +80,6 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.privacy", route: "/privacy", icon: "privacy", section: "governance" },
   { labelKey: "nav.developer", route: "/developer-platform", icon: "developer", section: "main" },
   { labelKey: "nav.secops", route: "/secops", icon: "secops", section: "governance" },
+  { labelKey: "nav.marketing", route: "/marketing", icon: "marketing", section: "main" },
   { labelKey: "nav.trustCenter", route: "/trust", icon: "governance", section: "governance" },
 ];
