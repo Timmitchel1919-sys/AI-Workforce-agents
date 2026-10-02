@@ -1,4 +1,6 @@
-import { test, assert } from "vitest";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { MarketingEngine } from "../core/marketing/index.js";
 
 test("Marketing: Campaign and Lead tracking", () => {

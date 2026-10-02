@@ -1,4 +1,6 @@
-import { test, assert } from "vitest";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { ThreatEngine } from "../core/secops/index.js";
 
 test("SecOps: Threat Engine detection and incident creation", () => {

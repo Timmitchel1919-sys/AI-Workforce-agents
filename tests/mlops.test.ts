@@ -1,4 +1,6 @@
-import { test, assert } from "vitest";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { MLOpsEngine } from "../core/mlops/index.js";
 
 test("MLOps: Model Registration, Deployment, and Drift Detection", () => {

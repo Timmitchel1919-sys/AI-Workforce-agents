@@ -1,4 +1,6 @@
-import { test, assert } from "vitest";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { ExtensionRegistry } from "../core/extensions/index.js";
 
 test("Extensions: Publishing and Installation", () => {
