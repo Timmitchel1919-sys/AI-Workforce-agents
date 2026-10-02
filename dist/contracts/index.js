@@ -401,6 +401,10 @@ export * from "./customer.js";
 export * from "./identity.js";
 export * from "./privacy.js";
 export * from "./api-platform.js";
+export * from "./secops.js";
+export * from "./extensions.js";
+export * from "./mlops.js";
+export * from "./marketing.js";
 /* ------------------------------------------------------------------ */
 /* GRC / Compliance / Risk / Privacy / Trust                         */
 /* ------------------------------------------------------------------ */
