@@ -948,3 +948,13 @@ export * from "./tenancy.js";
 export * from "./billing.js";
 export * from "./customer.js";
 export * from "./identity.js";
+export * from "./privacy.js";
+
+/* ------------------------------------------------------------------ */
+/* GRC / Compliance / Risk / Privacy / Trust                         */
+/* ------------------------------------------------------------------ */
+export * from "./compliance.js";
+export * from "./risk.js";
+export * from "./trust.js";
+export * from "./policy.js";
+export * from "./privacy.js";

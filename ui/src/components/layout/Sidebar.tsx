@@ -24,6 +24,7 @@ import {
   HeartHandshake,
   AlertTriangle,
   KeyRound,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -59,6 +60,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   "commercial-admin": Landmark,
   "customer-ops": HeartHandshake,
   incidents: AlertTriangle,
+  privacy: ShieldCheck,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";

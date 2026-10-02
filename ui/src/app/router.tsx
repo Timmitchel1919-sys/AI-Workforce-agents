@@ -52,7 +52,10 @@ const PlatformAdminPage = fromChunk(loadControlCenterRoutes, "PlatformAdminPage"
 const CommercialAdminPage = fromChunk(loadControlCenterRoutes, "CommercialAdminPage");
 const CustomerProfilePage = fromChunk(loadControlCenterRoutes, "CustomerProfilePage");
 const IncidentsPage = fromChunk(loadControlCenterRoutes, "IncidentsPage");
+
+const TrustCenterPage = fromChunk(loadControlCenterRoutes, "TrustCenterPage");
 const SsoSettingsPage = fromChunk(loadControlCenterRoutes, "SsoSettingsPage");
+const PrivacySettingsPage = fromChunk(loadControlCenterRoutes, "PrivacySettingsPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -158,6 +161,9 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "commercial-admin", element: withSuspense(<CommercialAdminPage />) },
       { path: "customer-operations", element: withSuspense(<CustomerProfilePage />) },
       { path: "incidents", element: withSuspense(<IncidentsPage />) },
+      { path: "privacy", element: withSuspense(<PrivacySettingsPage />) },
     ],
   },
 ]));
+
+      { path: "trust", element: withSuspense(<TrustCenterPage />) },

@@ -78,3 +78,4 @@ test("Identity: SCIM Provisioning and Session Management", () => {
     ssoService.createSession(user.userId, "idp_okta_1", "192.168.1.1", "Mozilla");
   }, "User account is not active");
 });
+

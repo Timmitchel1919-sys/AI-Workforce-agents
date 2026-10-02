@@ -71,3 +71,4 @@ test("Customer: Incident Communication", () => {
   const resolvedList = service.getActiveIncidents();
   assert.equal(resolvedList.length, 0); // No longer active
 });
+

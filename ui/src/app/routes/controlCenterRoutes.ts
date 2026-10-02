@@ -34,3 +34,7 @@ export { CommercialAdminPage } from "../../pages/Admin/CommercialAdminPage";
 export { CustomerProfilePage } from "../../pages/CustomerOperations/CustomerProfilePage";
 export { IncidentsPage } from "../../pages/CustomerOperations/IncidentsPage";
 export { SsoSettingsPage } from "../../pages/Organizations/SsoSettingsPage";
+export { PrivacySettingsPage } from "../../pages/Organizations/PrivacySettingsPage";
+import { TrustCenterPage } from "../../pages/Trust/index.js";
+
+export const TrustCenterPage = lazy(() => import("../../pages/Trust/index.js").then((m) => ({ default: m.TrustCenterPage })));

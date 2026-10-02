@@ -60,6 +60,7 @@ export const nl: Messages = {
     commercialAdmin: "Commercieel Beheer",
     customerOps: "Klantoperaties",
     incidents: "Incidenten & Status",
+    privacy: "Privacy & DLP",
     sectionNavigation: "Navigatie {section}",
   },
   shell: {
@@ -2196,3 +2197,5 @@ export const nl: Messages = {
     }
   }
 };
+
+  "nav.trustCenter": "Trustcentrum & GRC",

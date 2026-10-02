@@ -62,3 +62,4 @@ export class SupportService {
     supportCase.updatedAt = new Date();
   }
 }
+

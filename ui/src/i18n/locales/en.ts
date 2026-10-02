@@ -61,6 +61,7 @@ export const en = {
     commercialAdmin: "Commercial Admin",
     customerOps: "Customer Operations",
     incidents: "Incidents & Status",
+    privacy: "Privacy & DLP",
     sectionNavigation: "{section} navigation",
   },
   shell: {
@@ -2197,3 +2198,5 @@ export const en = {
     }
   }
 };
+
+  "nav.trustCenter": "Trust Center & GRC",

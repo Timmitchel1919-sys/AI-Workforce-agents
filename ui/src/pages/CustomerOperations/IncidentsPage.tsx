@@ -54,3 +54,4 @@ export const IncidentsPage: React.FC = () => {
     </div>
   );
 };
+
