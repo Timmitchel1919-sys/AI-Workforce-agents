@@ -27,6 +27,8 @@ import {
   ShieldCheck,
   Code,
   ShieldAlert,
+
+  Puzzle,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -55,6 +57,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   "cost-center": Wallet,
   settings: Settings,
   integrations: Blocks,
+  extensions: Puzzle,
   organization: Building2,
   billing: CreditCard,
   sso: KeyRound,

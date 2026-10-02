@@ -65,6 +65,7 @@ export const en = {
     developer: "Developer Platform",
     secops: "Security Operations",
     trustCenter: "Trust Center & GRC",
+    extensions: "Extensions & Plugins",
     sectionNavigation: "{section} navigation",
   },
   shell: {

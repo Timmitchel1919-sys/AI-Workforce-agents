@@ -19,6 +19,7 @@ export type NavigationIconId =
   | "cost-center"
   | "intelligence"
   | "integrations"
+  | "extensions"
   | "organization"
   | "billing"
   | "sso"
@@ -67,6 +68,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.auditLog", route: "/audit-log", icon: "audit-log", section: "governance" },
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },
   { labelKey: "nav.integrations", route: "/integrations", icon: "integrations", section: "integrations" },
+  { labelKey: "nav.extensions", route: "/extensions", icon: "extensions", section: "integrations" },
   { labelKey: "nav.organization", route: "/organizations", icon: "organization", section: "main" },
   { labelKey: "nav.billing", route: "/billing", icon: "billing", section: "main" },
   { labelKey: "nav.sso", route: "/sso-settings", icon: "sso", section: "main" },
