@@ -14,14 +14,26 @@ export interface DlpRule {
     pattern?: string;
     matchThreshold: number;
 }
-export interface PrivacyRequest {
+export declare const DSR_TYPES: readonly ["ACCESS", "CORRECTION", "DELETION", "PORTABILITY", "RESTRICTION", "OBJECTION", "DATA_EXPORT"];
+export type DsrType = (typeof DSR_TYPES)[number];
+export declare const DSR_STATUSES: readonly ["PENDING", "PROCESSING", "COMPLETED", "REJECTED", "IDENTITY_VERIFICATION_REQUIRED", "VERIFIED", "WAITING", "CANCELLED", "IN_PROGRESS"];
+export type DsrStatus = (typeof DSR_STATUSES)[number];
+export interface DataSubjectRequest {
     requestId: string;
     organizationId: string;
     requesterEmail: string;
-    type: "DATA_EXPORT" | "DATA_DELETION" | "CORRECTION";
-    status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
-    receivedAt: Date;
-    completedAt?: Date;
+    requesterId?: string;
+    type: DsrType;
+    status: DsrStatus;
+    receivedAt: Date | string;
+    completedAt?: Date | string;
+    verifiedAt?: Date | string;
+    identityVerified: boolean;
+    dataScope?: string;
+    notes?: string;
+    metadata?: Record<string, unknown>;
+}
+export interface PrivacyRequest extends DataSubjectRequest {
 }
 export interface RetentionPolicy {
     policyId: string;
