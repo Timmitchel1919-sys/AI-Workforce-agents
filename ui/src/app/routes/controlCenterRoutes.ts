@@ -35,6 +35,5 @@ export { CustomerProfilePage } from "../../pages/CustomerOperations/CustomerProf
 export { IncidentsPage } from "../../pages/CustomerOperations/IncidentsPage";
 export { SsoSettingsPage } from "../../pages/Organizations/SsoSettingsPage";
 export { PrivacySettingsPage } from "../../pages/Organizations/PrivacySettingsPage";
-import { TrustCenterPage } from "../../pages/Trust/index.js";
-
-export const TrustCenterPage = lazy(() => import("../../pages/Trust/index.js").then((m) => ({ default: m.TrustCenterPage })));
+export { TrustCenterPage } from "../../pages/Trust/index.js";
+export { DeveloperPlatformPage } from "../../pages/Organizations/DeveloperPlatformPage";

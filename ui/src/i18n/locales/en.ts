@@ -62,6 +62,8 @@ export const en = {
     customerOps: "Customer Operations",
     incidents: "Incidents & Status",
     privacy: "Privacy & DLP",
+    developer: "Developer Platform",
+    trustCenter: "Trust Center & GRC",
     sectionNavigation: "{section} navigation",
   },
   shell: {
@@ -2199,4 +2201,3 @@ export const en = {
   }
 };
 
-  "nav.trustCenter": "Trust Center & GRC",

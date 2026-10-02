@@ -61,6 +61,8 @@ export const nl: Messages = {
     customerOps: "Klantoperaties",
     incidents: "Incidenten & Status",
     privacy: "Privacy & DLP",
+    developer: "Ontwikkelaarsplatform",
+    trustCenter: "Trustcentrum & GRC",
     sectionNavigation: "Navigatie {section}",
   },
   shell: {
@@ -2198,4 +2200,3 @@ export const nl: Messages = {
   }
 };
 
-  "nav.trustCenter": "Trustcentrum & GRC",
