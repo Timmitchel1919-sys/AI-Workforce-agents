@@ -57,6 +57,7 @@ const TrustCenterPage = fromChunk(loadControlCenterRoutes, "TrustCenterPage");
 const SsoSettingsPage = fromChunk(loadControlCenterRoutes, "SsoSettingsPage");
 const PrivacySettingsPage = fromChunk(loadControlCenterRoutes, "PrivacySettingsPage");
 const DeveloperPlatformPage = fromChunk(loadControlCenterRoutes, "DeveloperPlatformPage");
+const SecOpsPage = fromChunk(loadControlCenterRoutes, "SecOpsPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -164,8 +165,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "incidents", element: withSuspense(<IncidentsPage />) },
       { path: "privacy", element: withSuspense(<PrivacySettingsPage />) },
       { path: "developer-platform", element: withSuspense(<DeveloperPlatformPage />) },
+      { path: "secops", element: withSuspense(<SecOpsPage />) },
       { path: "trust", element: withSuspense(<TrustCenterPage />) },
     ],
   },
 ]));
-

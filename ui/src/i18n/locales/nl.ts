@@ -62,6 +62,7 @@ export const nl: Messages = {
     incidents: "Incidenten & Status",
     privacy: "Privacy & DLP",
     developer: "Ontwikkelaarsplatform",
+    secops: "Beveiligingsoperaties",
     trustCenter: "Trustcentrum & GRC",
     sectionNavigation: "Navigatie {section}",
   },

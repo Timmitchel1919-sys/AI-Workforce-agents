@@ -26,6 +26,7 @@ import {
   KeyRound,
   ShieldCheck,
   Code,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -63,6 +64,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   incidents: AlertTriangle,
   privacy: ShieldCheck,
   developer: Code,
+  secops: ShieldAlert,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";

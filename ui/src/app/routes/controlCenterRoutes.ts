@@ -37,3 +37,4 @@ export { SsoSettingsPage } from "../../pages/Organizations/SsoSettingsPage";
 export { PrivacySettingsPage } from "../../pages/Organizations/PrivacySettingsPage";
 export { TrustCenterPage } from "../../pages/Trust/index.js";
 export { DeveloperPlatformPage } from "../../pages/Organizations/DeveloperPlatformPage";
+export { SecOpsPage } from "../../pages/Organizations/SecOpsPage";

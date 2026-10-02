@@ -63,6 +63,7 @@ export const en = {
     incidents: "Incidents & Status",
     privacy: "Privacy & DLP",
     developer: "Developer Platform",
+    secops: "Security Operations",
     trustCenter: "Trust Center & GRC",
     sectionNavigation: "{section} navigation",
   },

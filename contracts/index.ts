@@ -950,6 +950,7 @@ export * from "./customer.js";
 export * from "./identity.js";
 export * from "./privacy.js";
 export * from "./api-platform.js";
+export * from "./secops.js";
 
 /* ------------------------------------------------------------------ */
 /* GRC / Compliance / Risk / Privacy / Trust                         */
