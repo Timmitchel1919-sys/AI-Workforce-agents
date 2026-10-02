@@ -1,4 +1,6 @@
-import { test, assert } from "vitest";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { CustomerService, SupportService, IncidentService } from "../core/customer/index.js";
 
 test("Customer: Profile and Health Score", () => {

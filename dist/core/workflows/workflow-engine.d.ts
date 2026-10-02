@@ -34,6 +34,8 @@ export interface WorkflowEngineDeps {
 export interface PlanFromObjectiveInput {
     name: string;
     description: string;
+    organizationId?: string;
+    workspaceId?: string;
     projectId: string;
     participatingAgents: readonly string[];
     objective: string;

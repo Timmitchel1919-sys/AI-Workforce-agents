@@ -297,6 +297,7 @@ test("workflows project with progress and membership", () => {
     name: "wf",
     description: "d",
     projectId: A,
+    organizationId: "org_test",
     participatingAgents: ["dev"],
     tasks: [{ id: "s1", type: "ops", description: "s", agentId: "dev" }],
   });

@@ -1,4 +1,6 @@
-import { test, assert } from "vitest";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { GrcService } from "../core/grc/index.js";
 
 test("GRC: Control definitions and instances", () => {

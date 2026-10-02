@@ -324,6 +324,7 @@ test("query: workflow progress comes from real task records", async () => {
     name: "Ship it",
     description: "two-step",
     projectId: PROJECT,
+    organizationId: "org_test",
     participatingAgents: ["research-agent", "qa-agent"],
     tasks: [
       {
@@ -559,6 +560,7 @@ test("command: pause / resume / cancel workflow", async () => {
       name: "wf",
       description: "d",
       projectId: PROJECT,
+      organizationId: "org_test",
       participatingAgents: ["qa-agent"],
       tasks: [{ id: "a", type: "qa", description: "qa", agentId: "qa-agent" }],
     });
@@ -688,6 +690,7 @@ test("state: invalid approve / retry / cancel / pause / resume are rejected", as
     name: "term",
     description: "d",
     projectId: PROJECT,
+    organizationId: "org_test",
     participatingAgents: ["qa-agent"],
     tasks: [{ id: "a", type: "qa", description: "qa", agentId: "qa-agent" }],
   });

@@ -1,4 +1,6 @@
-import { test, assert } from "vitest";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { DlpEngine, PrivacyService } from "../core/privacy/index.js";
 
 test("Privacy: DLP Engine rules and scanning", () => {

@@ -1,4 +1,6 @@
-import { test, assert } from "vitest";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { SsoService, ScimService } from "../core/identity/index.js";
 
 test("Identity: SSO Provider Registration and Resolution", () => {

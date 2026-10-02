@@ -84,6 +84,8 @@ export class WorkflowSystem {
 
     const workflow: Workflow = {
       id: createId("workflow"),
+      organizationId: draft.organizationId,
+      workspaceId: draft.workspaceId,
       name: draft.name,
       description: draft.description,
       projectId: draft.projectId,

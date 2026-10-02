@@ -86,6 +86,7 @@ function makeWorkflowDraft(
   return {
     name: `workflow for ${projectId}`,
     description: "test workflow",
+    organizationId: "org_test",
     projectId,
     participatingAgents: [agentId],
     tasks: [
