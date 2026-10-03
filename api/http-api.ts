@@ -59,6 +59,7 @@ export interface ControlPlaneApiOptions {
   profile?: Pick<ProfileService, "myProfile" | "setPhoto" | "removePhoto">;
   itsm?: import("../control/services/itsm-control-service.js").ITSMControlService;
   ops?: import("../control/services/operations-service.js").OperationsControlService;
+  grc?: import("../control/services/grc-service.js").GrcControlService;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -252,6 +253,9 @@ export function createControlPlaneApi(
       }
       if (route.startsWith("/ops/")) {
         return await handleOperations(route, segs, method, req, res, principal, correlationId);
+      }
+      if (route.startsWith("/grc/")) {
+        return await handleGrc(route, segs, method, req, res, principal, correlationId);
       }
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
@@ -1052,6 +1056,34 @@ export function createControlPlaneApi(
         if (method === "GET") {
           return send(res, 200, await options.ops.listAlerts(), correlationId);
         }
+      }
+
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    } catch (e) {
+      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+    }
+  }
+
+  async function handleGrc(
+    route: string,
+    segs: string[],
+    method: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    if (!options.grc) return send(res, 404, { error: { message: "grc not available" } }, correlationId);
+    
+    try {
+      if (segs[1] === "frameworks" && method === "GET") {
+        return send(res, 200, await options.grc.listFrameworks(), correlationId);
+      }
+      if (segs[1] === "risks" && method === "GET") {
+        return send(res, 200, await options.grc.listRisks("global"), correlationId);
+      }
+      if (segs[1] === "trust-content" && method === "GET") {
+        return send(res, 200, await options.grc.listTrustCenterContent(), correlationId);
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);

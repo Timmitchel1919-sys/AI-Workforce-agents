@@ -42,3 +42,4 @@ export { MarketingPage } from "../../pages/Organizations/MarketingPage";
 export { default as ContinuityPage } from "../../pages/Continuity/ContinuityPage";
 export { default as ITSMPage } from "../../pages/ITSM/ITSMPage";
 export { default as OperationsPage } from "../../pages/Operations/OperationsPage";
+export { default as TrustCenterPage } from "../../pages/Compliance/TrustCenterPage";

@@ -1,6 +1,7 @@
 import { GraphQueryService } from "../control/services/graph-query-service.js";
 import { ITSMControlService } from "../control/services/itsm-control-service.js";
 import { OperationsControlService } from "../control/services/operations-service.js";
+import { GrcControlService } from "../control/services/grc-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -250,6 +251,24 @@ export async function createProductionControlPlaneRuntime(
   const opsAlertsRepository = repositories.repository<import("../contracts/operations.js").Alert>("ops_alerts");
   const opsConfigRepository = repositories.repository<import("../contracts/operations.js").PlatformConfiguration>("ops_platform_config");
   const opsRolloutsRepository = repositories.repository<import("../contracts/operations.js").FeatureRollout>("ops_feature_rollouts");
+
+  // GRC Repositories
+  const grcControlsRepository = repositories.repository<any>("grc_controls");
+  const grcFrameworksRepository = repositories.repository<any>("grc_frameworks");
+  const grcPoliciesRepository = repositories.repository<any>("grc_policies");
+  const grcControlInstancesRepository = repositories.repository<any>("grc_control_instances");
+  const grcRisksRepository = repositories.repository<any>("grc_risks");
+  const grcExceptionsRepository = repositories.repository<any>("grc_exceptions");
+  const grcVendorsRepository = repositories.repository<any>("grc_vendors");
+  const grcPrivacyRequestsRepository = repositories.repository<any>("grc_privacy_requests");
+  const grcRetentionPoliciesRepository = repositories.repository<any>("grc_retention_policies");
+  const grcDlpPoliciesRepository = repositories.repository<any>("grc_dlp_policies");
+  const grcPosturesRepository = repositories.repository<any>("grc_postures");
+  const grcAuditsRepository = repositories.repository<any>("grc_audits");
+  const grcAuditPackagesRepository = repositories.repository<any>("grc_audit_packages");
+  const grcCertificationsRepository = repositories.repository<any>("grc_certifications");
+  const grcTrustContentRepository = repositories.repository<any>("grc_trust_content");
+  const grcFindingsRepository = repositories.repository<any>("grc_findings");
 
   await repositories.hydrateAll();
 
@@ -782,6 +801,25 @@ export async function createProductionControlPlaneRuntime(
     opsRolloutsRepository
   );
 
+  const grc = new GrcControlService(
+    grcControlsRepository,
+    grcFrameworksRepository,
+    grcPoliciesRepository,
+    grcControlInstancesRepository,
+    grcRisksRepository,
+    grcExceptionsRepository,
+    grcVendorsRepository,
+    grcPrivacyRequestsRepository,
+    grcRetentionPoliciesRepository,
+    grcDlpPoliciesRepository,
+    grcPosturesRepository,
+    grcAuditsRepository,
+    grcAuditPackagesRepository,
+    grcCertificationsRepository,
+    grcTrustContentRepository,
+    grcFindingsRepository
+  );
+
   // READY projects become discoverable through the existing Project Registry.
   // Other warm instances pick them up through this throttled sync.
   const syncProjects = async (): Promise<void> => {
@@ -815,6 +853,7 @@ export async function createProductionControlPlaneRuntime(
     profile,
     itsm,
     ops,
+    grc,
   });
 
   return Object.freeze({
