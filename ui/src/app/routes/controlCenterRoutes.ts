@@ -40,3 +40,4 @@ export { DeveloperPlatformPage } from "../../pages/Organizations/DeveloperPlatfo
 export { SecOpsPage } from "../../pages/Organizations/SecOpsPage";
 export { MarketingPage } from "../../pages/Organizations/MarketingPage";
 export { default as ContinuityPage } from "../../pages/Continuity/ContinuityPage";
+export { default as ITSMPage } from "../../pages/ITSM/ITSMPage";

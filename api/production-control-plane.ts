@@ -1,4 +1,5 @@
 import { GraphQueryService } from "../control/services/graph-query-service.js";
+import { ITSMControlService } from "../control/services/itsm-control-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -231,6 +232,17 @@ export async function createProductionControlPlaneRuntime(
   const hostRepository = repositories.repository<HostInstance>("hosts");
   const environmentInstanceRepository =
     repositories.repository<EnvironmentInstance>("environment_instances");
+    
+  // ITSM Repositories
+  const itsmServicesRepository = repositories.repository<import("../contracts/itsm.js").Service>("itsm_services");
+  const itsmIncidentsRepository = repositories.repository<import("../contracts/itsm.js").Incident>("itsm_incidents");
+  const itsmProblemsRepository = repositories.repository<import("../contracts/itsm.js").Problem>("itsm_problems");
+  const itsmChangesRepository = repositories.repository<import("../contracts/itsm.js").ChangeRequest>("itsm_changes");
+  const itsmReleasesRepository = repositories.repository<import("../contracts/itsm.js").ITSMRelease>("itsm_releases");
+  const itsmCisRepository = repositories.repository<import("../contracts/itsm.js").ConfigurationItem>("itsm_cis");
+  const itsmRequestsRepository = repositories.repository<import("../contracts/itsm.js").ServiceRequest>("itsm_requests");
+  const itsmRunbooksRepository = repositories.repository<import("../contracts/itsm.js").Runbook>("itsm_runbooks");
+
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
@@ -742,6 +754,18 @@ export async function createProductionControlPlaneRuntime(
     audit,
     budgetPolicies,
   );
+  
+  const itsm = new ITSMControlService(
+    itsmServicesRepository,
+    itsmIncidentsRepository,
+    itsmProblemsRepository,
+    itsmChangesRepository,
+    itsmReleasesRepository,
+    itsmCisRepository,
+    itsmRequestsRepository,
+    itsmRunbooksRepository
+  );
+
   // READY projects become discoverable through the existing Project Registry.
   // Other warm instances pick them up through this throttled sync.
   const syncProjects = async (): Promise<void> => {
@@ -773,6 +797,7 @@ export async function createProductionControlPlaneRuntime(
     identityVerifier: operatorDirectory,
     access,
     profile,
+    itsm,
   });
 
   return Object.freeze({
