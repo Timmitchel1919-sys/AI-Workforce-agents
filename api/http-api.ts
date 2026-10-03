@@ -58,6 +58,7 @@ export interface ControlPlaneApiOptions {
   /** The caller's own profile (`/me/profile`, photo upload/removal). */
   profile?: Pick<ProfileService, "myProfile" | "setPhoto" | "removePhoto">;
   itsm?: import("../control/services/itsm-control-service.js").ITSMControlService;
+  ops?: import("../control/services/operations-service.js").OperationsControlService;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -248,6 +249,9 @@ export function createControlPlaneApi(
       if (options.projectSync) await options.projectSync();
       if (route.startsWith("/itsm/")) {
         return await handleItsm(route, segs, method, req, res, principal, correlationId);
+      }
+      if (route.startsWith("/ops/")) {
+        return await handleOperations(route, segs, method, req, res, principal, correlationId);
       }
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
@@ -1014,6 +1018,39 @@ export function createControlPlaneApi(
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
           return send(res, 200, await options.itsm.createChangeRequest(principal, body as any), correlationId);
+        }
+      }
+
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    } catch (e) {
+      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+    }
+  }
+
+  async function handleOperations(
+    route: string,
+    segs: string[],
+    method: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    if (!options.ops) return send(res, 404, { error: { message: "ops not available" } }, correlationId);
+    
+    try {
+      if (segs[1] === "health") {
+        if (method === "GET") {
+          return send(res, 200, await options.ops.getGlobalHealth(), correlationId);
+        } else if (method === "POST") {
+          const body = await readJsonBody(req, maxBody);
+          return send(res, 200, await options.ops.reportHealth(principal, body as any), correlationId);
+        }
+      }
+
+      if (segs[1] === "alerts") {
+        if (method === "GET") {
+          return send(res, 200, await options.ops.listAlerts(), correlationId);
         }
       }
 

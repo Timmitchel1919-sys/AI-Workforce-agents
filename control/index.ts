@@ -24,3 +24,4 @@ export * from "./dashboard/build-html.js";
 export * from "./services/graph-query-service.js";
 export * from "./services/onboarding-control-service.js";
 export * from "./services/itsm-control-service.js";
+export * from "./services/operations-service.js";

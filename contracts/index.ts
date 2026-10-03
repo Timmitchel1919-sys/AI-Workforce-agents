@@ -963,4 +963,5 @@ export * from "./risk.js";
 export * from "./trust.js";
 export * from "./policy.js";
 export * from "./privacy.js";
+export * from "./operations.js";
 export * from "./itsm.js";

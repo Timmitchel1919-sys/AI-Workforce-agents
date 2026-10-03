@@ -1,5 +1,6 @@
 import { GraphQueryService } from "../control/services/graph-query-service.js";
 import { ITSMControlService } from "../control/services/itsm-control-service.js";
+import { OperationsControlService } from "../control/services/operations-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -242,6 +243,13 @@ export async function createProductionControlPlaneRuntime(
   const itsmCisRepository = repositories.repository<import("../contracts/itsm.js").ConfigurationItem>("itsm_cis");
   const itsmRequestsRepository = repositories.repository<import("../contracts/itsm.js").ServiceRequest>("itsm_requests");
   const itsmRunbooksRepository = repositories.repository<import("../contracts/itsm.js").Runbook>("itsm_runbooks");
+
+  // Operations Repositories
+  const opsHealthRepository = repositories.repository<import("../contracts/operations.js").HealthSignal>("ops_health_signals");
+  const opsInventoryRepository = repositories.repository<import("../contracts/operations.js").ServiceInventoryRecord>("ops_service_inventory");
+  const opsAlertsRepository = repositories.repository<import("../contracts/operations.js").Alert>("ops_alerts");
+  const opsConfigRepository = repositories.repository<import("../contracts/operations.js").PlatformConfiguration>("ops_platform_config");
+  const opsRolloutsRepository = repositories.repository<import("../contracts/operations.js").FeatureRollout>("ops_feature_rollouts");
 
   await repositories.hydrateAll();
 
@@ -766,6 +774,14 @@ export async function createProductionControlPlaneRuntime(
     itsmRunbooksRepository
   );
 
+  const ops = new OperationsControlService(
+    opsHealthRepository,
+    opsInventoryRepository,
+    opsAlertsRepository,
+    opsConfigRepository,
+    opsRolloutsRepository
+  );
+
   // READY projects become discoverable through the existing Project Registry.
   // Other warm instances pick them up through this throttled sync.
   const syncProjects = async (): Promise<void> => {
@@ -798,6 +814,7 @@ export async function createProductionControlPlaneRuntime(
     access,
     profile,
     itsm,
+    ops,
   });
 
   return Object.freeze({
