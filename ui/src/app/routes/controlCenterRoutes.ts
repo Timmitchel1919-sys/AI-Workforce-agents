@@ -39,3 +39,4 @@ export { TrustCenterPage } from "../../pages/Trust/index.js";
 export { DeveloperPlatformPage } from "../../pages/Organizations/DeveloperPlatformPage";
 export { SecOpsPage } from "../../pages/Organizations/SecOpsPage";
 export { MarketingPage } from "../../pages/Organizations/MarketingPage";
+export { default as ContinuityPage } from "../../pages/Continuity/ContinuityPage";

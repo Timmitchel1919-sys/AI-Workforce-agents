@@ -9,3 +9,4 @@ export const MarketingPage: React.FC = () => {
 };
 
 export default MarketingPage;
+

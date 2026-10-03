@@ -50,6 +50,7 @@ export const en = {
     infrastructure: "Infrastructure",
     softwareFactory: "Software Factory",
     governanceControls: "Governance",
+    continuity: "Continuity",
     costCenter: "Cost Center",
     auditLog: "Audit Log",
     settings: "Settings",

@@ -1,0 +1,94 @@
+.continuity-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1rem 0;
+}
+
+.liquid-glass-dark-theme {
+  --glass-bg: rgba(20, 20, 25, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-glow: rgba(0, 255, 170, 0.15);
+  --glass-text: #e0e0e0;
+  --glass-active: rgba(0, 255, 170, 0.3);
+  color: var(--glass-text);
+}
+
+.continuity-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.continuity-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #888;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.continuity-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--glass-text);
+}
+
+.continuity-tab.active {
+  background: var(--glass-active);
+  border: 1px solid var(--glass-border);
+  color: #fff;
+  box-shadow: 0 0 15px var(--glass-glow);
+}
+
+.liquid-glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 2rem;
+  min-height: 400px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.liquid-glass-title {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.2);
+}
+
+.liquid-glass-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 250px;
+  gap: 1rem;
+  color: #888;
+  border: 1px dashed var(--glass-border);
+  border-radius: 12px;
+  margin-top: 2rem;
+  background: rgba(0,0,0,0.2);
+}
+
+.spinner-placeholder {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--glass-border);
+  border-top-color: #00ffaa;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
