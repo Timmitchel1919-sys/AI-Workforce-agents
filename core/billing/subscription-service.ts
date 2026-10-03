@@ -19,12 +19,19 @@ export class SubscriptionService {
 
     const oldStatus = sub.status;
     
-    // Validate state transitions
-    if (oldStatus === "CANCELLED" && newStatus !== "ACTIVE") { // Only allow reactivation to ACTIVE
-      throw new Error(`Invalid transition from ${oldStatus} to ${newStatus}`);
-    }
-    
-    if (oldStatus === "ACTIVE" && newStatus === "INCOMPLETE") {
+    // Validate state transitions for commercial lifecycle logic
+    const validTransitions: Record<string, SubscriptionStatus[]> = {
+      "TRIALING": ["ACTIVE", "CANCELLED", "EXPIRED", "RESTRICTED"],
+      "ACTIVE": ["PAST_DUE", "CANCELLED", "RESTRICTED"],
+      "PAST_DUE": ["ACTIVE", "RESTRICTED", "CANCELLED"],
+      "RESTRICTED": ["ACTIVE", "CANCELLED"],
+      "CANCELLED": ["ACTIVE"], // Reactivation
+      "EXPIRED": ["ACTIVE"],
+      "INCOMPLETE": ["TRIALING", "ACTIVE", "CANCELLED"],
+      "UNKNOWN": ["ACTIVE", "CANCELLED"]
+    };
+
+    if (validTransitions[oldStatus] && !validTransitions[oldStatus].includes(newStatus)) {
       throw new Error(`Invalid transition from ${oldStatus} to ${newStatus}`);
     }
 
@@ -35,6 +42,20 @@ export class SubscriptionService {
     }
 
     this.recordAudit(sub.organizationId, actor, "SUBSCRIPTION_STATUS_CHANGED", "Subscription", sub.subscriptionId, { oldStatus, newStatus });
+  }
+
+  processUsageMetering(subscriptionId: string, usage: number, limit: number, actor: string) {
+    // Integrate real Usage Metering from the multi-tenancy layer into a commercial lifecycle state.
+    const sub = this.subscriptions.get(subscriptionId);
+    if (!sub) throw new Error("Subscription not found");
+    
+    if (usage > limit) {
+      if (sub.status === "ACTIVE" || sub.status === "TRIALING") {
+         this.transitionStatus(subscriptionId, "RESTRICTED", actor);
+      }
+    } else if (sub.status === "RESTRICTED") {
+         this.transitionStatus(subscriptionId, "ACTIVE", actor);
+    }
   }
 
   cancelSubscription(subscriptionId: string, actor: string, cancelAtPeriodEnd: boolean = false) {
@@ -62,4 +83,3 @@ export class SubscriptionService {
     });
   }
 }
-

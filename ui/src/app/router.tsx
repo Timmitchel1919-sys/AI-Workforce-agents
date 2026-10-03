@@ -47,7 +47,7 @@ const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
-const BillingPortalPage = fromChunk(loadControlCenterRoutes, "BillingPortalPage");
+const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
 const PlatformAdminPage = fromChunk(loadControlCenterRoutes, "PlatformAdminPage");
 const CommercialAdminPage = fromChunk(loadControlCenterRoutes, "CommercialAdminPage");
 const CustomerProfilePage = fromChunk(loadControlCenterRoutes, "CustomerProfilePage");
@@ -158,7 +158,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "design-system", element: withSuspense(<DesignSystemPage />) },
       { path: "extensions", element: withSuspense(<ExtensionsPage />) },
       { path: "organizations", element: withSuspense(<OrganizationPage />) },
-      { path: "billing", element: withSuspense(<BillingPortalPage />) },
+      { path: "billing", element: withSuspense(<BillingPage />) },
       { path: "sso-settings", element: withSuspense(<SsoSettingsPage />) },
       { path: "admin", element: withSuspense(<PlatformAdminPage />) },
       { path: "commercial-admin", element: withSuspense(<CommercialAdminPage />) },

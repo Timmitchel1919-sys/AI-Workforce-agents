@@ -120,6 +120,18 @@ export const nl: Messages = {
     preferencesLink: "Profiel & voorkeuren",
     preferencesLinkDescription: "Thema, taal en je profielfoto staan nu in je profiel.",
   },
+  billing: {
+    title: "Facturering Control Center",
+    description: "Beheer enterprise commerciële SaaS-abonnementen en rechten.",
+    providerNotConfigured: "FACTURERINGS-PROVIDER: NIET GECONFIGUREUREERD",
+    tabs: {
+      subscriptions: "Abonnementen",
+      plans: "Plannen",
+      usage: "Gebruiksmeting",
+      entitlements: "Rechten",
+      invoices: "Facturen"
+    }
+  },
   profile: {
     title: "Profiel",
     description: "Je identiteit in AI Workforce en je persoonlijke voorkeuren.",

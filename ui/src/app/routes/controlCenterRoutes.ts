@@ -28,7 +28,7 @@ export { default as IntegrationsPage } from "../../pages/Integrations/Integratio
 
 export { default as ExtensionsPage } from "../../pages/Extensions/ExtensionsPage";
 export { default as OrganizationPage } from "../../pages/Organizations/OrganizationPage";
-export { BillingPortalPage } from "../../pages/Organizations/BillingPortalPage";
+export { default as BillingPage } from "../../pages/Billing/BillingPage";
 export { default as PlatformAdminPage } from "../../pages/Admin/PlatformAdminPage";
 export { CommercialAdminPage } from "../../pages/Admin/CommercialAdminPage";
 export { CustomerProfilePage } from "../../pages/CustomerOperations/CustomerProfilePage";

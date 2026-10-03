@@ -315,3 +315,29 @@ test("Billing: Dunning and Restrictions", () => {
   assert.equal(sub?.status, "ACTIVE");
 });
 
+
+test("Billing: Usage Metering Commercial Lifecycle Integration", () => {
+  const subService = new SubscriptionService();
+  subService.createSubscription({
+    subscriptionId: "sub_1",
+    organizationId: "org_1",
+    billingAccountId: "ba_1",
+    productId: "prod_1",
+    planId: "plan_1",
+    planVersionId: "v1",
+    status: "ACTIVE",
+    billingCadence: "MONTHLY",
+    currency: "USD",
+    currentPeriodStart: new Date(),
+    currentPeriodEnd: new Date(),
+    cancelAtPeriodEnd: false
+  });
+
+  // Exceed limit -> Restricted
+  subService.processUsageMetering("sub_1", 150, 100, "SYSTEM");
+  assert.equal(subService.getSubscription("sub_1")?.status, "RESTRICTED");
+
+  // Fall back below limit -> Active
+  subService.processUsageMetering("sub_1", 90, 100, "SYSTEM");
+  assert.equal(subService.getSubscription("sub_1")?.status, "ACTIVE");
+});

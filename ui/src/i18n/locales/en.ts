@@ -121,6 +121,18 @@ export const en = {
     preferencesLink: "Profile & preferences",
     preferencesLinkDescription: "Theme, language and your profile photo now live on your profile.",
   },
+  billing: {
+    title: "Billing Control Center",
+    description: "Manage enterprise commercial SaaS subscriptions and entitlements.",
+    providerNotConfigured: "BILLING PROVIDER: NOT CONFIGURED",
+    tabs: {
+      subscriptions: "Subscriptions",
+      plans: "Plans",
+      usage: "Usage Metering",
+      entitlements: "Entitlements",
+      invoices: "Invoices"
+    }
+  },
   profile: {
     title: "Profile",
     description: "Your identity in AI Workforce and your personal preferences.",

@@ -1,3 +1,20 @@
+export class NotConfiguredPaymentAdapter {
+    async createCustomer(organizationId, email) {
+        throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+    }
+    async createSubscription(customerId, planProviderId) {
+        throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+    }
+    async cancelSubscription(subscriptionProviderId) {
+        throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+    }
+    async createPaymentIntent(customerId, amountMinorUnits, currency) {
+        throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+    }
+    verifyWebhookSignature(payload, signature) {
+        throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+    }
+}
 export class TestPaymentAdapter {
     webhookSecret = "test_whsec_12345";
     async createCustomer(organizationId, email) {
