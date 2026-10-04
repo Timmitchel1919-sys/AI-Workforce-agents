@@ -2,6 +2,7 @@ import { GraphQueryService } from "../control/services/graph-query-service.js";
 import { ITSMControlService } from "../control/services/itsm-control-service.js";
 import { OperationsControlService } from "../control/services/operations-service.js";
 import { GrcControlService } from "../control/services/grc-service.js";
+import { AIGovernanceControlService } from "../control/services/ai-governance-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -251,6 +252,12 @@ export async function createProductionControlPlaneRuntime(
   const opsAlertsRepository = repositories.repository<import("../contracts/operations.js").Alert>("ops_alerts");
   const opsConfigRepository = repositories.repository<import("../contracts/operations.js").PlatformConfiguration>("ops_platform_config");
   const opsRolloutsRepository = repositories.repository<import("../contracts/operations.js").FeatureRollout>("ops_feature_rollouts");
+
+  // AI Governance Repositories
+  const aiModelsRepository = repositories.repository<import("../contracts/ai-governance.js").AIModelRecord>("ai_models");
+  const aiUseCasesRepository = repositories.repository<import("../contracts/ai-governance.js").AIUseCase>("ai_use_cases");
+  const aiEvaluationsRepository = repositories.repository<import("../contracts/ai-governance.js").ModelEvaluation>("ai_evaluations");
+  const aiIncidentsRepository = repositories.repository<import("../contracts/ai-governance.js").AIIncident>("ai_incidents");
 
   // GRC Repositories
   const grcControlsRepository = repositories.repository<any>("grc_controls");
@@ -801,6 +808,13 @@ export async function createProductionControlPlaneRuntime(
     opsRolloutsRepository
   );
 
+  const aiGov = new AIGovernanceControlService(
+    aiModelsRepository,
+    aiUseCasesRepository,
+    aiEvaluationsRepository,
+    aiIncidentsRepository
+  );
+
   const grc = new GrcControlService(
     grcControlsRepository,
     grcFrameworksRepository,
@@ -854,6 +868,7 @@ export async function createProductionControlPlaneRuntime(
     itsm,
     ops,
     grc,
+    aiGov,
   });
 
   return Object.freeze({

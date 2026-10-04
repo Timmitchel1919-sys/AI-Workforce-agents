@@ -60,6 +60,7 @@ export interface ControlPlaneApiOptions {
   itsm?: import("../control/services/itsm-control-service.js").ITSMControlService;
   ops?: import("../control/services/operations-service.js").OperationsControlService;
   grc?: import("../control/services/grc-service.js").GrcControlService;
+  aiGov?: import("../control/services/ai-governance-service.js").AIGovernanceControlService;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -256,6 +257,9 @@ export function createControlPlaneApi(
       }
       if (route.startsWith("/grc/")) {
         return await handleGrc(route, segs, method, req, res, principal, correlationId);
+      }
+      if (route.startsWith("/aigov/")) {
+        return await handleAIGovernance(route, segs, method, req, res, principal, correlationId);
       }
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
@@ -1084,6 +1088,32 @@ export function createControlPlaneApi(
       }
       if (segs[1] === "trust-content" && method === "GET") {
         return send(res, 200, await options.grc.listTrustCenterContent(), correlationId);
+      }
+
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    } catch (e) {
+      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+    }
+  }
+
+  async function handleAIGovernance(
+    route: string,
+    segs: string[],
+    method: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    if (!options.aiGov) return send(res, 404, { error: { message: "ai governance not available" } }, correlationId);
+    
+    try {
+      if (segs[1] === "models" && method === "GET") {
+        return send(res, 200, await options.aiGov.listModels(), correlationId);
+      }
+      if (segs[1] === "use-cases" && method === "GET") {
+        // Simple global fetch for prototype
+        return send(res, 200, await options.aiGov.listUseCases("global"), correlationId);
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);

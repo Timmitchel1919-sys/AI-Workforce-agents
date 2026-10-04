@@ -1,28 +1,29 @@
-# ENTERPRISE COMPLIANCE, RISK, PRIVACY & TRUST MANAGEMENT
+# ENTERPRISE AI GOVERNANCE, MODEL RISK & RESPONSIBLE AI CONTROL PLANE
 
 STATUS:
 COMPLETE
 
 ## 1. Repository State & Preflight
-The core GRC contracts already existed (`compliance.ts`, `risk.ts`, `privacy.ts`, `trust.ts`). However, they were disconnected and not implemented within the production control plane.
+After auditing the repository, a dedicated AI Governance layer was identified as the correct next dependency, separating AI model risk tracking and use-case evaluation from broad organizational GRC frameworks.
 
-## 2. GRC Source-of-Truth
-- **Risk Register:** `EnterpriseRisk` handles severity and categorical tracking.
-- **Privacy Engine:** `DataSubjectRequest` and `RetentionPolicy` cover essential data lifecycle requirements.
-- **Compliance Posture:** `CompliancePosture` and `AuditReadiness` formalize frameworks like SOC 2, ISO 27001, and GDPR readiness.
+## 2. AI Governance Source-of-Truth
+- **Model Registry:** `AIModelRecord` formalizes approved capabilities, context windows, and model risk levels.
+- **Use Case Governance:** `AIUseCase` requires purpose justification, evaluating models against specific deployments before approval.
+- **Evaluations & Incidents:** `ModelEvaluation` tracks safety/quality scoring. `AIIncident` isolates LLM-specific issues (e.g. jailbreaks, hallucinations) away from generic platform ITSM outages.
 
-## 3. Trust / GRC Control Plane
-Created `GrcControlService` binding these entities to the REST gateway (`/grc/*`). Implemented RBAC enforcing `admin` privilege for creation of privacy requests and risk registrations.
+## 3. Governance Control Plane
+Created `AIGovernanceControlService` connecting these entities to the REST gateway (`/aigov/*`). Applied Role-Based Access Controls enforcing that `admin` privilege is explicitly required to approve use cases or alter risk classifications.
 
 ## 4. UI Layer
-Built `TrustCenterPage` within `ui/src/pages/Compliance/TrustCenterPage.tsx` adhering to the AI Workforce UI guidelines (Liquid Glass Dark Theme) and integrated it into the router at `/trust-center`.
+Built `AIGovernancePage` within `ui/src/pages/Governance/AIGovernancePage.tsx` adhering to the AI Workforce UI guidelines (Liquid Glass Dark Theme) and integrated it into the router at `/ai-governance`.
 
-## 5. Known Limitations
-- While framework structures exist, actual telemetry verification mapping to specific SOC 2 controls requires deeper configuration.
+## 5. Security & Isolation
+- The models differentiate `MODEL`, `PROVIDER`, and `USE CASE`.
+- All operations endpoints correctly enforce operator `admin` roles, preventing AI from self-authorizing high-risk capabilities without explicit human oversight.
 
 ## 6. Next Dependency
-With governance, compliance, operations, and ITSM verified and active, the next focus should be advanced model and execution tuning:
+With platform governance, compliance, operations, and AI Model Risk boundaries actively defined, the next layer must handle the cost, billing, and entitlement abstractions that meter these AI executions:
 
-**ENTERPRISE INTELLIGENCE, ANALYTICS & PREDICTIVE OPERATIONS**
+**ENTERPRISE BILLING, ENTITLEMENTS & AI COST CENTER**
 
-This layer will analyze telemetry to build optimization logic over the existing control plane, driving autonomous healing.
+This layer will enforce commercial quota and measure the financial burn rate of executing authorized models across runner fleets.
