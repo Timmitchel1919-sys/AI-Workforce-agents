@@ -62,6 +62,7 @@ export interface ControlPlaneApiOptions {
   grc?: import("../control/services/grc-service.js").GrcControlService;
   aiGov?: import("../control/services/ai-governance-service.js").AIGovernanceControlService;
   dataGov?: import("../control/services/data-governance-service.js").DataGovernanceService;
+  security?: import("../control/services/security-service.js").SecurityControlService;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -264,6 +265,9 @@ export function createControlPlaneApi(
       }
       if (route.startsWith("/datagov/")) {
         return await handleDataGovernance(route, segs, method, req, res, principal, correlationId);
+      }
+      if (route.startsWith("/security/")) {
+        return await handleSecurity(route, segs, method, req, res, principal, correlationId);
       }
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
@@ -1143,6 +1147,31 @@ export function createControlPlaneApi(
       }
       if (segs[1] === "retention-policies" && method === "GET") {
         return send(res, 200, await options.dataGov.listRetentionPolicies(), correlationId);
+      }
+
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    } catch (e) {
+      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+    }
+  }
+
+  async function handleSecurity(
+    route: string,
+    segs: string[],
+    method: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    if (!options.security) return send(res, 404, { error: { message: "security not available" } }, correlationId);
+    
+    try {
+      if (segs[1] === "events" && method === "GET") {
+        return send(res, 200, await options.security.listEvents(), correlationId);
+      }
+      if (segs[1] === "policies" && method === "GET") {
+        return send(res, 200, await options.security.listPolicies(), correlationId);
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);

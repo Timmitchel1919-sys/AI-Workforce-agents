@@ -4,6 +4,7 @@ import { OperationsControlService } from "../control/services/operations-service
 import { GrcControlService } from "../control/services/grc-service.js";
 import { AIGovernanceControlService } from "../control/services/ai-governance-service.js";
 import { DataGovernanceService } from "../control/services/data-governance-service.js";
+import { SecurityControlService } from "../control/services/security-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -264,6 +265,11 @@ export async function createProductionControlPlaneRuntime(
   const dataAssetsRepository = repositories.repository<import("../contracts/data-governance.js").DataAsset>("data_assets");
   const dataRetentionPoliciesRepository = repositories.repository<import("../contracts/data-governance.js").DataRetentionPolicy>("data_retention_policies");
   const dsrRepository = repositories.repository<import("../contracts/data-governance.js").DataSubjectRequestRecord>("dsr_records");
+
+  // Security Repositories
+  const securityEventsRepository = repositories.repository<import("../contracts/security.js").ZTNSecurityEvent>("security_events");
+  const zeroTrustPoliciesRepository = repositories.repository<import("../contracts/security.js").ZeroTrustPolicy>("zero_trust_policies");
+  const threatIntelRepository = repositories.repository<import("../contracts/security.js").ThreatIntelligenceReport>("threat_intel");
 
   // GRC Repositories
   const grcControlsRepository = repositories.repository<any>("grc_controls");
@@ -827,6 +833,12 @@ export async function createProductionControlPlaneRuntime(
     dsrRepository
   );
 
+  const security = new SecurityControlService(
+    securityEventsRepository,
+    zeroTrustPoliciesRepository,
+    threatIntelRepository
+  );
+
   const grc = new GrcControlService(
     grcControlsRepository,
     grcFrameworksRepository,
@@ -882,6 +894,7 @@ export async function createProductionControlPlaneRuntime(
     grc,
     aiGov,
     dataGov,
+    security,
   });
 
   return Object.freeze({

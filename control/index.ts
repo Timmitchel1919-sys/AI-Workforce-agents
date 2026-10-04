@@ -28,3 +28,4 @@ export * from "./services/operations-service.js";
 export * from "./services/grc-service.js";
 export * from "./services/ai-governance-service.js";
 export * from "./services/data-governance-service.js";
+export * from "./services/security-service.js";
