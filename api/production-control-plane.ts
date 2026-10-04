@@ -5,6 +5,7 @@ import { GrcControlService } from "../control/services/grc-service.js";
 import { AIGovernanceControlService } from "../control/services/ai-governance-service.js";
 import { DataGovernanceService } from "../control/services/data-governance-service.js";
 import { SecurityControlService } from "../control/services/security-service.js";
+import { AuditControlService } from "../control/services/audit-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -270,6 +271,10 @@ export async function createProductionControlPlaneRuntime(
   const securityEventsRepository = repositories.repository<import("../contracts/security.js").ZTNSecurityEvent>("security_events");
   const zeroTrustPoliciesRepository = repositories.repository<import("../contracts/security.js").ZeroTrustPolicy>("zero_trust_policies");
   const threatIntelRepository = repositories.repository<import("../contracts/security.js").ThreatIntelligenceReport>("threat_intel");
+
+  // Audit Repositories
+  const auditLogsRepository = repositories.repository<import("../contracts/audit.js").AuditLogEntry>("audit_logs");
+  const complianceFindingsRepository = repositories.repository<import("../contracts/audit.js").ComplianceFinding>("compliance_findings");
 
   // GRC Repositories
   const grcControlsRepository = repositories.repository<any>("grc_controls");
@@ -839,6 +844,11 @@ export async function createProductionControlPlaneRuntime(
     threatIntelRepository
   );
 
+  const auditService = new AuditControlService(
+    auditLogsRepository,
+    complianceFindingsRepository
+  );
+
   const grc = new GrcControlService(
     grcControlsRepository,
     grcFrameworksRepository,
@@ -895,6 +905,7 @@ export async function createProductionControlPlaneRuntime(
     aiGov,
     dataGov,
     security,
+    audit: auditService,
   });
 
   return Object.freeze({

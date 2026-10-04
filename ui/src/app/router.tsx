@@ -65,6 +65,7 @@ const TrustCenterPage = fromChunk(loadControlCenterRoutes, "TrustCenterPage");
 const AIGovernancePage = fromChunk(loadControlCenterRoutes, "AIGovernancePage");
 const DataGovernancePage = fromChunk(loadControlCenterRoutes, "DataGovernancePage");
 const SecurityPage = fromChunk(loadControlCenterRoutes, "SecurityPage");
+const AuditPage = fromChunk(loadControlCenterRoutes, "AuditPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -156,6 +157,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "ai-governance", element: withSuspense(<AIGovernancePage />) },
       { path: "data-governance", element: withSuspense(<DataGovernancePage />) },
       { path: "security", element: withSuspense(<SecurityPage />) },
+      { path: "audit", element: withSuspense(<AuditPage />) },
       { path: "cost", element: withSuspense(<CostCenterPage />) },
       { path: "intelligence", element: withSuspense(<IntelligencePage />) },
       { path: "integrations", element: withSuspense(<IntegrationsPage />) },

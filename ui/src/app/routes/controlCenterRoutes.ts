@@ -46,3 +46,4 @@ export { default as TrustCenterPage } from "../../pages/Compliance/TrustCenterPa
 export { default as AIGovernancePage } from "../../pages/Governance/AIGovernancePage";
 export { default as DataGovernancePage } from "../../pages/Governance/DataGovernancePage";
 export { default as SecurityPage } from "../../pages/Governance/SecurityPage";
+export { default as AuditPage } from "../../pages/Governance/AuditPage";

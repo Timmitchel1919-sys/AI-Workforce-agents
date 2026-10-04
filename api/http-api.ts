@@ -63,6 +63,7 @@ export interface ControlPlaneApiOptions {
   aiGov?: import("../control/services/ai-governance-service.js").AIGovernanceControlService;
   dataGov?: import("../control/services/data-governance-service.js").DataGovernanceService;
   security?: import("../control/services/security-service.js").SecurityControlService;
+  audit?: import("../control/services/audit-service.js").AuditControlService;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -268,6 +269,9 @@ export function createControlPlaneApi(
       }
       if (route.startsWith("/security/")) {
         return await handleSecurity(route, segs, method, req, res, principal, correlationId);
+      }
+      if (route.startsWith("/audit/")) {
+        return await handleAudit(route, segs, method, req, res, principal, correlationId);
       }
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
@@ -1172,6 +1176,31 @@ export function createControlPlaneApi(
       }
       if (segs[1] === "policies" && method === "GET") {
         return send(res, 200, await options.security.listPolicies(), correlationId);
+      }
+
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    } catch (e) {
+      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+    }
+  }
+
+  async function handleAudit(
+    route: string,
+    segs: string[],
+    method: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    if (!options.audit) return send(res, 404, { error: { message: "audit not available" } }, correlationId);
+    
+    try {
+      if (segs[1] === "logs" && method === "GET") {
+        return send(res, 200, await options.audit.listAuditLogs(), correlationId);
+      }
+      if (segs[1] === "findings" && method === "GET") {
+        return send(res, 200, await options.audit.listFindings(), correlationId);
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
