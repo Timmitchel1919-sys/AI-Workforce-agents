@@ -6,6 +6,7 @@ import { AIGovernanceControlService } from "../control/services/ai-governance-se
 import { DataGovernanceService } from "../control/services/data-governance-service.js";
 import { SecurityControlService } from "../control/services/security-service.js";
 import { AuditControlService } from "../control/services/audit-service.js";
+import { PortfolioControlService } from "../control/services/portfolio-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -275,6 +276,11 @@ export async function createProductionControlPlaneRuntime(
   // Audit Repositories
   const auditLogsRepository = repositories.repository<import("../contracts/audit.js").AuditLogEntry>("audit_logs");
   const complianceFindingsRepository = repositories.repository<import("../contracts/audit.js").ComplianceFinding>("compliance_findings");
+
+  // Portfolio Repositories
+  const strategicObjectivesRepository = repositories.repository<import("../contracts/portfolio.js").StrategicObjective>("strategic_objectives");
+  const enterprisePortfoliosRepository = repositories.repository<import("../contracts/portfolio.js").EnterprisePortfolio>("enterprise_portfolios");
+  const portfolioProgramsRepository = repositories.repository<import("../contracts/portfolio.js").PortfolioProgram>("portfolio_programs");
 
   // GRC Repositories
   const grcControlsRepository = repositories.repository<any>("grc_controls");
@@ -849,6 +855,12 @@ export async function createProductionControlPlaneRuntime(
     complianceFindingsRepository
   );
 
+  const portfolio = new PortfolioControlService(
+    strategicObjectivesRepository,
+    enterprisePortfoliosRepository,
+    portfolioProgramsRepository
+  );
+
   const grc = new GrcControlService(
     grcControlsRepository,
     grcFrameworksRepository,
@@ -906,6 +918,7 @@ export async function createProductionControlPlaneRuntime(
     dataGov,
     security,
     audit: auditService,
+    portfolio,
   });
 
   return Object.freeze({

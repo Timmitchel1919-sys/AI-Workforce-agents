@@ -47,3 +47,4 @@ export { default as AIGovernancePage } from "../../pages/Governance/AIGovernance
 export { default as DataGovernancePage } from "../../pages/Governance/DataGovernancePage";
 export { default as SecurityPage } from "../../pages/Governance/SecurityPage";
 export { default as AuditPage } from "../../pages/Governance/AuditPage";
+export { default as PortfolioPage } from "../../pages/Governance/PortfolioPage";

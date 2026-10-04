@@ -969,3 +969,4 @@ export * from "./ai-governance.js";
 export * from "./data-governance.js";
 export * from "./security.js";
 export * from "./audit.js";
+export * from "./portfolio.js";

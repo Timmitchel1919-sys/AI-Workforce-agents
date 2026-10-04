@@ -64,6 +64,7 @@ export interface ControlPlaneApiOptions {
   dataGov?: import("../control/services/data-governance-service.js").DataGovernanceService;
   security?: import("../control/services/security-service.js").SecurityControlService;
   audit?: import("../control/services/audit-service.js").AuditControlService;
+  portfolio?: import("../control/services/portfolio-service.js").PortfolioControlService;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -272,6 +273,9 @@ export function createControlPlaneApi(
       }
       if (route.startsWith("/audit/")) {
         return await handleAudit(route, segs, method, req, res, principal, correlationId);
+      }
+      if (route.startsWith("/portfolio/")) {
+        return await handlePortfolio(route, segs, method, req, res, principal, correlationId);
       }
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
@@ -1201,6 +1205,34 @@ export function createControlPlaneApi(
       }
       if (segs[1] === "findings" && method === "GET") {
         return send(res, 200, await options.audit.listFindings(), correlationId);
+      }
+
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    } catch (e) {
+      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+    }
+  }
+
+  async function handlePortfolio(
+    route: string,
+    segs: string[],
+    method: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    if (!options.portfolio) return send(res, 404, { error: { message: "portfolio not available" } }, correlationId);
+    
+    try {
+      if (segs[1] === "portfolios" && method === "GET") {
+        return send(res, 200, await options.portfolio.listPortfolios(), correlationId);
+      }
+      if (segs[1] === "programs" && method === "GET") {
+        return send(res, 200, await options.portfolio.listPrograms(), correlationId);
+      }
+      if (segs[1] === "objectives" && method === "GET") {
+        return send(res, 200, await options.portfolio.listObjectives(), correlationId);
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
