@@ -1,10 +1,12 @@
-import { Page, PageHeader, PageContent } from "../../components/ui";
+import PageContainer from "../../components/layout/PageContainer";
+import PageHeader from "../../components/layout/PageHeader";
+import PageSection from "../../components/layout/PageSection";
 
 export default function PortfolioPage() {
   return (
-    <Page>
+    <PageContainer>
       <PageHeader title="Portfolio & Strategy" description="Enterprise Portfolio, Program & Strategic Execution Management" />
-      <PageContent>
+      <PageSection>
         <div className="flex flex-col gap-6">
           <div className="bg-surface rounded-lg p-6 border border-border">
             <h2 className="text-xl font-bold mb-4">Strategic Objectives (OKRs)</h2>
@@ -22,7 +24,7 @@ export default function PortfolioPage() {
             {/* Programs list */}
           </div>
         </div>
-      </PageContent>
-    </Page>
+      </PageSection>
+    </PageContainer>
   );
 }

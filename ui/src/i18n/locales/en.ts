@@ -52,7 +52,7 @@ export const en = {
     governanceControls: "Governance",
     continuity: "Continuity",
     costCenter: "Cost Center",
-    auditLog: "Audit Log",
+    auditLog: "Audit Log", itsm: "ITSM", 
     settings: "Settings",
     designSystem: "Design System",
     organization: "Organizations",

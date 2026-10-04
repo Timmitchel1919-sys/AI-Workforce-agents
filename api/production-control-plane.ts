@@ -251,6 +251,7 @@ export async function createProductionControlPlaneRuntime(
   const itsmCisRepository = repositories.repository<import("../contracts/itsm.js").ConfigurationItem>("itsm_cis");
   const itsmRequestsRepository = repositories.repository<import("../contracts/itsm.js").ServiceRequest>("itsm_requests");
   const itsmRunbooksRepository = repositories.repository<import("../contracts/itsm.js").Runbook>("itsm_runbooks");
+  const itsmCiRelsRepository = repositories.repository<import("../contracts/itsm.js").CIRelationship>("itsm_cirels");
 
   // Operations Repositories
   const opsHealthRepository = repositories.repository<import("../contracts/operations.js").HealthSignal>("ops_health_signals");
@@ -836,7 +837,8 @@ export async function createProductionControlPlaneRuntime(
     itsmReleasesRepository,
     itsmCisRepository,
     itsmRequestsRepository,
-    itsmRunbooksRepository
+    itsmRunbooksRepository,
+    itsmCiRelsRepository
   );
 
   const ops = new OperationsControlService(

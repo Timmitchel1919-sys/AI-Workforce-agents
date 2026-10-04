@@ -4,52 +4,59 @@ export type ChangeType = "standard" | "normal" | "emergency";
 export type ChangeStatus = "draft" | "pending_approval" | "approved" | "scheduled" | "implementing" | "review" | "closed" | "canceled" | "rejected";
 export type ITSMReleaseStatus = "planning" | "building" | "testing" | "deploying" | "deployed" | "failed" | "rolled_back";
 
-export interface Service {
+export interface BaseITSMRecord {
   id: string;
+  organizationId: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Service extends BaseITSMRecord {
   name: string;
   description: string;
   ownerId: string;
   status: ServiceStatus;
   slaId?: string;
   sloTargets?: Record<string, number>;
-  createdAt: string;
-  updatedAt: string;
 }
 
-export interface ConfigurationItem {
-  id: string;
+export interface ConfigurationItem extends BaseITSMRecord {
   name: string;
   ciType: string;
   serviceId?: string;
   status: string;
+  attributes?: Record<string, any>;
 }
 
-export interface Incident {
-  id: string;
+export interface CIRelationship extends BaseITSMRecord {
+  sourceCiId: string;
+  targetCiId: string;
+  relationshipType: "depends_on" | "hosts" | "contains" | "connects_to";
+}
+
+export interface Incident extends BaseITSMRecord {
   title: string;
   description: string;
   serviceId: string;
   severity: IncidentSeverity;
   status: "new" | "in_progress" | "resolved" | "closed";
   assignedTo?: string;
+  assignmentGroup?: string;
   majorIncident: boolean;
-  createdAt: string;
   resolvedAt?: string;
 }
 
-export interface Problem {
-  id: string;
+export interface Problem extends BaseITSMRecord {
   title: string;
   description: string;
   serviceId: string;
   status: "investigating" | "identified" | "known_error" | "resolved";
   rootCause?: string;
   workaround?: string;
-  createdAt: string;
+  incidentIds?: string[];
 }
 
-export interface ChangeRequest {
-  id: string;
+export interface ChangeRequest extends BaseITSMRecord {
   title: string;
   description: string;
   type: ChangeType;
@@ -57,13 +64,14 @@ export interface ChangeRequest {
   serviceId: string;
   requestedBy: string;
   approvedBy?: string;
+  cabRequired?: boolean;
+  cabApprovalStatus?: "pending" | "approved" | "rejected";
   scheduledStart?: string;
   scheduledEnd?: string;
-  createdAt: string;
+  ciIds?: string[];
 }
 
-export interface ITSMRelease {
-  id: string;
+export interface ITSMRelease extends BaseITSMRecord {
   title: string;
   status: ITSMReleaseStatus;
   serviceId: string;
@@ -71,16 +79,14 @@ export interface ITSMRelease {
   deployedAt?: string;
 }
 
-export interface ServiceRequest {
-  id: string;
+export interface ServiceRequest extends BaseITSMRecord {
   title: string;
   requestedBy: string;
   serviceId: string;
   status: "open" | "in_progress" | "fulfilled" | "rejected";
 }
 
-export interface Runbook {
-  id: string;
+export interface Runbook extends BaseITSMRecord {
   title: string;
   serviceId: string;
   content: string;
@@ -88,11 +94,29 @@ export interface Runbook {
 }
 
 export interface ITSMControlPlane {
-  getService(id: string): Promise<Service | null>;
-  listServices(): Promise<Service[]>;
+  // Service Catalog
+  getService(organizationId: string, id: string): Promise<Service | null>;
+  listServices(organizationId: string): Promise<Service[]>;
+  createService(service: Omit<Service, "id" | "createdAt" | "updatedAt">): Promise<Service>;
+  
+  // Incident Management
   createIncident(incident: Omit<Incident, "id" | "createdAt">): Promise<Incident>;
-  updateIncident(id: string, updates: Partial<Incident>): Promise<Incident>;
-  listIncidents(serviceId?: string): Promise<Incident[]>;
+  updateIncident(organizationId: string, id: string, updates: Partial<Incident>): Promise<Incident>;
+  listIncidents(organizationId: string, serviceId?: string): Promise<Incident[]>;
+  routeIncident(organizationId: string, incidentId: string): Promise<Incident>;
+  
+  // Problem Management
+  createProblem(problem: Omit<Problem, "id" | "createdAt">): Promise<Problem>;
+  updateProblem(organizationId: string, id: string, updates: Partial<Problem>): Promise<Problem>;
+  
+  // Change Management
   createChangeRequest(cr: Omit<ChangeRequest, "id" | "createdAt">): Promise<ChangeRequest>;
-  listChangeRequests(): Promise<ChangeRequest[]>;
+  updateChangeRequest(organizationId: string, id: string, updates: Partial<ChangeRequest>): Promise<ChangeRequest>;
+  approveChange(organizationId: string, id: string, approverId: string): Promise<ChangeRequest>;
+  listChangeRequests(organizationId: string): Promise<ChangeRequest[]>;
+  
+  // CMDB
+  createCI(ci: Omit<ConfigurationItem, "id" | "createdAt">): Promise<ConfigurationItem>;
+  addCIRelationship(rel: Omit<CIRelationship, "id" | "createdAt">): Promise<CIRelationship>;
+  getCIDependencies(organizationId: string, ciId: string): Promise<ConfigurationItem[]>;
 }

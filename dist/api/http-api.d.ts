@@ -35,6 +35,16 @@ export interface ControlPlaneApiOptions {
     access?: Pick<AccessService, "myAccess">;
     /** The caller's own profile (`/me/profile`, photo upload/removal). */
     profile?: Pick<ProfileService, "myProfile" | "setPhoto" | "removePhoto">;
+    itsm?: import("../control/services/itsm-control-service.js").ITSMControlService;
+    ops?: import("../control/services/operations-service.js").OperationsControlService;
+    grc?: import("../control/services/grc-service.js").GrcControlService;
+    aiGov?: import("../control/services/ai-governance-service.js").AIGovernanceControlService;
+    dataGov?: import("../control/services/data-governance-service.js").DataGovernanceService;
+    security?: import("../control/services/security-service.js").SecurityControlService;
+    audit?: import("../control/services/audit-service.js").AuditControlService;
+    portfolio?: import("../control/services/portfolio-service.js").PortfolioControlService;
+    product?: import("../control/services/product-service.js").ProductManagementService;
+    workforce?: import("../control/services/workforce-service.js").WorkforceManagementService;
     /** Path prefix for every route. Default `/api`. */
     basePath?: string;
     /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */

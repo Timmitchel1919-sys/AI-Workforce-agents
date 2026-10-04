@@ -1027,29 +1027,29 @@ export function createControlPlaneApi(
     try {
       if (segs[1] === "services") {
         if (method === "GET") {
-          return send(res, 200, await options.itsm.listServices(principal), correlationId);
+          return send(res, 200, await options.itsm.listServices(principal.id), correlationId);
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createService(principal, body as any), correlationId);
+          return send(res, 200, await options.itsm.createService(body as any), correlationId);
         }
       }
       
       if (segs[1] === "incidents") {
         if (method === "GET") {
           const serviceId = new URL(req.url ?? "/", "http://localhost").searchParams.get("serviceId");
-          return send(res, 200, await options.itsm.listIncidents(principal, serviceId || undefined), correlationId);
+          return send(res, 200, await options.itsm.listIncidents(principal.id, serviceId || undefined), correlationId);
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createIncident(principal, body as any), correlationId);
+          return send(res, 200, await options.itsm.createIncident(body as any), correlationId);
         }
       }
       
       if (segs[1] === "changes") {
         if (method === "GET") {
-          return send(res, 200, await options.itsm.listChangeRequests(principal), correlationId);
+          return send(res, 200, await options.itsm.listChangeRequests(principal.id), correlationId);
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createChangeRequest(principal, body as any), correlationId);
+          return send(res, 200, await options.itsm.createChangeRequest(body as any), correlationId);
         }
       }
 

@@ -51,7 +51,7 @@ export const nl: Messages = {
     governanceControls: "Governance",
     continuity: "Continuïteit",
     costCenter: "Kostenplaats",
-    auditLog: "Auditlog",
+    auditLog: "Auditlog", itsm: "ITSM Control Plane",
     settings: "Instellingen",
     designSystem: "Designsysteem",
     organization: "Organisaties",

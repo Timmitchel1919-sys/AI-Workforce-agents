@@ -82,5 +82,5 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.developer", route: "/developer-platform", icon: "developer", section: "main" },
   { labelKey: "nav.secops", route: "/secops", icon: "secops", section: "governance" },
   { labelKey: "nav.marketing", route: "/marketing", icon: "marketing", section: "main" },
-  { labelKey: "nav.trustCenter", route: "/trust", icon: "governance", section: "governance" },
+  { labelKey: "nav.trustCenter", route: "/trust", icon: "governance", section: "governance" },{ labelKey: "nav.itsm", route: "/itsm", icon: "infrastructure", section: "governance" },
 ];
