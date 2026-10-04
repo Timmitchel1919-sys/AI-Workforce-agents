@@ -966,3 +966,4 @@ export * from "./privacy.js";
 export * from "./operations.js";
 export * from "./itsm.js";
 export * from "./ai-governance.js";
+export * from "./data-governance.js";

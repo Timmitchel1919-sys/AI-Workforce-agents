@@ -1,28 +1,24 @@
-# ENTERPRISE AI GOVERNANCE, MODEL RISK & RESPONSIBLE AI CONTROL PLANE
+# ENTERPRISE DATA GOVERNANCE, INFORMATION LIFECYCLE & RECORDS MANAGEMENT
 
 STATUS:
 COMPLETE
 
 ## 1. Repository State & Preflight
-After auditing the repository, a dedicated AI Governance layer was identified as the correct next dependency, separating AI model risk tracking and use-case evaluation from broad organizational GRC frameworks.
+After auditing the repository, a dedicated Data Governance layer was identified as the correct next dependency, separating Enterprise Data Ownership, Information Lifecycle, and privacy-centric retention from broad organizational GRC frameworks.
 
-## 2. AI Governance Source-of-Truth
-- **Model Registry:** `AIModelRecord` formalizes approved capabilities, context windows, and model risk levels.
-- **Use Case Governance:** `AIUseCase` requires purpose justification, evaluating models against specific deployments before approval.
-- **Evaluations & Incidents:** `ModelEvaluation` tracks safety/quality scoring. `AIIncident` isolates LLM-specific issues (e.g. jailbreaks, hallucinations) away from generic platform ITSM outages.
+## 2. Data Governance Source-of-Truth
+- **Data Catalog:** `DataAsset` formalizes data classifications (`PUBLIC`, `INTERNAL`, `CONFIDENTIAL`, `RESTRICTED`), tracking residency regions and personal data flags.
+- **Retention & Lifecycle:** `DataRetentionPolicy` handles explicit legal holds, retention bounds, and automated data archival tracking.
+- **Privacy Operations:** `DataSubjectRequestRecord` tracks cross-system Data Subject Request (DSR) lifecycle actions (Access, Export, Deletion, Correction).
 
 ## 3. Governance Control Plane
-Created `AIGovernanceControlService` connecting these entities to the REST gateway (`/aigov/*`). Applied Role-Based Access Controls enforcing that `admin` privilege is explicitly required to approve use cases or alter risk classifications.
+Created `DataGovernanceService` integrating these entities to the REST gateway (`/datagov/*`). Applied Role-Based Access Controls enforcing that `admin` privilege is explicitly required to manage asset retention policies and classification.
 
 ## 4. UI Layer
-Built `AIGovernancePage` within `ui/src/pages/Governance/AIGovernancePage.tsx` adhering to the AI Workforce UI guidelines (Liquid Glass Dark Theme) and integrated it into the router at `/ai-governance`.
+Built `DataGovernancePage` within `ui/src/pages/Governance/DataGovernancePage.tsx` adhering to the AI Workforce UI guidelines (Liquid Glass Dark Theme) and integrated it into the router at `/data-governance`.
 
-## 5. Security & Isolation
-- The models differentiate `MODEL`, `PROVIDER`, and `USE CASE`.
-- All operations endpoints correctly enforce operator `admin` roles, preventing AI from self-authorizing high-risk capabilities without explicit human oversight.
-
-## 6. Next Dependency
-With platform governance, compliance, operations, and AI Model Risk boundaries actively defined, the next layer must handle the cost, billing, and entitlement abstractions that meter these AI executions:
+## 5. Next Dependency
+With platform governance, compliance, AI Model Risk boundaries, and Enterprise Data Catalog tracking actively defined, the next layer must handle the cost, billing, and entitlement abstractions that meter these executions across multi-tenant environments:
 
 **ENTERPRISE BILLING, ENTITLEMENTS & AI COST CENTER**
 

@@ -3,6 +3,7 @@ import { ITSMControlService } from "../control/services/itsm-control-service.js"
 import { OperationsControlService } from "../control/services/operations-service.js";
 import { GrcControlService } from "../control/services/grc-service.js";
 import { AIGovernanceControlService } from "../control/services/ai-governance-service.js";
+import { DataGovernanceService } from "../control/services/data-governance-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -258,6 +259,11 @@ export async function createProductionControlPlaneRuntime(
   const aiUseCasesRepository = repositories.repository<import("../contracts/ai-governance.js").AIUseCase>("ai_use_cases");
   const aiEvaluationsRepository = repositories.repository<import("../contracts/ai-governance.js").ModelEvaluation>("ai_evaluations");
   const aiIncidentsRepository = repositories.repository<import("../contracts/ai-governance.js").AIIncident>("ai_incidents");
+
+  // Data Governance Repositories
+  const dataAssetsRepository = repositories.repository<import("../contracts/data-governance.js").DataAsset>("data_assets");
+  const dataRetentionPoliciesRepository = repositories.repository<import("../contracts/data-governance.js").DataRetentionPolicy>("data_retention_policies");
+  const dsrRepository = repositories.repository<import("../contracts/data-governance.js").DataSubjectRequestRecord>("dsr_records");
 
   // GRC Repositories
   const grcControlsRepository = repositories.repository<any>("grc_controls");
@@ -815,6 +821,12 @@ export async function createProductionControlPlaneRuntime(
     aiIncidentsRepository
   );
 
+  const dataGov = new DataGovernanceService(
+    dataAssetsRepository,
+    dataRetentionPoliciesRepository,
+    dsrRepository
+  );
+
   const grc = new GrcControlService(
     grcControlsRepository,
     grcFrameworksRepository,
@@ -869,6 +881,7 @@ export async function createProductionControlPlaneRuntime(
     ops,
     grc,
     aiGov,
+    dataGov,
   });
 
   return Object.freeze({
