@@ -68,6 +68,7 @@ const SecurityPage = fromChunk(loadControlCenterRoutes, "SecurityPage");
 const AuditPage = fromChunk(loadControlCenterRoutes, "AuditPage");
 const PortfolioPage = fromChunk(loadControlCenterRoutes, "PortfolioPage");
 const ProductPage = fromChunk(loadControlCenterRoutes, "ProductPage");
+const WorkforcePage = fromChunk(loadControlCenterRoutes, "WorkforcePage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -162,6 +163,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "audit", element: withSuspense(<AuditPage />) },
       { path: "portfolio", element: withSuspense(<PortfolioPage />) },
       { path: "product", element: withSuspense(<ProductPage />) },
+      { path: "workforce", element: withSuspense(<WorkforcePage />) },
       { path: "cost", element: withSuspense(<CostCenterPage />) },
       { path: "intelligence", element: withSuspense(<IntelligencePage />) },
       { path: "integrations", element: withSuspense(<IntegrationsPage />) },

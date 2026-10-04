@@ -49,3 +49,4 @@ export { default as SecurityPage } from "../../pages/Governance/SecurityPage";
 export { default as AuditPage } from "../../pages/Governance/AuditPage";
 export { default as PortfolioPage } from "../../pages/Governance/PortfolioPage";
 export { default as ProductPage } from "../../pages/Governance/ProductPage";
+export { default as WorkforcePage } from "../../pages/Governance/WorkforcePage";
