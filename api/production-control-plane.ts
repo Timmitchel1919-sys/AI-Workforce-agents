@@ -7,6 +7,7 @@ import { DataGovernanceService } from "../control/services/data-governance-servi
 import { SecurityControlService } from "../control/services/security-service.js";
 import { AuditControlService } from "../control/services/audit-service.js";
 import { PortfolioControlService } from "../control/services/portfolio-service.js";
+import { ProductManagementService } from "../control/services/product-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -281,6 +282,13 @@ export async function createProductionControlPlaneRuntime(
   const strategicObjectivesRepository = repositories.repository<import("../contracts/portfolio.js").StrategicObjective>("strategic_objectives");
   const enterprisePortfoliosRepository = repositories.repository<import("../contracts/portfolio.js").EnterprisePortfolio>("enterprise_portfolios");
   const portfolioProgramsRepository = repositories.repository<import("../contracts/portfolio.js").PortfolioProgram>("portfolio_programs");
+
+  // Product Repositories
+  const productPortfoliosRepository = repositories.repository<import("../contracts/product.js").ProductPortfolio>("product_portfolios");
+  const productsRepository = repositories.repository<import("../contracts/product.js").ProductDefinition>("products");
+  const problemsRepository = repositories.repository<import("../contracts/product.js").CustomerProblem>("customer_problems");
+  const opportunitiesRepository = repositories.repository<import("../contracts/product.js").ProductOpportunity>("product_opportunities");
+  const featuresRepository = repositories.repository<import("../contracts/product.js").ProductFeature>("product_features");
 
   // GRC Repositories
   const grcControlsRepository = repositories.repository<any>("grc_controls");
@@ -861,6 +869,14 @@ export async function createProductionControlPlaneRuntime(
     portfolioProgramsRepository
   );
 
+  const product = new ProductManagementService(
+    productPortfoliosRepository,
+    productsRepository,
+    problemsRepository,
+    opportunitiesRepository,
+    featuresRepository
+  );
+
   const grc = new GrcControlService(
     grcControlsRepository,
     grcFrameworksRepository,
@@ -919,6 +935,7 @@ export async function createProductionControlPlaneRuntime(
     security,
     audit: auditService,
     portfolio,
+    product,
   });
 
   return Object.freeze({

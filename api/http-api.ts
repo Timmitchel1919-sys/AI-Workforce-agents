@@ -65,6 +65,7 @@ export interface ControlPlaneApiOptions {
   security?: import("../control/services/security-service.js").SecurityControlService;
   audit?: import("../control/services/audit-service.js").AuditControlService;
   portfolio?: import("../control/services/portfolio-service.js").PortfolioControlService;
+  product?: import("../control/services/product-service.js").ProductManagementService;
   /** Path prefix for every route. Default `/api`. */
   basePath?: string;
   /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */
@@ -276,6 +277,9 @@ export function createControlPlaneApi(
       }
       if (route.startsWith("/portfolio/")) {
         return await handlePortfolio(route, segs, method, req, res, principal, correlationId);
+      }
+      if (route.startsWith("/product/")) {
+        return await handleProduct(route, segs, method, req, res, principal, correlationId);
       }
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
@@ -1233,6 +1237,34 @@ export function createControlPlaneApi(
       }
       if (segs[1] === "objectives" && method === "GET") {
         return send(res, 200, await options.portfolio.listObjectives(), correlationId);
+      }
+
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    } catch (e) {
+      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+    }
+  }
+
+  async function handleProduct(
+    route: string,
+    segs: string[],
+    method: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    if (!options.product) return send(res, 404, { error: { message: "product not available" } }, correlationId);
+    
+    try {
+      if (segs[1] === "products" && method === "GET") {
+        return send(res, 200, await options.product.listProducts(), correlationId);
+      }
+      if (segs[1] === "problems" && method === "GET") {
+        return send(res, 200, await options.product.listProblems(), correlationId);
+      }
+      if (segs[1] === "features" && method === "GET") {
+        return send(res, 200, await options.product.listFeatures(), correlationId);
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);

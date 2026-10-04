@@ -31,3 +31,4 @@ export * from "./services/data-governance-service.js";
 export * from "./services/security-service.js";
 export * from "./services/audit-service.js";
 export * from "./services/portfolio-service.js";
+export * from "./services/product-service.js";
