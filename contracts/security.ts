@@ -18,6 +18,7 @@ export interface ZTNSecurityEvent extends Entity {
 
 export interface ZeroTrustPolicy extends Entity {
   policyId: string;
+  organizationId: string;
   name: string;
   description: string;
   targetScope: string;

@@ -62,3 +62,79 @@ test("SecOps: Threat Engine detection and incident creation", () => {
   assert.equal(incidents[0].severity, "CRITICAL");
   assert.include(incidents[0].relatedEvents, "evt_3");
 });
+
+import { SecOpsService } from "../core/secops/secops-service.js";
+
+test("SecOpsService: Zero-Trust Policy enforcement and Tenant Isolation", async () => {
+  const service = new SecOpsService();
+  
+  service.addPolicy({
+    id: "p_1",
+    policyId: "zt_1",
+    organizationId: "org_1",
+    name: "Strict Deny",
+    description: "Deny all",
+    targetScope: "ALL",
+    requiredConditions: [],
+    action: "DENY",
+    status: "ACTIVE",
+    createdAt: new Date().toISOString()
+  });
+
+  service.addPolicy({
+    id: "p_2",
+    policyId: "zt_2",
+    organizationId: "org_2",
+    name: "Allow org 2",
+    description: "Allow",
+    targetScope: "ALL",
+    requiredConditions: [],
+    action: "ALLOW",
+    status: "ACTIVE",
+    createdAt: new Date().toISOString()
+  });
+
+  // Evaluate for org 1 (Should Deny)
+  const allowed1 = await service.evaluateZeroTrustPolicy("org_1", "zt_1", "ci_1", "user_1");
+  assert.equal(allowed1, false);
+
+  // Evaluate for org 2 (Should Allow)
+  const allowed2 = await service.evaluateZeroTrustPolicy("org_2", "zt_2", "ci_1", "user_1");
+  assert.equal(allowed2, true);
+
+  // Attempt to evaluate across tenants
+  try {
+    await service.evaluateZeroTrustPolicy("org_1", "zt_2", "ci_1", "user_1");
+    assert.ok(false, "Should have thrown tenant isolation error");
+  } catch (e: any) {
+    assert.include(e.message, "Policy zt_2 not found for org org_1");
+  }
+});
+
+test("SecOpsService: Threat intel and Access Request tenant isolation", async () => {
+  const service = new SecOpsService();
+  service.addPolicy({
+    id: "p_1",
+    policyId: "zt_1",
+    organizationId: "org_1",
+    name: "Strict Deny",
+    description: "Deny all",
+    targetScope: "ALL",
+    requiredConditions: [],
+    action: "DENY",
+    status: "ACTIVE",
+    createdAt: new Date().toISOString()
+  });
+
+  const request = await service.evaluateAccessRequest({
+    requestId: "req_1",
+    organizationId: "org_1",
+    requesterId: "user_1",
+    targetResourceId: "res_1",
+    justification: "Need access",
+    status: "PENDING",
+    requestedAt: new Date()
+  });
+
+  assert.equal(request.status, "DENIED");
+});
