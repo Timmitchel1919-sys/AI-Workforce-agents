@@ -971,6 +971,7 @@ export * from "./security.js";
 export * from "./audit.js";
 export * from "./portfolio.js";
 export * from "./product.js";
+export * from "./prompt.js";
 export * from "./organization.js";
 export * from "./procurement.js";
 export * from "./assets.js";

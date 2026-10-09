@@ -2,7 +2,6 @@ import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
 import PageSection from "../../components/layout/PageSection";
 import { useI18n } from "../../i18n";
-import "../Organizations/OrganizationPage.css"; // Reuse Liquid Glass styling
 
 export default function PlatformAdminPage() {
   const { t } = useI18n();

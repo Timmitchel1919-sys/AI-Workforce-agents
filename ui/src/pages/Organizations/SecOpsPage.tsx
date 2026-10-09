@@ -1,5 +1,4 @@
 import React from "react";
-import "./OrganizationPage.css";
 
 export const SecOpsPage: React.FC = () => {
   return (

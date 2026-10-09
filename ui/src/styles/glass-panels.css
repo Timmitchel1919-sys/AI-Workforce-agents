@@ -1,0 +1,98 @@
+/*
+ * Shared "liquid glass" surface primitives.
+ *
+ * Promoted out of the removed Organizations page stylesheet so the pages that
+ * reused them (Trust Center, Platform Admin, Security Ops, Privacy, Developer
+ * Platform) keep their surfaces. Kept generic — no organization/tenant logic.
+ */
+
+.liquid-glass-panel {
+  background: var(--color-surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  margin-bottom: var(--space-8);
+  box-shadow: var(--shadow-card);
+}
+
+.glass-select {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: var(--text-md);
+  min-width: 250px;
+}
+
+.glass-select:focus {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-focus) 20%, transparent);
+}
+
+.liquid-glass-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border-strong);
+  padding-bottom: 1px;
+}
+
+.liquid-glass-tabs button {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all var(--duration-normal) var(--ease-standard);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.liquid-glass-tabs button:hover {
+  color: var(--color-text);
+}
+
+.liquid-glass-tabs button.active {
+  color: var(--color-text-heading);
+  border-bottom: 2px solid var(--color-text-heading);
+}
+
+.glass-card {
+  background: var(--color-surface-muted);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  transition:
+    transform var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}
+
+.glass-card h4 {
+  margin-top: 0;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-lg);
+  color: var(--color-text-heading);
+}
+
+.glass-card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-normal);
+}
+
+.mt-4 {
+  margin-top: var(--space-4);
+}

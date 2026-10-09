@@ -1,5 +1,4 @@
 import React from "react";
-import "../Organizations/OrganizationPage.css";
 
 export const TrustCenterPage: React.FC = () => {
   return (

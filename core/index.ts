@@ -2,6 +2,8 @@
 
 export * from "../contracts/index.js";
 export * from "./shared.js";
+export * from "./logging/index.js";
+export * from "./events/index.js";
 export * from "./persistence/in-memory-repository.js";
 export * from "./persistence/cached-repository.js";
 export * from "./persistence/in-memory-execution-record-store.js";

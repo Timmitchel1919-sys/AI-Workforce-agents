@@ -6,6 +6,7 @@ import { registerServiceWorker } from "./pwa/serviceWorker";
 import "./styles/reset.css";
 import "./styles/tokens.css";
 import "./styles/globals.css";
+import "./styles/glass-panels.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

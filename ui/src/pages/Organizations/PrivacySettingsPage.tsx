@@ -1,5 +1,4 @@
 import React from "react";
-import "./OrganizationPage.css";
 
 export const PrivacySettingsPage: React.FC = () => {
   return (

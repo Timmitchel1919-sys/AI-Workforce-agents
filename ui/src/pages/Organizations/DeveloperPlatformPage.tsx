@@ -1,5 +1,4 @@
 import React from "react";
-import "./OrganizationPage.css";
 
 export const DeveloperPlatformPage: React.FC = () => {
   return (
