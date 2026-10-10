@@ -48,3 +48,4 @@ export * from "./cost-center/index.js";
 export * from "./routing/index.js";
 export * as procurement from "./procurement/index.js";
 export * as assets from "./assets/index.js";
+export * from "./security/index.js";
