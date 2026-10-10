@@ -269,6 +269,7 @@ export const RUNTIME_EVENT_TYPES = [
   "execution.build.started",
   "execution.build.completed",
   "execution.scope.flagged",
+  "execution.agent.step",
   "execution.approval.requested",
   "execution.failed",
   "execution.cancelled",

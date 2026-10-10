@@ -105,6 +105,7 @@ function infoText(event: RuntimeEvent): string {
     case "execution.state": return str(d.status) ?? "";
     case "execution.file.changed": return [str(d.operation), str(d.path)].filter(Boolean).join(" ");
     case "execution.scope.flagged": return [...((d.unexpected as string[] | undefined) ?? []), ...((d.sensitive as string[] | undefined) ?? [])].slice(0, 5).join(", ");
+    case "execution.agent.step": return [str(d.action), str(d.target), str(d.outcome)].filter(Boolean).join(" ");
     case "execution.approval.requested": return str(d.reason) ?? "";
     case "execution.failed": return str(d.error) ?? str(d.status) ?? "";
     case "execution.test.started":

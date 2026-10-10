@@ -298,7 +298,8 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
       case "ANALYSIS":
       case "RESEARCH":
       case "DESIGN": {
-        if (this.deps.agentExecutor)
+        // The mechanical "Inspect…" task is cheap and deterministic: never spend model calls on it.
+        if (this.deps.agentExecutor && !/^Inspect\b/.test(task.title))
           return this.delegate(
             task,
             context,

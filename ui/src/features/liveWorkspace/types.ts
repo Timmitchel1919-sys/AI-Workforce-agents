@@ -107,7 +107,7 @@ export type RuntimeEventType =
   | "execution.command.started" | "execution.command.output" | "execution.command.completed"
   | "execution.file.changed" | "execution.test.started" | "execution.test.completed"
   | "execution.build.started" | "execution.build.completed" | "execution.scope.flagged"
-  | "execution.approval.requested" | "execution.failed" | "execution.cancelled" | "execution.completed";
+  | "execution.agent.step" | "execution.approval.requested" | "execution.failed" | "execution.cancelled" | "execution.completed";
 
 export interface RuntimeEvent {
   seq: number;

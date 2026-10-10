@@ -94,6 +94,7 @@ import {
   CostGateAdapter,
   ExecutionOrchestrator,
   GovernedTaskRuntime,
+  LlmAgentExecutor,
   SessionManager,
   WorkspaceRegistry,
   WorkspaceResolver,
@@ -1129,9 +1130,24 @@ export async function createProductionControlPlaneRuntime(
   const runtimeSessions = new SessionManager(runtimeSessionRepository, audit);
   const workspaceRegistry = new WorkspaceRegistry();
   const workspaceResolver = new WorkspaceResolver(workspaceRegistry);
+  // Layer 6: the LLM agent loop. Every model call is routed per agent and metered by the Cost
+  // Center (the same reviewed pipeline as the specialists); with no model key configured the
+  // provider fails closed and the task reports it. Without a registered workspace it never runs.
+  const agentLoop = new LlmAgentExecutor({
+    models: ({ agentId }) =>
+      new RoutedModelProvider({
+        inner: new LazyOpenAIModelProvider(),
+        router: modelRouter,
+        agent: bootstrap.agents.require(agentId),
+        requirement: specialistRequirement,
+        usageLedger,
+        audit,
+      }),
+  });
   const taskRuntime = new GovernedTaskRuntime({
     resolver: workspaceResolver,
     manager: runtimeSessions,
+    agentExecutor: agentLoop,
   });
   // Layer 4: Execution Orchestration. Plans, routes, gates and audits; it drives
   // the runtime through the TaskRuntimePort.

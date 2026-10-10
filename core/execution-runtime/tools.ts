@@ -328,6 +328,24 @@ export class AgentToolSession {
     return this.guard(tool, "run_script", () => this.execute(spec));
   }
 
+  /** Throws when the execution was cancelled or paused; otherwise a heartbeat. */
+  checkpoint(): void {
+    const { session, manager } = this.deps;
+    if (
+      manager.signal(session.executionId)?.aborted ||
+      session.status === "CANCELLED"
+    )
+      throw new ExecutionCancelledError();
+    if (session.paused) throw new ExecutionPausedError();
+    manager.heartbeat(session);
+  }
+
+  /** Record a masked, bounded progress event (used by the agent loop). */
+  note(data: Record<string, unknown>): void {
+    this.deps.manager.emit(this.deps.session, "execution.agent.step", data);
+    this.deps.manager.heartbeat(this.deps.session);
+  }
+
   private async execute(spec: CommandSpec): Promise<CommandRecord> {
     const { session, manager } = this.deps;
     if (
