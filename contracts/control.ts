@@ -83,6 +83,8 @@ export const CONTROL_CAPABILITIES = [
   "prepare_prompt",
   /* Layer 4 — Execution Orchestration (plans and coordinates; gated by approvals). */
   "orchestrate_execution",
+  /* Knowledge, Memory & Context Intelligence (curating project memory). */
+  "manage_knowledge",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -120,6 +122,8 @@ export const ROLE_CAPABILITIES: Record<
     "prepare_prompt",
     // Layer 4: operators may plan and advance execution runs.
     "orchestrate_execution",
+    // Knowledge: curate, confirm, supersede and ingest project memory.
+    "manage_knowledge",
   ],
   admin: [
     "view",
@@ -160,6 +164,8 @@ export const ROLE_CAPABILITIES: Record<
     // Phase 3: preparing execution prompts.
     "prepare_prompt",
     "orchestrate_execution",
+    // Knowledge: curate, confirm, supersede and ingest project memory.
+    "manage_knowledge",
   ],
 };
 
@@ -272,6 +278,21 @@ export const CONTROL_COMMANDS = [
   "runtime_cancel_session",
   "runtime_pause_session",
   "runtime_resume_session",
+  // Knowledge, Memory & Context Intelligence.
+  "knowledge_create_memory",
+  "knowledge_update_memory",
+  "knowledge_confirm_memory",
+  "knowledge_archive_memory",
+  "knowledge_restore_memory",
+  "knowledge_supersede_memory",
+  "knowledge_revoke_memory",
+  "knowledge_delete_memory",
+  "knowledge_link",
+  "knowledge_resolve_conflict",
+  "knowledge_ingest_document",
+  "knowledge_discover_project",
+  "knowledge_refresh_project",
+  "knowledge_apply_retention",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 

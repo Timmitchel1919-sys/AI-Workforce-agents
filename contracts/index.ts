@@ -336,6 +336,8 @@ export const AUDIT_EVENT_TYPES = [
   "access_event",
   "execution_event",
   "onboarding_event",
+  /* Knowledge, Memory & Context Intelligence (memory.created, knowledge.ingested …). */
+  "knowledge_event",
   /* EO-6.2 — AI Cost Center & rule-based Auditor. */
   "usage_recorded",
   "budget_blocked",
@@ -913,6 +915,7 @@ export type {
   AsyncRepository,
   PersistenceProvider,
 } from "./persistence.js";
+export * from "./knowledge-memory.js";
 export * from "./storage.js";
 
 export * from "./research.js";

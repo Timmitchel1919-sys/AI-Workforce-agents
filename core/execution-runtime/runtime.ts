@@ -105,6 +105,13 @@ export interface RuntimeDeps {
   identity?: { name: string; email: string };
   /** Cap on a single command, in milliseconds. */
   maxCommandMs?: number;
+  /** Called after every execution (success or failure): the learning loop's entry point. */
+  onFinished?: (input: {
+    session: RuntimeSession;
+    task: OrchTask;
+    context: TaskExecutionContext;
+    outcome: RuntimeOutcome;
+  }) => void | Promise<void>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -188,6 +195,26 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
   }
 
   async execute(
+    task: OrchTask,
+    context: TaskExecutionContext,
+  ): Promise<RuntimeOutcome> {
+    const outcome = await this.executeInner(task, context);
+    // Learning must never change or break the execution result.
+    if (this.deps.onFinished) {
+      try {
+        const session = this.deps.manager
+          .list({ runId: context.runId, taskId: task.taskId })
+          .at(0);
+        if (session)
+          await this.deps.onFinished({ session, task, context, outcome });
+      } catch {
+        /* swallowed on purpose */
+      }
+    }
+    return outcome;
+  }
+
+  private async executeInner(
     task: OrchTask,
     context: TaskExecutionContext,
   ): Promise<RuntimeOutcome> {

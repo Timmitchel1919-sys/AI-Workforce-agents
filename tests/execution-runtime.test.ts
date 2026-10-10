@@ -883,10 +883,10 @@ test("terminal: output is secret-masked and size-bounded; the child never sees h
 });
 
 test("terminal: a command that runs too long times out and is killed; the session records TIMED_OUT", async () => {
-  const e = env({ maxCommandMs: 600 });
+  const e = env({ maxCommandMs: 1500 });
   const task = mkTask({ type: "TEST", title: "Run the automated tests" });
   // `check` is the slow script; run it via a validation-like path using the tool session.
-  const { tools, session } = await toolSession(e, ["tests.run"], false, 600);
+  const { tools, session } = await toolSession(e, ["tests.run"], false, 1500);
   const started = Date.now();
   await assert.rejects(tools.runCommand("npm run check"), /timed out/);
   assert.ok(Date.now() - started < 15_000, "killed promptly");
@@ -900,7 +900,7 @@ test("runtime: a timed-out command becomes a TIMED_OUT session and a transient f
     path.join(dir, "package.json"),
     JSON.stringify({ name: "x", scripts: { test: "node scripts/slow.js" } }),
   );
-  const e = env({ dir, maxCommandMs: 600 });
+  const e = env({ dir, maxCommandMs: 1500 });
   const task = mkTask({ type: "TEST", title: "Run the automated tests" });
   const out = await e.runtime.execute(
     task,

@@ -125,6 +125,36 @@ export class LocalGitOps implements GitOps {
     };
   }
 
+  /** Recent commits (read-only, fixed arguments) for knowledge ingestion. */
+  async log(
+    limit: number,
+  ): Promise<{ sha: string; message: string; files: string[] }[]> {
+    const n = Math.min(Math.max(Math.trunc(limit) || 1, 1), 100);
+    const RS = String.fromCharCode(30);
+    const US = String.fromCharCode(31);
+    const result = await this.run([
+      "log",
+      "--max-count=" + n,
+      "--name-only",
+      "--pretty=format:%x1e%H%x1f%B%x1f",
+    ]);
+    if (result.code !== 0) return [];
+    return result.out
+      .split(RS)
+      .map((record) => record.split(US))
+      .filter(
+        (parts) => parts.length >= 3 && /^[0-9a-f]{7,40}$/.test(parts[0]!),
+      )
+      .map((parts) => ({
+        sha: parts[0]!,
+        message: parts[1]!.trim(),
+        files: parts[2]!
+          .split("\n")
+          .map((f) => f.trim())
+          .filter(Boolean),
+      }));
+  }
+
   async commit(
     files: readonly string[],
     message: string,

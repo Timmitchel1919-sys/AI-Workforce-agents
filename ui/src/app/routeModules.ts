@@ -19,6 +19,9 @@ export const loadExecutionCenter = () => import("../pages/ExecutionCenter/routes
 /** Live Development Workspace (Layer 5) page (separate lazy chunk). */
 export const loadLiveWorkspace = () => import("../pages/LiveWorkspace/routes");
 
+/** Knowledge Center page (separate lazy chunk). */
+export const loadKnowledge = () => import("../pages/Knowledge/routes");
+
 export type RouteChunk = "landing" | "auth" | "controlCenter";
 
 export const routeChunkLoaders: Record<RouteChunk, () => Promise<unknown>> = {

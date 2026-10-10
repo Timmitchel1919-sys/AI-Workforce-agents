@@ -51,6 +51,8 @@ export interface ControlPlaneApiOptions {
   orchestration?: import("../control/index.js").ExecutionOrchestrationControlService;
   /** Layer 5: Execution Runtime + Live Development Workspace (sessions, events, inspection). */
   runtime?: import("../control/index.js").RuntimeControlService;
+  /** Knowledge, Memory & Context Intelligence (governed memory, retrieval, graph, curation). */
+  knowledge?: import("../control/index.js").KnowledgeControlService;
   /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
   projectSync?: () => Promise<void>;
   operatorDirectory: OperatorDirectory;
@@ -594,6 +596,43 @@ export function createControlPlaneApi(
   ): Promise<void> {
     const [head, id] = segs;
     switch (head) {
+      case "knowledge": {
+        const knowledge = options.knowledge;
+        if (!knowledge) throw new NotFoundError("resource not found");
+        const [, area, memoryId] = segs;
+        const projectId = params.get("projectId") ?? undefined;
+        const result = (() => {
+          switch (area) {
+            case "overview":
+              return knowledge.overview(principal, projectId);
+            case "memories":
+              return memoryId
+                ? knowledge.detail(principal, memoryId)
+                : knowledge.list(principal, params);
+            case "search":
+              return knowledge.search(principal, params);
+            case "graph":
+              return knowledge.graph(principal, params);
+            case "conflicts":
+              return knowledge.conflicts(principal, projectId);
+            case "documents":
+              return knowledge.documents(principal, projectId);
+            case "decisions":
+              return knowledge.decisions(principal, projectId);
+            case "candidates":
+              return knowledge.candidates(principal, projectId);
+            case "health":
+              return knowledge.health(principal, projectId);
+            case "findings":
+              return knowledge.findings(principal, projectId);
+            case "context":
+              return knowledge.context(principal, params);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
       case "runtime": {
         const runtime = options.runtime;
         if (!runtime) throw new NotFoundError("resource not found");
@@ -1887,6 +1926,31 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
+    if (name.startsWith("knowledge_") && options.knowledge) {
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const outcome = await options.knowledge.execute(
+        name,
+        principal,
+        payload,
+        { correlationId },
+      );
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
     if (name.startsWith("runtime_") && options.runtime) {
       const runtime = options.runtime;
       const method = Object.hasOwn(RUNTIME_METHODS, name)

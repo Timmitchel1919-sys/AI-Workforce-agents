@@ -95,6 +95,13 @@ import {
   ExecutionOrchestrator,
   GovernedTaskRuntime,
   LlmAgentExecutor,
+  KnowledgeSystem,
+  GovernedFileSystem,
+  LocalGitOps,
+  workspaceFileSource,
+  githubFileSource,
+  parseProjectRepositoryRef,
+  type KnowledgeRepos,
   SessionManager,
   WorkspaceRegistry,
   WorkspaceResolver,
@@ -151,6 +158,16 @@ import { OnboardingControlService } from "../control/services/onboarding-control
 import { PromptIntelligenceControlService } from "../control/services/prompt-intelligence-control-service.js";
 import { ExecutionOrchestrationControlService } from "../control/services/execution-orchestration-control-service.js";
 import { RuntimeControlService } from "../control/services/runtime-control-service.js";
+import { KnowledgeControlService } from "../control/services/knowledge-control-service.js";
+import type {
+  ConflictResolutionRecord,
+  KnowledgeEdge,
+  KnowledgeEntity,
+  KnowledgeSourceState,
+  MemoryRecord,
+  MemoryUsageRecord,
+  MemoryVersionRecord,
+} from "../contracts/knowledge-memory.js";
 import type { RuntimeSession } from "../contracts/execution-runtime.js";
 import type { ExecutionRun } from "../contracts/execution-orchestration.js";
 import type { PromptRequestRecord } from "../contracts/prompt-intelligence.js";
@@ -473,6 +490,18 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<ExecutionRun>("execution_runs");
   const runtimeSessionRepository =
     repositories.repository<RuntimeSession>("runtime_sessions");
+  // Knowledge, Memory & Context Intelligence: seven durable collections, allocated before hydrate.
+  const knowledgeRepos: KnowledgeRepos = {
+    memories: repositories.repository<MemoryRecord>("memories"),
+    versions: repositories.repository<MemoryVersionRecord>("memory_versions"),
+    entities: repositories.repository<KnowledgeEntity>("knowledge_entities"),
+    edges: repositories.repository<KnowledgeEdge>("knowledge_edges"),
+    usage: repositories.repository<MemoryUsageRecord>("memory_usage"),
+    resolutions: repositories.repository<ConflictResolutionRecord>(
+      "memory_conflict_resolutions",
+    ),
+    sources: repositories.repository<KnowledgeSourceState>("knowledge_sources"),
+  };
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
@@ -1088,6 +1117,9 @@ export async function createProductionControlPlaneRuntime(
       /* a transient read failure must not fail an unrelated request */
     }
   };
+  // Knowledge, Memory & Context Intelligence: governed memory, hybrid retrieval and the
+  // context assembler. Its context source plugs into the Layer 3 engine below.
+  const knowledge = new KnowledgeSystem({ repos: knowledgeRepos, audit });
   // Phase 3: Context Engine + Prompt Intelligence. Every source reads existing
   // platform state through a read-only port; nothing here executes an agent.
   const promptService = new PromptIntelligenceService({
@@ -1106,6 +1138,7 @@ export async function createProductionControlPlaneRuntime(
         ),
         new OnboardedProjectSource(provisionedProjects),
         new KnowledgeContextSource(promptKnowledgeRepository),
+        knowledge.contextSource,
         new TaskContextSource(tasks),
       ],
       {
@@ -1148,6 +1181,10 @@ export async function createProductionControlPlaneRuntime(
     resolver: workspaceResolver,
     manager: runtimeSessions,
     agentExecutor: agentLoop,
+    // The learning loop: verified execution results become candidate/verified memory.
+    onFinished: ({ session, task, context, outcome }) => {
+      knowledge.learner.learn({ session, task, context, outcome });
+    },
   });
   // Layer 4: Execution Orchestration. Plans, routes, gates and audits; it drives
   // the runtime through the TaskRuntimePort.
@@ -1173,6 +1210,35 @@ export async function createProductionControlPlaneRuntime(
     executionOrchestrator,
     audit,
   );
+  const knowledgeControl = new KnowledgeControlService({
+    knowledge,
+    audit,
+    projectExists: (projectId) => bootstrap.projects.has(projectId),
+    sourceFor: async (projectId) => {
+      // 1. A registered local workspace (read-only governed view, with git history).
+      try {
+        const ws = await workspaceResolver.resolve(projectId);
+        return workspaceFileSource(
+          new GovernedFileSystem(ws.rootReal, ["read", "list"], {
+            taskId: "knowledge",
+            agentId: "knowledge",
+            clock: () => new Date().toISOString(),
+          }),
+          new LocalGitOps(ws.rootReal),
+        );
+      } catch {
+        /* no workspace registered for this project */
+      }
+      // 2. The project's declared GitHub repository (allow-listed files only).
+      const repo = bootstrap.projects.get(projectId)?.metadata?.repository;
+      const ref = repo ? parseProjectRepositoryRef(repo) : undefined;
+      if (!ref) return undefined;
+      return githubFileSource(new GitHubRepositoryReader(), {
+        url: ref.url,
+        branch: ref.defaultBranch,
+      });
+    },
+  });
   const query = new WorkforceQueryService(context);
   const command = new WorkforceCommandService(context);
   const graphQuery = new GraphQueryService(context);
@@ -1181,6 +1247,7 @@ export async function createProductionControlPlaneRuntime(
     promptIntelligence,
     orchestration,
     runtime: runtimeControl,
+    knowledge: knowledgeControl,
     projectSync,
     graphQuery,
     query,

@@ -3,9 +3,9 @@ import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n } from "../i18n";
 import RouteError from "./RouteError";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace } from "./routeModules";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace, loadKnowledge } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -48,6 +48,7 @@ const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 const PromptIntelligencePage = fromChunk(loadPromptIntelligence, "PromptIntelligencePage");
 const ExecutionCenterPage = fromChunk(loadExecutionCenter, "ExecutionCenterPage");
 const LiveWorkspacePage = fromChunk(loadLiveWorkspace, "LiveWorkspacePage");
+const KnowledgePage = fromChunk(loadKnowledge, "KnowledgePage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
 const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
@@ -85,21 +86,6 @@ function RouteFallback() {
 
 function withSuspense(node: ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
-}
-
-function PlaceholderPage({ titleKey }: { titleKey: MessageKey }) {
-  const { t } = useI18n();
-  return (
-    <div className="page">
-      <section className="page-header">
-        <p className="eyebrow">{t("common.brand")}</p>
-        <h1>{t(titleKey)}</h1>
-        <p className="page-description">
-          {t("shell.reservedDescription")}
-        </p>
-      </section>
-    </div>
-  );
 }
 
 /** Every page gets the in-app error state (the shell stays usable). */
@@ -181,7 +167,9 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },
       { path: "software-factory", element: withSuspense(<SoftwareFactoryPage />) },
       { path: "software-factory/:projectId/:programId", element: withSuspense(<SoftwareFactoryProgramPage />) },
-      { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
+      { path: "knowledge", element: withSuspense(<KnowledgePage />) },
+      { path: "knowledge/:tab", element: withSuspense(<KnowledgePage />) },
+      { path: "knowledge/:tab/:memoryId", element: withSuspense(<KnowledgePage />) },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },
