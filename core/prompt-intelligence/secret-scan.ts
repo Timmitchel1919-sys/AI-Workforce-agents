@@ -34,3 +34,29 @@ export function sanitizeText(text: string, max: number): string {
   const cleaned = text.replace(CONTROL_CHARS, " ").replace(/\s+/g, " ").trim();
   return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned;
 }
+
+const MASK = "[masked]";
+
+function globalOf(pattern: RegExp): RegExp {
+  return new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
+}
+
+const MASK_PATTERNS: readonly RegExp[] = [KNOWN_SECRET_VALUE_PATTERN, ...EXTRA_PATTERNS].map(globalOf);
+
+/**
+ * Replace every credential-looking value with a mask. Used for anything a
+ * process prints or a diff contains before it is stored or shown: terminal
+ * output, logs, audit data and diffs never carry a secret.
+ */
+export function maskSecrets(text: string): string {
+  let out = text;
+  for (const pattern of MASK_PATTERNS) {
+    pattern.lastIndex = 0;
+    out = out.replace(pattern, (match) => {
+      // Keep the key of "key=value" so the line stays readable.
+      const eq = /^([A-Za-z_][\w.-]*\s*[:=]\s*)/.exec(match);
+      return eq ? `${eq[1]}${MASK}` : MASK;
+    });
+  }
+  return out;
+}

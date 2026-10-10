@@ -57,6 +57,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.agents", route: "/agents", icon: "agents", section: "main" },
   { labelKey: "nav.tasks", route: "/tasks", icon: "tasks", section: "main" },
   { labelKey: "nav.workflows", route: "/workflows", icon: "workflows", section: "main" },
+  { labelKey: "executionCenter.nav", route: "/execution-center", icon: "workflows", section: "main" },
   { labelKey: "nav.projects", route: "/projects", icon: "projects", section: "workspace" },
   { labelKey: "nav.approvals", route: "/approvals", icon: "approvals", section: "workspace" },
   { labelKey: "nav.infrastructure", route: "/infrastructure", icon: "infrastructure", section: "workspace" },

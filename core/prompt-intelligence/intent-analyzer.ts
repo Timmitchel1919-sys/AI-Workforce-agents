@@ -694,7 +694,8 @@ function capabilitiesFor(
           destructiveKinds.includes("repository_deletion") ||
             destructiveKinds.includes("history_rewrite")
             ? "integration.github"
-            : destructiveKinds.includes("environment_deletion")
+            : destructiveKinds.length === 1 &&
+                destructiveKinds[0] === "environment_deletion"
               ? "deployment"
               : "software.general",
           "primary",

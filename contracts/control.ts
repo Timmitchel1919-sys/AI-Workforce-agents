@@ -81,6 +81,8 @@ export const CONTROL_CAPABILITIES = [
   "manage_governance_policy",
   /* Phase 3 — Context Engine + Prompt Intelligence (prepares, never executes). */
   "prepare_prompt",
+  /* Layer 4 — Execution Orchestration (plans and coordinates; gated by approvals). */
+  "orchestrate_execution",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -116,6 +118,8 @@ export const ROLE_CAPABILITIES: Record<
     "tick_software_factory",
     // Phase 3: operators may prepare (analyse/validate) execution prompts.
     "prepare_prompt",
+    // Layer 4: operators may plan and advance execution runs.
+    "orchestrate_execution",
   ],
   admin: [
     "view",
@@ -155,6 +159,7 @@ export const ROLE_CAPABILITIES: Record<
     "manage_governance_policy",
     // Phase 3: preparing execution prompts.
     "prepare_prompt",
+    "orchestrate_execution",
   ],
 };
 
@@ -255,6 +260,14 @@ export const CONTROL_COMMANDS = [
   // Phase 3 — Context Engine + Prompt Intelligence.
   "prompt_prepare",
   "prompt_request_approval",
+  // Layer 4 — Execution Orchestration.
+  "orchestration_create",
+  "orchestration_start",
+  "orchestration_advance",
+  "orchestration_pause",
+  "orchestration_resume",
+  "orchestration_cancel",
+  "orchestration_retry_task",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 

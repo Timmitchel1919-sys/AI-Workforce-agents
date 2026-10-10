@@ -47,6 +47,8 @@ export interface ControlPlaneApiOptions {
   onboarding?: import("../control/index.js").OnboardingControlService;
   /** Phase 3: Context Engine + Prompt Intelligence (prepares prompts; never executes). */
   promptIntelligence?: import("../control/index.js").PromptIntelligenceControlService;
+  /** Layer 4: Execution Orchestration (plans, routes and gates; runs only through the runtime port). */
+  orchestration?: import("../control/index.js").ExecutionOrchestrationControlService;
   /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
   projectSync?: () => Promise<void>;
   operatorDirectory: OperatorDirectory;
@@ -79,6 +81,25 @@ export interface ControlPlaneApiOptions {
 }
 
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
+
+const ORCHESTRATION_METHODS: Record<
+  string,
+  | "orchestrationCreate"
+  | "orchestrationStart"
+  | "orchestrationAdvance"
+  | "orchestrationPause"
+  | "orchestrationResume"
+  | "orchestrationCancel"
+  | "orchestrationRetryTask"
+> = {
+  orchestration_create: "orchestrationCreate",
+  orchestration_start: "orchestrationStart",
+  orchestration_advance: "orchestrationAdvance",
+  orchestration_pause: "orchestrationPause",
+  orchestration_resume: "orchestrationResume",
+  orchestration_cancel: "orchestrationCancel",
+  orchestration_retry_task: "orchestrationRetryTask",
+};
 
 const PROMPT_METHODS: Record<string, "promptPrepare" | "promptRequestApproval"> = {
   prompt_prepare: "promptPrepare",
@@ -468,6 +489,28 @@ export function createControlPlaneApi(
   ): Promise<void> {
     const [head, id] = segs;
     switch (head) {
+      case "execution-runs": {
+        const orchestration = options.orchestration;
+        if (!orchestration) throw new NotFoundError("resource not found");
+        if (!id) {
+          const limit = Number(params.get("limit") ?? "50");
+          return send(
+            res,
+            200,
+            {
+              runs: orchestration.list(principal, {
+                ...(params.get("projectId") ? { projectId: params.get("projectId")! } : {}),
+                ...(Number.isInteger(limit) ? { limit } : {}),
+              }),
+            },
+            correlationId,
+          );
+        }
+        if (segs.length === 2) {
+          return send(res, 200, await orchestration.get(principal, id), correlationId);
+        }
+        throw new NotFoundError("resource not found");
+      }
       case "prompt-intelligence": {
         const promptIntelligence = options.promptIntelligence;
         if (!promptIntelligence) throw new NotFoundError("resource not found");
@@ -1385,6 +1428,26 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
+    if (name.startsWith("orchestration_") && options.orchestration) {
+      const orchestration = options.orchestration;
+      const method = Object.hasOwn(ORCHESTRATION_METHODS, name) ? ORCHESTRATION_METHODS[name] : undefined;
+      if (!method) {
+        return send(res, 404, { error: { message: `unknown command: ${name}` } }, correlationId);
+      }
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+      }
+      const fn = orchestration[method] as (
+        p: OperatorPrincipal,
+        input: Record<string, unknown>,
+        opts: { correlationId: string },
+      ) => Promise<{ errorKind?: ControlErrorKind }>;
+      const outcome = await fn.call(orchestration, principal, payload, { correlationId });
+      return send(res, outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200, outcome, correlationId);
+    }
     if (name.startsWith("prompt_") && options.promptIntelligence) {
       const promptIntelligence = options.promptIntelligence;
       const method = Object.hasOwn(PROMPT_METHODS, name) ? PROMPT_METHODS[name] : undefined;

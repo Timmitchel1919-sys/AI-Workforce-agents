@@ -153,6 +153,9 @@ function keyWeight(
       return NON_TECHNICAL.has(intent) ? 0.3 : 0.55;
     case "development.parallel_work":
       return 0.2;
+    case "development.deployment":
+      // How the project ships decides the shape of the execution plan.
+      return CODE_CHANGING.has(intent) ? 0.6 : 0.5;
     case "development.validation":
     case "development.scope_discipline":
       return CODE_CHANGING.has(intent) ? 0.6 : 0.3;

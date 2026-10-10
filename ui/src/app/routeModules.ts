@@ -13,6 +13,9 @@ export const loadProjectOnboarding = () => import("../pages/ProjectOnboarding/ro
 /** Prompt Intelligence (Phase 3) page (separate lazy chunk). */
 export const loadPromptIntelligence = () => import("../pages/PromptIntelligence/routes");
 
+/** Execution Center (Layer 4) page (separate lazy chunk). */
+export const loadExecutionCenter = () => import("../pages/ExecutionCenter/routes");
+
 export type RouteChunk = "landing" | "auth" | "controlCenter";
 
 export const routeChunkLoaders: Record<RouteChunk, () => Promise<unknown>> = {

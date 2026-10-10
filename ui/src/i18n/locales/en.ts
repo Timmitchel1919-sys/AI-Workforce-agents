@@ -1,3 +1,4 @@
+import { executionCenterEn } from "./executionCenter.en";
 import { promptIntelligenceEn } from "./promptIntelligence.en";
 import { onboardingEn } from "./onboarding.en";
 /**
@@ -2205,6 +2206,7 @@ export const en = {
   },
   onboarding: onboardingEn,
   promptIntelligence: promptIntelligenceEn,
+  executionCenter: executionCenterEn,
   integrations: {
     title: "Integrations",
     description: "Manage enterprise integrations, MCP servers, and external tools.",

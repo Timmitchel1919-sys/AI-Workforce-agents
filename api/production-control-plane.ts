@@ -91,6 +91,9 @@ import {
   ValidationError,
   GitHubRepositoryReader,
   AI_WORKFORCE_PROFILE,
+  CostGateAdapter,
+  ExecutionOrchestrator,
+  ModelRouterAdapter,
   ContextEngine,
   KnowledgeContextSource,
   OnboardedProjectSource,
@@ -141,6 +144,8 @@ import { SpecialistAgent } from "../agents/specialists/index.js";
 import { V1_SPECIALIST_WORKFORCE } from "../agents/specialists/v1-specialist-workforce.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { PromptIntelligenceControlService } from "../control/services/prompt-intelligence-control-service.js";
+import { ExecutionOrchestrationControlService } from "../control/services/execution-orchestration-control-service.js";
+import type { ExecutionRun } from "../contracts/execution-orchestration.js";
 import type { PromptRequestRecord } from "../contracts/prompt-intelligence.js";
 import type { KnowledgeRecord } from "../core/prompt-intelligence/context-sources.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
@@ -339,6 +344,8 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<PromptRequestRecord>("prompt_requests");
   const promptKnowledgeRepository =
     repositories.repository<KnowledgeRecord>("knowledge_items");
+  const executionRunRepository =
+    repositories.repository<ExecutionRun>("execution_runs");
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
@@ -956,8 +963,7 @@ export async function createProductionControlPlaneRuntime(
   };
   // Phase 3: Context Engine + Prompt Intelligence. Every source reads existing
   // platform state through a read-only port; nothing here executes an agent.
-  const promptIntelligence = new PromptIntelligenceControlService(
-    new PromptIntelligenceService({
+  const promptService = new PromptIntelligenceService({
       projects: bootstrap.projects,
       analyzer: new RuleBasedIntentAnalyzer(),
       engine: new ContextEngine(
@@ -985,7 +991,23 @@ export async function createProductionControlPlaneRuntime(
       records: promptRequestRepository,
       approvals,
       agents: bootstrap.agents,
+  });
+  const promptIntelligence = new PromptIntelligenceControlService(promptService, audit);
+  // Layer 4: Execution Orchestration. Plans, routes, gates and audits; there is no
+  // execution runtime in this deployment, so a task that reaches RUNNING is
+  // reported BLOCKED ("no execution runtime") — nothing is ever faked.
+  const orchestration = new ExecutionOrchestrationControlService(
+    new ExecutionOrchestrator({
+      runs: executionRunRepository,
+      projects: bootstrap.projects,
+      agents: bootstrap.agents,
+      isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+      approvals,
+      audit,
+      models: new ModelRouterAdapter(modelRouter),
+      cost: new CostGateAdapter(budgetEnforcer, usageLedger),
     }),
+    promptService,
     audit,
   );
   const query = new WorkforceQueryService(context);
@@ -994,6 +1016,7 @@ export async function createProductionControlPlaneRuntime(
   const handler = createControlPlaneApi({
     onboarding,
     promptIntelligence,
+    orchestration,
     projectSync,
     graphQuery,
     query,
