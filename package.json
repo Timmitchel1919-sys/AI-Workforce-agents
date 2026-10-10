@@ -13,7 +13,9 @@
     "build": "tsc -p tsconfig.json",
     "functions:build": "npm run build",
     "functions:manifest": "node scripts/generate-functions-manifest.mjs",
+    "verify:production": "node scripts/verify-production.mjs",
     "functions:prepare": "npm run functions:build && npm run functions:manifest",
+    "admin:bootstrap": "npm run build && node scripts/bootstrap-initial-admin.mjs",
     "functions:test": "npm run build && node --test dist/tests/firebase-function-adapter.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
@@ -30,7 +32,8 @@
     "eslint-config-prettier": "^9.1.2",
     "prettier": "^3.9.6",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.69.0"
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^5.0.3"
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.30.0 <1",
@@ -45,7 +48,7 @@
     }
   },
   "dependencies": {
-    "firebase-admin": "^14.3.0",
+    "firebase-admin": ">=13 <15",
     "firebase-functions": "^7.3.2",
     "openai": "^6.17.0"
   }

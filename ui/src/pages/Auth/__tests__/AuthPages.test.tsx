@@ -34,6 +34,7 @@ interface HarnessOptions {
   signIn?: (email: string, password: string, remember: boolean) => Promise<AccessState>;
   signUp?: AuthContextValue["signUp"];
   sendPasswordReset?: AuthContextValue["sendPasswordReset"];
+  refreshAccess?: () => Promise<AccessState>;
 }
 
 function LocationProbe() {
@@ -51,6 +52,7 @@ function Harness(options: HarnessOptions) {
     () => ({
       user: session.user,
       access: session.access,
+      accessDetails: { capabilities: [] },
       loading: false,
       accessToken: session.user ? "token" : null,
       configured: options.configured ?? true,
@@ -65,7 +67,11 @@ function Harness(options: HarnessOptions) {
         return access;
       },
       sendPasswordReset: options.sendPasswordReset ?? (async () => {}),
-      refreshAccess: async () => session.access,
+      refreshAccess: async () => {
+        const next = await (options.refreshAccess ?? (async () => session.access))();
+        setSession((current) => ({ ...current, access: next }));
+        return next;
+      },
       getPasswordPolicy: async () => ({
         minLength: 8,
         requireLowercase: false,
@@ -322,5 +328,39 @@ describe("safeRedirectPath", () => {
     ["/workflows/wf-1?tab=stages#top", "/workflows/wf-1?tab=stages#top"],
   ])("maps %s to %s", (input, expected) => {
     expect(safeRedirectPath(input)).toBe(expected);
+  });
+});
+
+describe("Awaiting access states (AUTHZ-1)", () => {
+  it.each([
+    ["rejected", /Access request declined/i],
+    ["suspended", /Access suspended/i],
+    ["revoked", /Access revoked/i],
+    ["unavailable", /Access could not be checked/i],
+  ] as const)("shows the %s state from the Control Plane, never the Control Center", async (access, title) => {
+    render(<Harness path="/overview" user={TEST_USER} access={access} />);
+    expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
+    expect(screen.queryByText("Control Center")).toBeNull();
+  });
+
+  it("does not claim the identity is verified", async () => {
+    render(<Harness path="/login" user={TEST_USER} access="pending" />);
+    expect(await screen.findByRole("heading", { name: /Awaiting access/i })).toBeInTheDocument();
+    expect(screen.queryByText(/identity is verified/i)).toBeNull();
+  });
+
+  it("Check access again stays pending until the backend grants, then enters", async () => {
+    const user = userEvent.setup();
+    const answers: AccessState[] = ["pending", "granted"];
+    const refreshAccess = vi.fn(async () => answers.shift() ?? "granted");
+    render(<Harness path="/login?next=%2Fworkflows" user={TEST_USER} access="pending" refreshAccess={refreshAccess} />);
+
+    await user.click(await screen.findByRole("button", { name: /Check access again/i }));
+    expect(await screen.findByText(/No access has been granted yet/i)).toBeInTheDocument();
+    expect(screen.queryByText("Workflows module")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /Check access again/i }));
+    expect(await screen.findByText("Workflows module")).toBeInTheDocument();
+    expect(refreshAccess).toHaveBeenCalledTimes(2);
   });
 });

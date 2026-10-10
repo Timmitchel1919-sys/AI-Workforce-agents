@@ -7,8 +7,9 @@
  * truncated, and deep structures are bounded so a whole task context can never
  * be dumped into a view.
  */
+import { KNOWN_SECRET_VALUE_PATTERN } from "../contracts/index.js";
 const SECRET_KEY = /(api[_-]?key|secret|token|password|passwd|authorization|auth[_-]?header|bearer|credential|private[_-]?key|access[_-]?key|client[_-]?secret|session)/i;
-const SECRET_VALUE = /(sk-[A-Za-z0-9_-]{12,}|ghp_[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{12,}|-----BEGIN [A-Z ]+PRIVATE KEY-----)/;
+const SECRET_VALUE = KNOWN_SECRET_VALUE_PATTERN;
 export const REDACTED = "[redacted]";
 const MAX_STRING = 500;
 const MAX_ARRAY = 50;

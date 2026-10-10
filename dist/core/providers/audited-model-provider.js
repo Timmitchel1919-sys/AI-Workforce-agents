@@ -1,4 +1,5 @@
 import { ProviderError, } from "../../contracts/index.js";
+import { extractCorrelation } from "./request-correlation.js";
 /**
  * Decorator that records structured audit events around any `ModelProvider`
  * without changing the provider-neutral contract:
@@ -26,7 +27,7 @@ export class AuditedModelProvider {
         this.previewChars = options.previewChars ?? 200;
     }
     async generate(request) {
-        const correlation = this.correlation(request);
+        const correlation = extractCorrelation(request);
         const requestedModel = request.model ?? null;
         this.audit.record("model_provider_requested", {
             ...correlation,
@@ -77,17 +78,6 @@ export class AuditedModelProvider {
             });
             throw error;
         }
-    }
-    correlation(request) {
-        const meta = request.metadata ?? {};
-        const out = {};
-        if (typeof meta.taskId === "string")
-            out.taskId = meta.taskId;
-        if (typeof meta.agentId === "string")
-            out.agentId = meta.agentId;
-        if (typeof meta.projectId === "string")
-            out.projectId = meta.projectId;
-        return out;
     }
     preview(text) {
         return text.length > this.previewChars

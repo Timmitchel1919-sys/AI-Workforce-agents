@@ -13,6 +13,11 @@ export declare function parseVersion(value: string | null | undefined): VersionI
 export declare function formatVersion(version: VersionInfo): string;
 /** Numeric ordering on major/minor/patch only — pre-release/build are ignored. */
 export declare function versionAtLeast(actual: VersionInfo | undefined, minimum: VersionInfo): boolean;
+/**
+ * Total order on major/minor/patch; an absent version sorts lowest.
+ * Returns a negative number when `a < b`, positive when `a > b`, else 0.
+ */
+export declare function compareVersions(a: VersionInfo | undefined, b: VersionInfo | undefined): number;
 export declare const OS_NAMES: readonly ["windows", "macos", "linux"];
 export type OsName = (typeof OS_NAMES)[number];
 export declare const ARCHITECTURES: readonly ["x64", "arm64", "x86", "arm", "universal", "unknown"];
@@ -91,9 +96,19 @@ export interface ToolchainDescriptor {
     /** Safe path only (no credential or environment dump). */
     installation?: string;
 }
+/**
+ * A named component a toolchain must carry (an SDK, a package manager, an
+ * engine module, a target-platform package). Matched against the detected
+ * `ToolchainDescriptor.componentVersions` keys — never inferred.
+ */
+export interface ToolchainComponentRequirement {
+    name: string;
+    minimum?: VersionInfo;
+}
 export interface ToolchainRequirement {
     kind: ToolchainKind;
     minimum?: VersionInfo;
+    components?: readonly ToolchainComponentRequirement[];
 }
 export declare const ENVIRONMENT_TYPES: readonly ["visual_studio_code", "visual_studio", "xcode", "android_studio", "docker", "unity", "unreal_engine", "cli", "cloud_runner", "web_build", "desktop_build", "mobile_build", "game_build", "container_host"];
 export type EnvironmentType = (typeof ENVIRONMENT_TYPES)[number];
@@ -209,6 +224,43 @@ export interface EnvironmentRequirement {
     environmentType?: EnvironmentType;
     requiredCapabilities?: readonly CapabilityId[];
     toolchains?: readonly ToolchainRequirement[];
+    /** Host platform guard, matched against the instance's host OS. */
+    os?: {
+        os?: OsName;
+        architecture?: Architecture;
+    };
+    /** Lowest acceptable instance trust level. Absent = any. */
+    minimumTrust?: TrustLevel;
+}
+/** Machine-readable reasons an instance was rejected for a requirement. */
+export declare const ENVIRONMENT_REJECTION_REASONS: readonly ["instance_unavailable", "host_unavailable", "host_unknown", "descriptor_mismatch", "environment_type_mismatch", "os_mismatch", "architecture_mismatch", "trust_too_low", "missing_capability", "missing_toolchain", "toolchain_version_too_low", "missing_toolchain_component", "toolchain_component_version_too_low"];
+export type EnvironmentRejectionReason = (typeof ENVIRONMENT_REJECTION_REASONS)[number];
+export interface EnvironmentCandidateEvidence {
+    instanceId: string;
+    hostId: string;
+    descriptorId: string;
+    environmentType: EnvironmentType;
+    trustLevel: TrustLevel;
+    eligible: boolean;
+    reasonCodes: readonly EnvironmentRejectionReason[];
+    matchedCapabilities: readonly CapabilityId[];
+    missingCapabilities: readonly CapabilityId[];
+    /** `kind` or `kind:component` labels that were not satisfied. */
+    missingToolchains: readonly string[];
+}
+/**
+ * Explainable, deterministic evaluation of a requirement against every
+ * registered instance. `selectedInstanceId` is set only when an eligible,
+ * usable instance exists — a descriptor alone never selects anything.
+ */
+export interface EnvironmentMatchEvidence {
+    outcome: EnvironmentRoutingOutcome["outcome"];
+    selectedInstanceId?: string;
+    selectedHostId?: string;
+    /** Descriptor that declares support (may exist with no usable instance). */
+    supportingDescriptorId?: string;
+    candidates: readonly EnvironmentCandidateEvidence[];
+    tieBreak: readonly string[];
 }
 export type EnvironmentRoutingOutcome = {
     outcome: "ROUTED";

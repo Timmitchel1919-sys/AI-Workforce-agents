@@ -1,12 +1,3 @@
-/**
- * AI Workforce — Core Contracts
- *
- * Shared type contracts and pure validators for the Workforce foundation.
- * This module has NO dependency on any model provider, tool vendor, project
- * repository, or infrastructure. Everything provider- or project-specific
- * enters the system through the interfaces declared here and is implemented
- * under `adapters/`.
- */
 export type Priority = "low" | "normal" | "high" | "critical";
 export declare const ENVIRONMENTS: readonly ["local", "test", "staging", "production"];
 export type Environment = (typeof ENVIRONMENTS)[number];
@@ -57,6 +48,8 @@ export interface ModelPolicy {
  */
 export interface Agent {
     id: string;
+    organizationId?: string;
+    workspaceId?: string;
     name: string;
     description: string;
     capabilities: readonly string[];
@@ -87,6 +80,17 @@ export interface Task {
     createdAt: string;
     updatedAt: string;
     metadata: Record<string, unknown>;
+    programId?: string;
+    workstreamId?: string;
+    objective?: string;
+    requirements?: readonly string[];
+    dependencies?: readonly string[];
+    requiredCapabilities?: readonly string[];
+    environmentRequirements?: readonly string[];
+    modelRequirements?: Record<string, unknown>;
+    completionCriteria?: readonly string[];
+    riskClass?: string;
+    executionContext?: AgentExecutionContext;
 }
 export interface TaskDraft {
     type: string;
@@ -96,11 +100,29 @@ export interface TaskDraft {
     priority?: Priority;
     requiredPermissions?: readonly RequiredPermission[];
     metadata?: Record<string, unknown>;
+    programId?: string;
+    workstreamId?: string;
+    objective?: string;
+    requirements?: readonly string[];
+    dependencies?: readonly string[];
+    requiredCapabilities?: readonly string[];
+    environmentRequirements?: readonly string[];
+    modelRequirements?: Record<string, unknown>;
+    completionCriteria?: readonly string[];
+    riskClass?: string;
+    executionContext?: AgentExecutionContext;
 }
 export type HandoffStatus = "proposed" | "accepted" | "rejected";
 export interface Handoff {
     id: string;
     taskId: string;
+    /**
+     * The project that OWNS this work. Required for a specialist handoff: a
+     * handoff must never carry work across a project boundary, because the
+     * destination agent is scoped by an allow-list and the source's context may
+     * contain another project's data.
+     */
+    projectId?: string;
     sourceAgentId: string;
     destinationAgentId: string;
     status: HandoffStatus;
@@ -110,12 +132,31 @@ export interface Handoff {
     acceptanceCriteria: readonly string[];
     artifacts: readonly string[];
     risks: readonly string[];
+    /** Capabilities the REMAINING work needs. The destination must cover them. */
+    requiredCapabilities?: readonly string[];
+    /** The assignment whose work is being transferred, if any. */
+    sourceAssignmentId?: string;
+    /**
+     * Why the destination was eligible. Recorded at PROPOSAL time and
+     * re-verified at ACCEPTANCE time, because eligibility can lapse (the agent
+     * may be suspended, or the project policy may change) between the two.
+     */
+    destinationQualification?: {
+        qualified: boolean;
+        matchedCapabilities: readonly string[];
+        missingCapabilities: readonly string[];
+        reasonCodes: readonly string[];
+        descriptorVersion: number;
+        evaluatedAt: string;
+    };
+    acceptedBy?: string;
     createdAt: string;
     resolvedAt?: string;
     resolution?: string;
 }
 export interface HandoffDraft {
     taskId: string;
+    projectId?: string;
     sourceAgentId: string;
     destinationAgentId: string;
     context?: Record<string, unknown>;
@@ -124,6 +165,8 @@ export interface HandoffDraft {
     acceptanceCriteria: readonly string[];
     artifacts?: readonly string[];
     risks?: readonly string[];
+    requiredCapabilities?: readonly string[];
+    sourceAssignmentId?: string;
 }
 export type ApprovalStatus = "requested" | "approved" | "rejected" | "expired";
 export interface Approval {
@@ -178,7 +221,7 @@ export interface AgentContext {
     values: Record<string, unknown>;
 }
 export type Context = TaskContext | ProjectContext | AgentContext;
-export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable"];
+export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event", "execution_event", "onboarding_event", "usage_recorded", "budget_blocked", "budget_policy_set", "audit_finding_raised", "governance_decision", "governance_policy_set", "routing_decision_made", "routing_no_candidate", "assignment_created", "assignment_transitioned", "assignment_reassigned", "assignment_blocked", "write_lease_acquired", "write_lease_released", "write_lease_denied"];
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
 export interface AuditEvent {
     id: string;
@@ -270,12 +313,21 @@ export interface ProjectAdapter {
 export interface PermissionGuard {
     assert(action: PermissionAction, toolId?: string): void;
 }
+export interface EnvironmentExecutionContext {
+    code: string;
+    instanceId: string;
+    hostId: string;
+    descriptorId?: string;
+}
+export interface AgentExecutionContext {
+    environment?: EnvironmentExecutionContext;
+}
 /**
  * A pluggable unit of work the orchestrator dispatches a task to. A General
  * Agent is an `AgentExecutor` plus a declarative {@link Agent} definition.
  */
 export interface AgentExecutor {
-    execute(agent: Agent, task: Task, guard?: PermissionGuard): Promise<unknown>;
+    execute(agent: Agent, task: Task, guard?: PermissionGuard, context?: AgentExecutionContext): Promise<unknown>;
 }
 /** Hard ceilings a General Agent enforces on a single execution. */
 export interface AgentLimits {
@@ -292,9 +344,36 @@ export declare class ValidationError extends WorkforceError {
 }
 export declare class StateTransitionError extends WorkforceError {
 }
+/**
+ * An execution plan changed concurrently: an optimistic precondition of a plan
+ * commit failed (EO-3.2). Nothing was written. HTTP 409.
+ */
+export declare class PlanRevisionConflictError extends StateTransitionError {
+    constructor(message?: string);
+}
 export declare class PermissionDeniedError extends WorkforceError {
 }
+/** An operator account changed concurrently (AUTHZ-1). HTTP 409. */
+export declare class AccountConflictError extends StateTransitionError {
+    constructor(message?: string);
+}
+/** The change would leave no active administrator (AUTHZ-1). HTTP 409. */
+export declare class LastAdministratorError extends StateTransitionError {
+    constructor();
+}
+/** Initial administrator bootstrap is no longer available (AUTHZ-1). */
+export declare class BootstrapLockedError extends PermissionDeniedError {
+    constructor();
+}
 export declare class NotFoundError extends WorkforceError {
+}
+/**
+ * EO-4.1: an EXPECTED execution security outcome (policy denial, workspace
+ * violation, …). A 403-class error if it ever escapes — never a 500.
+ */
+export declare class ExecutionDeniedError extends PermissionDeniedError {
+    readonly code: import("./execution.js").ExecutionErrorCode;
+    constructor(code: import("./execution.js").ExecutionErrorCode, detail: string);
 }
 /**
  * Structured failure from a General Agent execution. Carries a machine-readable
@@ -369,3 +448,27 @@ export * from "./qa.js";
 export * from "./money-mind.js";
 export * from "./control.js";
 export * from "./environments.js";
+export * from "./planning.js";
+export * from "./access.js";
+export * from "./profile.js";
+export * from "./execution.js";
+export * from "./workspace-paths.js";
+export * from "./workspace.js";
+export * from "./verification.js";
+export * from "./environment-adapters.js";
+export * from "./release.js";
+export * from "./execution-records.js";
+export * from "./orchestration.js";
+export * from "./environment-routing.js";
+export * from "./graph.js";
+export * from "./onboarding.js";
+export * from "./cost-center.js";
+export * from "./governance.js";
+export * from "./routing.js";
+export * from "./workforce.js";
+export * from "./capabilities.js";
+export * from "./assignment.js";
+export * from "./tenancy.js";
+export * from "./billing.js";
+export * from "./customer.js";
+export * from "./identity.js";

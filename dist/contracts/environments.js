@@ -49,6 +49,19 @@ export function versionAtLeast(actual, minimum) {
             (actual.minor > minimum.minor ||
                 (actual.minor === minimum.minor && actual.patch >= minimum.patch))));
 }
+/**
+ * Total order on major/minor/patch; an absent version sorts lowest.
+ * Returns a negative number when `a < b`, positive when `a > b`, else 0.
+ */
+export function compareVersions(a, b) {
+    if (!a && !b)
+        return 0;
+    if (!a)
+        return -1;
+    if (!b)
+        return 1;
+    return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
+}
 /* ------------------------------------------------------------------ */
 /* Operating system                                                   */
 /* ------------------------------------------------------------------ */
@@ -151,6 +164,22 @@ export const ENVIRONMENT_TYPES = [
     "game_build",
     "container_host",
 ];
+/** Machine-readable reasons an instance was rejected for a requirement. */
+export const ENVIRONMENT_REJECTION_REASONS = [
+    "instance_unavailable",
+    "host_unavailable",
+    "host_unknown",
+    "descriptor_mismatch",
+    "environment_type_mismatch",
+    "os_mismatch",
+    "architecture_mismatch",
+    "trust_too_low",
+    "missing_capability",
+    "missing_toolchain",
+    "toolchain_version_too_low",
+    "missing_toolchain_component",
+    "toolchain_component_version_too_low",
+];
 /* ------------------------------------------------------------------ */
 /* Validators                                                         */
 /* ------------------------------------------------------------------ */
@@ -169,6 +198,10 @@ export function validateToolchainDescriptor(toolchain, field = "toolchain") {
 export function validateToolchainRequirement(requirement, field = "toolchain") {
     if (!TOOLCHAIN_KINDS.includes(requirement.kind)) {
         throw new ValidationError(`${field}.kind is not a known toolchain kind`);
+    }
+    if (requirement.components !== undefined) {
+        requireArray(requirement.components, `${field}.components`);
+        requirement.components.forEach((component, index) => requireText(component?.name, `${field}.components[${index}].name`));
     }
 }
 export function validateHostDescriptor(host) {
@@ -309,4 +342,18 @@ export function validateEnvironmentRequirement(requirement) {
         }
     });
     requirement.toolchains?.forEach((t, index) => validateToolchainRequirement(t, `requirement.toolchains[${index}]`));
+    if (requirement.os !== undefined) {
+        if (requirement.os.os !== undefined &&
+            !OS_NAMES.includes(requirement.os.os)) {
+            throw new ValidationError("environment requirement os is not known");
+        }
+        if (requirement.os.architecture !== undefined &&
+            !ARCHITECTURES.includes(requirement.os.architecture)) {
+            throw new ValidationError("environment requirement architecture is not known");
+        }
+    }
+    if (requirement.minimumTrust !== undefined &&
+        !TRUST_LEVELS.includes(requirement.minimumTrust)) {
+        throw new ValidationError("environment requirement trust is not known");
+    }
 }

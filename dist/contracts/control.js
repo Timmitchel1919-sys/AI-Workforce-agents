@@ -33,6 +33,31 @@ export const CONTROL_CAPABILITIES = [
     "cancel_workflow",
     "disable_agent",
     "enable_agent",
+    "create_execution_plan",
+    "replan_execution_plan",
+    "submit_execution_plan",
+    "manage_access",
+    "prepare_execution",
+    "cancel_execution",
+    "kill_execution",
+    /* EO-4.6 — each release transition is its own capability. */
+    "review_change",
+    "commit_source",
+    "push_source",
+    "deploy_release",
+    "rollback_release",
+    /* EO-5.1 — Software Factory orchestration. */
+    "plan_from_objective",
+    "create_program",
+    "create_workstream",
+    "add_task_to_workstream",
+    "tick_software_factory",
+    /* PROJECT-2 — project onboarding & provisioning (administrators only). */
+    "create_project",
+    /* EO-6.2 — AI Cost Center: setting the enforced budget is administrator-only. */
+    "manage_budget_policy",
+    /* EO-6.3 — Governance Policy Engine: the allow-list/threshold policy is administrator-only. */
+    "manage_governance_policy",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -46,6 +71,21 @@ export const ROLE_CAPABILITIES = {
         "pause_workflow",
         "resume_workflow",
         "cancel_workflow",
+        "create_execution_plan",
+        "replan_execution_plan",
+        "submit_execution_plan",
+        "prepare_execution",
+        "cancel_execution",
+        // Operators review changes; committing, pushing and deploying are
+        // administrator-only protected actions.
+        "review_change",
+        // EO-5.1 Software Factory: operators author programs/workstreams/tasks and
+        // advance ready work through the governed orchestrator.
+        "plan_from_objective",
+        "create_program",
+        "create_workstream",
+        "add_task_to_workstream",
+        "tick_software_factory",
     ],
     admin: [
         "view",
@@ -58,6 +98,31 @@ export const ROLE_CAPABILITIES = {
         "cancel_workflow",
         "disable_agent",
         "enable_agent",
+        "create_execution_plan",
+        "replan_execution_plan",
+        "submit_execution_plan",
+        "manage_access",
+        "prepare_execution",
+        "cancel_execution",
+        // Emergency termination of a specific session: administrators only.
+        "kill_execution",
+        "review_change",
+        "commit_source",
+        "push_source",
+        "deploy_release",
+        "rollback_release",
+        // EO-5.1 Software Factory orchestrates the governed Orchestrator.
+        "plan_from_objective",
+        "create_program",
+        "create_workstream",
+        "add_task_to_workstream",
+        "tick_software_factory",
+        // PROJECT-2: creating/provisioning a project is administrator-only.
+        "create_project",
+        // EO-6.2: setting the enforced budget policy is administrator-only.
+        "manage_budget_policy",
+        // EO-6.3: setting the governance allow-list/threshold policy is administrator-only.
+        "manage_governance_policy",
     ],
 };
 export function validateOperatorPrincipal(principal) {
@@ -93,6 +158,36 @@ export const CONTROL_COMMANDS = [
     "cancel_workflow",
     "disable_agent",
     "enable_agent",
+    "create_execution_plan",
+    "replan_execution_plan",
+    "submit_execution_plan",
+    "cancel_execution",
+    "kill_execution",
+    "approve_access",
+    "reject_access",
+    "suspend_access",
+    "reactivate_access",
+    "revoke_access",
+    "change_operator_role",
+    // EO-5.1 — Software Factory orchestration command names.
+    "plan_from_objective",
+    "create_program",
+    "create_workstream",
+    "add_task_to_workstream",
+    "tick_software_factory",
+    // PROJECT-2 — project onboarding & provisioning.
+    "onboarding_create",
+    "onboarding_update",
+    "onboarding_analyze",
+    "onboarding_plan",
+    "onboarding_approve_plan",
+    "onboarding_provision",
+    "onboarding_revalidate",
+    "onboarding_cancel",
+    // EO-6.2/6.3 — AI Cost Center & Governance Policy Engine.
+    "set_budget_policy",
+    "set_governance_policy",
+    "evaluate_governance",
 ];
 /**
  * A refinement of a non-`executed` outcome, aligned with the `WorkforceError`

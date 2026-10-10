@@ -40,23 +40,32 @@ export class Orchestrator {
         this.environment = options.environment ?? "local";
         this.agentGate = options.agentGate;
     }
-    async submit(draft) {
-        let task = this.tasks.create(draft);
+    async submit(draft, executionContext) {
+        let task = this.tasks.create({
+            ...draft,
+            ...(executionContext === undefined ? {} : { executionContext }),
+        });
         this.audit.record("task_created", {
             taskId: task.id,
             projectId: task.projectId,
             data: { type: task.type, priority: task.priority },
         });
         task = this.tasks.transition(task.id, "queued");
-        const candidates = this.registry.eligible(task.type, task.projectId);
+        const requiredCapabilities = task.requiredCapabilities ?? [];
+        const candidates = this.registry
+            .eligible(task.type, task.projectId)
+            .filter((candidate) => requiredCapabilities.every((capability) => candidate.capabilities.includes(capability)));
         if (candidates.length === 0) {
+            const reason = requiredCapabilities.length > 0
+                ? "no capability-qualified agent"
+                : "no eligible agent";
             task = this.tasks.transition(task.id, "blocked", {
-                metadata: { blockedReason: "no eligible agent" },
+                metadata: { blockedReason: reason },
             });
             this.audit.record("task_assigned", {
                 taskId: task.id,
                 projectId: task.projectId,
-                data: { assigned: false, reason: "no eligible agent" },
+                data: { assigned: false, reason },
             });
             return task;
         }
@@ -103,7 +112,7 @@ export class Orchestrator {
                 approvalId: approval.id,
             });
         }
-        return this.dispatch(task, agent);
+        return this.dispatch(task, agent, task.executionContext);
     }
     /**
      * Record a human decision on the approval blocking a task. This is NOT
@@ -163,7 +172,7 @@ export class Orchestrator {
             return task;
         }
         task = this.tasks.transition(task.id, "running");
-        return this.dispatch(task, agent);
+        return this.dispatch(task, agent, task.executionContext);
     }
     /** Validate and accept a handoff between two registered agents on a task. */
     requestHandoff(draft) {
@@ -189,7 +198,7 @@ export class Orchestrator {
     /* -------------------------------------------------------------- */
     /* internals                                                      */
     /* -------------------------------------------------------------- */
-    async dispatch(task, agent) {
+    async dispatch(task, agent, executionContext) {
         this.audit.record("agent_executed", {
             taskId: task.id,
             agentId: agent.id,
@@ -197,7 +206,7 @@ export class Orchestrator {
             data: {},
         });
         try {
-            const output = await this.executor.execute(agent, task, this.makeGuard(task, agent));
+            const output = await this.executor.execute(agent, task, this.makeGuard(task, agent), executionContext);
             const completed = this.tasks.complete(task.id, output);
             this.audit.record("task_completed", {
                 taskId: completed.id,

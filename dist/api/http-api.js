@@ -1,4 +1,16 @@
 import { NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, WorkforceError, } from "../contracts/index.js";
+import { sanitizeCorrelationId } from "../control/correlation.js";
+import { parseGraphQueryParams } from "../control/services/graph-query-service.js";
+const ONBOARDING_METHODS = {
+    onboarding_create: "onboardingCreate",
+    onboarding_update: "onboardingUpdate",
+    onboarding_analyze: "onboardingAnalyze",
+    onboarding_plan: "onboardingPlan",
+    onboarding_approve_plan: "onboardingApprovePlan",
+    onboarding_provision: "onboardingProvision",
+    onboarding_revalidate: "onboardingRevalidate",
+    onboarding_cancel: "onboardingCancel",
+};
 const ERROR_KIND_STATUS = {
     invalid_request: 400,
     unauthorized: 401,
@@ -18,6 +30,27 @@ const COMMAND_METHODS = {
     "cancel-workflow": "cancelWorkflow",
     "disable-agent": "disableAgent",
     "enable-agent": "enableAgent",
+    "create-execution-plan": "createExecutionPlan",
+    "replan-execution-plan": "replanExecutionPlan",
+    "submit-execution-plan": "submitExecutionPlan",
+    "approve-access": "approveAccess",
+    "reject-access": "rejectAccess",
+    "suspend-access": "suspendAccess",
+    "reactivate-access": "reactivateAccess",
+    "revoke-access": "revokeAccess",
+    "cancel-execution": "cancelExecution",
+    "kill-execution": "killExecution",
+    "change-operator-role": "changeOperatorRole",
+    // EO-5.1 — Software Factory orchestration.
+    "plan-from-objective": "planFromObjective",
+    "create-program": "createProgram",
+    "create-workstream": "createWorkstream",
+    "add-workstream-task": "addTaskToWorkstream",
+    "tick-software-factory": "tickSoftwareFactory",
+    // EO-6.2 / EO-6.3 — AI Cost Center & Governance Policy Engine.
+    "set-budget-policy": "setBudgetPolicy",
+    "set-governance-policy": "setGovernancePolicy",
+    "evaluate-governance": "evaluateGovernance",
 };
 function defaultCorrelationId() {
     const c = globalThis.crypto;
@@ -51,7 +84,8 @@ export function createControlPlaneApi(options) {
         });
     };
     async function handle(req, res) {
-        const correlationId = headerValue(req, corrHeader)?.trim() || newCorrelationId();
+        // The inbound id reaches audit records and the response header: only a well-formed one is kept.
+        const correlationId = sanitizeCorrelationId(headerValue(req, corrHeader)) ?? newCorrelationId();
         const url = new URL(req.url ?? "/", "http://localhost");
         const path = url.pathname.replace(/\/$/, "");
         const method = (req.method ?? "GET").toUpperCase();
@@ -64,14 +98,109 @@ export function createControlPlaneApi(options) {
         if (method === "GET" && segs.length === 1 && segs[0] === "health") {
             return send(res, 200, { status: "ok" }, correlationId);
         }
+        // `GET /me/access` — the signed-in user's own access state. Needs only a
+        // verified identity (authentication), never an active role: this is how
+        // a pending user learns they are pending. Creates a PENDING request on
+        // first contact; grants nothing.
+        if (method === "GET" && route === "/me/access") {
+            const identity = await verifyIdentity(req);
+            if (!identity) {
+                return send(res, 401, { error: { message: "authentication required" } }, correlationId);
+            }
+            if (!options.access) {
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
+            }
+            try {
+                return send(res, 200, await options.access.myAccess(identity), correlationId);
+            }
+            catch (error) {
+                return send(res, statusForError(error), { error: { message: errorMessage(error) } }, correlationId);
+            }
+        }
         // Authenticate every other route.
         const principal = await authenticate(req);
         if (!principal) {
             return send(res, 401, { error: { message: "authentication required" } }, correlationId);
         }
         try {
+            if (options.projectSync)
+                await options.projectSync();
+            if (route === "/me/profile" || route === "/me/profile/photo") {
+                return await handleProfile(req, res, route, method, principal, correlationId);
+            }
             if (method === "GET") {
                 return await handleGet(res, segs, url.searchParams, principal, correlationId);
+            }
+            if (method === "POST" && route === "/execution/preflight") {
+                // EO-4.1: evaluation only. There is no execute / shell endpoint.
+                let body;
+                try {
+                    body = await readJsonBody(req, maxBody);
+                }
+                catch (error) {
+                    return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+                }
+                return send(res, 200, notNull(await query.executionPreflight(principal, body)), correlationId);
+            }
+            // `POST /workforce/plan` — the honest staffing answer for a project.
+            // Always a DRY RUN: this endpoint plans and reports, it never binds an
+            // agent to work. Creating an assignment is a host-side decision, not a
+            // side effect of a read.
+            if (method === "POST" && route === "/workforce/plan") {
+                let body;
+                try {
+                    body = await readJsonBody(req, maxBody);
+                }
+                catch (error) {
+                    return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+                }
+                const projectId = typeof body.projectId === "string" ? body.projectId : "";
+                if (!projectId) {
+                    return send(res, 400, { error: { message: "projectId is required" } }, correlationId);
+                }
+                // A malformed `tasks` field must be REJECTED, not treated as "no tasks".
+                // Defaulting it to `[]` answered "fully staffed" for a request that never
+                // described any work, which is a staffing claim the caller did not ask
+                // for and the server cannot support.
+                if (!Array.isArray(body.tasks)) {
+                    return send(res, 400, { error: { message: "tasks must be an array" } }, correlationId);
+                }
+                const rawTasks = body.tasks;
+                let tasks;
+                try {
+                    tasks = rawTasks.map((entry, index) => {
+                        if (typeof entry !== "object" ||
+                            entry === null ||
+                            Array.isArray(entry)) {
+                            throw new ValidationError(`tasks[${index}] must be an object`);
+                        }
+                        const record = entry;
+                        if (typeof record.taskId !== "string" || !record.taskId) {
+                            throw new ValidationError(`tasks[${index}].taskId is required`);
+                        }
+                        if (typeof record.requirements !== "object" ||
+                            record.requirements === null ||
+                            Array.isArray(record.requirements)) {
+                            throw new ValidationError(`tasks[${index}].requirements is required`);
+                        }
+                        return {
+                            taskId: record.taskId,
+                            requirements: record.requirements,
+                        };
+                    });
+                }
+                catch (error) {
+                    return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+                }
+                const workload = await query.getProjectWorkforce(principal, projectId, tasks);
+                if (!workload) {
+                    return send(res, 404, {
+                        error: {
+                            message: "specialist workforce is not composed, or the project is not accessible",
+                        },
+                    }, correlationId);
+                }
+                return send(res, 200, workload, correlationId);
             }
             if (method === "POST" && segs[0] === "commands" && segs.length === 2) {
                 return await handleCommand(req, res, segs[1], principal, correlationId);
@@ -81,6 +210,15 @@ export function createControlPlaneApi(options) {
         catch (error) {
             return send(res, statusForError(error), { error: { message: errorMessage(error) } }, correlationId);
         }
+    }
+    async function verifyIdentity(req) {
+        if (!options.identityVerifier)
+            return null;
+        const header = headerValue(req, "authorization") ?? "";
+        const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+        if (!match)
+            return null;
+        return options.identityVerifier.verify(match[1].trim());
     }
     async function authenticate(req) {
         const header = headerValue(req, "authorization") ?? "";
@@ -92,6 +230,21 @@ export function createControlPlaneApi(options) {
     async function handleGet(res, segs, params, principal, correlationId) {
         const [head, id] = segs;
         switch (head) {
+            case "onboarding": {
+                const onboarding = options.onboarding;
+                if (!onboarding)
+                    throw new NotFoundError("resource not found");
+                if (id === "capabilities" && segs.length === 2) {
+                    return send(res, 200, onboarding.capabilities(principal), correlationId);
+                }
+                if (!id) {
+                    return send(res, 200, { sessions: await onboarding.list(principal) }, correlationId);
+                }
+                if (segs.length === 2) {
+                    return send(res, 200, await onboarding.get(principal, id), correlationId);
+                }
+                throw new NotFoundError("resource not found");
+            }
             case "status":
                 return send(res, 200, query.getWorkforceStatus(principal), correlationId);
             case "system-health":
@@ -102,6 +255,55 @@ export function createControlPlaneApi(options) {
                 return send(res, 200, id
                     ? notNull(query.getAgent(principal, id))
                     : query.getAgents(principal), correlationId);
+            // ---- Specialist workforce (authoritative reads) ----
+            case "workforce": {
+                // `/api/workforce/assignments` — every assignment the operator may see.
+                if (segs.length === 2 && segs[1] === "assignments") {
+                    const assignments = query.getAssignments(principal, {
+                        projectId: params.get("projectId") ?? undefined,
+                        taskId: params.get("taskId") ?? undefined,
+                        agentId: params.get("agentId") ?? undefined,
+                    });
+                    if (!assignments) {
+                        return send(res, 404, { error: { message: "specialist workforce is not composed" } }, correlationId);
+                    }
+                    return send(res, 200, assignments, correlationId);
+                }
+                // `/api/workforce/assignments/:taskId/history` — every attempt,
+                // including the ones that failed.
+                //
+                // The path splits into FOUR segments ("workforce", "assignments",
+                // ":taskId", "history"); the task id is one segment on its own, so a
+                // `segs[2].endsWith("/history")` test could never match and this route
+                // silently 404d for every task. The id is therefore taken as its own
+                // segment, which also rejects ids containing a slash instead of
+                // guessing where the boundary was.
+                if (segs.length === 4 &&
+                    segs[1] === "assignments" &&
+                    segs[3] === "history") {
+                    const taskId = segs[2];
+                    const history = query.getAssignmentHistory(principal, taskId);
+                    if (!history) {
+                        return send(res, 404, {
+                            error: {
+                                message: "specialist workforce is not composed, or the task is not accessible",
+                            },
+                        }, correlationId);
+                    }
+                    return send(res, 200, history, correlationId);
+                }
+                // `/api/workforce/handoffs` — transfers and their destination evidence.
+                if (segs.length === 2 && segs[1] === "handoffs") {
+                    const handoffs = query.getSpecialistHandoffs(principal, {
+                        taskId: params.get("taskId") ?? undefined,
+                    });
+                    if (!handoffs) {
+                        return send(res, 404, { error: { message: "specialist workforce is not composed" } }, correlationId);
+                    }
+                    return send(res, 200, handoffs, correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
+            }
             case "tasks":
                 return send(res, 200, id
                     ? notNull(query.getTask(principal, id))
@@ -111,11 +313,110 @@ export function createControlPlaneApi(options) {
                     ? notNull(query.getWorkflow(principal, id))
                     : query.getWorkflows(principal, parseWorkflowQuery(params)), correlationId);
             case "approvals":
-                return send(res, 200, query.getApprovals(principal, statusFilter(params)), correlationId);
+                return send(res, 200, query.getApprovalPage(principal, {
+                    ...statusFilter(params),
+                    ...parsePageQuery(params),
+                    ...(params.get("projectId")
+                        ? { projectId: params.get("projectId") }
+                        : {}),
+                }), correlationId);
             case "projects":
+                if (segs.length === 3 && segs[2] === "graph" && options.graphQuery) {
+                    // Validate `since` before any work so a malformed value costs nothing.
+                    const since = params.get("since");
+                    if (since !== null && since !== "" && !/^\d{1,12}$/.test(since)) {
+                        throw new ValidationError("since must be a revision number");
+                    }
+                    const graph = notNull(await options.graphQuery.getWorkforceGraph(principal, parseGraphQueryParams(id, params)));
+                    // Conditional poll: authorisation and projection above ran in full,
+                    // so `since` can only ever save bandwidth, never widen access.
+                    if (since !== null &&
+                        since !== "" &&
+                        Number(since) === graph.revision) {
+                        const unchanged = {
+                            projectId: graph.projectId,
+                            mode: graph.mode,
+                            revision: graph.revision,
+                            generatedAt: graph.generatedAt,
+                            unchanged: true,
+                        };
+                        return send(res, 200, unchanged, correlationId);
+                    }
+                    return send(res, 200, graph, correlationId);
+                }
+                // EO-5.8 spatial intelligence: read-only, authorised exactly like the graph.
+                if (segs.length === 3 && segs[2] === "insights" && options.graphQuery) {
+                    return send(res, 200, notNull(await options.graphQuery.getInsights(principal, id)), correlationId);
+                }
                 // `GET /projects/:projectId/agents` — nested project resource route.
                 if (segs.length === 3 && segs[2] === "agents") {
                     return send(res, 200, notNull(await query.getProjectAgents(principal, id)), correlationId);
+                }
+                // EO-4.7 Execution Control Center (project-scoped, bounded).
+                if (segs[2] === "executions" && segs.length === 3) {
+                    return send(res, 200, notNull(await query.getExecutionSessionPage(principal, id, {
+                        ...(params.get("status")
+                            ? { status: params.get("status") }
+                            : {}),
+                        ...boundedInts(params, ["limit", "offset"]),
+                    })), correlationId);
+                }
+                if (segs[2] === "executions" && segs.length === 4) {
+                    const bounds = boundedInts(params, [
+                        "timelineLimit",
+                        "timelineOffset",
+                    ]);
+                    return send(res, 200, notNull(await query.getExecutionSessionDetail(principal, id, segs[3], bounds)), correlationId);
+                }
+                if (segs.length === 3 && segs[2] === "execution-overview") {
+                    return send(res, 200, notNull(await query.getExecutionOverview(principal, id)), correlationId);
+                }
+                if (segs.length === 3 && segs[2] === "verifications") {
+                    return send(res, 200, notNull(await query.getProjectVerifications(principal, id)), correlationId);
+                }
+                if (segs.length === 3 && segs[2] === "releases") {
+                    return send(res, 200, notNull(await query.getProjectReleases(principal, id)), correlationId);
+                }
+                // EO-6.2 AI Cost Center: usage, budget policy, evaluated status.
+                if (segs.length === 3 && segs[2] === "cost") {
+                    return send(res, 200, notNull(await query.getProjectCostReport(principal, id)), correlationId);
+                }
+                // EO-6.2 rule-based Auditor findings (never model-assisted).
+                if (segs.length === 3 && segs[2] === "audit-findings") {
+                    return send(res, 200, notNull(await query.getProjectAuditFindings(principal, id)), correlationId);
+                }
+                // EO-6.3 governance policy (provider/model allow-list, approval threshold).
+                if (segs.length === 3 && segs[2] === "governance-policy") {
+                    return send(res, 200, notNull(await query.getProjectGovernancePolicy(principal, id)), correlationId);
+                }
+                // EO-7 routing decision history / one reconstructable decision.
+                if (segs.length === 3 && segs[2] === "routing-decisions") {
+                    return send(res, 200, notNull(await query.getProjectRoutingDecisions(principal, id)), correlationId);
+                }
+                if (segs.length === 4 && segs[2] === "routing-decisions") {
+                    return send(res, 200, notNull(await query.getProjectRoutingDecision(principal, id, segs[3])), correlationId);
+                }
+                // `GET /projects/:projectId/execution-sessions` (EO-4.1, metadata only)
+                if (segs.length === 3 && segs[2] === "execution-sessions") {
+                    return send(res, 200, notNull(await query.getExecutionSessions(principal, id)), correlationId);
+                }
+                // `GET /projects/:projectId/execution-plans[/:planId][?version=N]`
+                // — planning state only; there is no execution route.
+                if (segs[2] === "execution-plans" && segs.length === 3) {
+                    return send(res, 200, notNull(await query.getExecutionPlans(principal, id, parsePageQuery(params))), correlationId);
+                }
+                // `current` is reserved: plan ids are `plan_<uuid>`.
+                if (segs[2] === "execution-plans" &&
+                    segs.length === 4 &&
+                    segs[3] === "current") {
+                    const current = await query.getCurrentExecutionPlan(principal, id);
+                    // undefined → 404 (unknown/foreign project); null → no plan yet.
+                    if (current === undefined)
+                        throw new NotFoundError("resource not found");
+                    return send(res, 200, { plan: current }, correlationId);
+                }
+                if (segs[2] === "execution-plans" && segs.length === 4) {
+                    return send(res, 200, notNull(await query.getExecutionPlan(principal, id, segs[3], parsePlanVersion(params))), correlationId);
                 }
                 if (segs.length >= 3) {
                     return send(res, 404, { error: { message: "not found" } }, correlationId);
@@ -148,14 +449,100 @@ export function createControlPlaneApi(options) {
                 return send(res, 200, id
                     ? notNull(query.getHost(principal, id))
                     : query.getHosts(principal), correlationId);
+            case "execution":
+                // GET /api/execution/operations, GET /api/execution/sessions/:sessionId
+                if (segs.length === 2 && segs[1] === "environments") {
+                    return send(res, 200, query.getExecutionEnvironments(principal), correlationId);
+                }
+                if (segs.length === 2 && segs[1] === "operations") {
+                    return send(res, 200, query.getExecutionOperations(principal), correlationId);
+                }
+                if (segs.length === 3 && segs[1] === "sessions") {
+                    return send(res, 200, notNull(await query.getExecutionSession(principal, segs[2])), correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
+            case "planning":
+                // GET /api/planning/technologies — read-only planner catalog.
+                if (segs.length === 2 && segs[1] === "technologies") {
+                    return send(res, 200, query.getTechnologyCatalog(principal), correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
+            case "operators":
+                // GET /api/operators — Users & Access (administrators only).
+                if (segs.length !== 1) {
+                    return send(res, 404, { error: { message: "not found" } }, correlationId);
+                }
+                return send(res, 200, notNull(await query.getOperatorAccounts(principal)), correlationId);
             case "audit":
                 return send(res, 200, query.getAuditEvents(principal, parseAuditQuery(params)), correlationId);
+            case "software-factory":
+                // GET /api/software-factory, GET /api/software-factory/programs/:programId
+                if (segs[1] === "programs" && segs.length === 3) {
+                    const projectId = params.get("projectId");
+                    if (!projectId || projectId.trim() === "") {
+                        return send(res, 400, { error: { message: "projectId is required" } }, correlationId);
+                    }
+                    return send(res, 200, query.getSoftwareFactoryProgramDetail(principal, projectId, segs[2]), correlationId);
+                }
+                if (segs.length === 1) {
+                    const projectId = params.get("projectId");
+                    if (projectId !== null && projectId.trim() === "") {
+                        return send(res, 400, { error: { message: "projectId must not be blank" } }, correlationId);
+                    }
+                    return send(res, 200, query.getSoftwareFactoryOverview(principal, projectId ?? undefined), correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
             default:
                 return send(res, 404, { error: { message: "not found" } }, correlationId);
         }
     }
+    /**
+     * `GET /me/profile`, `PUT /me/profile/photo` {dataUrl},
+     * `DELETE /me/profile/photo` — always the principal's own profile.
+     */
+    async function handleProfile(req, res, route, method, principal, correlationId) {
+        const profile = options.profile;
+        if (!profile) {
+            return send(res, 404, { error: { message: "not found" } }, correlationId);
+        }
+        if (route === "/me/profile" && method === "GET") {
+            return send(res, 200, await profile.myProfile(principal), correlationId);
+        }
+        if (route === "/me/profile/photo" && method === "PUT") {
+            const body = await readJsonBody(req, maxBody);
+            return send(res, 200, await profile.setPhoto(principal, body.dataUrl, correlationId), correlationId);
+        }
+        if (route === "/me/profile/photo" && method === "DELETE") {
+            return send(res, 200, await profile.removePhoto(principal, correlationId), correlationId);
+        }
+        return send(res, 405, { error: { message: "method not allowed" } }, correlationId);
+    }
     async function handleCommand(req, res, name, principal, correlationId) {
-        const methodName = COMMAND_METHODS[name];
+        if (name.startsWith("onboarding_") && options.onboarding) {
+            const onboarding = options.onboarding;
+            const method = Object.hasOwn(ONBOARDING_METHODS, name)
+                ? ONBOARDING_METHODS[name]
+                : undefined;
+            if (!method) {
+                return send(res, 404, { error: { message: `unknown command: ${name}` } }, correlationId);
+            }
+            let payload;
+            try {
+                payload = await readJsonBody(req, maxBody);
+            }
+            catch (error) {
+                return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+            }
+            const fn = onboarding[method];
+            const outcome = await fn.call(onboarding, principal, payload, {
+                correlationId,
+            });
+            return send(res, outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200, outcome, correlationId);
+        }
+        // Own properties only: inherited names ("constructor", "__proto__", "toString") are not commands.
+        const methodName = Object.hasOwn(COMMAND_METHODS, name)
+            ? COMMAND_METHODS[name]
+            : undefined;
         if (!methodName) {
             return send(res, 404, { error: { message: `unknown command: ${name}` } }, correlationId);
         }
@@ -176,6 +563,8 @@ export function createControlPlaneApi(options) {
         res.writeHead(status, {
             "content-type": "application/json; charset=utf-8",
             "content-length": Buffer.byteLength(json),
+            // Authorised, per-operator data: never store it in a shared/intermediate cache.
+            "cache-control": "no-store",
             ...(correlationId ? { [corrHeader]: correlationId } : {}),
         });
         res.end(json);
@@ -236,6 +625,21 @@ async function readJsonBody(req, maxBytes) {
     }
     return parsed;
 }
+/** Non-negative integers from the query string (invalid → ValidationError). */
+function boundedInts(params, keys) {
+    const out = {};
+    for (const key of keys) {
+        const raw = params.get(key);
+        if (raw === null)
+            continue;
+        const value = Number(raw);
+        if (!Number.isInteger(value) || value < 0 || value > 100_000) {
+            throw new ValidationError(`${key} must be a non-negative integer`);
+        }
+        out[key] = value;
+    }
+    return out;
+}
 function parseTaskQuery(params) {
     const q = {};
     const str = (k) => {
@@ -260,6 +664,30 @@ function parseTaskQuery(params) {
     if (Number.isFinite(limit) && limit > 0)
         q.limit = limit;
     return q;
+}
+function parsePageQuery(params) {
+    const q = {};
+    const cursor = params.get("cursor");
+    if (cursor !== null && cursor !== "")
+        q.cursor = cursor;
+    const limit = Number(params.get("limit"));
+    if (Number.isFinite(limit) && limit > 0)
+        q.limit = limit;
+    const planId = params.get("planId");
+    if (planId !== null && planId !== "")
+        q.planId = planId;
+    return q;
+}
+/** `?version=N` — a positive integer, otherwise the current version. */
+function parsePlanVersion(params) {
+    const raw = params.get("version");
+    if (raw === null || raw === "")
+        return undefined;
+    const version = Number(raw);
+    if (!Number.isInteger(version) || version < 1) {
+        throw new ValidationError("version must be a positive integer");
+    }
+    return version;
 }
 function parseWorkflowQuery(params) {
     const q = {};

@@ -114,7 +114,7 @@
 }
 
 .settings-theme__preview--light {
-  background: linear-gradient(135deg, #f2f6ff, #e8f0ff 45%, #eeeafe);
+  background: linear-gradient(135deg, #1a1a1a, #1a1a1a 45%, #1a1a1a);
 }
 
 .settings-theme__preview--dark {
@@ -122,19 +122,19 @@
 }
 
 .settings-theme__preview--system {
-  background: linear-gradient(90deg, #eef4ff 50%, #0b1220 50%);
+  background: linear-gradient(90deg, #1a1a1a 50%, #0b1220 50%);
 }
 
 .settings-theme__preview-bar {
   grid-row: span 2;
   border-radius: 6px;
-  background: linear-gradient(160deg, #2767df, #4a2da8);
+  background: linear-gradient(160deg, #333, #333);
 }
 
 .settings-theme__preview-card {
   border-radius: 6px;
-  background: rgba(248, 251, 255, 0.85);
-  border: 1px solid rgba(45, 88, 165, 0.14);
+  background: rgba(20, 20, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .settings-theme__preview--dark .settings-theme__preview-card {

@@ -1,40 +1,28 @@
-# Agent instructions — AI Workforce
+# AI Workforce Agent Instructions
 
-These rules apply to every AI coding agent working in this repository
-(Codex, Claude Code, and others).
+This repository contains the AI Workforce platform.
 
-## Release rule: ship after every prompt
+All AI coding agents must follow the project architecture and development rules.
 
-The repository owner requires that **every completed prompt ends with a
-commit, a push, and a frontend deploy**. Do not wait to be asked.
+Read and follow:
 
-After finishing the requested work in a prompt:
+- docs/development/architecture.md
+- docs/development/coding-standards.md
+- docs/development/parallel-development.md
+- docs/development/branching-strategy.md
+- docs/development/testing-strategy.md
+- docs/development/deployment-strategy.md
 
-1. **Validate** with the real scripts (never invent scripts):
-   - UI (`ui/`): `npx tsc -b`, `npm run lint`, `npx vitest run --environment jsdom`, `npm run build`
-   - Backend (repo root), only if backend files changed: `npm run check`
-   - If validation fails, fix it. If it cannot be fixed, **do not ship** —
-     report the failure instead.
-2. **Commit** on `main` with a Conventional Commit message
-   (`feat(ui): …`, `fix(auth): …`). Review `git diff` first; commit only the
-   work of the prompt. Never commit secrets or `.env` values.
-3. **Push** to GitHub: `git push origin main`
-   (https://github.com/Timmitchel1919-sys/AI-Workforce-agents).
-   - Never force-push. If the push is rejected, fetch, integrate with a normal
-     merge/rebase of your own commits, re-validate, and push again.
-4. **Deploy the frontend** to the existing Firebase Hosting project
-   `ai-workforce-agents`:
-   `firebase deploy --only hosting --project ai-workforce-agents`
-   - Live URLs: https://ai-workforce-agents.web.app and
-     https://ai-workforce-agents.firebaseapp.com
-   - Do not create another Firebase project.
-   - Deploy Functions (`--only functions`) only when backend code changed.
-5. **Report** the commit SHA, push result, and deploy result (hosting URL)
-   at the end of the response. If any step was skipped or failed, say so.
+Core rules:
 
-## Guardrails that still apply
-
-- Firebase Auth → ID token → Control Plane API → backend authorization is the
-  only data path. No direct frontend Firestore access.
-- Roles are server-assigned custom claims; UI never sends or trusts a role.
-- No fabricated telemetry in the UI; label presentation content as such.
+- Use TypeScript strict mode.
+- Use ESM / NodeNext.
+- Do not break existing architecture.
+- Frontend must not access Firestore directly.
+- Frontend communicates through the Control Plane.
+- Never commit secrets.
+- Add or update tests for implementations.
+- Run tests and builds before declaring work complete.
+- Parallel agents must not modify the same files simultaneously.
+- Shared interfaces and contracts must be defined before parallel implementation.
+- Each parallel implementation lane should use an isolated Git branch/worktree.

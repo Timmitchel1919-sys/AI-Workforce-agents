@@ -1,29 +1,24 @@
 /**
- * `OperatorDirectory` backed by Firebase Auth.
+ * `OperatorDirectory` + `IdentityVerifier` backed by Firebase Auth (AUTHZ-1).
  *
- * Verifies a Firebase ID token and maps its custom claims to an
- * `OperatorPrincipal`:
+ *   Firebase ID token ──verifyIdToken──▶ VerifiedIdentity (WHO — authentication)
+ *   Firebase UID ──OperatorAccountStore──▶ ACTIVE account + role (WHAT — authorization)
  *
- *   role             -> "viewer" | "operator" | "admin"   (custom claim)
- *   allowedProjects  -> string[] | "*"                     (custom claim)
- *
- * Anything unverifiable — a bad/expired token, a missing or out-of-range role,
- * a malformed project list — resolves to `null` (deny by default). The control
- * services still enforce authorization from the returned principal; this only
- * establishes identity + claims.
+ * Authentication ≠ authorization: a valid token alone grants nothing. Only an
+ * ACTIVE operator account (read from the authoritative store on every request,
+ * so suspension/revocation take effect immediately) yields a principal. A bad
+ * or expired token, a missing account, or a pending/rejected/suspended/revoked
+ * account resolves to `null` (deny by default). Custom claims are not used for
+ * authorization.
  */
-import { type OperatorDirectory, type OperatorPrincipal } from "../../contracts/index.js";
+import { type IdentityVerifier, type OperatorAccountStore, type OperatorDirectory, type OperatorPrincipal, type VerifiedIdentity } from "../../contracts/index.js";
 import type { FirebaseAuthLike } from "./firebase-services.js";
-export interface FirebaseOperatorDirectoryOptions {
-    /** Custom-claim name holding the operator role. Default `"role"`. */
-    roleClaim?: string;
-    /** Custom-claim name holding the project allow-list. Default `"allowedProjects"`. */
-    projectsClaim?: string;
-}
-export declare class FirebaseOperatorDirectory implements OperatorDirectory {
+export declare class FirebaseOperatorDirectory implements OperatorDirectory, IdentityVerifier {
     private readonly auth;
-    private readonly roleClaim;
-    private readonly projectsClaim;
-    constructor(auth: FirebaseAuthLike, options?: FirebaseOperatorDirectoryOptions);
+    private readonly accounts;
+    constructor(auth: FirebaseAuthLike, accounts: OperatorAccountStore);
+    /** Authentication only: token → identity, or null. Never throws. */
+    verify(credential: string): Promise<VerifiedIdentity | null>;
+    /** Authentication + authorization: only an ACTIVE account is a principal. */
     resolve(credential: string): Promise<OperatorPrincipal | null>;
 }

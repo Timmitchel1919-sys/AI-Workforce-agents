@@ -7,6 +7,7 @@
  * enters the system through the interfaces declared here and is implemented
  * under `adapters/`.
  */
+import { SOFTWARE_FACTORY_ENVIRONMENT_CODES } from "./environment-routing.js";
 export const ENVIRONMENTS = ["local", "test", "staging", "production"];
 /* ------------------------------------------------------------------ */
 /* Tasks                                                              */
@@ -49,6 +50,29 @@ export const AUDIT_EVENT_TYPES = [
     "environment_discovered",
     "environment_refreshed",
     "environment_unavailable",
+    "execution_plan_event",
+    "access_event",
+    "execution_event",
+    "onboarding_event",
+    /* EO-6.2 — AI Cost Center & rule-based Auditor. */
+    "usage_recorded",
+    "budget_blocked",
+    "budget_policy_set",
+    "audit_finding_raised",
+    /* EO-6.3 — Governance Policy Engine. */
+    "governance_decision",
+    "governance_policy_set",
+    /* EO-7 — Model Routing. */
+    "routing_decision_made",
+    "routing_no_candidate",
+    /* Specialist workforce — assignment, qualification and write-scope leases. */
+    "assignment_created",
+    "assignment_transitioned",
+    "assignment_reassigned",
+    "assignment_blocked",
+    "write_lease_acquired",
+    "write_lease_released",
+    "write_lease_denied",
 ];
 export const DEFAULT_AGENT_LIMITS = {
     maxIterations: 3,
@@ -65,9 +89,52 @@ export class ValidationError extends WorkforceError {
 }
 export class StateTransitionError extends WorkforceError {
 }
+/**
+ * An execution plan changed concurrently: an optimistic precondition of a plan
+ * commit failed (EO-3.2). Nothing was written. HTTP 409.
+ */
+export class PlanRevisionConflictError extends StateTransitionError {
+    constructor(message = "execution plan changed concurrently — reload and retry") {
+        super(message);
+        this.name = "PlanRevisionConflictError";
+    }
+}
 export class PermissionDeniedError extends WorkforceError {
 }
+/** An operator account changed concurrently (AUTHZ-1). HTTP 409. */
+export class AccountConflictError extends StateTransitionError {
+    constructor(message = "operator account changed concurrently — reload") {
+        super(message);
+        this.name = "AccountConflictError";
+    }
+}
+/** The change would leave no active administrator (AUTHZ-1). HTTP 409. */
+export class LastAdministratorError extends StateTransitionError {
+    constructor() {
+        super("the last active administrator cannot be removed or demoted");
+        this.name = "LastAdministratorError";
+    }
+}
+/** Initial administrator bootstrap is no longer available (AUTHZ-1). */
+export class BootstrapLockedError extends PermissionDeniedError {
+    constructor() {
+        super("initial administrator bootstrap is locked: an administrator already exists");
+        this.name = "BootstrapLockedError";
+    }
+}
 export class NotFoundError extends WorkforceError {
+}
+/**
+ * EO-4.1: an EXPECTED execution security outcome (policy denial, workspace
+ * violation, …). A 403-class error if it ever escapes — never a 500.
+ */
+export class ExecutionDeniedError extends PermissionDeniedError {
+    code;
+    constructor(code, detail) {
+        super(detail);
+        this.name = "ExecutionDeniedError";
+        this.code = code;
+    }
 }
 /**
  * Structured failure from a General Agent execution. Carries a machine-readable
@@ -185,9 +252,84 @@ export function validateAgent(agent) {
     }
 }
 export function validateTaskDraft(draft) {
+    if (!draft || typeof draft !== "object" || Array.isArray(draft)) {
+        throw new ValidationError("task draft must be an object");
+    }
     requireText(draft.type, "task.type");
     requireText(draft.description, "task.description");
     requireText(draft.projectId, "task.projectId");
+    if (draft.priority !== undefined &&
+        !["low", "normal", "high", "critical"].includes(draft.priority)) {
+        throw new ValidationError("task.priority must be a known priority");
+    }
+    if (draft.metadata !== undefined && !isRecord(draft.metadata)) {
+        throw new ValidationError("task.metadata must be an object");
+    }
+    for (const field of [
+        "dependencies",
+        "requirements",
+        "requiredCapabilities",
+        "environmentRequirements",
+        "completionCriteria",
+    ]) {
+        const value = draft[field];
+        if (value === undefined)
+            continue;
+        for (const entry of requireStringArray(value, `task.${field}`)) {
+            if (entry.trim() === "") {
+                throw new ValidationError(`task.${field} must not contain blank values`);
+            }
+        }
+    }
+    for (const code of draft.environmentRequirements ?? []) {
+        if (!SOFTWARE_FACTORY_ENVIRONMENT_CODES.includes(code)) {
+            throw new ValidationError(`task.environmentRequirements contains unknown code: ${code}`);
+        }
+    }
+    if (draft.requiredPermissions !== undefined) {
+        const permissions = requireArray(draft.requiredPermissions, "task.requiredPermissions");
+        for (const permission of permissions) {
+            if (!permission ||
+                typeof permission !== "object" ||
+                Array.isArray(permission)) {
+                throw new ValidationError("task.requiredPermissions must contain objects");
+            }
+            const action = permission.action;
+            if (!PERMISSION_ACTIONS.includes(action)) {
+                throw new ValidationError("task.requiredPermissions contains an unknown action");
+            }
+            const toolId = permission.toolId;
+            if (toolId !== undefined)
+                requireText(toolId, "task.requiredPermissions.toolId");
+        }
+    }
+    if (draft.modelRequirements !== undefined &&
+        !isRecord(draft.modelRequirements)) {
+        throw new ValidationError("task.modelRequirements must be an object");
+    }
+}
+function requireStringArray(value, field) {
+    return requireArray(value, field).map((entry, index) => {
+        if (typeof entry !== "string") {
+            throw new ValidationError(`${field}[${index}] must be a string`);
+        }
+        return entry;
+    });
+}
+function isRecord(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+const FORBIDDEN_RESOURCE_KEYS = new Set([
+    "__proto__",
+    "constructor",
+    "prototype",
+]);
+function isSafeResourceId(value) {
+    return (typeof value === "string" &&
+        value.length > 0 &&
+        value.length <= 64 &&
+        !FORBIDDEN_RESOURCE_KEYS.has(value) &&
+        /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value));
 }
 export function validateHandoffDraft(draft) {
     requireText(draft.taskId, "handoff.taskId");
@@ -201,6 +343,21 @@ export function validateHandoffDraft(draft) {
     }
     if (draft.acceptanceCriteria.length === 0) {
         throw new ValidationError("handoff.acceptanceCriteria must not be empty");
+    }
+    // Local id check: `workforce.ts` imports from this barrel, so it cannot be
+    // imported back here. The rule is kept identical to `isSafeIdentifier`.
+    if (draft.projectId !== undefined && !isSafeResourceId(draft.projectId)) {
+        throw new ValidationError("handoff.projectId is invalid");
+    }
+    if (draft.requiredCapabilities !== undefined) {
+        requireArray(draft.requiredCapabilities, "handoff.requiredCapabilities");
+        for (const capability of draft.requiredCapabilities) {
+            requireText(capability, "handoff.requiredCapabilities entry");
+        }
+    }
+    if (draft.sourceAssignmentId !== undefined &&
+        !isSafeResourceId(draft.sourceAssignmentId)) {
+        throw new ValidationError("handoff.sourceAssignmentId is invalid");
     }
 }
 export function validateApprovalRequest(draft) {
@@ -219,3 +376,27 @@ export * from "./qa.js";
 export * from "./money-mind.js";
 export * from "./control.js";
 export * from "./environments.js";
+export * from "./planning.js";
+export * from "./access.js";
+export * from "./profile.js";
+export * from "./execution.js";
+export * from "./workspace-paths.js";
+export * from "./workspace.js";
+export * from "./verification.js";
+export * from "./environment-adapters.js";
+export * from "./release.js";
+export * from "./execution-records.js";
+export * from "./orchestration.js";
+export * from "./environment-routing.js";
+export * from "./graph.js";
+export * from "./onboarding.js";
+export * from "./cost-center.js";
+export * from "./governance.js";
+export * from "./routing.js";
+export * from "./workforce.js";
+export * from "./capabilities.js";
+export * from "./assignment.js";
+export * from "./tenancy.js";
+export * from "./billing.js";
+export * from "./customer.js";
+export * from "./identity.js";

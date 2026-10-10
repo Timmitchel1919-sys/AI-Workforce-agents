@@ -3,6 +3,10 @@ import {
   NotFoundError,
   ValidationError,
 } from "../../contracts/index.js";
+import {
+  parseProjectRepositoryRef,
+  repositoryKey,
+} from "./project-repository-ref.js";
 
 /**
  * A registry of project integrations, so the Control Plane (and any future
@@ -26,6 +30,7 @@ export interface ProjectRegistrationOptions {
 
 export class ProjectRegistry {
   private readonly projects = new Map<string, ProjectRegistration>();
+  private readonly repositories = new Map<string, string>();
 
   register(
     adapter: ProjectAdapter,
@@ -41,6 +46,24 @@ export class ProjectRegistry {
     if (this.projects.has(projectId)) {
       throw new ValidationError(`project already registered: ${projectId}`);
     }
+    // A declared repository reference must be credential-free and unique: two
+    // projects may not bind the same repository.
+    let repoKey: string | undefined;
+    if (options.metadata?.repository !== undefined) {
+      const ref = parseProjectRepositoryRef(options.metadata.repository);
+      if (!ref) {
+        throw new ValidationError(
+          `project ${projectId} declares an invalid repository reference (https URL without credentials and a default branch are required)`,
+        );
+      }
+      repoKey = repositoryKey(ref);
+      const owner = this.repositories.get(repoKey);
+      if (owner !== undefined) {
+        throw new ValidationError(
+          `repository already bound to project ${owner}`,
+        );
+      }
+    }
     const registration: ProjectRegistration = {
       projectId,
       displayName: options.displayName?.trim() || projectId,
@@ -48,6 +71,7 @@ export class ProjectRegistry {
       metadata: { ...(options.metadata ?? {}) },
     };
     this.projects.set(projectId, registration);
+    if (repoKey !== undefined) this.repositories.set(repoKey, projectId);
     return registration;
   }
 

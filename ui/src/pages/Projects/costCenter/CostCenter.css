@@ -1,0 +1,90 @@
+/* EO-6.2/6.3 AI Cost Center + Auditor Findings — semantic tokens only (dark + light). */
+
+.cc {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.cc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Status: icon + text + tone (never colour alone). */
+.cc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.cc-status--ok {
+  color: var(--color-success, #16a34a);
+}
+
+.cc-status--bad {
+  color: var(--color-danger, #dc2626);
+}
+
+.cc-status--warn {
+  color: var(--color-warning, #d97706);
+}
+
+.cc-status--neutral {
+  color: var(--color-text-secondary);
+}
+
+/* Honest inert-capability notice: text-led, never colour-only. */
+.cc-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-warning, #d97706);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.cc-table-wrap {
+  overflow-x: auto;
+}
+
+.cc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.cc-table th,
+.cc-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.cc-table th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.cc-unknown-cost {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .cc-table th,
+  .cc-table td {
+    white-space: normal;
+  }
+}

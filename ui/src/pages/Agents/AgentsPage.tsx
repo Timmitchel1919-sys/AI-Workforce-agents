@@ -13,26 +13,42 @@ import "./AgentsPage.css";
 
 const PAGE_SIZE = 6;
 
+/**
+ * The filter spans BOTH axes, because an operator looking for "who can I hand
+ * this to" is filtering on administrative status, while one looking for "what
+ * is busy" is filtering on operational state. A single dropdown cannot do both
+ * honestly, so both vocabularies are offered and labelled.
+ */
 const statusOptions = [
   "all",
   "active",
-  "idle",
+  "draft",
+  "suspended",
+  "disabled",
+  "retired",
+  "available",
+  "assigned",
+  "busy",
+  "waiting",
   "offline",
-  "paused",
   "error",
   "provisioning",
 ] as const;
-
-function formatMetricLabel(value: number, label: string) {
-  return `${value} ${label}`;
-}
 
 export default function AgentsPage() {
   const { t } = useI18n();
   const { data, status, refetch } = useAgents();
   const agents = useMemo(() => data?.agents ?? [], [data]);
   const summary = useMemo(
-    () => data?.summary ?? { total: 0, active: 0, idle: 0, offline: 0, healthy: 0 },
+    () =>
+      data?.summary ?? {
+        total: 0,
+        active: 0,
+        idle: 0,
+        offline: 0,
+        specialists: 0,
+        acceptingWork: 0,
+      },
     [data],
   );
 
@@ -47,24 +63,48 @@ export default function AgentsPage() {
     [agents],
   );
 
-  const projects = useMemo(
-    () => Array.from(new Set(agents.map((agent) => agent.projectId).filter(Boolean))).sort(),
-    [agents],
-  );
+  // Agents report an allow-list of projects, not a single owning project, so the
+  // filter matches membership rather than equality.
+  const projects = useMemo(() => {
+    const ids = new Set<string>();
+    for (const agent of agents) {
+      for (const project of agent.allowedProjects) ids.add(project);
+      if (agent.currentProjectId) ids.add(agent.currentProjectId);
+      for (const project of agent.specialist?.projectPolicy.projects ?? []) ids.add(project);
+    }
+    return Array.from(ids).sort();
+  }, [agents]);
 
   const filteredAgents = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
     return agents.filter((agent) => {
+      const searchable = [
+        agent.name,
+        agent.description,
+        agent.id,
+        agent.specialist?.modelPolicy.model,
+        agent.specialist?.modelPolicy.provider,
+        agent.specialist?.department,
+        agent.specialist?.riskCeiling,
+        ...agent.capabilities,
+      ];
+
       const matchesQuery =
         normalizedQuery.length === 0 ||
-        [agent.name, agent.description, agent.model, ...(agent.capabilities ?? [])]
+        searchable
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedQuery));
 
-      const matchesStatus = statusFilter === "all" || agent.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" ||
+        agent.status === statusFilter ||
+        agent.specialist?.operationalState === statusFilter;
       const matchesCapability = capabilityFilter === "all" || agent.capabilities.includes(capabilityFilter);
-      const matchesProject = projectFilter === "all" || agent.projectId === projectFilter;
+      const matchesProject =
+        projectFilter === "all" ||
+        agent.allowedProjects.includes(projectFilter) ||
+        agent.specialist?.projectPolicy.projects.includes(projectFilter) === true;
 
       return matchesQuery && matchesStatus && matchesCapability && matchesProject;
     });
@@ -86,7 +126,10 @@ export default function AgentsPage() {
     );
   }
 
-  if (status === "error") {
+  if (status === "error" || status === "unauthorized" || status === "degraded" || status === "notComposed" || status === "notConfigured") {
+    // No roster is rendered for any of these. A failure to answer is not an
+    // answer, and substituting a sample registry here is what previously made
+    // a broken deployment look like a healthy one.
     return (
       <PageContainer>
         <PageHeader
@@ -94,20 +137,7 @@ export default function AgentsPage() {
           title={t("agents.title")}
           description={t("agents.description")}
         />
-        <AgentsErrorState onRetry={refetch} />
-      </PageContainer>
-    );
-  }
-
-  if (status === "unauthorized") {
-    return (
-      <PageContainer>
-        <PageHeader
-          eyebrow={t("common.brand")}
-          title={t("agents.title")}
-          description={t("agents.description")}
-        />
-        <AgentsErrorState onRetry={refetch} />
+        <AgentsErrorState state={status} onRetry={refetch} />
       </PageContainer>
     );
   }
@@ -120,7 +150,7 @@ export default function AgentsPage() {
           title={t("agents.title")}
           description={t("agents.description")}
         />
-        <AgentsEmptyState />
+        <AgentsEmptyState sampleData={data?.authoritative === false} />
       </PageContainer>
     );
   }
@@ -152,10 +182,16 @@ export default function AgentsPage() {
             <strong>{summary.offline}</strong>
           </div>
           <div className="agents-summary__metric">
-            <span className="agents-summary__label">{t("agents.healthy")}</span>
-            <strong>{summary.healthy}</strong>
+            <span className="agents-summary__label">{t("agents.specialists")}</span>
+            <strong>{summary.specialists}</strong>
+          </div>
+          <div className="agents-summary__metric">
+            <span className="agents-summary__label">{t("agents.acceptingWork")}</span>
+            <strong>{summary.acceptingWork}</strong>
           </div>
         </div>
+
+        <p className="agents-qualification-note">{t("agents.qualifiedNoticeDescription")}</p>
 
         <PageSection>
           <div className="agents-toolbar">
@@ -256,13 +292,5 @@ export default function AgentsPage() {
         </PageSection>
       </div>
     </PageContainer>
-  );
-}
-
-export function AgentSummaryLine({ total, active, idle, offline }: { total: number; active: number; idle: number; offline: number }) {
-  return (
-    <div className="agents-inline-summary" aria-live="polite">
-      {formatMetricLabel(total, "Total")} · {formatMetricLabel(active, "Active")} · {formatMetricLabel(idle, "Idle")} · {formatMetricLabel(offline, "Offline")}
-    </div>
   );
 }

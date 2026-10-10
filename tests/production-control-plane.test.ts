@@ -4,67 +4,49 @@ import type { AddressInfo } from "node:net";
 import test from "node:test";
 
 import { createProductionControlPlaneRuntime } from "../api/index.js";
-import type {
-  FirebaseAuthLike,
-  FirebaseServices,
-  FirestoreCollectionLike,
-  FirestoreDocRefLike,
-  FirestoreLike,
-} from "../adapters/index.js";
-
-class FakeCollection implements FirestoreCollectionLike {
-  private readonly values = new Map<string, Record<string, unknown>>();
-  doc(id: string): FirestoreDocRefLike {
-    return {
-      set: async (value) => void this.values.set(id, structuredClone(value)),
-      get: async () => {
-        const value = this.values.get(id);
-        return {
-          exists: value !== undefined,
-          data: () => value && structuredClone(value),
-        };
-      },
-      delete: async () => void this.values.delete(id),
-    };
-  }
-  async get() {
-    return {
-      docs: [...this.values.entries()].map(([id, value]) => ({
-        id,
-        data: () => structuredClone(value),
-      })),
-    };
-  }
-  async listDocuments() {
-    return [...this.values.keys()].map((id) => this.doc(id));
-  }
-}
-
-class FakeFirestore implements FirestoreLike {
-  private readonly collections = new Map<string, FakeCollection>();
-  collection(path: string): FakeCollection {
-    let collection = this.collections.get(path);
-    if (!collection) {
-      collection = new FakeCollection();
-      this.collections.set(path, collection);
-    }
-    return collection;
-  }
-}
+import type { FirebaseAuthLike, FirebaseServices } from "../adapters/index.js";
+import { FakeFirestore } from "./fixtures/fake-firestore.js";
 
 class FakeAuth implements FirebaseAuthLike {
   async verifyIdToken(token: string) {
-    if (token === "viewer")
-      return { uid: "viewer-1", role: "viewer", allowedProjects: "*" };
-    if (token === "limited")
-      return { uid: "limited-1", role: "viewer", allowedProjects: [] };
+    if (token === "viewer") return { uid: "viewer-1" };
+    if (token === "limited") return { uid: "limited-1" };
+    if (token === "pending") return { uid: "pending-1", email_verified: true };
     throw new Error("invalid token");
   }
 }
 
+/** AUTHZ-1: authorization comes from operator accounts, not token claims. */
+function seededFirestore(): FakeFirestore {
+  const firestore = new FakeFirestore();
+  const operators = firestore.collection("operators");
+  const T = "2026-09-24T00:00:00.000Z";
+  const base = {
+    emailVerified: true,
+    requestedAt: T,
+    updatedAt: T,
+    revision: 1,
+  };
+  operators.values.set("viewer-1", {
+    ...base,
+    id: "viewer-1",
+    status: "active",
+    role: "viewer",
+    allowedProjects: "*",
+  });
+  operators.values.set("limited-1", {
+    ...base,
+    id: "limited-1",
+    status: "active",
+    role: "viewer",
+    allowedProjects: [],
+  });
+  return firestore;
+}
+
 function services(): FirebaseServices {
   return {
-    firestore: new FakeFirestore(),
+    firestore: seededFirestore(),
     auth: new FakeAuth(),
     storage: {} as FirebaseServices["storage"],
     config: {
@@ -132,7 +114,8 @@ test("production composed handler serves dashboard, health, API not-found, and a
   const snapshot = (await dashboard.json()) as {
     status: { counts: { registeredAgents: number } };
   };
-  assert.equal(snapshot.status.counts.registeredAgents, 1);
+  // EO-8: control-plane-analysis + Developer/QA/Project Manager, all now wired into production.
+  assert.equal(snapshot.status.counts.registeredAgents, 16);
 
   const unknown = await request(runtime, "/api/unknown-route", "viewer");
   assert.equal(unknown.status, 404);

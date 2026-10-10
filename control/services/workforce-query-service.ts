@@ -6,11 +6,24 @@
  * Nothing here mutates state. All secret-bearing fields are redacted.
  */
 import {
+  TOOL_WILDCARD,
+  type ExecutionOperationDefinition,
+  type ExecutionSession,
+  type PreflightResult,
   type Approval,
+  type ApprovalQuery,
+  type ApprovalView,
   type AuditEventQuery,
   type AuditEventView,
   type AgentView,
+  type Assignment,
+  type AssignmentView,
   type DashboardSnapshot,
+  type ExecutionPlanQuery,
+  type OperatorAccountView,
+  type TechnologyCatalogEntryView,
+  type ExecutionPlanSummaryView,
+  type ExecutionPlanView,
   type HealthStatus,
   type OperatorPrincipal,
   type PageResult,
@@ -23,6 +36,11 @@ import {
   type WorkflowQuery,
   type WorkflowView,
   type WorkforceStatus,
+  type SoftwareFactoryOverview,
+  type SoftwareFactoryProgramDetail,
+  type SpecialistAgentSummary,
+  type TaskRequirements,
+  NotFoundError,
   operatorCan,
   operatorCanAccessProject,
   PermissionDeniedError,
@@ -34,7 +52,12 @@ import type {
   HostCapabilitySnapshot,
   HostInstance,
 } from "../../contracts/index.js";
-import { now } from "../../core/index.js";
+import {
+  now,
+  parseProjectRepositoryRef,
+  TechnologyCatalog,
+} from "../../core/index.js";
+import type { ProjectWorkforcePlan } from "../../core/index.js";
 import { type ControlPlaneContext } from "../context.js";
 import {
   deriveAgentView,
@@ -47,7 +70,20 @@ import {
   paginate,
 } from "../derive.js";
 import { buildSystemHealth, unverifiedComponent } from "../health.js";
+import { executionPlanSummaryView, executionPlanView } from "../plan-views.js";
 import { redact } from "../redaction.js";
+import {
+  getExecutionOverview,
+  getExecutionSessionDetail,
+  getProjectAuditFindings,
+  getProjectCostReport,
+  getProjectGovernancePolicy,
+  getProjectReleases,
+  getProjectRoutingDecision,
+  getProjectRoutingDecisions,
+  getProjectVerifications,
+  listExecutionSessions,
+} from "./execution-operations-views.js";
 
 export class WorkforceQueryService {
   constructor(private readonly ctx: ControlPlaneContext) {}
@@ -95,6 +131,59 @@ export class WorkforceQueryService {
       },
       recentActivity: this.recentAudit(principal, 15),
     };
+  }
+
+  getGraphProjection(
+    principal: OperatorPrincipal,
+    projectId: string,
+    programId: string,
+  ): import("../../contracts/index.js").GraphProjection | undefined {
+    this.authorizeView(principal);
+    if (!this.ctx.softwareFactory) return undefined;
+    if (!operatorCanAccessProject(principal, projectId)) return undefined;
+    return this.ctx.softwareFactory.getGraphProjection(programId, projectId);
+  }
+
+  /* -------------------------------------------------------------- */
+  /* software factory (EO-5.1) — read-only views                    */
+  /* -------------------------------------------------------------- */
+
+  getSoftwareFactoryOverview(
+    principal: OperatorPrincipal,
+    projectId?: string,
+  ): SoftwareFactoryOverview {
+    this.authorizeView(principal);
+    if (!this.ctx.softwareFactory) return { programs: [] };
+    if (
+      projectId !== undefined &&
+      !operatorCanAccessProject(principal, projectId)
+    ) {
+      return { programs: [] };
+    }
+    const projectIds =
+      projectId !== undefined
+        ? new Set([projectId])
+        : principal.allowedProjects === "*"
+          ? undefined
+          : new Set(principal.allowedProjects);
+    return this.ctx.softwareFactory.overview(projectIds);
+  }
+
+  getSoftwareFactoryProgramDetail(
+    principal: OperatorPrincipal,
+    projectId: string,
+    programId: string,
+  ): SoftwareFactoryProgramDetail {
+    this.authorizeView(principal);
+    if (!operatorCanAccessProject(principal, projectId)) {
+      throw new NotFoundError("unknown program");
+    }
+    const detail = this.ctx.softwareFactory?.programDetail(
+      programId,
+      projectId,
+    );
+    if (!detail) throw new NotFoundError("unknown program");
+    return detail;
   }
 
   /** @deprecated since Phase 7A — use {@link getSystemHealth}. */
@@ -150,7 +239,8 @@ export class WorkforceQueryService {
               }
             : {
                 status: "healthy" as HealthStatus,
-                detail: ids.join(", "),
+                // Count only: project ids are per-operator scoped data.
+                detail: `${ids.length} project adapter${ids.length === 1 ? "" : "s"} registered`,
               };
         },
       },
@@ -175,9 +265,232 @@ export class WorkforceQueryService {
     return this.ctx.agents
       .list()
       .filter((agent) => this.agentVisible(principal, agent.allowedProjects))
-      .map((agent) =>
-        deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit),
-      );
+      .map((agent) => {
+        const view = deriveAgentView(
+          agent,
+          tasks,
+          this.ctx.agentOps.get(agent.id),
+          audit,
+        );
+        // Enrich from the descriptor when one exists. A legacy flat agent
+        // simply has no `specialist` block — absence is reported as absence
+        // rather than filled in with a plausible-looking default.
+        const summary = this.specialistSummary(agent.id);
+        return summary ? { ...view, specialist: summary } : view;
+      });
+  }
+
+  /* -------------------------------------------------------------- */
+  /* Specialist workforce (authoritative)                           */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * The honest staffing answer for a project: which specialists are eligible,
+   * which the plan uses, and which tasks are blocked.
+   *
+   * Returns `undefined` when the specialist layer is not composed, so the API
+   * can answer 404 ("not composed") instead of an empty plan that would read
+   * as "this project has no specialists" — two very different statements.
+   */
+  async getProjectWorkforce(
+    principal: OperatorPrincipal,
+    projectId: string,
+    tasks: readonly { taskId: string; requirements: TaskRequirements }[],
+  ): Promise<
+    | {
+        readonly project: ProjectView | undefined;
+        readonly plan: ProjectWorkforcePlan;
+      }
+    | undefined
+  > {
+    this.authorizeView(principal);
+    const specialist = this.ctx.specialist;
+    if (!specialist) return undefined;
+    if (!operatorCanAccessProject(principal, projectId)) return undefined;
+    return {
+      project: (await this.getProjects(principal)).find(
+        (p) => p.projectId === projectId,
+      ),
+      // A read of a plan must never create an assignment.
+      plan: specialist.plan({ projectId, tasks, dryRun: true }),
+    };
+  }
+
+  getAssignments(
+    principal: OperatorPrincipal,
+    filter: { projectId?: string; taskId?: string; agentId?: string } = {},
+  ): AssignmentView[] | undefined {
+    this.authorizeView(principal);
+    const specialist = this.ctx.specialist;
+    if (!specialist) return undefined;
+    return specialist
+      .listAssignments()
+      .filter((a) =>
+        filter.projectId ? a.projectId === filter.projectId : true,
+      )
+      .filter((a) => (filter.taskId ? a.taskId === filter.taskId : true))
+      .filter((a) => (filter.agentId ? a.agentId === filter.agentId : true))
+      .filter((a) => operatorCanAccessProject(principal, a.projectId))
+      .map(projectAssignment)
+      .sort((a, b) => b.assignedAt.localeCompare(a.assignedAt));
+  }
+
+  /**
+   * The full reassignment history for a task, so a reader can see every attempt
+   * — including the ones that failed — rather than only the current holder.
+   */
+  getAssignmentHistory(
+    principal: OperatorPrincipal,
+    taskId: string,
+  ): readonly AssignmentView[] | undefined {
+    this.authorizeView(principal);
+    const specialist = this.ctx.specialist;
+    if (!specialist) return undefined;
+    // Authorise against the TASK, not only against the history. Deriving the
+    // project from the first assignment would let a caller with no access to
+    // the project learn "this task exists but has no assignments" from the
+    // difference between a 404 and an empty list, and would say nothing at all
+    // about a task that has never been assigned.
+    const task = this.ctx.tasks.get(taskId);
+    if (task && !operatorCanAccessProject(principal, task.projectId))
+      return undefined;
+    const history = specialist.assignments.historyForTask(taskId);
+    const projectId = history[0]?.projectId ?? task?.projectId;
+    if (projectId && !operatorCanAccessProject(principal, projectId))
+      return undefined;
+    return history.map(projectAssignment);
+  }
+
+  getSpecialistHandoffs(
+    principal: OperatorPrincipal,
+    filter: { taskId?: string } = {},
+  ):
+    | readonly {
+        id: string;
+        taskId: string;
+        projectId?: string;
+        sourceAgentId: string;
+        destinationAgentId: string;
+        status: string;
+        requiredCapabilities?: readonly string[];
+        destinationQualified?: boolean;
+        completedWork: string;
+        remainingWork: string;
+        acceptanceCriteria: readonly string[];
+        createdAt: string;
+        resolvedAt?: string;
+      }[]
+    | undefined {
+    this.authorizeView(principal);
+    const specialist = this.ctx.specialist;
+    if (!specialist) return undefined;
+    const all = filter.taskId
+      ? specialist.handoffs.forTask(filter.taskId)
+      : specialist.handoffs.list();
+    return (
+      all
+        // A handoff with no project scope is NOT treated as public. Its
+        // `completedWork` / `remainingWork` fields are free-text task content, so
+        // "unscoped" means "of unknown scope", and unknown scope cannot be
+        // authorised for an operator who may only see one project. Every handoff
+        // created through the specialist service carries a projectId, so this
+        // only withholds legacy unscoped records.
+        .filter(
+          (h) =>
+            h.projectId !== undefined &&
+            operatorCanAccessProject(principal, h.projectId),
+        )
+        .map((h) => ({
+          id: h.id,
+          taskId: h.taskId,
+          projectId: h.projectId,
+          sourceAgentId: h.sourceAgentId,
+          destinationAgentId: h.destinationAgentId,
+          status: h.status,
+          requiredCapabilities: h.requiredCapabilities,
+          destinationQualified: h.destinationQualification?.qualified ?? false,
+          completedWork: h.completedWork,
+          remainingWork: h.remainingWork,
+          acceptanceCriteria: h.acceptanceCriteria,
+          createdAt: h.createdAt,
+          resolvedAt: h.resolvedAt,
+        }))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    );
+  }
+
+  private specialistSummary(
+    agentId: string,
+  ): SpecialistAgentSummary | undefined {
+    const descriptor = this.ctx.agents.hasDescriptor(agentId)
+      ? this.ctx.agents.requireDescriptor(agentId)
+      : undefined;
+    if (!descriptor) return undefined;
+    const instances = (this.ctx.specialist?.listInstances() ?? []).filter(
+      (i) => i.descriptorId === agentId,
+    );
+    const current = this.ctx.specialist
+      ? this.ctx.specialist
+          .listAssignments()
+          .find(
+            (a) =>
+              a.agentId === agentId &&
+              a.status !== "completed" &&
+              a.status !== "failed" &&
+              a.status !== "cancelled" &&
+              a.status !== "reassigned",
+          )
+      : undefined;
+    const live = instances.find((i) => i.currentAssignmentId);
+    const primary = live ?? instances[0];
+    return {
+      descriptorVersion: descriptor.version,
+      displayName: descriptor.displayName,
+      department: descriptor.department,
+      description: descriptor.description,
+      limitations: [...descriptor.limitations],
+      administrativeStatus: descriptor.administrativeStatus,
+      // With no instance, the agent is OFFLINE — never "available". An agent
+      // that does not exist as an instance cannot be doing anything.
+      operationalState: primary?.operationalState ?? "offline",
+      supportedTaskTypes: [...descriptor.supportedTaskTypes],
+      projectPolicy: {
+        mode: descriptor.projectPolicy.mode,
+        projects: [...descriptor.projectPolicy.projects],
+      },
+      toolPolicy: {
+        maxExecutionCapabilities: [
+          ...descriptor.toolPolicy.maxExecutionCapabilities,
+        ],
+        deniedExecutionCapabilities: [
+          ...descriptor.toolPolicy.deniedExecutionCapabilities,
+        ],
+        allowsUnrestrictedShell: descriptor.toolPolicy.allowsUnrestrictedShell,
+      },
+      riskCeiling: descriptor.qualification.maxRiskLevel,
+      reviewPolicy: {
+        requiresIndependentReview:
+          descriptor.reviewPolicy.requiresIndependentReview,
+        minimumReviewers: descriptor.reviewPolicy.minimumReviewers,
+        selfReviewAllowed: descriptor.reviewPolicy.selfReviewAllowed,
+      },
+      modelPolicy: {
+        // A descriptor with no provider has no routable model. Reported as
+        // `unscoped` rather than as an empty string that might read as a
+        // provider named "".
+        provider: descriptor.modelPolicy.provider ?? "unscoped",
+        ...(descriptor.modelPolicy.model
+          ? { model: descriptor.modelPolicy.model }
+          : {}),
+      },
+      instanceCount: instances.length,
+      ...(current
+        ? {
+            currentAssignmentId: current.assignmentId,
+            currentTaskId: current.taskId,
+          }
+        : {}),
+    };
   }
 
   getAgent(
@@ -301,12 +614,46 @@ export class WorkforceQueryService {
 
   getApprovals(principal: OperatorPrincipal, filter: { status?: string } = {}) {
     this.authorizeView(principal);
-    return this.ctx.approvals
-      .list()
-      .map(deriveApprovalView)
+    return this.approvalViews()
       .filter((view) => (filter.status ? view.status === filter.status : true))
       .filter((view) => this.approvalVisible(principal, view.projectId))
       .sort((a, b) => (a.requestedAt < b.requestedAt ? 1 : -1));
+  }
+
+  /**
+   * The approval queue for the Approvals screen: status/project filters and
+   * the shared bounded cursor pagination. Project scope is enforced
+   * server-side (a foreign project filter simply yields nothing).
+   */
+  getApprovalPage(
+    principal: OperatorPrincipal,
+    query: ApprovalQuery = {},
+  ): PageResult<ApprovalView> {
+    const views = this.getApprovals(principal, { status: query.status })
+      .filter((view) =>
+        query.projectId ? view.projectId === query.projectId : true,
+      )
+      .sort(
+        (a, b) =>
+          b.requestedAt.localeCompare(a.requestedAt) ||
+          b.approvalId.localeCompare(a.approvalId),
+      );
+    return paginate(views, query.limit, query.cursor);
+  }
+
+  /**
+   * Approval views with their project resolved: orchestrator/tool approvals
+   * only carry a `taskId`, so the project comes from the linked task — an
+   * approval must never escape project isolation because its metadata
+   * lacked a `projectId`.
+   */
+  private approvalViews(): ApprovalView[] {
+    return this.ctx.approvals.list().map((approval) => {
+      const view = deriveApprovalView(approval);
+      if (view.projectId || !view.taskId) return view;
+      const projectId = this.ctx.tasks.get(view.taskId)?.projectId;
+      return projectId ? { ...view, projectId } : view;
+    });
   }
 
   /* -------------------------------------------------------------- */
@@ -373,7 +720,13 @@ export class WorkforceQueryService {
         (agent): agent is NonNullable<typeof agent> => agent !== undefined,
       )
       .map((agent) =>
-        deriveAgentView(agent, tasks, this.ctx.agentOps.get(agent.id), audit),
+        // EO-8: project-scoped (most-specific-wins over a global disable) — this IS a per-project view.
+        deriveAgentView(
+          agent,
+          tasks,
+          this.ctx.agentOps.get(agent.id, projectId),
+          audit,
+        ),
       );
   }
 
@@ -384,7 +737,20 @@ export class WorkforceQueryService {
   getTools(principal: OperatorPrincipal): ToolView[] {
     this.authorizeView(principal);
     const audit = this.ctx.audit.list();
-    return this.ctx.tools.list().map((tool) => deriveToolView(tool, audit));
+    return this.ctx.tools.list().map((tool) => {
+      const view = deriveToolView(tool, audit);
+      // Project isolation: never reveal project ids outside the operator's scope.
+      return principal.allowedProjects === "*"
+        ? view
+        : {
+            ...view,
+            allowedProjects: view.allowedProjects.filter(
+              (projectId) =>
+                projectId === TOOL_WILDCARD ||
+                this.canSeeProject(principal, projectId),
+            ),
+          };
+    });
   }
 
   getTool(principal: OperatorPrincipal, toolId: string): ToolView | undefined {
@@ -444,6 +810,306 @@ export class WorkforceQueryService {
     const host = this.ctx.environments?.getHost(hostId);
     if (!host) return undefined;
     return { hostId, host, capabilities: host.capabilities };
+  }
+
+  /* -------------------------------------------------------------- */
+  /* execution control boundary (EO-4.1) — never executes           */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Pre-flight for one plan stage: ELIGIBLE or DENIED with reason codes.
+   * Denials are data (200), not errors. `undefined` → execution not configured.
+   */
+  async executionPreflight(
+    principal: OperatorPrincipal,
+    request: unknown,
+  ): Promise<PreflightResult | undefined> {
+    validateOperatorPrincipal(principal);
+    return this.ctx.execution?.preflight(principal, request);
+  }
+
+  getExecutionOperations(
+    principal: OperatorPrincipal,
+  ): ExecutionOperationDefinition[] {
+    this.authorizeView(principal);
+    return this.ctx.execution?.listOperations(principal) ?? [];
+  }
+
+  async getExecutionSession(
+    principal: OperatorPrincipal,
+    sessionId: string,
+  ): Promise<ExecutionSession | undefined> {
+    this.authorizeView(principal);
+    return this.ctx.execution?.getSession(principal, sessionId);
+  }
+
+  async getExecutionSessions(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ): Promise<ExecutionSession[] | undefined> {
+    this.authorizeView(principal);
+    return this.ctx.execution?.listSessions(principal, projectId);
+  }
+
+  /* -------------------------------------------------------------- */
+  /* EO-4.7 Execution Control Center — authoritative, bounded       */
+  /* -------------------------------------------------------------- */
+
+  async getExecutionSessionPage(
+    principal: OperatorPrincipal,
+    projectId: string,
+    query: { status?: string; limit?: number; offset?: number } = {},
+  ) {
+    this.authorizeView(principal);
+    return listExecutionSessions(this.ctx, principal, projectId, query);
+  }
+
+  async getExecutionOverview(principal: OperatorPrincipal, projectId: string) {
+    this.authorizeView(principal);
+    return getExecutionOverview(this.ctx, principal, projectId);
+  }
+
+  async getExecutionSessionDetail(
+    principal: OperatorPrincipal,
+    projectId: string,
+    sessionId: string,
+    query: { timelineLimit?: number; timelineOffset?: number } = {},
+  ) {
+    this.authorizeView(principal);
+    return getExecutionSessionDetail(
+      this.ctx,
+      principal,
+      projectId,
+      sessionId,
+      query,
+    );
+  }
+
+  async getProjectVerifications(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectVerifications(this.ctx, principal, projectId);
+  }
+
+  async getProjectReleases(principal: OperatorPrincipal, projectId: string) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectReleases(this.ctx, principal, projectId);
+  }
+
+  /** EO-6.2 AI Cost Center: usage, budget policy and evaluated status. */
+  async getProjectCostReport(principal: OperatorPrincipal, projectId: string) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectCostReport(this.ctx, principal, projectId);
+  }
+
+  /** EO-6.2 rule-based Auditor findings (never model-assisted). */
+  async getProjectAuditFindings(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectAuditFindings(this.ctx, principal, projectId);
+  }
+
+  /** EO-6.3 governance policy (provider/model allow-list, approval threshold). */
+  async getProjectGovernancePolicy(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectGovernancePolicy(this.ctx, principal, projectId);
+  }
+
+  /** EO-7 routing decision history (bounded, newest first). */
+  async getProjectRoutingDecisions(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectRoutingDecisions(this.ctx, principal, projectId);
+  }
+
+  /** EO-7 one routing decision — undefined for an unknown id OR one belonging to another project. */
+  async getProjectRoutingDecision(
+    principal: OperatorPrincipal,
+    projectId: string,
+    routingDecisionId: string,
+  ) {
+    this.authorizeView(principal);
+    if (
+      !this.ctx.projects.get(projectId) ||
+      !operatorCanAccessProject(principal, projectId)
+    )
+      return undefined;
+    return getProjectRoutingDecision(
+      this.ctx,
+      principal,
+      projectId,
+      routingDecisionId,
+    );
+  }
+
+  /** EO-4.5 environment execution status (real runners only count). */
+  getExecutionEnvironments(principal: OperatorPrincipal) {
+    this.authorizeView(principal);
+    return {
+      configured: Boolean(this.ctx.environmentAdapters),
+      families: this.ctx.environmentAdapters?.status() ?? [],
+    };
+  }
+
+  /* -------------------------------------------------------------- */
+  /* execution plans (EO-3.1) — planning state only                */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Plan versions of one project, newest first, cursor-paginated with the
+   * shared page-size bounds. `undefined` when the project does not exist or
+   * the operator may not access it (→ 404, no existence leak).
+   */
+  async getExecutionPlans(
+    principal: OperatorPrincipal,
+    projectId: string,
+    query: ExecutionPlanQuery = {},
+  ): Promise<PageResult<ExecutionPlanSummaryView> | undefined> {
+    this.authorizeView(principal);
+    if (!this.canSeeProject(principal, projectId)) return undefined;
+    const planning = this.ctx.planning;
+    // Fresh from the authoritative store, scoped to this project only.
+    if (planning) await planning.refreshProject(projectId);
+    const all = planning ? planning.listByProject(projectId) : [];
+    const plans = query.planId
+      ? all.filter((plan) => plan.planId === query.planId)
+      : all;
+    const latest = new Map<string, number>();
+    for (const plan of all) {
+      latest.set(
+        plan.planId,
+        Math.max(latest.get(plan.planId) ?? 0, plan.version),
+      );
+    }
+    const page = paginate(plans, query.limit, query.cursor);
+    return {
+      ...page,
+      items: page.items.map((plan) =>
+        executionPlanSummaryView(
+          plan,
+          latest.get(plan.planId) === plan.version,
+        ),
+      ),
+    };
+  }
+
+  /**
+   * One plan of a project: the current version of series `planId`, or a
+   * specific `version`. Plans of other projects are indistinguishable from
+   * missing ones.
+   */
+  async getExecutionPlan(
+    principal: OperatorPrincipal,
+    projectId: string,
+    planId: string,
+    version?: number,
+  ): Promise<ExecutionPlanView | undefined> {
+    this.authorizeView(principal);
+    if (!this.canSeeProject(principal, projectId)) return undefined;
+    const planning = this.ctx.planning;
+    if (!planning) return undefined;
+    await planning.refreshProject(projectId);
+    const latest = planning.latest(planId);
+    if (!latest || latest.projectId !== projectId) return undefined;
+    const plan =
+      version === undefined ? latest : planning.get(`${planId}@v${version}`);
+    if (!plan || plan.projectId !== projectId) return undefined;
+    return executionPlanView(plan, plan.version === latest.version);
+  }
+
+  /**
+   * The project's current plan: the current (highest) version of the most
+   * recently created plan series, or `null` when the project has no plan.
+   * `undefined` (→ 404) when the project is unknown or not accessible.
+   */
+  async getCurrentExecutionPlan(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ): Promise<ExecutionPlanView | null | undefined> {
+    this.authorizeView(principal);
+    if (!this.canSeeProject(principal, projectId)) return undefined;
+    const planning = this.ctx.planning;
+    if (!planning) return null;
+    await planning.refreshProject(projectId);
+    const newestSeries = planning
+      .listByProject(projectId)
+      .filter((plan) => plan.version === 1)[0];
+    const current = newestSeries && planning.latest(newestSeries.planId);
+    return current ? executionPlanView(current, true) : null;
+  }
+
+  /** The planner's technology catalog (read-only; for planning requests). */
+  getTechnologyCatalog(
+    principal: OperatorPrincipal,
+  ): TechnologyCatalogEntryView[] {
+    this.authorizeView(principal);
+    return (this.ctx.technologyCatalog ?? new TechnologyCatalog())
+      .list()
+      .map((profile) => ({
+        id: profile.id,
+        label: profile.label,
+        componentKinds: [...profile.componentKinds],
+        platforms: [...profile.platforms],
+      }));
+  }
+
+  /* -------------------------------------------------------------- */
+  /* operator access (AUTHZ-1)                                     */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Every operator account for Users & Access. Administrators only
+   * (`manage_access`) — a PermissionDeniedError maps to 403.
+   */
+  async getOperatorAccounts(
+    principal: OperatorPrincipal,
+  ): Promise<OperatorAccountView[] | undefined> {
+    this.authorizeView(principal);
+    if (!operatorCan(principal, "manage_access")) {
+      throw new PermissionDeniedError(
+        "managing access requires the administrator role",
+      );
+    }
+    return this.ctx.access?.listAccounts(principal);
   }
 
   /* -------------------------------------------------------------- */
@@ -528,6 +1194,13 @@ export class WorkforceQueryService {
   /* -------------------------------------------------------------- */
   /* internals                                                     */
   /* -------------------------------------------------------------- */
+
+  private canSeeProject(principal: OperatorPrincipal, projectId: string) {
+    return (
+      this.ctx.projects.has(projectId) &&
+      operatorCanAccessProject(principal, projectId)
+    );
+  }
 
   private authorizeView(principal: OperatorPrincipal): void {
     validateOperatorPrincipal(principal);
@@ -684,6 +1357,12 @@ export class WorkforceQueryService {
     const status: ProjectView["status"] =
       adapterStatus === "unavailable" ? "unavailable" : "available";
 
+    // Only a validated, credential-free reference is ever exposed; anything
+    // else in registration metadata stays server-side.
+    const repository = parseProjectRepositoryRef(
+      registration.metadata.repository,
+    );
+
     return {
       projectId,
       displayName: registration.displayName,
@@ -694,9 +1373,32 @@ export class WorkforceQueryService {
       activeWorkflows,
       recentTaskIds,
       recentActivity,
+      ...(repository ? { repository } : {}),
     };
   }
 }
 
 /** Re-export so callers can `redact` before logging their own diagnostics. */
 export { redact };
+
+function projectAssignment(a: Assignment): AssignmentView {
+  return {
+    assignmentId: a.assignmentId,
+    projectId: a.projectId,
+    taskId: a.taskId,
+    agentId: a.agentId,
+    descriptorVersion: a.descriptorVersion,
+    status: a.status,
+    assignedAt: a.assignedAt,
+    assignedBy: a.assignedBy,
+    replacesAssignmentId: a.replacesAssignmentId,
+    failureReason: a.failureReason,
+    qualification: {
+      qualified: a.qualification.qualified,
+      matchedCapabilities: a.qualification.matchedCapabilities,
+      missingCapabilities: a.qualification.missingCapabilities,
+      consideredLimitations: a.qualification.consideredLimitations,
+      evaluatedAt: a.qualification.evaluatedAt,
+    },
+  };
+}

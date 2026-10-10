@@ -18,19 +18,26 @@ export default tseslint.config(
       "**/dist/**",
       "node_modules/**",
       "coverage/**",
+      // Local agent worktrees are separate checkouts, not part of this tree.
+      ".claude/**",
       "ui/**",
+      // Archived, unreferenced patch/generator artifacts are not executable
+      // application source and must not participate in the backend lint gate.
+      "patch-tests.cjs",
+      "patch2.cjs",
+      "patch3.cjs",
+      "scripts/gen_ext.cjs",
+      "scripts/gen_ext.js",
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
   {
+    // Build scripts run directly on Node (plain ESM, not TypeScript).
     files: ["scripts/**/*.mjs"],
     languageOptions: {
-      globals: {
-        console: "readonly",
-        process: "readonly",
-      },
+      globals: { process: "readonly", console: "readonly" },
     },
   },
   {

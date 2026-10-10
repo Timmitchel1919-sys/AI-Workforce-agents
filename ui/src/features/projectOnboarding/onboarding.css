@@ -1,0 +1,124 @@
+/* Project onboarding — theme tokens only (light + dark). Mobile first: single column, no fixed widths. */
+
+.ob-stack { display: grid; gap: var(--space-4); min-width: 0; }
+.ob-muted { color: var(--color-text-muted); font-size: var(--text-sm); margin: 0; overflow-wrap: anywhere; }
+.ob-block { display: block; }
+.ob-strong { font-weight: 600; overflow-wrap: anywhere; }
+.ob-unavailable { color: var(--color-text-muted); font-style: italic; }
+.ob-evidence { margin-top: 2px; }
+.ob-subtitle { margin: 0 0 var(--space-2); font-size: var(--text-md); color: var(--color-text-heading); }
+.ob-step-title { margin: 0; font-size: var(--text-xl); color: var(--color-text-heading); }
+.ob-step-title:focus { outline: none; }
+.ob-step-title:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 4px; }
+.ob-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; overflow-wrap: anywhere; word-break: break-word; }
+.ob-error-text { color: var(--color-danger); margin: 0; }
+.ob-live { font-weight: 600; margin: 0; }
+
+.ob-wizard { display: grid; gap: var(--space-4); min-width: 0; }
+.ob-wizard__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+
+/* Tags: icon + text, never colour alone */
+.ob-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--color-border); font-size: var(--text-xs); line-height: 1.4; background: var(--color-surface-muted); color: var(--color-text); }
+.ob-tag--success { border-color: var(--color-success); color: var(--color-success); }
+.ob-tag--warning { border-color: var(--color-warning); color: var(--color-warning); }
+.ob-tag--danger { border-color: var(--color-danger); color: var(--color-danger); }
+.ob-tag--info, .ob-tag--running { border-color: var(--color-info); color: var(--color-info); }
+.ob-spin { animation: ob-rotate 1s linear infinite; }
+@keyframes ob-rotate { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ob-spin { animation: none; } }
+
+/* Alerts */
+.ob-alert { display: flex; gap: var(--space-2); align-items: flex-start; flex-wrap: wrap; padding: var(--space-3) var(--space-4); border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface-muted); color: var(--color-text); margin: 0; }
+.ob-alert > div, .ob-alert p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.ob-alert--danger { border-color: var(--color-danger); display: block; }
+.ob-alert--warning { border-color: var(--color-warning); }
+.ob-alert--info { border-color: var(--color-info); }
+.ob-error-summary { border: 2px solid var(--color-danger); border-radius: 10px; padding: var(--space-3) var(--space-4); background: var(--color-surface); }
+.ob-error-summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.ob-error-summary__title { margin: 0 0 var(--space-2); color: var(--color-danger); font-size: var(--text-md); }
+.ob-error-summary ul { margin: 0; padding-left: var(--space-4); }
+
+/* Sections, lists, cards */
+.ob-section { border: 1px solid var(--color-border); border-radius: 12px; padding: var(--space-4); background: var(--color-surface); display: grid; gap: var(--space-3); min-width: 0; }
+.ob-section__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.ob-section__title { margin: 0; font-size: var(--text-md); color: var(--color-text-heading); }
+.ob-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.ob-list__item { overflow-wrap: anywhere; }
+.ob-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: 1fr; }
+.ob-card { border: 1px solid var(--color-border); border-radius: 10px; padding: var(--space-3); background: var(--color-surface); min-width: 0; display: grid; gap: var(--space-2); }
+.ob-card p { margin: 0; overflow-wrap: anywhere; }
+.ob-card__head { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+/* Definition lists replace tables: they collapse naturally to one column */
+.ob-deflist { display: grid; gap: var(--space-2); margin: 0; }
+.ob-deflist__row { display: grid; grid-template-columns: 1fr; gap: 2px; min-width: 0; }
+.ob-deflist dt { color: var(--color-text-muted); font-size: var(--text-sm); }
+.ob-deflist dd { margin: 0; overflow-wrap: anywhere; }
+
+/* Forms */
+.ob-form-grid { display: grid; gap: var(--space-4); grid-template-columns: 1fr; min-width: 0; }
+.ob-form-grid > * { min-width: 0; }
+.ob-form-grid input, .ob-form-grid select, .ob-form-grid textarea { max-width: 100%; box-sizing: border-box; width: 100%; }
+.ob-fieldset { border: 1px solid var(--color-border); border-radius: 12px; padding: var(--space-4); margin: 0; min-width: 0; display: grid; gap: var(--space-3); }
+.ob-legend { font-weight: 600; padding: 0 var(--space-2); color: var(--color-text-heading); }
+.ob-radio { display: flex; gap: var(--space-3); align-items: flex-start; cursor: pointer; }
+.ob-radio input { margin-top: 4px; }
+
+.ob-choice-grid { display: grid; gap: var(--space-3); grid-template-columns: 1fr; }
+.ob-choice { display: flex; gap: var(--space-3); align-items: flex-start; border: 1px solid var(--color-border); border-radius: 12px; padding: var(--space-4); background: var(--color-surface); cursor: pointer; min-width: 0; }
+.ob-choice:hover { border-color: var(--color-border-selected); }
+.ob-choice.is-selected { border-color: var(--color-border-selected); box-shadow: 0 0 0 1px var(--color-border-selected); }
+.ob-choice.is-disabled { cursor: not-allowed; opacity: 0.85; background: var(--color-surface-muted); }
+.ob-choice:focus-within { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.ob-choice input { margin-top: 4px; }
+.ob-choice__body { display: grid; gap: var(--space-2); min-width: 0; }
+.ob-choice__title { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; }
+
+/* Actions */
+.ob-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ob-actions--sticky { padding-top: var(--space-2); }
+.ob-link-button { display: inline-flex; align-items: center; gap: 6px; padding: 0.5rem 0.9rem; border-radius: 8px; border: 1px solid var(--color-border-strong, var(--color-border)); color: var(--color-text); background: var(--color-surface); text-decoration: none; font-weight: 600; font-size: var(--text-sm); }
+.ob-link-button:hover { background: var(--color-surface-hover); }
+.ob-link-button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.ob-link-button--primary { background: var(--color-button-primary-bg, var(--color-primary)); color: var(--color-text-on-brand, #fff); border-color: transparent; }
+.ob-link-button--primary:hover { background: var(--color-button-primary-hover, var(--color-primary-strong)); }
+.ob-linkish { background: none; border: 0; padding: 0; color: var(--color-primary); text-decoration: underline; cursor: pointer; font: inherit; }
+
+/* Stepper */
+.ob-stepper { min-width: 0; }
+.ob-stepper__summary { margin: 0 0 var(--space-2); color: var(--color-text-muted); font-size: var(--text-sm); }
+.ob-stepper__list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ob-stepper__button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font-size: var(--text-sm); cursor: pointer; }
+.ob-stepper__button:disabled { color: var(--color-text-disabled, var(--color-text-muted)); cursor: not-allowed; }
+.ob-stepper__button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.ob-stepper__item.is-current .ob-stepper__button { border-color: var(--color-border-selected); font-weight: 700; background: var(--color-primary-soft, var(--color-surface-hover)); }
+.ob-stepper__num { font-size: var(--text-xs); font-weight: 700; }
+@media (max-width: 640px) {
+  /* On phones only the current step label is shown; the summary line gives the position. */
+  .ob-stepper__item:not(.is-current) .ob-stepper__button span:last-child { display: none; }
+}
+
+/* Provisioning progress */
+.ob-progress { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.ob-progress__item { border: 1px solid var(--color-border); border-left-width: 4px; border-radius: 10px; padding: var(--space-3); background: var(--color-surface); display: grid; gap: var(--space-2); }
+.ob-progress__item[aria-current="step"] { border-color: var(--color-border-selected); }
+.ob-progress__item--failed { border-left-color: var(--color-danger); }
+.ob-progress__item--complete { border-left-color: var(--color-success); }
+.ob-progress__item p { margin: 0; overflow-wrap: anywhere; }
+
+/* Resume list on the Projects page */
+.ob-resume { border: 1px dashed var(--color-border-strong, var(--color-border)); border-radius: 12px; padding: var(--space-4); margin-bottom: var(--space-4); display: grid; gap: var(--space-3); background: var(--color-surface-muted); }
+.ob-resume__title { margin: 0; font-size: var(--text-md); color: var(--color-text-heading); }
+.ob-resume__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.ob-resume__item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3); border: 1px dashed var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text); text-decoration: none; }
+.ob-resume__item:hover, .ob-resume__item:focus-visible { border-color: var(--color-border-selected); }
+.ob-resume__cta { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--color-primary); font-weight: 600; }
+
+@media (min-width: 720px) {
+  .ob-form-grid { grid-template-columns: 1fr 1fr; }
+  .ob-form-grid__wide { grid-column: 1 / -1; }
+  .ob-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ob-choice-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ob-choice-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ob-deflist__row { grid-template-columns: minmax(140px, 220px) 1fr; gap: var(--space-3); }
+}

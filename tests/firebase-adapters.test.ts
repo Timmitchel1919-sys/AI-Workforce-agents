@@ -21,6 +21,7 @@ import {
   type StorageFileLike,
 } from "../adapters/index.js";
 import type { Entity } from "../contracts/index.js";
+import { InMemoryOperatorAccountStore } from "../core/index.js";
 
 /* ---------- Firestore fake -------------------------------------------------- */
 
@@ -104,15 +105,59 @@ class FakeAuth implements FirebaseAuthLike {
   }
 }
 
-test("operator-directory: maps verified claims to a principal", async () => {
+test("operator-directory: only an ACTIVE operator account authorizes (AUTHZ-1)", async () => {
+  const accounts = new InMemoryOperatorAccountStore();
+  const T = "2026-09-24T00:00:00.000Z";
+  const base = {
+    emailVerified: true,
+    requestedAt: T,
+    updatedAt: T,
+    revision: 1,
+  };
+  await accounts.commit({
+    kind: "create_pending",
+    account: {
+      ...base,
+      id: "u1",
+      status: "active",
+      role: "operator",
+      allowedProjects: ["aims"],
+    },
+  });
+  await accounts.commit({
+    kind: "create_pending",
+    account: {
+      ...base,
+      id: "u2",
+      status: "active",
+      role: "admin",
+      allowedProjects: "*",
+    },
+  });
+  await accounts.commit({
+    kind: "create_pending",
+    account: { ...base, id: "u3", status: "pending", allowedProjects: [] },
+  });
+  await accounts.commit({
+    kind: "create_pending",
+    account: {
+      ...base,
+      id: "u4",
+      status: "suspended",
+      role: "admin",
+      allowedProjects: "*",
+    },
+  });
   const dir = new FirebaseOperatorDirectory(
     new FakeAuth({
-      "tok-op": { uid: "u1", role: "operator", allowedProjects: ["aims"] },
-      "tok-admin": { uid: "u2", role: "admin", allowedProjects: "*" },
-      "tok-badrole": { uid: "u3", role: "superuser", allowedProjects: "*" },
-      "tok-noproj": { uid: "u4", role: "viewer" },
-      "tok-badproj": { uid: "u5", role: "viewer", allowedProjects: [1, 2] },
+      "tok-op": { uid: "u1", email: "op@example.test", email_verified: true },
+      "tok-admin": { uid: "u2" },
+      "tok-pending": { uid: "u3" },
+      "tok-suspended": { uid: "u4" },
+      // A role CLAIM without an account grants nothing (claims are not authority).
+      "tok-claim-only": { uid: "u5", role: "admin", allowedProjects: "*" },
     }),
+    accounts,
   );
 
   assert.deepEqual(await dir.resolve("tok-op"), {
@@ -125,11 +170,19 @@ test("operator-directory: maps verified claims to a principal", async () => {
     role: "admin",
     allowedProjects: "*",
   });
-  assert.equal(await dir.resolve("tok-badrole"), null);
-  assert.equal(await dir.resolve("tok-noproj"), null);
-  assert.equal(await dir.resolve("tok-badproj"), null);
+  assert.equal(await dir.resolve("tok-pending"), null);
+  assert.equal(await dir.resolve("tok-suspended"), null);
+  assert.equal(await dir.resolve("tok-claim-only"), null);
   assert.equal(await dir.resolve("unknown-token"), null);
   assert.equal(await dir.resolve(""), null);
+
+  // Authentication alone still yields an identity (for /me/access).
+  assert.deepEqual(await dir.verify("tok-op"), {
+    uid: "u1",
+    email: "op@example.test",
+    emailVerified: true,
+  });
+  assert.equal(await dir.verify("unknown-token"), null);
 });
 
 /* ---------- Event publisher --------------------------------------------- */

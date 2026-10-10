@@ -1,0 +1,1 @@
+export const SOFTWARE_FACTORY_SCHEMA_VERSION = 1;

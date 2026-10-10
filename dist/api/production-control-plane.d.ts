@@ -1,6 +1,6 @@
 import { type FirebaseServices } from "../adapters/firebase/index.js";
 import { WorkforceCommandService, WorkforceQueryService, type ControlPlaneContext } from "../control/index.js";
-import { EnvironmentDetector, OperationalDataSystem } from "../core/index.js";
+import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, SpecialistHandoffService, InMemoryAssignmentRepository, SpecialistAssignmentService, WriteScopeLeaseManager, OperationalDataSystem, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { type ApiHandler } from "./http-api.js";
 import { type ProductionWorkforceBootstrap, type ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
@@ -12,6 +12,47 @@ export interface ProductionControlPlaneRuntime {
     readonly bootstrap: ProductionWorkforceBootstrap;
     readonly query: WorkforceQueryService;
     readonly command: WorkforceCommandService;
+    /**
+     * The FULL release services. The control-plane context exposes only their read views; the
+     * trusted host (and tests) hold the whole thing. No HTTP route reaches the mutating methods.
+     */
+    /**
+     * The FULL specialist workforce services, including the MUTATING methods.
+     * The control-plane context exposes only read views; no HTTP route can
+     * create an assignment, take a write lease, or accept a handoff. Only the
+     * trusted host (and tests) can, which is what keeps "assigned" a decision
+     * rather than a side effect of a read.
+     */
+    readonly specialist: {
+        readonly assignments: SpecialistAssignmentService;
+        readonly assignmentRepository: InMemoryAssignmentRepository;
+        readonly handoffs: SpecialistHandoffService;
+        readonly writeLeases: WriteScopeLeaseManager;
+    };
+    readonly release: {
+        readonly verification: VerificationService;
+        readonly sourceControl: SourceControlOrchestrator;
+        readonly deployments: DeploymentOrchestrator;
+    };
+    /**
+     * The FULL EO-6.2/6.3 Cost Center + Governance services, including the model-provider registry a
+     * future real adapter registers with. The context exposes only read views and the admin-gated
+     * `set` writers (which self-authorize); no HTTP route can register a provider.
+     */
+    readonly costCenter: {
+        readonly modelProviders: ModelProviderRegistry;
+        readonly usage: UsageLedger;
+        readonly budgetPolicies: BudgetPolicyStore;
+        readonly enforcer: BudgetEnforcer;
+        readonly auditor: RuleAuditor;
+        readonly governancePolicies: GovernancePolicyStore;
+        readonly governanceEngine: GovernancePolicyEngine;
+    };
+    /** EO-7: the FULL Model Router services. The context exposes only read views. */
+    readonly routing: {
+        readonly modelCapabilities: ModelCapabilityRegistry;
+        readonly router: ModelRouter;
+    };
     /** Environment discovery orchestration (no live probes wired in EO-2A). */
     readonly environmentDetector: EnvironmentDetector;
     /** Operational facts/outcomes backing future readiness-gated analytics. */

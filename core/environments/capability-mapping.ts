@@ -7,12 +7,14 @@
  * installed toolchain alone never implies a build capability unless the
  * environment that uses it was detected.
  */
-import type {
-  CapabilityDeclaration,
-  CapabilityId,
-  DetectedEnvironment,
-  ToolchainDescriptor,
-  ToolchainKind,
+import {
+  versionAtLeast,
+  type CapabilityDeclaration,
+  type CapabilityId,
+  type DetectedEnvironment,
+  type ToolchainDescriptor,
+  type ToolchainKind,
+  type ToolchainRequirement,
 } from "../../contracts/index.js";
 
 export interface DeclaredFacts {
@@ -156,9 +158,78 @@ export function hasToolchain(
   return toolchains.some((t) => t.kind === kind);
 }
 
+/** Why a toolchain requirement is not met by a set of detected toolchains. */
+export interface ToolchainShortfall {
+  /** `kind` or `kind:component`. */
+  label: string;
+  reason:
+    | "missing_toolchain"
+    | "toolchain_version_too_low"
+    | "missing_toolchain_component"
+    | "toolchain_component_version_too_low";
+}
+
+/**
+ * Every unmet toolchain requirement, including minimum versions and named
+ * components. A requirement is met when ANY detected toolchain of that kind
+ * satisfies it completely; the reported shortfall is the closest candidate's.
+ */
+export function toolchainShortfalls(
+  requirements: readonly ToolchainRequirement[],
+  toolchains: readonly ToolchainDescriptor[],
+): ToolchainShortfall[] {
+  const shortfalls: ToolchainShortfall[] = [];
+  for (const requirement of requirements) {
+    const sameKind = toolchains.filter((t) => t.kind === requirement.kind);
+    if (sameKind.length === 0) {
+      shortfalls.push({ label: requirement.kind, reason: "missing_toolchain" });
+      continue;
+    }
+    const perCandidate = sameKind.map((t) => shortfallFor(requirement, t));
+    if (perCandidate.some((list) => list.length === 0)) continue;
+    perCandidate.sort((a, b) => a.length - b.length);
+    shortfalls.push(...perCandidate[0]!);
+  }
+  return shortfalls;
+}
+
+function shortfallFor(
+  requirement: ToolchainRequirement,
+  toolchain: ToolchainDescriptor,
+): ToolchainShortfall[] {
+  const out: ToolchainShortfall[] = [];
+  if (
+    requirement.minimum !== undefined &&
+    !versionAtLeast(toolchain.version, requirement.minimum)
+  ) {
+    out.push({
+      label: requirement.kind,
+      reason: "toolchain_version_too_low",
+    });
+  }
+  for (const component of requirement.components ?? []) {
+    const label = `${requirement.kind}:${component.name}`;
+    const detected = toolchain.componentVersions?.[component.name];
+    if (detected === undefined) {
+      out.push({ label, reason: "missing_toolchain_component" });
+    } else if (
+      component.minimum !== undefined &&
+      !versionAtLeast(detected, component.minimum)
+    ) {
+      out.push({ label, reason: "toolchain_component_version_too_low" });
+    }
+  }
+  return out;
+}
+
+/**
+ * True when every toolchain requirement — kind, minimum version and named
+ * components — is satisfied. (EO-2A checked `kind` only; the minimum version
+ * is enforced since EO-3.1.)
+ */
 export function satisfiesToolchainRequirements(
-  requirements: readonly { kind: ToolchainKind }[],
+  requirements: readonly ToolchainRequirement[],
   toolchains: readonly ToolchainDescriptor[],
 ): boolean {
-  return requirements.every((req) => hasToolchain(req.kind, toolchains));
+  return toolchainShortfalls(requirements, toolchains).length === 0;
 }

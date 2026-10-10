@@ -84,13 +84,6 @@ export default function WorkflowDetailPage() {
 
       <div className="task-detail-page">
         <div className="task-detail-header">
-          <div className="task-detail-header__nav">
-            <Link to="/workflows" className="task-detail-header__back-link">
-              <ArrowLeft size={16} aria-hidden />
-              <span>{t("workflows.backToWorkflows")}</span>
-            </Link>
-          </div>
-
           <div className="task-detail-header__main">
             <div className="task-detail-header__titles">
               <div className="task-detail-header__id-row">

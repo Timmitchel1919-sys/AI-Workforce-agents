@@ -1,0 +1,79 @@
+import { ShieldCheck } from "lucide-react";
+import PageContainer from "../../components/layout/PageContainer";
+import PageHeader from "../../components/layout/PageHeader";
+import { EmptyState, ErrorState, Spinner } from "../../components/ui";
+import { ProjectPicker } from "../../features/projectScope/ProjectPicker";
+import { projectScopeFailureKey, useActiveProject } from "../../features/projectScope/useActiveProject";
+import { useI18n } from "../../i18n";
+import "../Approvals/ApprovalsPage.css";
+import "../Projects/ExecutionPlan.css";
+import { GovernancePosture } from "./GovernancePosture";
+
+/**
+ * Governance for one project: the policy the Control Plane enforces, the
+ * approvals waiting for a decision, and the decisions it has recorded.
+ *
+ * Entirely read-only. Every value is what the Control Plane reported —
+ * `configured: false` means the capability is not composed on this deployment,
+ * which is never collapsed into "nothing is restricted".
+ */
+export default function GovernancePage(): import("react").JSX.Element {
+  const { t } = useI18n();
+  const { projectId, projects, status, failed, loading, refetch, select } = useActiveProject();
+
+  const picker = projectId ? (
+    <ProjectPicker projects={projects} value={projectId} onChange={select} />
+  ) : undefined;
+
+  const header = (
+    <PageHeader
+      eyebrow={t("common.brand")}
+      title={t("nav.governanceControls")}
+      description={t("governance.pageDescription")}
+      actions={picker}
+    />
+  );
+
+  if (loading) {
+    return (
+      <PageContainer variant="wide">
+        {header}
+        <Spinner />
+      </PageContainer>
+    );
+  }
+
+  if (failed) {
+    return (
+      <PageContainer variant="wide">
+        {header}
+        <ErrorState
+          title={t("governance.errorTitle")}
+          description={t(projectScopeFailureKey(status))}
+          onRetry={refetch}
+          retryLabel={t("common.retry")}
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!projectId) {
+    return (
+      <PageContainer variant="wide">
+        {header}
+        <EmptyState
+          icon={<ShieldCheck size={28} />}
+          title={t("projectScope.noProjects")}
+          description={t("projectScope.noProjectsDesc")}
+        />
+      </PageContainer>
+    );
+  }
+
+  return (
+    <PageContainer variant="wide">
+      {header}
+      <GovernancePosture projectId={projectId} />
+    </PageContainer>
+  );
+}

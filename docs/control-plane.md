@@ -194,6 +194,10 @@ Three roles, deny-by-default, no RBAC engine
 | `operator` | `view` + `approve` `reject` `cancel_task` `retry_task` `pause_workflow` `resume_workflow` `cancel_workflow` |
 | `admin`    | operator + `disable_agent` `enable_agent`                                                                   |
 
+Operators and admins also hold the EO-3.1 planning capabilities
+`create_execution_plan`, `replan_execution_plan` and `submit_execution_plan`
+(planning only — see [execution-planning.md](execution-planning.md)).
+
 Authorization is enforced **inside the services** from the `OperatorPrincipal`
 argument — `validateOperatorPrincipal` then `operatorCan` /
 `operatorCanAccessProject` on every query and command. The UI is **not** a trust
@@ -209,6 +213,13 @@ query filters to visible projects; every command re-checks
 another project's tasks, workflows, approvals, or audit events. This is the seam
 where a future auth layer supplies `identity + roles + project scopes`; it is not
 a full enterprise IAM.
+
+An approval whose metadata only names a task (orchestrator / tool approvals)
+inherits the task's project for visibility, so it never escapes project
+isolation. `GET /api/approvals?status=&projectId=&limit=&cursor=` returns a
+server-filtered, cursor-paginated `PageResult<ApprovalView>` (newest first);
+plan approvals carry `executionPlanId` + `planVersion` — the exact revision
+they gate. The Approvals and Audit log screens are built on these routes.
 
 ## 7. Audit
 
@@ -394,3 +405,16 @@ origin (`VITE_API_BASE_URL=`) and maps the live clients to the API routes
 
 For local tests, run `npm run functions:test`; these use a controlled runtime
 factory and never call OpenAI or a production Firebase service.
+
+## Infrastructure view (UI)
+
+The Control Center's **Infrastructure** module (`/infrastructure`,
+`/infrastructure/hosts`, `/infrastructure/tools`) is a read-only view over
+existing routes: `GET /api/environments/descriptors` (supported environment
+types), `GET /api/environments/instances` (detected installations),
+`GET /api/hosts` and `GET /api/tools`. Nothing is seeded or simulated: with no
+discovery running, hosts and installations are shown as empty.
+
+`GET /api/tools` is project-scoped per operator: a tool's `allowedProjects`
+only lists projects the caller may access (the `*` wildcard is kept), so the
+registry never reveals project ids outside the operator's scope.

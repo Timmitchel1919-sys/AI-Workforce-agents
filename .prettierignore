@@ -5,3 +5,10 @@ package-lock.json
 
 # The ui/ frontend has its own prettier config and format scripts.
 ui/
+
+# Local agent worktrees are separate checkouts.
+.claude/
+
+# Archived, unreferenced generator source with invalid JavaScript syntax.
+# It is deliberately excluded from executable source and formatting checks.
+scripts/gen_ext.js

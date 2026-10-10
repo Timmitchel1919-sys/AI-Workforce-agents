@@ -1,6 +1,6 @@
 /** Bounded, read-only production executor for Control Plane analysis tasks. */
-import { DEFAULT_AGENT_LIMITS, AgentExecutionError, ProviderTimeoutError, ProviderUnavailableError, ValidationError, } from "../../contracts/index.js";
-import { GeneralAgent } from "../../core/index.js";
+import { estimateCost, DEFAULT_AGENT_LIMITS, AgentExecutionError, ProviderTimeoutError, ProviderUnavailableError, ValidationError, } from "../../contracts/index.js";
+import { GeneralAgent, } from "../../core/index.js";
 import { OpenAIModelProvider } from "../../adapters/models/openai-model-provider.js";
 export const CONTROL_PLANE_ANALYSIS_AGENT_ID = "control-plane-analysis-agent";
 export const CONTROL_PLANE_ANALYSIS_TASK_TYPE = "control-plane-analysis";
@@ -82,9 +82,33 @@ export class OpenAIAgentExecutor extends GeneralAgent {
         ]
             .filter(Boolean)
             .join("\n\n");
+        // EO-7: route BEFORE ever calling the provider. A denied/unavailable/unknown outcome must
+        // refuse the call, never fall through to it — SELECTED != EXECUTED, but nothing executes
+        // without first being selected.
+        let routingDecisionId;
+        let requestedModel;
+        if (this.options.router) {
+            const routing = await this.options.router.routeInternal({
+                projectId: task.projectId,
+                agentId: this.agentId,
+                agent,
+                requirement: {
+                    requiredCapabilities: ["reasoning", "structured_output"],
+                },
+                requestId: task.id,
+                taskId: task.id,
+            });
+            routingDecisionId = routing.routingDecisionId;
+            requestedModel = routing.selectedModel;
+            if (!routing.selectedProvider) {
+                throw this.fail("model_unavailable", routing.policyDecision?.detail ??
+                    "no qualified model is available for this task", { routingDecisionId, reasonCodes: routing.reasonCodes });
+            }
+        }
         run.activity("model_call", {
             provider: this.options.provider.id,
             taskType: task.type,
+            ...(routingDecisionId ? { routingDecisionId } : {}),
         });
         try {
             const response = await this.options.provider.generateStructured({
@@ -100,6 +124,22 @@ export class OpenAIAgentExecutor extends GeneralAgent {
                     projectId: task.projectId,
                 },
             });
+            if (this.options.usageLedger) {
+                // Recorded from what the provider ACTUALLY reported, regardless of whether the structured
+                // output later fails validation below — a real call was billed either way.
+                await this.options.usageLedger.record({
+                    projectId: task.projectId,
+                    taskId: task.id,
+                    agentId: this.agentId,
+                    provider: this.options.provider.id,
+                    model: response.model,
+                    inputTokens: response.usage?.inputTokens,
+                    outputTokens: response.usage?.outputTokens,
+                    totalTokens: response.usage?.totalTokens,
+                    cost: estimateCost(response.model, response.usage),
+                    idempotencyKey: task.id,
+                });
+            }
             const parsed = parseJson(response.content);
             const result = {
                 taskId: task.id,
@@ -113,11 +153,21 @@ export class OpenAIAgentExecutor extends GeneralAgent {
                 metadata: {
                     provider: this.options.provider.id,
                     model: response.model,
+                    ...(requestedModel ? { requestedModel } : {}),
+                    ...(routingDecisionId ? { routingDecisionId } : {}),
                     ...(response.usage ? { usage: response.usage } : {}),
                     counters: run.counters,
                 },
             };
             this.validateOutput(result);
+            if (requestedModel && requestedModel !== response.model) {
+                // REQUESTED MODEL != ACTUAL MODEL — a real, auditable mismatch, never silently absorbed.
+                run.activity("model_mismatch", {
+                    requestedModel,
+                    actualModel: response.model,
+                    routingDecisionId,
+                });
+            }
             run.activity("model_result", {
                 provider: this.options.provider.id,
                 model: response.model,
@@ -145,14 +195,20 @@ export class OpenAIAgentExecutor extends GeneralAgent {
  * first execution: importing the composition declaration never reads a secret,
  * while an attempted model execution still fails closed when configuration is
  * absent.
+ *
+ * `governance` is optional and additive (EO-7): supplying it routes every
+ * call through the Model Router and records real usage into the Cost
+ * Center; omitting it preserves the exact prior, unrouted behavior.
  */
-export function createProductionOpenAIAgentExecutor(audit) {
+export function createProductionOpenAIAgentExecutor(audit, governance) {
     return new OpenAIAgentExecutor({
         provider: new LazyOpenAIModelProvider(),
         audit,
+        router: governance?.router,
+        usageLedger: governance?.usageLedger,
     });
 }
-class LazyOpenAIModelProvider {
+export class LazyOpenAIModelProvider {
     id = "openai";
     provider;
     async generate(request) {

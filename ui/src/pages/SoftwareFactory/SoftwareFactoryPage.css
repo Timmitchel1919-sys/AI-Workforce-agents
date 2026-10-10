@@ -1,0 +1,170 @@
+/* Software Factory (EO-5.1) — program list + program detail. Theme tokens only. */
+
+.sf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.sf-actions .ui-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.sf-program-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.sf-program-card .gov-card__head {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sf-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: auto;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sf-card__cta:hover,
+.sf-card__cta:focus-visible {
+  color: var(--color-focus);
+  text-decoration: underline;
+}
+
+.sf-detail {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sf-ws-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.sf-task-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sf-task-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+}
+
+.sf-task-row__desc {
+  flex: 1 1 14rem;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.sf-route-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sf-route-badge code {
+  color: inherit;
+  font-size: var(--text-xs);
+}
+
+.sf-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Task DAG — dependency-free SVG; status accent via the --accent custom prop. */
+.sf-dag-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface-muted);
+}
+
+.sf-dag {
+  display: block;
+}
+
+.sf-dag__edge {
+  fill: none;
+  stroke: var(--color-border-selected);
+  stroke-width: 1.5;
+}
+
+.sf-dag__arrow {
+  fill: var(--color-border-selected);
+}
+
+.sf-dag-node__frame {
+  fill: var(--color-surface);
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+}
+
+.sf-dag-node--completed {
+  --accent: var(--color-success);
+}
+
+.sf-dag-node--queued,
+.sf-dag-node--running {
+  --accent: var(--color-info);
+}
+
+.sf-dag-node--blocked,
+.sf-dag-node--awaiting_approval {
+  --accent: var(--color-warning);
+}
+
+.sf-dag-node--failed,
+.sf-dag-node--cancelled {
+  --accent: var(--color-danger);
+}
+
+.sf-dag-node--created {
+  --accent: var(--color-text-secondary);
+}
+
+.sf-dag-node__stripe {
+  fill: var(--accent);
+}
+
+.sf-dag-node__dot {
+  fill: var(--accent);
+}
+
+.sf-dag-node__id {
+  fill: var(--color-text-heading);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sf-dag-node__status {
+  fill: var(--color-text-secondary);
+  font-size: 11px;
+}

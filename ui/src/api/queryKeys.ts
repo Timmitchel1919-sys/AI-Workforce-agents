@@ -18,4 +18,6 @@ export const queryKeys = {
   tools: () => [...queryKeys.all, "tools"] as const,
 
   health: () => [...queryKeys.all, "health"] as const,
+
+  softwareFactory: () => [...queryKeys.all, "software-factory"] as const,
 };

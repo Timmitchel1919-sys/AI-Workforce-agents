@@ -18,9 +18,11 @@
  *        CORE  →  Security  →  Audit / State
  */
 import { type Entity, type Repository } from "./index.js";
+import type { CredentialReference, DeploymentRequirement, ExecutionPlan, PlanApprovalState, PlanStatus } from "./planning.js";
+import type { AgentAdministrativeStatus, AgentInstanceState, AgentRiskLevel } from "./workforce.js";
 export declare const OPERATOR_ROLES: readonly ["viewer", "operator", "admin"];
 export type OperatorRole = (typeof OPERATOR_ROLES)[number];
-export declare const CONTROL_CAPABILITIES: readonly ["view", "approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent"];
+export declare const CONTROL_CAPABILITIES: readonly ["view", "approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent", "create_execution_plan", "replan_execution_plan", "submit_execution_plan", "manage_access", "prepare_execution", "cancel_execution", "kill_execution", "review_change", "commit_source", "push_source", "deploy_release", "rollback_release", "plan_from_objective", "create_program", "create_workstream", "add_task_to_workstream", "tick_software_factory", "create_project", "manage_budget_policy", "manage_governance_policy"];
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export declare const ROLE_CAPABILITIES: Record<OperatorRole, readonly ControlCapability[]>;
@@ -39,7 +41,7 @@ export interface OperatorPrincipal {
 export declare function validateOperatorPrincipal(principal: OperatorPrincipal): void;
 export declare function operatorCan(principal: OperatorPrincipal, capability: ControlCapability): boolean;
 export declare function operatorCanAccessProject(principal: OperatorPrincipal, projectId: string): boolean;
-export declare const CONTROL_COMMANDS: readonly ["approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent"];
+export declare const CONTROL_COMMANDS: readonly ["approve", "reject", "cancel_task", "retry_task", "pause_workflow", "resume_workflow", "cancel_workflow", "disable_agent", "enable_agent", "create_execution_plan", "replan_execution_plan", "submit_execution_plan", "cancel_execution", "kill_execution", "approve_access", "reject_access", "suspend_access", "reactivate_access", "revoke_access", "change_operator_role", "plan_from_objective", "create_program", "create_workstream", "add_task_to_workstream", "tick_software_factory", "onboarding_create", "onboarding_update", "onboarding_analyze", "onboarding_plan", "onboarding_approve_plan", "onboarding_provision", "onboarding_revalidate", "onboarding_cancel", "set_budget_policy", "set_governance_policy", "evaluate_governance"];
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 /**
  * `executed` — the command ran and changed state.
@@ -93,10 +95,22 @@ export type ApprovalRiskLevel = (typeof APPROVAL_RISK_LEVELS)[number];
 /**
  * Control-plane-owned operational flag for an agent. The `AgentRegistry`
  * definition is never mutated; this lives alongside it.
+ *
+ * EO-8: `projectId` is `undefined` for the GLOBAL record (`id === agentId`,
+ * the only kind that existed before this layer) and set for a PROJECT-SCOPED
+ * override (`id === "${agentId}\u0000${projectId}"`). Most-specific-wins: a
+ * project-scoped record, when one exists for the project in question,
+ * decides `enabled` on its own — it can disable an agent for one project
+ * while the agent stays enabled everywhere else, or keep an agent enabled
+ * for one project while it is disabled everywhere else. Only the SAME
+ * admin-only capability (`disable_agent`/`enable_agent`) can set either kind
+ * of record, so this is an operational scoping tool, not a privilege
+ * boundary (see `AgentOperationalStore.isEnabled`).
  */
 export interface AgentOperationalRecord {
     id: string;
     agentId: string;
+    projectId?: string;
     enabled: boolean;
     disabledBy?: string;
     disabledReason?: string;
@@ -157,6 +171,78 @@ export interface AgentView {
     allowedProjects: readonly string[];
     lastActivityAt?: string;
     stats: AgentStats;
+    /**
+     * Present only when this agent has a full specialist descriptor. Its absence
+     * is meaningful: it means "this is a legacy flat agent with no qualification
+     * profile", NOT "this agent has no policies".
+     */
+    specialist?: SpecialistAgentSummary;
+}
+/**
+ * The authoritative, read-only projection of one specialist descriptor.
+ *
+ * Everything the Control Center shows about a specialist comes from here, so
+ * the UI can never present a name and a role as if they were a qualification.
+ * The distinction it preserves:
+ *
+ *   ADMINISTRATIVE  is the agent allowed to receive NEW work at all.
+ *   OPERATIONAL     is what it is doing right now.
+ *   QUALIFIED       is per-task evidence, carried on the assignment — never a
+ *                   property of the agent, and therefore NOT a field here.
+ */
+export interface SpecialistAgentSummary {
+    readonly descriptorVersion: number;
+    readonly displayName: string;
+    readonly department: string;
+    readonly description: string;
+    /** Stated in prose, verbatim. Shown so a reader learns what it cannot do. */
+    readonly limitations: readonly string[];
+    readonly administrativeStatus: AgentAdministrativeStatus;
+    readonly operationalState: AgentInstanceState;
+    readonly supportedTaskTypes: readonly string[];
+    readonly projectPolicy: {
+        readonly mode: "allow_list";
+        readonly projects: readonly string[];
+    };
+    readonly toolPolicy: {
+        readonly maxExecutionCapabilities: readonly string[];
+        readonly deniedExecutionCapabilities: readonly string[];
+        readonly allowsUnrestrictedShell: boolean;
+    };
+    readonly riskCeiling: AgentRiskLevel;
+    readonly reviewPolicy: {
+        readonly requiresIndependentReview: boolean;
+        readonly minimumReviewers: number;
+        readonly selfReviewAllowed: false;
+    };
+    readonly modelPolicy: {
+        readonly provider: string;
+        readonly model?: string;
+    };
+    readonly instanceCount: number;
+    readonly currentAssignmentId?: string;
+    readonly currentTaskId?: string;
+}
+/** One assignment, projected for the Control Center. */
+export interface AssignmentView {
+    readonly assignmentId: string;
+    readonly projectId: string;
+    readonly taskId: string;
+    readonly agentId: string;
+    readonly descriptorVersion: number;
+    readonly status: string;
+    readonly assignedAt: string;
+    readonly assignedBy: string;
+    readonly replacesAssignmentId?: string;
+    readonly failureReason?: string;
+    /** The evidence that justified this assignment, verbatim. */
+    readonly qualification: {
+        readonly qualified: boolean;
+        readonly matchedCapabilities: readonly string[];
+        readonly missingCapabilities: readonly string[];
+        readonly consideredLimitations: readonly string[];
+        readonly evaluatedAt: string;
+    };
 }
 export interface TaskView {
     taskId: string;
@@ -255,15 +341,35 @@ export interface ApprovalView {
     toolId?: string;
     agentId?: string;
     projectId?: string;
+    /** Set when the approval gates an execution plan revision (EO-3.x). */
+    executionPlanId?: string;
+    planVersion?: number;
     requestedAt: string;
     expiresAt?: string;
     decidedBy?: string;
     decidedAt?: string;
 }
+/** `GET /api/approvals` — newest first, server-filtered and paginated. */
+export interface ApprovalQuery {
+    status?: string;
+    projectId?: string;
+    limit?: number;
+    cursor?: string;
+}
 export interface ProjectCapabilityView {
     operation: string;
     description: string;
     action: string;
+}
+/**
+ * A project's repository REFERENCE: identity only. It never carries a
+ * credential — repository access is a separate, server-side integration
+ * concern (a private repository stays private).
+ */
+export interface ProjectRepositoryRef {
+    /** https URL without userinfo, query or fragment. */
+    url: string;
+    defaultBranch: string;
 }
 export interface ProjectView {
     projectId: string;
@@ -275,6 +381,8 @@ export interface ProjectView {
     activeWorkflows: number;
     recentTaskIds: readonly string[];
     recentActivity: readonly AuditEventView[];
+    /** Present only when the registration declares a valid, credential-free reference. */
+    repository?: ProjectRepositoryRef;
 }
 export interface ToolExecutionStats {
     total: number;
@@ -419,5 +527,80 @@ export interface WorkflowCommandInput {
 export interface AgentCommandInput {
     agentId: string;
     reason?: string;
+    /** EO-8: when supplied, scopes enable/disable to this project only (most-specific-wins). Omitted = the global record, unchanged from before this layer. */
+    projectId?: string;
+}
+/** The body IS the planning request; it is validated and normalized server-side. */
+export type CreateExecutionPlanCommandInput = Record<string, unknown>;
+/** AUTHZ-1 access administration. `operatorId` is the Firebase UID. */
+export interface AccessCommandInput {
+    operatorId: string;
+    /** Required for approve / change role; one of the existing roles. */
+    role?: string;
+    /** `"*"` or registered project ids; defaults to the current value. */
+    allowedProjects?: unknown;
+    reason?: string;
+}
+/** `cancel-execution` / `kill-execution`: references the session only. */
+export interface ExecutionCancelCommandInput {
+    sessionId: string;
+    reason: string;
+}
+export interface ExecutionPlanCommandInput {
+    /** Plan SERIES id — the command acts on its current (latest) version. */
+    planId: string;
+    /**
+     * The version the operator reviewed. When given and the series has moved
+     * on (e.g. V2 superseded V1), the command is refused with 409 instead of
+     * silently acting on the newer version.
+     */
+    expectedVersion?: number;
+}
+export interface ExecutionPlanSummaryView {
+    id: string;
+    planId: string;
+    version: number;
+    projectId: string;
+    title: string;
+    status: PlanStatus;
+    /** True for the highest version of its series. */
+    current: boolean;
+    blockerCodes: readonly string[];
+    environmentCount: number;
+    approvalState: PlanApprovalState["state"];
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+    supersededBy?: string;
+}
+/**
+ * The full plan for an authorized operator. Credential references are reduced
+ * to their kind — the reference itself stays server-side — and nothing
+ * executable is exposed (`execution.available` is always false in EO-3.1).
+ */
+export interface ExecutionPlanView extends Omit<ExecutionPlan, "deployment"> {
+    current: boolean;
+    deployment: readonly (Omit<DeploymentRequirement, "credentialRef"> & {
+        credentialRef?: {
+            kind: CredentialReference["kind"];
+        };
+    })[];
+    execution: {
+        available: false;
+        reason: string;
+    };
+}
+export interface ExecutionPlanQuery {
+    limit?: number;
+    cursor?: string;
+    /** Restrict to one plan series (its version history). Server-side filter. */
+    planId?: string;
+}
+/** A technology the planner knows (read-only catalog for request forms). */
+export interface TechnologyCatalogEntryView {
+    id: string;
+    label: string;
+    componentKinds: readonly string[];
+    platforms: readonly string[];
 }
 export declare function requireId(value: unknown, field: string): string;

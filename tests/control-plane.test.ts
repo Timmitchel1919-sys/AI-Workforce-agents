@@ -322,6 +322,7 @@ test("query: workflow progress comes from real task records", async () => {
   const h = harness();
   const wf = h.workflows.create({
     name: "Ship it",
+    organizationId: "org_money_mind",
     description: "two-step",
     projectId: PROJECT,
     participatingAgents: ["research-agent", "qa-agent"],
@@ -401,6 +402,15 @@ test("query: tools view exposes policy metadata but no credentials", async () =>
   assert.equal(runTests.requiredPermission, "execute");
   assert.deepEqual(runTests.allowedAgents, ["qa-agent"]);
   assert.ok(!JSON.stringify(tools).toLowerCase().includes("apikey"));
+});
+
+test("query: tools view never reveals project ids outside the operator's scope", async () => {
+  const h = harness();
+  const all = h.query.getTools(VIEWER);
+  assert.ok(all.some((t) => t.allowedProjects.includes(PROJECT)));
+  const scoped = h.query.getTools(SCOPED);
+  assert.equal(scoped.length, all.length);
+  assert.ok(scoped.every((t) => !t.allowedProjects.includes(PROJECT)));
 });
 
 test("query: audit events filter + paginate + redact", async () => {
@@ -548,6 +558,7 @@ test("command: pause / resume / cancel workflow", async () => {
   const mkWf = () =>
     h.workflows.create({
       name: "wf",
+      organizationId: "org_money_mind",
       description: "d",
       projectId: PROJECT,
       participatingAgents: ["qa-agent"],
@@ -677,6 +688,7 @@ test("state: invalid approve / retry / cancel / pause / resume are rejected", as
 
   const wf = h.workflows.create({
     name: "term",
+    organizationId: "org_money_mind",
     description: "d",
     projectId: PROJECT,
     participatingAgents: ["qa-agent"],

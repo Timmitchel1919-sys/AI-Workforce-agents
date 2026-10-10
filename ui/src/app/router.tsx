@@ -4,7 +4,8 @@ import { createBrowserRouter } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n, type MessageKey } from "../i18n";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding } from "./routeModules";
+import RouteError from "./RouteError";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -28,6 +29,30 @@ const WorkflowsPage = fromChunk(loadControlCenterRoutes, "WorkflowsPage");
 const WorkflowDetailPage = fromChunk(loadControlCenterRoutes, "WorkflowDetailPage");
 const DesignSystemPage = fromChunk(loadControlCenterRoutes, "DesignSystemPage");
 const SettingsPage = fromChunk(loadControlCenterRoutes, "SettingsPage");
+const ProfilePage = fromChunk(loadControlCenterRoutes, "ProfilePage");
+const InfrastructurePage = fromChunk(loadControlCenterRoutes, "InfrastructurePage");
+const SoftwareFactoryPage = fromChunk(loadControlCenterRoutes, "SoftwareFactoryPage");
+const SoftwareFactoryProgramPage = fromChunk(loadControlCenterRoutes, "SoftwareFactoryProgramPage");
+const UsersAccessPage = fromChunk(loadControlCenterRoutes, "UsersAccessPage");
+const ApprovalsPage = fromChunk(loadControlCenterRoutes, "ApprovalsPage");
+const AuditLogPage = fromChunk(loadControlCenterRoutes, "AuditLogPage");
+const ProjectsPage = fromChunk(loadControlCenterRoutes, "ProjectsPage");
+const ProjectDetailPage = fromChunk(loadControlCenterRoutes, "ProjectDetailPage");
+const SpatialGraphPage = fromChunk(loadControlCenterRoutes, "SpatialGraphPage");
+const GovernancePage = fromChunk(loadControlCenterRoutes, "GovernancePage");
+const CostCenterPage = fromChunk(loadControlCenterRoutes, "CostCenterPage");
+const IntelligencePage = fromChunk(loadControlCenterRoutes, "IntelligencePage");
+const IntegrationsPage = fromChunk(loadControlCenterRoutes, "IntegrationsPage");
+const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
+const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
+const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
+const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
+const BillingPortalPage = fromChunk(loadControlCenterRoutes, "BillingPortalPage");
+const PlatformAdminPage = fromChunk(loadControlCenterRoutes, "PlatformAdminPage");
+const CommercialAdminPage = fromChunk(loadControlCenterRoutes, "CommercialAdminPage");
+const CustomerProfilePage = fromChunk(loadControlCenterRoutes, "CustomerProfilePage");
+const IncidentsPage = fromChunk(loadControlCenterRoutes, "IncidentsPage");
+const SsoSettingsPage = fromChunk(loadControlCenterRoutes, "SsoSettingsPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -58,7 +83,16 @@ function PlaceholderPage({ titleKey }: { titleKey: MessageKey }) {
   );
 }
 
-export const router = createBrowserRouter([
+/** Every page gets the in-app error state (the shell stays usable). */
+function withErrorElements<T extends { errorElement?: ReactNode; children?: T[] }>(routes: T[]): T[] {
+  return routes.map((route) => ({
+    ...route,
+    errorElement: route.errorElement ?? <RouteError />,
+    ...(route.children ? { children: withErrorElements(route.children) } : {}),
+  }));
+}
+
+export const router = createBrowserRouter(withErrorElements([
   {
     // Public landing experience; the Control Center lives under the AppShell routes below.
     path: "/",
@@ -86,12 +120,44 @@ export const router = createBrowserRouter([
       { path: "tasks/:taskId", element: withSuspense(<TaskDetailPage />) },
       { path: "workflows", element: withSuspense(<WorkflowsPage />) },
       { path: "workflows/:workflowId", element: withSuspense(<WorkflowDetailPage />) },
-      { path: "projects", element: <PlaceholderPage titleKey="nav.projects" /> },
-      { path: "approvals", element: <PlaceholderPage titleKey="nav.approvals" /> },
-      { path: "audit-log", element: <PlaceholderPage titleKey="nav.auditLog" /> },
+      { path: "graph", element: withSuspense(<SpatialGraphPage />) },
+      { path: "projects", element: withSuspense(<ProjectsPage />) },
+      { path: "projects/new", element: withSuspense(<NewProjectPage />) },
+      { path: "projects/onboarding/:onboardingId", element: withSuspense(<OnboardingPage />) },
+      { path: "projects/:projectId", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/operations", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/operations/:sessionId", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/cost", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/model-routing", element: withSuspense(<ProjectDetailPage />) },
+      { path: "projects/:projectId/model-routing/:routingDecisionId", element: withSuspense(<ProjectDetailPage />) },
+      {
+        path: "projects/:projectId/execution-plan",
+        element: withSuspense(<ProjectDetailPage />),
+      },
+      { path: "approvals", element: withSuspense(<ApprovalsPage />) },
+      { path: "audit-log", element: withSuspense(<AuditLogPage />) },
+      { path: "governance", element: withSuspense(<GovernancePage />) },
+      { path: "cost", element: withSuspense(<CostCenterPage />) },
+      { path: "intelligence", element: withSuspense(<IntelligencePage />) },
+      { path: "integrations", element: withSuspense(<IntegrationsPage />) },
+      { path: "infrastructure", element: withSuspense(<InfrastructurePage />) },
+      { path: "infrastructure/hosts", element: withSuspense(<InfrastructurePage />) },
+      { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },
+      { path: "software-factory", element: withSuspense(<SoftwareFactoryPage />) },
+      { path: "software-factory/:projectId/:programId", element: withSuspense(<SoftwareFactoryProgramPage />) },
       { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
+      { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
+      { path: "settings/access", element: withSuspense(<UsersAccessPage />) },
       { path: "design-system", element: withSuspense(<DesignSystemPage />) },
+      { path: "extensions", element: withSuspense(<ExtensionsPage />) },
+      { path: "organizations", element: withSuspense(<OrganizationPage />) },
+      { path: "billing", element: withSuspense(<BillingPortalPage />) },
+      { path: "sso-settings", element: withSuspense(<SsoSettingsPage />) },
+      { path: "admin", element: withSuspense(<PlatformAdminPage />) },
+      { path: "commercial-admin", element: withSuspense(<CommercialAdminPage />) },
+      { path: "customer-operations", element: withSuspense(<CustomerProfilePage />) },
+      { path: "incidents", element: withSuspense(<IncidentsPage />) },
     ],
   },
-]);
+]));

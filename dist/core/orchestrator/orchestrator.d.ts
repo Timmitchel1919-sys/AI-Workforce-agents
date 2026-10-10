@@ -1,4 +1,4 @@
-import { type Agent, type AgentExecutor, type Approval, type ApprovalPolicy, type Environment, type Handoff, type HandoffDraft, type Task, type TaskDraft } from "../../contracts/index.js";
+import { type Agent, type AgentExecutor, type AgentExecutionContext, type Approval, type ApprovalPolicy, type Environment, type Handoff, type HandoffDraft, type Task, type TaskDraft } from "../../contracts/index.js";
 import { ApprovalSystem } from "../approvals/approval-system.js";
 import { AuditLog } from "../audit/audit-log.js";
 import { HandoffSystem } from "../handoffs/handoff-system.js";
@@ -47,7 +47,7 @@ export declare class Orchestrator {
     private readonly environment;
     private readonly agentGate;
     constructor(registry: AgentRegistry, tasks: TaskSystem, handoffs: HandoffSystem, audit: AuditLog, executor: AgentExecutor, approvals?: ApprovalSystem, options?: OrchestratorOptions);
-    submit(draft: TaskDraft): Promise<Task>;
+    submit(draft: TaskDraft, executionContext?: AgentExecutionContext): Promise<Task>;
     /**
      * Record a human decision on the approval blocking a task. This is NOT
      * auto-approval — the caller supplies the decision.

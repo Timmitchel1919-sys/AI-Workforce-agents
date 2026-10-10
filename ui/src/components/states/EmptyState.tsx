@@ -7,6 +7,12 @@ export interface EmptyStateProps {
   description?: ReactNode;
   primaryAction?: ReactNode;
   secondaryAction?: ReactNode;
+  /**
+   * A caveat that qualifies the state itself, e.g. "this is sample data".
+   * Kept visually separate from the description so a caveat can never be read
+   * as the primary message, and so it can be worded per case.
+   */
+  secondaryMessage?: ReactNode;
   icon?: ReactNode;
 }
 
@@ -15,6 +21,7 @@ export function EmptyState({
   description,
   primaryAction,
   secondaryAction,
+  secondaryMessage,
   icon,
 }: EmptyStateProps) {
   const headingId = 'empty-state-title';
@@ -30,6 +37,7 @@ export function EmptyState({
           {title}
         </h3>
         {description ? <p className="state__description">{description}</p> : null}
+        {secondaryMessage ? <p className="state__secondary-message">{secondaryMessage}</p> : null}
       </div>
 
       {(primaryAction || secondaryAction) ? (

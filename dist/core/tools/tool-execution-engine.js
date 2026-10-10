@@ -128,6 +128,9 @@ export class ToolExecutionEngine {
                     taskId: request.taskId,
                     requestId: request.requestId,
                     toolId: tool.id,
+                    // Stamped so the approval is attributable to a project even if its task is not in the
+                    // task store — a project-scoped operator must be able to decide it.
+                    projectId: request.projectId,
                 },
             });
             this.audit.record("approval_requested", {

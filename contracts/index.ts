@@ -7,6 +7,7 @@
  * enters the system through the interfaces declared here and is implemented
  * under `adapters/`.
  */
+import { SOFTWARE_FACTORY_ENVIRONMENT_CODES } from "./environment-routing.js";
 
 /* ------------------------------------------------------------------ */
 /* Shared primitives                                                  */
@@ -85,6 +86,8 @@ export interface ModelPolicy {
  */
 export interface Agent {
   id: string;
+  organizationId?: string;
+  workspaceId?: string;
   name: string;
   description: string;
   capabilities: readonly string[];
@@ -131,6 +134,18 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   metadata: Record<string, unknown>;
+  // EO-5.1 Orchestration extensions
+  programId?: string;
+  workstreamId?: string;
+  objective?: string;
+  requirements?: readonly string[];
+  dependencies?: readonly string[];
+  requiredCapabilities?: readonly string[];
+  environmentRequirements?: readonly string[];
+  modelRequirements?: Record<string, unknown>;
+  completionCriteria?: readonly string[];
+  riskClass?: string;
+  executionContext?: AgentExecutionContext;
 }
 
 export interface TaskDraft {
@@ -141,6 +156,18 @@ export interface TaskDraft {
   priority?: Priority;
   requiredPermissions?: readonly RequiredPermission[];
   metadata?: Record<string, unknown>;
+  // EO-5.1 Orchestration extensions
+  programId?: string;
+  workstreamId?: string;
+  objective?: string;
+  requirements?: readonly string[];
+  dependencies?: readonly string[];
+  requiredCapabilities?: readonly string[];
+  environmentRequirements?: readonly string[];
+  modelRequirements?: Record<string, unknown>;
+  completionCriteria?: readonly string[];
+  riskClass?: string;
+  executionContext?: AgentExecutionContext;
 }
 
 /* ------------------------------------------------------------------ */
@@ -152,6 +179,13 @@ export type HandoffStatus = "proposed" | "accepted" | "rejected";
 export interface Handoff {
   id: string;
   taskId: string;
+  /**
+   * The project that OWNS this work. Required for a specialist handoff: a
+   * handoff must never carry work across a project boundary, because the
+   * destination agent is scoped by an allow-list and the source's context may
+   * contain another project's data.
+   */
+  projectId?: string;
   sourceAgentId: string;
   destinationAgentId: string;
   status: HandoffStatus;
@@ -161,6 +195,24 @@ export interface Handoff {
   acceptanceCriteria: readonly string[];
   artifacts: readonly string[];
   risks: readonly string[];
+  /** Capabilities the REMAINING work needs. The destination must cover them. */
+  requiredCapabilities?: readonly string[];
+  /** The assignment whose work is being transferred, if any. */
+  sourceAssignmentId?: string;
+  /**
+   * Why the destination was eligible. Recorded at PROPOSAL time and
+   * re-verified at ACCEPTANCE time, because eligibility can lapse (the agent
+   * may be suspended, or the project policy may change) between the two.
+   */
+  destinationQualification?: {
+    qualified: boolean;
+    matchedCapabilities: readonly string[];
+    missingCapabilities: readonly string[];
+    reasonCodes: readonly string[];
+    descriptorVersion: number;
+    evaluatedAt: string;
+  };
+  acceptedBy?: string;
   createdAt: string;
   resolvedAt?: string;
   resolution?: string;
@@ -168,6 +220,7 @@ export interface Handoff {
 
 export interface HandoffDraft {
   taskId: string;
+  projectId?: string;
   sourceAgentId: string;
   destinationAgentId: string;
   context?: Record<string, unknown>;
@@ -176,6 +229,8 @@ export interface HandoffDraft {
   acceptanceCriteria: readonly string[];
   artifacts?: readonly string[];
   risks?: readonly string[];
+  requiredCapabilities?: readonly string[];
+  sourceAssignmentId?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -277,6 +332,29 @@ export const AUDIT_EVENT_TYPES = [
   "environment_discovered",
   "environment_refreshed",
   "environment_unavailable",
+  "execution_plan_event",
+  "access_event",
+  "execution_event",
+  "onboarding_event",
+  /* EO-6.2 — AI Cost Center & rule-based Auditor. */
+  "usage_recorded",
+  "budget_blocked",
+  "budget_policy_set",
+  "audit_finding_raised",
+  /* EO-6.3 — Governance Policy Engine. */
+  "governance_decision",
+  "governance_policy_set",
+  /* EO-7 — Model Routing. */
+  "routing_decision_made",
+  "routing_no_candidate",
+  /* Specialist workforce — assignment, qualification and write-scope leases. */
+  "assignment_created",
+  "assignment_transitioned",
+  "assignment_reassigned",
+  "assignment_blocked",
+  "write_lease_acquired",
+  "write_lease_released",
+  "write_lease_denied",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -397,12 +475,28 @@ export interface PermissionGuard {
   assert(action: PermissionAction, toolId?: string): void;
 }
 
+export interface EnvironmentExecutionContext {
+  code: string;
+  instanceId: string;
+  hostId: string;
+  descriptorId?: string;
+}
+
+export interface AgentExecutionContext {
+  environment?: EnvironmentExecutionContext;
+}
+
 /**
  * A pluggable unit of work the orchestrator dispatches a task to. A General
  * Agent is an `AgentExecutor` plus a declarative {@link Agent} definition.
  */
 export interface AgentExecutor {
-  execute(agent: Agent, task: Task, guard?: PermissionGuard): Promise<unknown>;
+  execute(
+    agent: Agent,
+    task: Task,
+    guard?: PermissionGuard,
+    context?: AgentExecutionContext,
+  ): Promise<unknown>;
 }
 
 /** Hard ceilings a General Agent enforces on a single execution. */
@@ -440,8 +534,62 @@ export type AgentFailureReason =
 export class WorkforceError extends Error {}
 export class ValidationError extends WorkforceError {}
 export class StateTransitionError extends WorkforceError {}
+/**
+ * An execution plan changed concurrently: an optimistic precondition of a plan
+ * commit failed (EO-3.2). Nothing was written. HTTP 409.
+ */
+export class PlanRevisionConflictError extends StateTransitionError {
+  constructor(
+    message = "execution plan changed concurrently — reload and retry",
+  ) {
+    super(message);
+    this.name = "PlanRevisionConflictError";
+  }
+}
 export class PermissionDeniedError extends WorkforceError {}
+
+/** An operator account changed concurrently (AUTHZ-1). HTTP 409. */
+export class AccountConflictError extends StateTransitionError {
+  constructor(message = "operator account changed concurrently — reload") {
+    super(message);
+    this.name = "AccountConflictError";
+  }
+}
+
+/** The change would leave no active administrator (AUTHZ-1). HTTP 409. */
+export class LastAdministratorError extends StateTransitionError {
+  constructor() {
+    super("the last active administrator cannot be removed or demoted");
+    this.name = "LastAdministratorError";
+  }
+}
+
+/** Initial administrator bootstrap is no longer available (AUTHZ-1). */
+export class BootstrapLockedError extends PermissionDeniedError {
+  constructor() {
+    super(
+      "initial administrator bootstrap is locked: an administrator already exists",
+    );
+    this.name = "BootstrapLockedError";
+  }
+}
 export class NotFoundError extends WorkforceError {}
+
+/**
+ * EO-4.1: an EXPECTED execution security outcome (policy denial, workspace
+ * violation, …). A 403-class error if it ever escapes — never a 500.
+ */
+export class ExecutionDeniedError extends PermissionDeniedError {
+  readonly code: import("./execution.js").ExecutionErrorCode;
+  constructor(
+    code: import("./execution.js").ExecutionErrorCode,
+    detail: string,
+  ) {
+    super(detail);
+    this.name = "ExecutionDeniedError";
+    this.code = code;
+  }
+}
 
 /**
  * Structured failure from a General Agent execution. Carries a machine-readable
@@ -612,9 +760,106 @@ export function validateAgent(agent: Agent): void {
 }
 
 export function validateTaskDraft(draft: TaskDraft): void {
+  if (!draft || typeof draft !== "object" || Array.isArray(draft)) {
+    throw new ValidationError("task draft must be an object");
+  }
   requireText(draft.type, "task.type");
   requireText(draft.description, "task.description");
   requireText(draft.projectId, "task.projectId");
+  if (
+    draft.priority !== undefined &&
+    !["low", "normal", "high", "critical"].includes(draft.priority)
+  ) {
+    throw new ValidationError("task.priority must be a known priority");
+  }
+  if (draft.metadata !== undefined && !isRecord(draft.metadata)) {
+    throw new ValidationError("task.metadata must be an object");
+  }
+  for (const field of [
+    "dependencies",
+    "requirements",
+    "requiredCapabilities",
+    "environmentRequirements",
+    "completionCriteria",
+  ] as const) {
+    const value = draft[field];
+    if (value === undefined) continue;
+    for (const entry of requireStringArray(value, `task.${field}`)) {
+      if (entry.trim() === "") {
+        throw new ValidationError(
+          `task.${field} must not contain blank values`,
+        );
+      }
+    }
+  }
+  for (const code of draft.environmentRequirements ?? []) {
+    if (!SOFTWARE_FACTORY_ENVIRONMENT_CODES.includes(code as never)) {
+      throw new ValidationError(
+        `task.environmentRequirements contains unknown code: ${code}`,
+      );
+    }
+  }
+  if (draft.requiredPermissions !== undefined) {
+    const permissions = requireArray(
+      draft.requiredPermissions,
+      "task.requiredPermissions",
+    );
+    for (const permission of permissions) {
+      if (
+        !permission ||
+        typeof permission !== "object" ||
+        Array.isArray(permission)
+      ) {
+        throw new ValidationError(
+          "task.requiredPermissions must contain objects",
+        );
+      }
+      const action = (permission as RequiredPermission).action;
+      if (!PERMISSION_ACTIONS.includes(action)) {
+        throw new ValidationError(
+          "task.requiredPermissions contains an unknown action",
+        );
+      }
+      const toolId = (permission as RequiredPermission).toolId;
+      if (toolId !== undefined)
+        requireText(toolId, "task.requiredPermissions.toolId");
+    }
+  }
+  if (
+    draft.modelRequirements !== undefined &&
+    !isRecord(draft.modelRequirements)
+  ) {
+    throw new ValidationError("task.modelRequirements must be an object");
+  }
+}
+
+function requireStringArray(value: unknown, field: string): string[] {
+  return requireArray(value, field).map((entry, index) => {
+    if (typeof entry !== "string") {
+      throw new ValidationError(`${field}[${index}] must be a string`);
+    }
+    return entry;
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+const FORBIDDEN_RESOURCE_KEYS: ReadonlySet<string> = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+]);
+
+function isSafeResourceId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 64 &&
+    !FORBIDDEN_RESOURCE_KEYS.has(value) &&
+    /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)
+  );
 }
 
 export function validateHandoffDraft(draft: HandoffDraft): void {
@@ -632,6 +877,23 @@ export function validateHandoffDraft(draft: HandoffDraft): void {
   }
   if (draft.acceptanceCriteria.length === 0) {
     throw new ValidationError("handoff.acceptanceCriteria must not be empty");
+  }
+  // Local id check: `workforce.ts` imports from this barrel, so it cannot be
+  // imported back here. The rule is kept identical to `isSafeIdentifier`.
+  if (draft.projectId !== undefined && !isSafeResourceId(draft.projectId)) {
+    throw new ValidationError("handoff.projectId is invalid");
+  }
+  if (draft.requiredCapabilities !== undefined) {
+    requireArray(draft.requiredCapabilities, "handoff.requiredCapabilities");
+    for (const capability of draft.requiredCapabilities) {
+      requireText(capability, "handoff.requiredCapabilities entry");
+    }
+  }
+  if (
+    draft.sourceAssignmentId !== undefined &&
+    !isSafeResourceId(draft.sourceAssignmentId)
+  ) {
+    throw new ValidationError("handoff.sourceAssignmentId is invalid");
   }
 }
 
@@ -663,3 +925,27 @@ export * from "./qa.js";
 export * from "./money-mind.js";
 export * from "./control.js";
 export * from "./environments.js";
+export * from "./planning.js";
+export * from "./access.js";
+export * from "./profile.js";
+export * from "./execution.js";
+export * from "./workspace-paths.js";
+export * from "./workspace.js";
+export * from "./verification.js";
+export * from "./environment-adapters.js";
+export * from "./release.js";
+export * from "./execution-records.js";
+export * from "./orchestration.js";
+export * from "./environment-routing.js";
+export * from "./graph.js";
+export * from "./onboarding.js";
+export * from "./cost-center.js";
+export * from "./governance.js";
+export * from "./routing.js";
+export * from "./workforce.js";
+export * from "./capabilities.js";
+export * from "./assignment.js";
+export * from "./tenancy.js";
+export * from "./billing.js";
+export * from "./customer.js";
+export * from "./identity.js";

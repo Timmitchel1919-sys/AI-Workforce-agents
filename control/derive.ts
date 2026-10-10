@@ -250,6 +250,9 @@ export function deriveApprovalView(approval: Approval): ApprovalView {
     toolId: parsed.toolId ?? metaString(meta, "toolId"),
     agentId: metaString(meta, "agentId"),
     projectId: metaString(meta, "projectId"),
+    executionPlanId: metaString(meta, "executionPlanId"),
+    planVersion:
+      typeof meta.planVersion === "number" ? meta.planVersion : undefined,
     requestedAt: approval.requestedAt,
     expiresAt: approval.expiresAt,
     decidedBy: approval.decidedBy,

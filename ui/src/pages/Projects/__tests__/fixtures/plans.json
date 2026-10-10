@@ -1,0 +1,3045 @@
+{
+  "ready": {
+    "agentRequirements": [
+      {
+        "componentIds": [
+          "web"
+        ],
+        "id": "agent:build:web",
+        "modelCapabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "purpose": "build",
+        "requiredCapabilities": [
+          "web_development"
+        ]
+      },
+      {
+        "componentIds": [
+          "web"
+        ],
+        "id": "agent:security-review",
+        "modelCapabilities": [
+          "reasoning"
+        ],
+        "purpose": "security_review",
+        "requiredCapabilities": [
+          "security_review"
+        ]
+      }
+    ],
+    "agents": [
+      {
+        "agentId": "web-agent",
+        "candidates": [
+          {
+            "agentId": "web-agent",
+            "matchedCapabilities": [
+              "web_development"
+            ],
+            "missingCapabilities": [],
+            "qualifies": true,
+            "reasonCodes": []
+          },
+          {
+            "agentId": "sec-agent",
+            "matchedCapabilities": [],
+            "missingCapabilities": [
+              "web_development"
+            ],
+            "qualifies": false,
+            "reasonCodes": [
+              "missing_capability"
+            ]
+          }
+        ],
+        "matchedCapabilities": [
+          "web_development"
+        ],
+        "qualification": "qualified",
+        "requiredCapabilities": [
+          "web_development"
+        ],
+        "requirementId": "agent:build:web"
+      },
+      {
+        "agentId": "sec-agent",
+        "candidates": [
+          {
+            "agentId": "sec-agent",
+            "matchedCapabilities": [
+              "security_review"
+            ],
+            "missingCapabilities": [],
+            "qualifies": true,
+            "reasonCodes": []
+          },
+          {
+            "agentId": "web-agent",
+            "matchedCapabilities": [],
+            "missingCapabilities": [
+              "security_review"
+            ],
+            "qualifies": false,
+            "reasonCodes": [
+              "missing_capability"
+            ]
+          }
+        ],
+        "matchedCapabilities": [
+          "security_review"
+        ],
+        "qualification": "qualified",
+        "requiredCapabilities": [
+          "security_review"
+        ],
+        "requirementId": "agent:security-review"
+      }
+    ],
+    "analysis": {
+      "catalogVersion": "2026-09-23.1",
+      "components": [
+        {
+          "componentId": "web",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ],
+          "technologyIds": [
+            "react_typescript"
+          ]
+        }
+      ],
+      "technologies": [
+        {
+          "capabilities": [
+            "web_build_capable"
+          ],
+          "componentId": "web",
+          "technologyId": "react_typescript",
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "npm"
+                }
+              ],
+              "kind": "node",
+              "minimum": {
+                "major": 20,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        }
+      ],
+      "unsupportedTechnologies": []
+    },
+    "approval": {
+      "state": "not_requested"
+    },
+    "approvalRequirements": [
+      {
+        "id": "approval:production_deployment",
+        "reason": "production_deployment",
+        "subjectIds": [
+          "deploy:web:firebase_hosting:production"
+        ]
+      }
+    ],
+    "architecture": {
+      "components": [
+        {
+          "componentId": "web",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ]
+        }
+      ],
+      "layers": [
+        "web_frontend"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "style": "single_platform"
+    },
+    "blockers": [],
+    "build": [
+      {
+        "agentRequirementId": "agent:build:web",
+        "componentId": "web",
+        "dependencyIds": [
+          "toolchain:node",
+          "toolchain:node:npm"
+        ],
+        "environmentRequirementId": "env-1",
+        "expectedArtifact": {
+          "kind": "static_web_bundle",
+          "name": "web-dist"
+        },
+        "id": "build:web",
+        "inputs": [
+          "source:web"
+        ],
+        "requiredCapabilities": [
+          "web_build_capable"
+        ],
+        "status": "planned",
+        "validation": [
+          "build_completes_without_error",
+          "expected_artifact_present"
+        ]
+      }
+    ],
+    "cost": {
+      "status": "not_estimated"
+    },
+    "createdAt": "2026-09-23T12:00:00.000Z",
+    "createdBy": "operator-1",
+    "dependencies": {
+      "conflicts": [],
+      "items": [
+        {
+          "dependsOn": [],
+          "id": "toolchain:node",
+          "kind": "toolchain",
+          "minimum": {
+            "major": 20,
+            "minor": 0,
+            "patch": 0
+          },
+          "name": "node",
+          "requiredBy": [
+            "web"
+          ],
+          "toolchainKind": "node"
+        },
+        {
+          "dependsOn": [
+            "toolchain:node"
+          ],
+          "id": "toolchain:node:npm",
+          "kind": "toolchain_component",
+          "name": "npm",
+          "requiredBy": [
+            "web"
+          ],
+          "toolchainKind": "node"
+        }
+      ],
+      "order": [
+        "toolchain:node",
+        "toolchain:node:npm"
+      ]
+    },
+    "environments": [
+      {
+        "componentIds": [
+          "web"
+        ],
+        "descriptorSupport": "supported",
+        "id": "env-1",
+        "match": {
+          "candidates": [
+            {
+              "descriptorId": "web-build",
+              "eligible": true,
+              "environmentType": "web_build",
+              "hostId": "linux-1",
+              "instanceId": "web-1",
+              "matchedCapabilities": [
+                "web_build_capable"
+              ],
+              "missingCapabilities": [],
+              "missingToolchains": [],
+              "reasonCodes": [],
+              "trustLevel": "detected"
+            }
+          ],
+          "outcome": "ROUTED",
+          "selectedHostId": "linux-1",
+          "selectedInstanceId": "web-1",
+          "supportingDescriptorId": "web-build",
+          "tieBreak": [
+            "trust_level_desc",
+            "environment_version_desc",
+            "instance_id_asc"
+          ]
+        },
+        "requirement": {
+          "requiredCapabilities": [
+            "web_build_capable"
+          ],
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "npm"
+                }
+              ],
+              "kind": "node",
+              "minimum": {
+                "major": 20,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        },
+        "status": "satisfied"
+      }
+    ],
+    "id": "plan_1@v1",
+    "inputsFingerprint": "790539cd2af2bdd5",
+    "models": [
+      {
+        "agentId": "web-agent",
+        "agentRequirementId": "agent:build:web",
+        "capabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "eligibleProfileIds": [
+          "openai-general"
+        ],
+        "id": "model:agent:build:web",
+        "missingCapabilities": [],
+        "status": "satisfied"
+      },
+      {
+        "agentId": "sec-agent",
+        "agentRequirementId": "agent:security-review",
+        "capabilities": [
+          "reasoning"
+        ],
+        "eligibleProfileIds": [
+          "openai-general"
+        ],
+        "id": "model:agent:security-review",
+        "missingCapabilities": [],
+        "status": "satisfied"
+      }
+    ],
+    "planId": "plan_1",
+    "projectId": "alpha",
+    "schemaVersion": 1,
+    "security": [
+      {
+        "check": "secret_scan",
+        "componentIds": [
+          "web"
+        ],
+        "id": "security:secret_scan",
+        "status": "planned"
+      },
+      {
+        "check": "dependency_scan",
+        "componentIds": [
+          "web"
+        ],
+        "id": "security:dependency_scan",
+        "status": "planned"
+      },
+      {
+        "check": "sast",
+        "componentIds": [
+          "web"
+        ],
+        "id": "security:sast",
+        "status": "planned"
+      },
+      {
+        "check": "permission_review",
+        "componentIds": [
+          "web"
+        ],
+        "id": "security:permission_review",
+        "status": "planned"
+      },
+      {
+        "agentRequirementId": "agent:security-review",
+        "check": "security_agent_review",
+        "componentIds": [
+          "web"
+        ],
+        "id": "security:security_agent_review",
+        "status": "planned"
+      }
+    ],
+    "status": "ready",
+    "tests": [
+      {
+        "componentId": "web",
+        "dependsOnStageIds": [
+          "build:web"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:web:unit",
+        "status": "planned",
+        "type": "unit"
+      },
+      {
+        "componentId": "web",
+        "dependsOnStageIds": [
+          "build:web"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:web:ui",
+        "status": "planned",
+        "type": "ui"
+      },
+      {
+        "componentId": "web",
+        "dependsOnStageIds": [
+          "build:web"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:web:e2e",
+        "status": "planned",
+        "type": "e2e"
+      },
+      {
+        "componentId": "web",
+        "dependsOnStageIds": [
+          "build:web"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:web:build_verification",
+        "status": "planned",
+        "type": "build_verification"
+      }
+    ],
+    "updatedAt": "2026-09-23T12:00:00.000Z",
+    "version": 1,
+    "request": {
+      "components": [
+        {
+          "id": "web",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ],
+          "technologies": [
+            "react_typescript"
+          ]
+        }
+      ],
+      "deployments": [
+        {
+          "componentId": "web",
+          "stage": "production",
+          "targetType": "firebase_hosting"
+        }
+      ],
+      "projectId": "alpha",
+      "title": "Customer portal"
+    },
+    "current": true,
+    "deployment": [
+      {
+        "componentId": "web",
+        "environmentRequirementId": "env-1",
+        "id": "deploy:web:firebase_hosting:production",
+        "preDeploymentGates": [
+          "build:web",
+          "test:web:unit",
+          "test:web:ui",
+          "test:web:e2e",
+          "test:web:build_verification",
+          "security:secret_scan",
+          "security:dependency_scan",
+          "security:sast",
+          "security:permission_review",
+          "security:security_agent_review",
+          "approval:production_deployment"
+        ],
+        "requiredArtifact": {
+          "kind": "static_web_bundle",
+          "name": "web-dist"
+        },
+        "rollbackRequired": true,
+        "stage": "production",
+        "status": "planned",
+        "targetType": "firebase_hosting"
+      }
+    ],
+    "execution": {
+      "available": false,
+      "reason": "Plan execution is not available yet (EO-4). Planning only."
+    }
+  },
+  "blockedIos": {
+    "agentRequirements": [
+      {
+        "componentIds": [
+          "ios-app"
+        ],
+        "id": "agent:build:ios-app",
+        "modelCapabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "purpose": "build",
+        "requiredCapabilities": [
+          "ios_development"
+        ]
+      }
+    ],
+    "agents": [
+      {
+        "agentId": "ios-agent",
+        "candidates": [
+          {
+            "agentId": "ios-agent",
+            "matchedCapabilities": [
+              "ios_development"
+            ],
+            "missingCapabilities": [],
+            "qualifies": true,
+            "reasonCodes": []
+          }
+        ],
+        "matchedCapabilities": [
+          "ios_development"
+        ],
+        "qualification": "qualified",
+        "requiredCapabilities": [
+          "ios_development"
+        ],
+        "requirementId": "agent:build:ios-app"
+      }
+    ],
+    "analysis": {
+      "catalogVersion": "2026-09-23.1",
+      "components": [
+        {
+          "componentId": "ios-app",
+          "kind": "mobile_app",
+          "platforms": [
+            "ios"
+          ],
+          "technologyIds": [
+            "swiftui"
+          ]
+        }
+      ],
+      "technologies": [
+        {
+          "capabilities": [
+            "mobile_build_capable"
+          ],
+          "componentId": "ios-app",
+          "os": {
+            "os": "macos"
+          },
+          "technologyId": "swiftui",
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "ios_sdk"
+                }
+              ],
+              "kind": "swift_xcode",
+              "minimum": {
+                "major": 15,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        }
+      ],
+      "unsupportedTechnologies": []
+    },
+    "approval": {
+      "state": "not_requested"
+    },
+    "approvalRequirements": [],
+    "architecture": {
+      "components": [
+        {
+          "componentId": "ios-app",
+          "kind": "mobile_app",
+          "platforms": [
+            "ios"
+          ]
+        }
+      ],
+      "layers": [
+        "mobile_app"
+      ],
+      "platforms": [
+        "ios"
+      ],
+      "style": "single_platform"
+    },
+    "blockers": [
+      {
+        "code": "MISSING_ENVIRONMENT",
+        "missing": [
+          "mobile_build_capable",
+          "swift_xcode",
+          "swift_xcode:ios_sdk"
+        ],
+        "reasonCodes": [
+          "no_eligible_instance_registered"
+        ],
+        "subjectId": "env-1",
+        "subjectType": "environment"
+      }
+    ],
+    "build": [
+      {
+        "agentRequirementId": "agent:build:ios-app",
+        "componentId": "ios-app",
+        "dependencyIds": [
+          "toolchain:swift_xcode",
+          "toolchain:swift_xcode:ios_sdk"
+        ],
+        "environmentRequirementId": "env-1",
+        "expectedArtifact": {
+          "kind": "ios_app_archive",
+          "name": "app-ipa"
+        },
+        "id": "build:ios-app",
+        "inputs": [
+          "source:ios-app"
+        ],
+        "requiredCapabilities": [
+          "mobile_build_capable"
+        ],
+        "status": "planned",
+        "validation": [
+          "build_completes_without_error",
+          "expected_artifact_present"
+        ]
+      }
+    ],
+    "cost": {
+      "status": "not_estimated"
+    },
+    "createdAt": "2026-09-23T12:00:00.000Z",
+    "createdBy": "operator-1",
+    "dependencies": {
+      "conflicts": [],
+      "items": [
+        {
+          "dependsOn": [],
+          "id": "toolchain:swift_xcode",
+          "kind": "toolchain",
+          "minimum": {
+            "major": 15,
+            "minor": 0,
+            "patch": 0
+          },
+          "name": "swift_xcode",
+          "requiredBy": [
+            "ios-app"
+          ],
+          "toolchainKind": "swift_xcode"
+        },
+        {
+          "dependsOn": [
+            "toolchain:swift_xcode"
+          ],
+          "id": "toolchain:swift_xcode:ios_sdk",
+          "kind": "toolchain_component",
+          "name": "ios_sdk",
+          "requiredBy": [
+            "ios-app"
+          ],
+          "toolchainKind": "swift_xcode"
+        }
+      ],
+      "order": [
+        "toolchain:swift_xcode",
+        "toolchain:swift_xcode:ios_sdk"
+      ]
+    },
+    "environments": [
+      {
+        "componentIds": [
+          "ios-app"
+        ],
+        "descriptorSupport": "supported",
+        "id": "env-1",
+        "match": {
+          "candidates": [],
+          "outcome": "REQUIRES_PROVISIONING",
+          "supportingDescriptorId": "xcode",
+          "tieBreak": [
+            "trust_level_desc",
+            "environment_version_desc",
+            "instance_id_asc"
+          ]
+        },
+        "requirement": {
+          "os": {
+            "os": "macos"
+          },
+          "requiredCapabilities": [
+            "mobile_build_capable"
+          ],
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "ios_sdk"
+                }
+              ],
+              "kind": "swift_xcode",
+              "minimum": {
+                "major": 15,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        },
+        "status": "missing"
+      }
+    ],
+    "id": "plan_1@v1",
+    "inputsFingerprint": "9b6040bb8d8b911b",
+    "models": [
+      {
+        "agentId": "ios-agent",
+        "agentRequirementId": "agent:build:ios-app",
+        "capabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "eligibleProfileIds": [
+          "openai-general"
+        ],
+        "id": "model:agent:build:ios-app",
+        "missingCapabilities": [],
+        "status": "satisfied"
+      }
+    ],
+    "planId": "plan_1",
+    "projectId": "alpha",
+    "schemaVersion": 1,
+    "security": [
+      {
+        "check": "secret_scan",
+        "componentIds": [
+          "ios-app"
+        ],
+        "id": "security:secret_scan",
+        "status": "planned"
+      },
+      {
+        "check": "dependency_scan",
+        "componentIds": [
+          "ios-app"
+        ],
+        "id": "security:dependency_scan",
+        "status": "planned"
+      },
+      {
+        "check": "sast",
+        "componentIds": [
+          "ios-app"
+        ],
+        "id": "security:sast",
+        "status": "planned"
+      }
+    ],
+    "status": "blocked",
+    "tests": [
+      {
+        "componentId": "ios-app",
+        "dependsOnStageIds": [
+          "build:ios-app"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:ios-app:unit",
+        "status": "planned",
+        "type": "unit"
+      },
+      {
+        "componentId": "ios-app",
+        "dependsOnStageIds": [
+          "build:ios-app"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:ios-app:ui",
+        "status": "planned",
+        "type": "ui"
+      },
+      {
+        "componentId": "ios-app",
+        "dependsOnStageIds": [
+          "build:ios-app"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:ios-app:build_verification",
+        "status": "planned",
+        "type": "build_verification"
+      },
+      {
+        "componentId": "ios-app",
+        "dependsOnStageIds": [
+          "build:ios-app"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:ios-app:platform_specific",
+        "status": "planned",
+        "type": "platform_specific"
+      }
+    ],
+    "updatedAt": "2026-09-23T12:00:00.000Z",
+    "version": 1,
+    "request": {
+      "components": [
+        {
+          "id": "ios-app",
+          "kind": "mobile_app",
+          "platforms": [
+            "ios"
+          ],
+          "technologies": [
+            "swiftui"
+          ]
+        }
+      ],
+      "projectId": "alpha",
+      "title": "Native iOS app"
+    },
+    "current": true,
+    "deployment": [],
+    "execution": {
+      "available": false,
+      "reason": "Plan execution is not available yet (EO-4). Planning only."
+    }
+  },
+  "noAgent": {
+    "agentRequirements": [
+      {
+        "componentIds": [
+          "web"
+        ],
+        "id": "agent:build:web",
+        "modelCapabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "purpose": "build",
+        "requiredCapabilities": [
+          "web_development"
+        ]
+      }
+    ],
+    "agents": [
+      {
+        "candidates": [
+          {
+            "agentId": "generalist",
+            "matchedCapabilities": [],
+            "missingCapabilities": [
+              "web_development"
+            ],
+            "qualifies": false,
+            "reasonCodes": [
+              "missing_capability"
+            ]
+          }
+        ],
+        "matchedCapabilities": [],
+        "qualification": "none_qualified",
+        "requiredCapabilities": [
+          "web_development"
+        ],
+        "requirementId": "agent:build:web"
+      }
+    ],
+    "analysis": {
+      "catalogVersion": "2026-09-23.1",
+      "components": [
+        {
+          "componentId": "web",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ],
+          "technologyIds": [
+            "react_typescript"
+          ]
+        }
+      ],
+      "technologies": [
+        {
+          "capabilities": [
+            "web_build_capable"
+          ],
+          "componentId": "web",
+          "technologyId": "react_typescript",
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "npm"
+                }
+              ],
+              "kind": "node",
+              "minimum": {
+                "major": 20,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        }
+      ],
+      "unsupportedTechnologies": []
+    },
+    "approval": {
+      "state": "not_requested"
+    },
+    "approvalRequirements": [],
+    "architecture": {
+      "components": [
+        {
+          "componentId": "web",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ]
+        }
+      ],
+      "layers": [
+        "web_frontend"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "style": "single_platform"
+    },
+    "blockers": [
+      {
+        "code": "NO_QUALIFIED_AGENT",
+        "missing": [
+          "web_development"
+        ],
+        "reasonCodes": [
+          "no_agent_declares_all_required_capabilities"
+        ],
+        "subjectId": "agent:build:web",
+        "subjectType": "agent"
+      }
+    ],
+    "build": [
+      {
+        "agentRequirementId": "agent:build:web",
+        "componentId": "web",
+        "dependencyIds": [
+          "toolchain:node",
+          "toolchain:node:npm"
+        ],
+        "environmentRequirementId": "env-1",
+        "expectedArtifact": {
+          "kind": "static_web_bundle",
+          "name": "web-dist"
+        },
+        "id": "build:web",
+        "inputs": [
+          "source:web"
+        ],
+        "requiredCapabilities": [
+          "web_build_capable"
+        ],
+        "status": "planned",
+        "validation": [
+          "build_completes_without_error",
+          "expected_artifact_present"
+        ]
+      }
+    ],
+    "cost": {
+      "status": "not_estimated"
+    },
+    "createdAt": "2026-09-23T12:00:00.000Z",
+    "createdBy": "operator-1",
+    "dependencies": {
+      "conflicts": [],
+      "items": [
+        {
+          "dependsOn": [],
+          "id": "toolchain:node",
+          "kind": "toolchain",
+          "minimum": {
+            "major": 20,
+            "minor": 0,
+            "patch": 0
+          },
+          "name": "node",
+          "requiredBy": [
+            "web"
+          ],
+          "toolchainKind": "node"
+        },
+        {
+          "dependsOn": [
+            "toolchain:node"
+          ],
+          "id": "toolchain:node:npm",
+          "kind": "toolchain_component",
+          "name": "npm",
+          "requiredBy": [
+            "web"
+          ],
+          "toolchainKind": "node"
+        }
+      ],
+      "order": [
+        "toolchain:node",
+        "toolchain:node:npm"
+      ]
+    },
+    "environments": [
+      {
+        "componentIds": [
+          "web"
+        ],
+        "descriptorSupport": "supported",
+        "id": "env-1",
+        "match": {
+          "candidates": [
+            {
+              "descriptorId": "web-build",
+              "eligible": true,
+              "environmentType": "web_build",
+              "hostId": "linux-1",
+              "instanceId": "web-1",
+              "matchedCapabilities": [
+                "web_build_capable"
+              ],
+              "missingCapabilities": [],
+              "missingToolchains": [],
+              "reasonCodes": [],
+              "trustLevel": "detected"
+            }
+          ],
+          "outcome": "ROUTED",
+          "selectedHostId": "linux-1",
+          "selectedInstanceId": "web-1",
+          "supportingDescriptorId": "web-build",
+          "tieBreak": [
+            "trust_level_desc",
+            "environment_version_desc",
+            "instance_id_asc"
+          ]
+        },
+        "requirement": {
+          "requiredCapabilities": [
+            "web_build_capable"
+          ],
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "npm"
+                }
+              ],
+              "kind": "node",
+              "minimum": {
+                "major": 20,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        },
+        "status": "satisfied"
+      }
+    ],
+    "id": "plan_1@v1",
+    "inputsFingerprint": "3c319f05dbf85bfd",
+    "models": [
+      {
+        "agentRequirementId": "agent:build:web",
+        "capabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "eligibleProfileIds": [],
+        "id": "model:agent:build:web",
+        "missingCapabilities": [],
+        "status": "not_evaluated"
+      }
+    ],
+    "planId": "plan_1",
+    "projectId": "alpha",
+    "schemaVersion": 1,
+    "security": [
+      {
+        "check": "secret_scan",
+        "componentIds": [
+          "web"
+        ],
+        "id": "security:secret_scan",
+        "status": "planned"
+      },
+      {
+        "check": "dependency_scan",
+        "componentIds": [
+          "web"
+        ],
+        "id": "security:dependency_scan",
+        "status": "planned"
+      },
+      {
+        "check": "sast",
+        "componentIds": [
+          "web"
+        ],
+        "id": "security:sast",
+        "status": "planned"
+      }
+    ],
+    "status": "blocked",
+    "tests": [
+      {
+        "componentId": "web",
+        "dependsOnStageIds": [
+          "build:web"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:web:unit",
+        "status": "planned",
+        "type": "unit"
+      },
+      {
+        "componentId": "web",
+        "dependsOnStageIds": [
+          "build:web"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:web:ui",
+        "status": "planned",
+        "type": "ui"
+      },
+      {
+        "componentId": "web",
+        "dependsOnStageIds": [
+          "build:web"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:web:e2e",
+        "status": "planned",
+        "type": "e2e"
+      },
+      {
+        "componentId": "web",
+        "dependsOnStageIds": [
+          "build:web"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:web:build_verification",
+        "status": "planned",
+        "type": "build_verification"
+      }
+    ],
+    "updatedAt": "2026-09-23T12:00:00.000Z",
+    "version": 1,
+    "request": {
+      "components": [
+        {
+          "id": "web",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ],
+          "technologies": [
+            "react_typescript"
+          ]
+        }
+      ],
+      "projectId": "alpha",
+      "title": "Customer portal"
+    },
+    "current": true,
+    "deployment": [],
+    "execution": {
+      "available": false,
+      "reason": "Plan execution is not available yet (EO-4). Planning only."
+    }
+  },
+  "multi": {
+    "agentRequirements": [
+      {
+        "componentIds": [
+          "frontend"
+        ],
+        "id": "agent:build:frontend",
+        "modelCapabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "purpose": "build",
+        "requiredCapabilities": [
+          "web_development"
+        ]
+      },
+      {
+        "componentIds": [
+          "backend"
+        ],
+        "id": "agent:build:backend",
+        "modelCapabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "purpose": "build",
+        "requiredCapabilities": [
+          "dotnet_development"
+        ]
+      },
+      {
+        "componentIds": [
+          "mobile"
+        ],
+        "id": "agent:build:mobile",
+        "modelCapabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "purpose": "build",
+        "requiredCapabilities": [
+          "android_development"
+        ]
+      }
+    ],
+    "agents": [
+      {
+        "candidates": [],
+        "matchedCapabilities": [],
+        "qualification": "none_qualified",
+        "requiredCapabilities": [
+          "web_development"
+        ],
+        "requirementId": "agent:build:frontend"
+      },
+      {
+        "candidates": [],
+        "matchedCapabilities": [],
+        "qualification": "none_qualified",
+        "requiredCapabilities": [
+          "dotnet_development"
+        ],
+        "requirementId": "agent:build:backend"
+      },
+      {
+        "candidates": [],
+        "matchedCapabilities": [],
+        "qualification": "none_qualified",
+        "requiredCapabilities": [
+          "android_development"
+        ],
+        "requirementId": "agent:build:mobile"
+      }
+    ],
+    "analysis": {
+      "catalogVersion": "2026-09-23.1",
+      "components": [
+        {
+          "componentId": "frontend",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ],
+          "technologyIds": [
+            "react_typescript"
+          ]
+        },
+        {
+          "componentId": "backend",
+          "kind": "backend_service",
+          "platforms": [
+            "linux"
+          ],
+          "technologyIds": [
+            "dotnet_aspnet"
+          ]
+        },
+        {
+          "componentId": "mobile",
+          "kind": "mobile_app",
+          "platforms": [
+            "android"
+          ],
+          "technologyIds": [
+            "android_kotlin"
+          ]
+        }
+      ],
+      "technologies": [
+        {
+          "capabilities": [
+            "web_build_capable"
+          ],
+          "componentId": "frontend",
+          "technologyId": "react_typescript",
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "npm"
+                }
+              ],
+              "kind": "node",
+              "minimum": {
+                "major": 20,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        },
+        {
+          "capabilities": [
+            "command_execution_available"
+          ],
+          "componentId": "backend",
+          "technologyId": "dotnet_aspnet",
+          "toolchains": [
+            {
+              "kind": "dotnet",
+              "minimum": {
+                "major": 8,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        },
+        {
+          "capabilities": [
+            "mobile_build_capable"
+          ],
+          "componentId": "mobile",
+          "technologyId": "android_kotlin",
+          "toolchains": [
+            {
+              "kind": "jdk_gradle",
+              "minimum": {
+                "major": 17,
+                "minor": 0,
+                "patch": 0
+              }
+            },
+            {
+              "components": [
+                {
+                  "name": "build_tools"
+                }
+              ],
+              "kind": "android_sdk"
+            }
+          ]
+        }
+      ],
+      "unsupportedTechnologies": []
+    },
+    "approval": {
+      "state": "not_requested"
+    },
+    "approvalRequirements": [],
+    "architecture": {
+      "components": [
+        {
+          "componentId": "frontend",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "componentId": "backend",
+          "kind": "backend_service",
+          "platforms": [
+            "linux"
+          ]
+        },
+        {
+          "componentId": "mobile",
+          "kind": "mobile_app",
+          "platforms": [
+            "android"
+          ]
+        }
+      ],
+      "layers": [
+        "backend_service",
+        "mobile_app",
+        "web_frontend"
+      ],
+      "platforms": [
+        "android",
+        "linux",
+        "web"
+      ],
+      "style": "multi_platform"
+    },
+    "blockers": [
+      {
+        "code": "MISSING_ENVIRONMENT",
+        "missing": [
+          "web_build_capable",
+          "node",
+          "node:npm"
+        ],
+        "reasonCodes": [
+          "no_eligible_instance_registered"
+        ],
+        "subjectId": "env-1",
+        "subjectType": "environment"
+      },
+      {
+        "code": "MISSING_ENVIRONMENT",
+        "missing": [
+          "command_execution_available",
+          "dotnet"
+        ],
+        "reasonCodes": [
+          "no_eligible_instance_registered"
+        ],
+        "subjectId": "env-2",
+        "subjectType": "environment"
+      },
+      {
+        "code": "MISSING_ENVIRONMENT",
+        "missing": [
+          "mobile_build_capable",
+          "android_sdk",
+          "android_sdk:build_tools",
+          "jdk_gradle"
+        ],
+        "reasonCodes": [
+          "no_eligible_instance_registered"
+        ],
+        "subjectId": "env-3",
+        "subjectType": "environment"
+      },
+      {
+        "code": "NO_QUALIFIED_AGENT",
+        "missing": [
+          "dotnet_development"
+        ],
+        "reasonCodes": [
+          "no_agent_declares_all_required_capabilities"
+        ],
+        "subjectId": "agent:build:backend",
+        "subjectType": "agent"
+      },
+      {
+        "code": "NO_QUALIFIED_AGENT",
+        "missing": [
+          "web_development"
+        ],
+        "reasonCodes": [
+          "no_agent_declares_all_required_capabilities"
+        ],
+        "subjectId": "agent:build:frontend",
+        "subjectType": "agent"
+      },
+      {
+        "code": "NO_QUALIFIED_AGENT",
+        "missing": [
+          "android_development"
+        ],
+        "reasonCodes": [
+          "no_agent_declares_all_required_capabilities"
+        ],
+        "subjectId": "agent:build:mobile",
+        "subjectType": "agent"
+      }
+    ],
+    "build": [
+      {
+        "agentRequirementId": "agent:build:frontend",
+        "componentId": "frontend",
+        "dependencyIds": [
+          "toolchain:node",
+          "toolchain:node:npm"
+        ],
+        "environmentRequirementId": "env-1",
+        "expectedArtifact": {
+          "kind": "static_web_bundle",
+          "name": "web-dist"
+        },
+        "id": "build:frontend",
+        "inputs": [
+          "source:frontend"
+        ],
+        "requiredCapabilities": [
+          "web_build_capable"
+        ],
+        "status": "planned",
+        "validation": [
+          "build_completes_without_error",
+          "expected_artifact_present"
+        ]
+      },
+      {
+        "agentRequirementId": "agent:build:backend",
+        "componentId": "backend",
+        "dependencyIds": [
+          "toolchain:dotnet"
+        ],
+        "environmentRequirementId": "env-2",
+        "expectedArtifact": {
+          "kind": "dotnet_publish",
+          "name": "service-publish"
+        },
+        "id": "build:backend",
+        "inputs": [
+          "source:backend"
+        ],
+        "requiredCapabilities": [
+          "command_execution_available"
+        ],
+        "status": "planned",
+        "validation": [
+          "build_completes_without_error",
+          "expected_artifact_present"
+        ]
+      },
+      {
+        "agentRequirementId": "agent:build:mobile",
+        "componentId": "mobile",
+        "dependencyIds": [
+          "toolchain:android_sdk",
+          "toolchain:android_sdk:build_tools",
+          "toolchain:jdk_gradle"
+        ],
+        "environmentRequirementId": "env-3",
+        "expectedArtifact": {
+          "kind": "android_app_bundle",
+          "name": "app-aab"
+        },
+        "id": "build:mobile",
+        "inputs": [
+          "source:mobile"
+        ],
+        "requiredCapabilities": [
+          "mobile_build_capable"
+        ],
+        "status": "planned",
+        "validation": [
+          "build_completes_without_error",
+          "expected_artifact_present"
+        ]
+      }
+    ],
+    "cost": {
+      "status": "not_estimated"
+    },
+    "createdAt": "2026-09-23T12:00:00.000Z",
+    "createdBy": "operator-1",
+    "dependencies": {
+      "conflicts": [],
+      "items": [
+        {
+          "dependsOn": [
+            "toolchain:jdk_gradle"
+          ],
+          "id": "toolchain:android_sdk",
+          "kind": "toolchain",
+          "name": "android_sdk",
+          "requiredBy": [
+            "mobile"
+          ],
+          "toolchainKind": "android_sdk"
+        },
+        {
+          "dependsOn": [
+            "toolchain:android_sdk"
+          ],
+          "id": "toolchain:android_sdk:build_tools",
+          "kind": "toolchain_component",
+          "name": "build_tools",
+          "requiredBy": [
+            "mobile"
+          ],
+          "toolchainKind": "android_sdk"
+        },
+        {
+          "dependsOn": [],
+          "id": "toolchain:dotnet",
+          "kind": "toolchain",
+          "minimum": {
+            "major": 8,
+            "minor": 0,
+            "patch": 0
+          },
+          "name": "dotnet",
+          "requiredBy": [
+            "backend"
+          ],
+          "toolchainKind": "dotnet"
+        },
+        {
+          "dependsOn": [],
+          "id": "toolchain:jdk_gradle",
+          "kind": "toolchain",
+          "minimum": {
+            "major": 17,
+            "minor": 0,
+            "patch": 0
+          },
+          "name": "jdk_gradle",
+          "requiredBy": [
+            "mobile"
+          ],
+          "toolchainKind": "jdk_gradle"
+        },
+        {
+          "dependsOn": [],
+          "id": "toolchain:node",
+          "kind": "toolchain",
+          "minimum": {
+            "major": 20,
+            "minor": 0,
+            "patch": 0
+          },
+          "name": "node",
+          "requiredBy": [
+            "frontend"
+          ],
+          "toolchainKind": "node"
+        },
+        {
+          "dependsOn": [
+            "toolchain:node"
+          ],
+          "id": "toolchain:node:npm",
+          "kind": "toolchain_component",
+          "name": "npm",
+          "requiredBy": [
+            "frontend"
+          ],
+          "toolchainKind": "node"
+        }
+      ],
+      "order": [
+        "toolchain:dotnet",
+        "toolchain:jdk_gradle",
+        "toolchain:android_sdk",
+        "toolchain:android_sdk:build_tools",
+        "toolchain:node",
+        "toolchain:node:npm"
+      ]
+    },
+    "environments": [
+      {
+        "componentIds": [
+          "frontend"
+        ],
+        "descriptorSupport": "supported",
+        "id": "env-1",
+        "match": {
+          "candidates": [],
+          "outcome": "REQUIRES_PROVISIONING",
+          "supportingDescriptorId": "web-build",
+          "tieBreak": [
+            "trust_level_desc",
+            "environment_version_desc",
+            "instance_id_asc"
+          ]
+        },
+        "requirement": {
+          "requiredCapabilities": [
+            "web_build_capable"
+          ],
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "npm"
+                }
+              ],
+              "kind": "node",
+              "minimum": {
+                "major": 20,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        },
+        "status": "missing"
+      },
+      {
+        "componentIds": [
+          "backend"
+        ],
+        "descriptorSupport": "supported",
+        "id": "env-2",
+        "match": {
+          "candidates": [],
+          "outcome": "REQUIRES_PROVISIONING",
+          "supportingDescriptorId": "web-build",
+          "tieBreak": [
+            "trust_level_desc",
+            "environment_version_desc",
+            "instance_id_asc"
+          ]
+        },
+        "requirement": {
+          "requiredCapabilities": [
+            "command_execution_available"
+          ],
+          "toolchains": [
+            {
+              "kind": "dotnet",
+              "minimum": {
+                "major": 8,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        },
+        "status": "missing"
+      },
+      {
+        "componentIds": [
+          "mobile"
+        ],
+        "descriptorSupport": "supported",
+        "id": "env-3",
+        "match": {
+          "candidates": [],
+          "outcome": "REQUIRES_PROVISIONING",
+          "supportingDescriptorId": "xcode",
+          "tieBreak": [
+            "trust_level_desc",
+            "environment_version_desc",
+            "instance_id_asc"
+          ]
+        },
+        "requirement": {
+          "requiredCapabilities": [
+            "mobile_build_capable"
+          ],
+          "toolchains": [
+            {
+              "components": [
+                {
+                  "name": "build_tools"
+                }
+              ],
+              "kind": "android_sdk"
+            },
+            {
+              "kind": "jdk_gradle",
+              "minimum": {
+                "major": 17,
+                "minor": 0,
+                "patch": 0
+              }
+            }
+          ]
+        },
+        "status": "missing"
+      }
+    ],
+    "id": "plan_1@v1",
+    "inputsFingerprint": "74b0254ea6a36196",
+    "models": [
+      {
+        "agentRequirementId": "agent:build:frontend",
+        "capabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "eligibleProfileIds": [],
+        "id": "model:agent:build:frontend",
+        "missingCapabilities": [],
+        "status": "not_evaluated"
+      },
+      {
+        "agentRequirementId": "agent:build:backend",
+        "capabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "eligibleProfileIds": [],
+        "id": "model:agent:build:backend",
+        "missingCapabilities": [],
+        "status": "not_evaluated"
+      },
+      {
+        "agentRequirementId": "agent:build:mobile",
+        "capabilities": [
+          "coding",
+          "reasoning"
+        ],
+        "eligibleProfileIds": [],
+        "id": "model:agent:build:mobile",
+        "missingCapabilities": [],
+        "status": "not_evaluated"
+      }
+    ],
+    "planId": "plan_1",
+    "projectId": "alpha",
+    "schemaVersion": 1,
+    "security": [
+      {
+        "check": "secret_scan",
+        "componentIds": [
+          "frontend",
+          "backend",
+          "mobile"
+        ],
+        "id": "security:secret_scan",
+        "status": "planned"
+      },
+      {
+        "check": "dependency_scan",
+        "componentIds": [
+          "frontend",
+          "backend",
+          "mobile"
+        ],
+        "id": "security:dependency_scan",
+        "status": "planned"
+      },
+      {
+        "check": "sast",
+        "componentIds": [
+          "frontend",
+          "backend",
+          "mobile"
+        ],
+        "id": "security:sast",
+        "status": "planned"
+      }
+    ],
+    "status": "blocked",
+    "tests": [
+      {
+        "componentId": "frontend",
+        "dependsOnStageIds": [
+          "build:frontend"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:frontend:unit",
+        "status": "planned",
+        "type": "unit"
+      },
+      {
+        "componentId": "frontend",
+        "dependsOnStageIds": [
+          "build:frontend"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:frontend:ui",
+        "status": "planned",
+        "type": "ui"
+      },
+      {
+        "componentId": "frontend",
+        "dependsOnStageIds": [
+          "build:frontend"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:frontend:e2e",
+        "status": "planned",
+        "type": "e2e"
+      },
+      {
+        "componentId": "frontend",
+        "dependsOnStageIds": [
+          "build:frontend"
+        ],
+        "environmentRequirementId": "env-1",
+        "id": "test:frontend:build_verification",
+        "status": "planned",
+        "type": "build_verification"
+      },
+      {
+        "componentId": "backend",
+        "dependsOnStageIds": [
+          "build:backend"
+        ],
+        "environmentRequirementId": "env-2",
+        "id": "test:backend:unit",
+        "status": "planned",
+        "type": "unit"
+      },
+      {
+        "componentId": "backend",
+        "dependsOnStageIds": [
+          "build:backend"
+        ],
+        "environmentRequirementId": "env-2",
+        "id": "test:backend:integration",
+        "status": "planned",
+        "type": "integration"
+      },
+      {
+        "componentId": "backend",
+        "dependsOnStageIds": [
+          "build:backend"
+        ],
+        "environmentRequirementId": "env-2",
+        "id": "test:backend:build_verification",
+        "status": "planned",
+        "type": "build_verification"
+      },
+      {
+        "componentId": "mobile",
+        "dependsOnStageIds": [
+          "build:mobile"
+        ],
+        "environmentRequirementId": "env-3",
+        "id": "test:mobile:unit",
+        "status": "planned",
+        "type": "unit"
+      },
+      {
+        "componentId": "mobile",
+        "dependsOnStageIds": [
+          "build:mobile"
+        ],
+        "environmentRequirementId": "env-3",
+        "id": "test:mobile:ui",
+        "status": "planned",
+        "type": "ui"
+      },
+      {
+        "componentId": "mobile",
+        "dependsOnStageIds": [
+          "build:mobile"
+        ],
+        "environmentRequirementId": "env-3",
+        "id": "test:mobile:build_verification",
+        "status": "planned",
+        "type": "build_verification"
+      },
+      {
+        "componentId": "mobile",
+        "dependsOnStageIds": [
+          "build:mobile"
+        ],
+        "environmentRequirementId": "env-3",
+        "id": "test:mobile:platform_specific",
+        "status": "planned",
+        "type": "platform_specific"
+      }
+    ],
+    "updatedAt": "2026-09-23T12:00:00.000Z",
+    "version": 1,
+    "request": {
+      "components": [
+        {
+          "id": "frontend",
+          "kind": "web_frontend",
+          "platforms": [
+            "web"
+          ],
+          "technologies": [
+            "react_typescript"
+          ]
+        },
+        {
+          "id": "backend",
+          "kind": "backend_service",
+          "platforms": [
+            "linux"
+          ],
+          "technologies": [
+            "dotnet_aspnet"
+          ]
+        },
+        {
+          "id": "mobile",
+          "kind": "mobile_app",
+          "platforms": [
+            "android"
+          ],
+          "technologies": [
+            "android_kotlin"
+          ]
+        }
+      ],
+      "projectId": "alpha",
+      "title": "Banking platform"
+    },
+    "current": true,
+    "deployment": [],
+    "execution": {
+      "available": false,
+      "reason": "Plan execution is not available yet (EO-4). Planning only."
+    }
+  },
+  "history": {
+    "v3": {
+      "agentRequirements": [
+        {
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "agent:build:ios-app",
+          "modelCapabilities": [
+            "coding",
+            "reasoning"
+          ],
+          "purpose": "build",
+          "requiredCapabilities": [
+            "ios_development"
+          ]
+        }
+      ],
+      "agents": [
+        {
+          "candidates": [
+            {
+              "agentId": "ios-agent",
+              "matchedCapabilities": [
+                "ios_development"
+              ],
+              "missingCapabilities": [],
+              "qualifies": false,
+              "reasonCodes": [
+                "agent_disabled"
+              ]
+            }
+          ],
+          "matchedCapabilities": [],
+          "qualification": "none_qualified",
+          "requiredCapabilities": [
+            "ios_development"
+          ],
+          "requirementId": "agent:build:ios-app"
+        }
+      ],
+      "analysis": {
+        "catalogVersion": "2026-09-23.1",
+        "components": [
+          {
+            "componentId": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ],
+            "technologyIds": [
+              "swiftui"
+            ]
+          }
+        ],
+        "technologies": [
+          {
+            "capabilities": [
+              "mobile_build_capable"
+            ],
+            "componentId": "ios-app",
+            "os": {
+              "os": "macos"
+            },
+            "technologyId": "swiftui",
+            "toolchains": [
+              {
+                "components": [
+                  {
+                    "name": "ios_sdk"
+                  }
+                ],
+                "kind": "swift_xcode",
+                "minimum": {
+                  "major": 15,
+                  "minor": 0,
+                  "patch": 0
+                }
+              }
+            ]
+          }
+        ],
+        "unsupportedTechnologies": []
+      },
+      "approval": {
+        "state": "not_requested"
+      },
+      "approvalRequirements": [],
+      "architecture": {
+        "components": [
+          {
+            "componentId": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ]
+          }
+        ],
+        "layers": [
+          "mobile_app"
+        ],
+        "platforms": [
+          "ios"
+        ],
+        "style": "single_platform"
+      },
+      "blockers": [
+        {
+          "code": "NO_QUALIFIED_AGENT",
+          "missing": [
+            "ios_development"
+          ],
+          "reasonCodes": [
+            "no_agent_declares_all_required_capabilities"
+          ],
+          "subjectId": "agent:build:ios-app",
+          "subjectType": "agent"
+        }
+      ],
+      "build": [
+        {
+          "agentRequirementId": "agent:build:ios-app",
+          "componentId": "ios-app",
+          "dependencyIds": [
+            "toolchain:swift_xcode",
+            "toolchain:swift_xcode:ios_sdk"
+          ],
+          "environmentRequirementId": "env-1",
+          "expectedArtifact": {
+            "kind": "ios_app_archive",
+            "name": "app-ipa"
+          },
+          "id": "build:ios-app",
+          "inputs": [
+            "source:ios-app"
+          ],
+          "requiredCapabilities": [
+            "mobile_build_capable"
+          ],
+          "status": "planned",
+          "validation": [
+            "build_completes_without_error",
+            "expected_artifact_present"
+          ]
+        }
+      ],
+      "cost": {
+        "status": "not_estimated"
+      },
+      "createdAt": "2026-09-23T12:00:00.000Z",
+      "createdBy": "operator-1",
+      "dependencies": {
+        "conflicts": [],
+        "items": [
+          {
+            "dependsOn": [],
+            "id": "toolchain:swift_xcode",
+            "kind": "toolchain",
+            "minimum": {
+              "major": 15,
+              "minor": 0,
+              "patch": 0
+            },
+            "name": "swift_xcode",
+            "requiredBy": [
+              "ios-app"
+            ],
+            "toolchainKind": "swift_xcode"
+          },
+          {
+            "dependsOn": [
+              "toolchain:swift_xcode"
+            ],
+            "id": "toolchain:swift_xcode:ios_sdk",
+            "kind": "toolchain_component",
+            "name": "ios_sdk",
+            "requiredBy": [
+              "ios-app"
+            ],
+            "toolchainKind": "swift_xcode"
+          }
+        ],
+        "order": [
+          "toolchain:swift_xcode",
+          "toolchain:swift_xcode:ios_sdk"
+        ]
+      },
+      "environments": [
+        {
+          "componentIds": [
+            "ios-app"
+          ],
+          "descriptorSupport": "supported",
+          "id": "env-1",
+          "match": {
+            "candidates": [
+              {
+                "descriptorId": "xcode",
+                "eligible": true,
+                "environmentType": "xcode",
+                "hostId": "mac-1",
+                "instanceId": "xcode-1",
+                "matchedCapabilities": [
+                  "mobile_build_capable"
+                ],
+                "missingCapabilities": [],
+                "missingToolchains": [],
+                "reasonCodes": [],
+                "trustLevel": "detected"
+              }
+            ],
+            "outcome": "ROUTED",
+            "selectedHostId": "mac-1",
+            "selectedInstanceId": "xcode-1",
+            "supportingDescriptorId": "xcode",
+            "tieBreak": [
+              "trust_level_desc",
+              "environment_version_desc",
+              "instance_id_asc"
+            ]
+          },
+          "requirement": {
+            "os": {
+              "os": "macos"
+            },
+            "requiredCapabilities": [
+              "mobile_build_capable"
+            ],
+            "toolchains": [
+              {
+                "components": [
+                  {
+                    "name": "ios_sdk"
+                  }
+                ],
+                "kind": "swift_xcode",
+                "minimum": {
+                  "major": 15,
+                  "minor": 0,
+                  "patch": 0
+                }
+              }
+            ]
+          },
+          "status": "satisfied"
+        }
+      ],
+      "id": "plan_1@v3",
+      "inputsFingerprint": "275bf6e0686571bc",
+      "models": [
+        {
+          "agentRequirementId": "agent:build:ios-app",
+          "capabilities": [
+            "coding",
+            "reasoning"
+          ],
+          "eligibleProfileIds": [],
+          "id": "model:agent:build:ios-app",
+          "missingCapabilities": [],
+          "status": "not_evaluated"
+        }
+      ],
+      "planId": "plan_1",
+      "projectId": "alpha",
+      "schemaVersion": 1,
+      "security": [
+        {
+          "check": "secret_scan",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:secret_scan",
+          "status": "planned"
+        },
+        {
+          "check": "dependency_scan",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:dependency_scan",
+          "status": "planned"
+        },
+        {
+          "check": "sast",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:sast",
+          "status": "planned"
+        }
+      ],
+      "status": "blocked",
+      "supersedes": "plan_1@v2",
+      "tests": [
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:unit",
+          "status": "planned",
+          "type": "unit"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:ui",
+          "status": "planned",
+          "type": "ui"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:build_verification",
+          "status": "planned",
+          "type": "build_verification"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:platform_specific",
+          "status": "planned",
+          "type": "platform_specific"
+        }
+      ],
+      "updatedAt": "2026-09-23T12:00:00.000Z",
+      "version": 3,
+      "request": {
+        "components": [
+          {
+            "id": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ],
+            "technologies": [
+              "swiftui"
+            ]
+          }
+        ],
+        "projectId": "alpha",
+        "title": "Native iOS app"
+      },
+      "current": true,
+      "deployment": [],
+      "execution": {
+        "available": false,
+        "reason": "Plan execution is not available yet (EO-4). Planning only."
+      }
+    },
+    "v2": {
+      "agentRequirements": [
+        {
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "agent:build:ios-app",
+          "modelCapabilities": [
+            "coding",
+            "reasoning"
+          ],
+          "purpose": "build",
+          "requiredCapabilities": [
+            "ios_development"
+          ]
+        }
+      ],
+      "agents": [
+        {
+          "agentId": "ios-agent",
+          "candidates": [
+            {
+              "agentId": "ios-agent",
+              "matchedCapabilities": [
+                "ios_development"
+              ],
+              "missingCapabilities": [],
+              "qualifies": true,
+              "reasonCodes": []
+            }
+          ],
+          "matchedCapabilities": [
+            "ios_development"
+          ],
+          "qualification": "qualified",
+          "requiredCapabilities": [
+            "ios_development"
+          ],
+          "requirementId": "agent:build:ios-app"
+        }
+      ],
+      "analysis": {
+        "catalogVersion": "2026-09-23.1",
+        "components": [
+          {
+            "componentId": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ],
+            "technologyIds": [
+              "swiftui"
+            ]
+          }
+        ],
+        "technologies": [
+          {
+            "capabilities": [
+              "mobile_build_capable"
+            ],
+            "componentId": "ios-app",
+            "os": {
+              "os": "macos"
+            },
+            "technologyId": "swiftui",
+            "toolchains": [
+              {
+                "components": [
+                  {
+                    "name": "ios_sdk"
+                  }
+                ],
+                "kind": "swift_xcode",
+                "minimum": {
+                  "major": 15,
+                  "minor": 0,
+                  "patch": 0
+                }
+              }
+            ]
+          }
+        ],
+        "unsupportedTechnologies": []
+      },
+      "approval": {
+        "state": "not_requested"
+      },
+      "approvalRequirements": [],
+      "architecture": {
+        "components": [
+          {
+            "componentId": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ]
+          }
+        ],
+        "layers": [
+          "mobile_app"
+        ],
+        "platforms": [
+          "ios"
+        ],
+        "style": "single_platform"
+      },
+      "blockers": [],
+      "build": [
+        {
+          "agentRequirementId": "agent:build:ios-app",
+          "componentId": "ios-app",
+          "dependencyIds": [
+            "toolchain:swift_xcode",
+            "toolchain:swift_xcode:ios_sdk"
+          ],
+          "environmentRequirementId": "env-1",
+          "expectedArtifact": {
+            "kind": "ios_app_archive",
+            "name": "app-ipa"
+          },
+          "id": "build:ios-app",
+          "inputs": [
+            "source:ios-app"
+          ],
+          "requiredCapabilities": [
+            "mobile_build_capable"
+          ],
+          "status": "planned",
+          "validation": [
+            "build_completes_without_error",
+            "expected_artifact_present"
+          ]
+        }
+      ],
+      "cost": {
+        "status": "not_estimated"
+      },
+      "createdAt": "2026-09-23T12:00:00.000Z",
+      "createdBy": "operator-1",
+      "dependencies": {
+        "conflicts": [],
+        "items": [
+          {
+            "dependsOn": [],
+            "id": "toolchain:swift_xcode",
+            "kind": "toolchain",
+            "minimum": {
+              "major": 15,
+              "minor": 0,
+              "patch": 0
+            },
+            "name": "swift_xcode",
+            "requiredBy": [
+              "ios-app"
+            ],
+            "toolchainKind": "swift_xcode"
+          },
+          {
+            "dependsOn": [
+              "toolchain:swift_xcode"
+            ],
+            "id": "toolchain:swift_xcode:ios_sdk",
+            "kind": "toolchain_component",
+            "name": "ios_sdk",
+            "requiredBy": [
+              "ios-app"
+            ],
+            "toolchainKind": "swift_xcode"
+          }
+        ],
+        "order": [
+          "toolchain:swift_xcode",
+          "toolchain:swift_xcode:ios_sdk"
+        ]
+      },
+      "environments": [
+        {
+          "componentIds": [
+            "ios-app"
+          ],
+          "descriptorSupport": "supported",
+          "id": "env-1",
+          "match": {
+            "candidates": [
+              {
+                "descriptorId": "xcode",
+                "eligible": true,
+                "environmentType": "xcode",
+                "hostId": "mac-1",
+                "instanceId": "xcode-1",
+                "matchedCapabilities": [
+                  "mobile_build_capable"
+                ],
+                "missingCapabilities": [],
+                "missingToolchains": [],
+                "reasonCodes": [],
+                "trustLevel": "detected"
+              }
+            ],
+            "outcome": "ROUTED",
+            "selectedHostId": "mac-1",
+            "selectedInstanceId": "xcode-1",
+            "supportingDescriptorId": "xcode",
+            "tieBreak": [
+              "trust_level_desc",
+              "environment_version_desc",
+              "instance_id_asc"
+            ]
+          },
+          "requirement": {
+            "os": {
+              "os": "macos"
+            },
+            "requiredCapabilities": [
+              "mobile_build_capable"
+            ],
+            "toolchains": [
+              {
+                "components": [
+                  {
+                    "name": "ios_sdk"
+                  }
+                ],
+                "kind": "swift_xcode",
+                "minimum": {
+                  "major": 15,
+                  "minor": 0,
+                  "patch": 0
+                }
+              }
+            ]
+          },
+          "status": "satisfied"
+        }
+      ],
+      "id": "plan_1@v2",
+      "inputsFingerprint": "e8a23fab6129abdb",
+      "models": [
+        {
+          "agentId": "ios-agent",
+          "agentRequirementId": "agent:build:ios-app",
+          "capabilities": [
+            "coding",
+            "reasoning"
+          ],
+          "eligibleProfileIds": [
+            "openai-general"
+          ],
+          "id": "model:agent:build:ios-app",
+          "missingCapabilities": [],
+          "status": "satisfied"
+        }
+      ],
+      "planId": "plan_1",
+      "projectId": "alpha",
+      "schemaVersion": 1,
+      "security": [
+        {
+          "check": "secret_scan",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:secret_scan",
+          "status": "planned"
+        },
+        {
+          "check": "dependency_scan",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:dependency_scan",
+          "status": "planned"
+        },
+        {
+          "check": "sast",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:sast",
+          "status": "planned"
+        }
+      ],
+      "status": "superseded",
+      "supersededBy": "plan_1@v3",
+      "supersedes": "plan_1@v1",
+      "tests": [
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:unit",
+          "status": "planned",
+          "type": "unit"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:ui",
+          "status": "planned",
+          "type": "ui"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:build_verification",
+          "status": "planned",
+          "type": "build_verification"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:platform_specific",
+          "status": "planned",
+          "type": "platform_specific"
+        }
+      ],
+      "updatedAt": "2026-09-23T12:00:00.000Z",
+      "version": 2,
+      "request": {
+        "components": [
+          {
+            "id": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ],
+            "technologies": [
+              "swiftui"
+            ]
+          }
+        ],
+        "projectId": "alpha",
+        "title": "Native iOS app"
+      },
+      "current": false,
+      "deployment": [],
+      "execution": {
+        "available": false,
+        "reason": "Plan execution is not available yet (EO-4). Planning only."
+      }
+    },
+    "v1": {
+      "agentRequirements": [
+        {
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "agent:build:ios-app",
+          "modelCapabilities": [
+            "coding",
+            "reasoning"
+          ],
+          "purpose": "build",
+          "requiredCapabilities": [
+            "ios_development"
+          ]
+        }
+      ],
+      "agents": [
+        {
+          "agentId": "ios-agent",
+          "candidates": [
+            {
+              "agentId": "ios-agent",
+              "matchedCapabilities": [
+                "ios_development"
+              ],
+              "missingCapabilities": [],
+              "qualifies": true,
+              "reasonCodes": []
+            }
+          ],
+          "matchedCapabilities": [
+            "ios_development"
+          ],
+          "qualification": "qualified",
+          "requiredCapabilities": [
+            "ios_development"
+          ],
+          "requirementId": "agent:build:ios-app"
+        }
+      ],
+      "analysis": {
+        "catalogVersion": "2026-09-23.1",
+        "components": [
+          {
+            "componentId": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ],
+            "technologyIds": [
+              "swiftui"
+            ]
+          }
+        ],
+        "technologies": [
+          {
+            "capabilities": [
+              "mobile_build_capable"
+            ],
+            "componentId": "ios-app",
+            "os": {
+              "os": "macos"
+            },
+            "technologyId": "swiftui",
+            "toolchains": [
+              {
+                "components": [
+                  {
+                    "name": "ios_sdk"
+                  }
+                ],
+                "kind": "swift_xcode",
+                "minimum": {
+                  "major": 15,
+                  "minor": 0,
+                  "patch": 0
+                }
+              }
+            ]
+          }
+        ],
+        "unsupportedTechnologies": []
+      },
+      "approval": {
+        "state": "not_requested"
+      },
+      "approvalRequirements": [],
+      "architecture": {
+        "components": [
+          {
+            "componentId": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ]
+          }
+        ],
+        "layers": [
+          "mobile_app"
+        ],
+        "platforms": [
+          "ios"
+        ],
+        "style": "single_platform"
+      },
+      "blockers": [
+        {
+          "code": "MISSING_ENVIRONMENT",
+          "missing": [
+            "mobile_build_capable",
+            "swift_xcode",
+            "swift_xcode:ios_sdk"
+          ],
+          "reasonCodes": [
+            "no_eligible_instance_registered"
+          ],
+          "subjectId": "env-1",
+          "subjectType": "environment"
+        }
+      ],
+      "build": [
+        {
+          "agentRequirementId": "agent:build:ios-app",
+          "componentId": "ios-app",
+          "dependencyIds": [
+            "toolchain:swift_xcode",
+            "toolchain:swift_xcode:ios_sdk"
+          ],
+          "environmentRequirementId": "env-1",
+          "expectedArtifact": {
+            "kind": "ios_app_archive",
+            "name": "app-ipa"
+          },
+          "id": "build:ios-app",
+          "inputs": [
+            "source:ios-app"
+          ],
+          "requiredCapabilities": [
+            "mobile_build_capable"
+          ],
+          "status": "planned",
+          "validation": [
+            "build_completes_without_error",
+            "expected_artifact_present"
+          ]
+        }
+      ],
+      "cost": {
+        "status": "not_estimated"
+      },
+      "createdAt": "2026-09-23T12:00:00.000Z",
+      "createdBy": "operator-1",
+      "dependencies": {
+        "conflicts": [],
+        "items": [
+          {
+            "dependsOn": [],
+            "id": "toolchain:swift_xcode",
+            "kind": "toolchain",
+            "minimum": {
+              "major": 15,
+              "minor": 0,
+              "patch": 0
+            },
+            "name": "swift_xcode",
+            "requiredBy": [
+              "ios-app"
+            ],
+            "toolchainKind": "swift_xcode"
+          },
+          {
+            "dependsOn": [
+              "toolchain:swift_xcode"
+            ],
+            "id": "toolchain:swift_xcode:ios_sdk",
+            "kind": "toolchain_component",
+            "name": "ios_sdk",
+            "requiredBy": [
+              "ios-app"
+            ],
+            "toolchainKind": "swift_xcode"
+          }
+        ],
+        "order": [
+          "toolchain:swift_xcode",
+          "toolchain:swift_xcode:ios_sdk"
+        ]
+      },
+      "environments": [
+        {
+          "componentIds": [
+            "ios-app"
+          ],
+          "descriptorSupport": "supported",
+          "id": "env-1",
+          "match": {
+            "candidates": [],
+            "outcome": "REQUIRES_PROVISIONING",
+            "supportingDescriptorId": "xcode",
+            "tieBreak": [
+              "trust_level_desc",
+              "environment_version_desc",
+              "instance_id_asc"
+            ]
+          },
+          "requirement": {
+            "os": {
+              "os": "macos"
+            },
+            "requiredCapabilities": [
+              "mobile_build_capable"
+            ],
+            "toolchains": [
+              {
+                "components": [
+                  {
+                    "name": "ios_sdk"
+                  }
+                ],
+                "kind": "swift_xcode",
+                "minimum": {
+                  "major": 15,
+                  "minor": 0,
+                  "patch": 0
+                }
+              }
+            ]
+          },
+          "status": "missing"
+        }
+      ],
+      "id": "plan_1@v1",
+      "inputsFingerprint": "9b6040bb8d8b911b",
+      "models": [
+        {
+          "agentId": "ios-agent",
+          "agentRequirementId": "agent:build:ios-app",
+          "capabilities": [
+            "coding",
+            "reasoning"
+          ],
+          "eligibleProfileIds": [
+            "openai-general"
+          ],
+          "id": "model:agent:build:ios-app",
+          "missingCapabilities": [],
+          "status": "satisfied"
+        }
+      ],
+      "planId": "plan_1",
+      "projectId": "alpha",
+      "schemaVersion": 1,
+      "security": [
+        {
+          "check": "secret_scan",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:secret_scan",
+          "status": "planned"
+        },
+        {
+          "check": "dependency_scan",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:dependency_scan",
+          "status": "planned"
+        },
+        {
+          "check": "sast",
+          "componentIds": [
+            "ios-app"
+          ],
+          "id": "security:sast",
+          "status": "planned"
+        }
+      ],
+      "status": "superseded",
+      "supersededBy": "plan_1@v2",
+      "tests": [
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:unit",
+          "status": "planned",
+          "type": "unit"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:ui",
+          "status": "planned",
+          "type": "ui"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:build_verification",
+          "status": "planned",
+          "type": "build_verification"
+        },
+        {
+          "componentId": "ios-app",
+          "dependsOnStageIds": [
+            "build:ios-app"
+          ],
+          "environmentRequirementId": "env-1",
+          "id": "test:ios-app:platform_specific",
+          "status": "planned",
+          "type": "platform_specific"
+        }
+      ],
+      "updatedAt": "2026-09-23T12:00:00.000Z",
+      "version": 1,
+      "request": {
+        "components": [
+          {
+            "id": "ios-app",
+            "kind": "mobile_app",
+            "platforms": [
+              "ios"
+            ],
+            "technologies": [
+              "swiftui"
+            ]
+          }
+        ],
+        "projectId": "alpha",
+        "title": "Native iOS app"
+      },
+      "current": false,
+      "deployment": [],
+      "execution": {
+        "available": false,
+        "reason": "Plan execution is not available yet (EO-4). Planning only."
+      }
+    }
+  }
+}
