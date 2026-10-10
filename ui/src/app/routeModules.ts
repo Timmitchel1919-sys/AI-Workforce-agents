@@ -10,6 +10,9 @@ export const loadControlCenterRoutes = () => import("./routes/controlCenterRoute
 /** Project onboarding wizard (separate lazy chunk; routes are added in router.tsx). */
 export const loadProjectOnboarding = () => import("../pages/ProjectOnboarding/routes");
 
+/** Prompt Intelligence (Phase 3) page (separate lazy chunk). */
+export const loadPromptIntelligence = () => import("../pages/PromptIntelligence/routes");
+
 export type RouteChunk = "landing" | "auth" | "controlCenter";
 
 export const routeChunkLoaders: Record<RouteChunk, () => Promise<unknown>> = {

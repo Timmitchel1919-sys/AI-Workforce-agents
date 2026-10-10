@@ -64,6 +64,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.spatialGraph" , route: "/graph", icon: "spatial-graph", section: "main" },
   { labelKey: "nav.knowledge", route: "/knowledge", icon: "knowledge", section: "intelligence" },
   { labelKey: "nav.intelligence", route: "/intelligence", icon: "intelligence", section: "intelligence" },
+  { labelKey: "promptIntelligence.nav", route: "/prompt-intelligence", icon: "intelligence", section: "intelligence" },
   { labelKey: "nav.governanceControls", route: "/governance", icon: "governance", section: "governance" },
   { labelKey: "nav.continuity", route: "/continuity", icon: "governance", section: "governance" },
   { labelKey: "nav.costCenter", route: "/cost", icon: "cost-center", section: "governance" },

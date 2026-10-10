@@ -90,6 +90,18 @@ import {
   ExecutionPlanningService,
   ValidationError,
   GitHubRepositoryReader,
+  AI_WORKFORCE_PROFILE,
+  ContextEngine,
+  KnowledgeContextSource,
+  OnboardedProjectSource,
+  PlatformDevelopmentDefaultsSource,
+  PlatformSecurityBaselineSource,
+  ProjectRegistrySource,
+  PromptIntelligenceService,
+  RepositoryFileResolver,
+  RuleBasedIntentAnalyzer,
+  StaticProjectProfileSource,
+  TaskContextSource,
   OnboardingService,
   ProjectProvisioningService,
   ArtifactManager,
@@ -128,6 +140,9 @@ import {
 import { SpecialistAgent } from "../agents/specialists/index.js";
 import { V1_SPECIALIST_WORKFORCE } from "../agents/specialists/v1-specialist-workforce.js";
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
+import { PromptIntelligenceControlService } from "../control/services/prompt-intelligence-control-service.js";
+import type { PromptRequestRecord } from "../contracts/prompt-intelligence.js";
+import type { KnowledgeRecord } from "../core/prompt-intelligence/context-sources.js";
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi, type ApiHandler } from "./http-api.js";
@@ -317,6 +332,13 @@ export async function createProductionControlPlaneRuntime(
   const grcTrustContentRepository = repositories.repository<any>("grc_trust_content");
   const grcFindingsRepository = repositories.repository<any>("grc_findings");
 
+  // Phase 3: durable prompt-request traces + a read view of Knowledge. Allocated
+  // before the single hydrate pass; "knowledge_items" resolves to the same
+  // repository instance the Knowledge module uses (one instance per path).
+  const promptRequestRepository =
+    repositories.repository<PromptRequestRecord>("prompt_requests");
+  const promptKnowledgeRepository =
+    repositories.repository<KnowledgeRecord>("knowledge_items");
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
@@ -932,11 +954,46 @@ export async function createProductionControlPlaneRuntime(
       /* a transient read failure must not fail an unrelated request */
     }
   };
+  // Phase 3: Context Engine + Prompt Intelligence. Every source reads existing
+  // platform state through a read-only port; nothing here executes an agent.
+  const promptIntelligence = new PromptIntelligenceControlService(
+    new PromptIntelligenceService({
+      projects: bootstrap.projects,
+      analyzer: new RuleBasedIntentAnalyzer(),
+      engine: new ContextEngine(
+        [
+          new PlatformSecurityBaselineSource(),
+          new PlatformDevelopmentDefaultsSource(),
+          new ProjectRegistrySource(bootstrap.projects),
+          new StaticProjectProfileSource(
+            "ai-workforce-profile",
+            "ai-workforce",
+            "AI Workforce repository documentation",
+            AI_WORKFORCE_PROFILE,
+          ),
+          new OnboardedProjectSource(provisionedProjects),
+          new KnowledgeContextSource(promptKnowledgeRepository),
+          new TaskContextSource(tasks),
+        ],
+        {
+          fileResolver: new RepositoryFileResolver(
+            bootstrap.projects,
+            new GitHubRepositoryReader(),
+          ),
+        },
+      ),
+      records: promptRequestRepository,
+      approvals,
+      agents: bootstrap.agents,
+    }),
+    audit,
+  );
   const query = new WorkforceQueryService(context);
   const command = new WorkforceCommandService(context);
   const graphQuery = new GraphQueryService(context);
   const handler = createControlPlaneApi({
     onboarding,
+    promptIntelligence,
     projectSync,
     graphQuery,
     query,

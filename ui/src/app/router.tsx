@@ -5,7 +5,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n, type MessageKey } from "../i18n";
 import RouteError from "./RouteError";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding } from "./routeModules";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -45,6 +45,7 @@ const IntelligencePage = fromChunk(loadControlCenterRoutes, "IntelligencePage");
 const IntegrationsPage = fromChunk(loadControlCenterRoutes, "IntegrationsPage");
 const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
+const PromptIntelligencePage = fromChunk(loadPromptIntelligence, "PromptIntelligencePage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
 const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
@@ -140,6 +141,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "projects", element: withSuspense(<ProjectsPage />) },
       { path: "projects/new", element: withSuspense(<NewProjectPage />) },
       { path: "projects/onboarding/:onboardingId", element: withSuspense(<OnboardingPage />) },
+      { path: "prompt-intelligence", element: withSuspense(<PromptIntelligencePage />) },
+      { path: "prompt-intelligence/:requestId", element: withSuspense(<PromptIntelligencePage />) },
       { path: "projects/:projectId", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations/:sessionId", element: withSuspense(<ProjectDetailPage />) },

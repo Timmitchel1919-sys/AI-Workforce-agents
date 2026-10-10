@@ -1,3 +1,4 @@
+import { promptIntelligenceNl } from "./promptIntelligence.nl";
 import { onboardingNl } from "./onboarding.nl";
 import type { Messages } from "../messages";
 
@@ -2202,6 +2203,7 @@ export const nl: Messages = {
     pageDescription: "Voorspellende beslissings- en optimalisatie-engine. Bewaakt afwijkingen, anomalieën en voert voorspellingen uit."
   },
   onboarding: onboardingNl,
+  promptIntelligence: promptIntelligenceNl,
   integrations: {
     title: "Integraties",
     description: "Beheer enterprise integraties, MCP-servers en externe tools.",

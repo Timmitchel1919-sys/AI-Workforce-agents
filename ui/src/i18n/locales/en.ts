@@ -1,3 +1,4 @@
+import { promptIntelligenceEn } from "./promptIntelligence.en";
 import { onboardingEn } from "./onboarding.en";
 /**
  * English — the source catalogue. Every other locale must match this shape.
@@ -2203,6 +2204,7 @@ export const en = {
     pageDescription: "Predictive decision and optimization engine. Monitors drift, anomalies, and performs forecasting."
   },
   onboarding: onboardingEn,
+  promptIntelligence: promptIntelligenceEn,
   integrations: {
     title: "Integrations",
     description: "Manage enterprise integrations, MCP servers, and external tools.",

@@ -938,6 +938,7 @@ export * from "./orchestration.js";
 export * from "./environment-routing.js";
 export * from "./graph.js";
 export * from "./onboarding.js";
+export * from "./prompt-intelligence.js";
 export * from "./cost-center.js";
 export * from "./governance.js";
 export * from "./routing.js";

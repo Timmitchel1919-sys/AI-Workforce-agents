@@ -79,6 +79,8 @@ export const CONTROL_CAPABILITIES = [
   "manage_budget_policy",
   /* EO-6.3 — Governance Policy Engine: the allow-list/threshold policy is administrator-only. */
   "manage_governance_policy",
+  /* Phase 3 — Context Engine + Prompt Intelligence (prepares, never executes). */
+  "prepare_prompt",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -112,6 +114,8 @@ export const ROLE_CAPABILITIES: Record<
     "create_workstream",
     "add_task_to_workstream",
     "tick_software_factory",
+    // Phase 3: operators may prepare (analyse/validate) execution prompts.
+    "prepare_prompt",
   ],
   admin: [
     "view",
@@ -149,6 +153,8 @@ export const ROLE_CAPABILITIES: Record<
     "manage_budget_policy",
     // EO-6.3: setting the governance allow-list/threshold policy is administrator-only.
     "manage_governance_policy",
+    // Phase 3: preparing execution prompts.
+    "prepare_prompt",
   ],
 };
 
@@ -246,6 +252,9 @@ export const CONTROL_COMMANDS = [
   "set_budget_policy",
   "set_governance_policy",
   "evaluate_governance",
+  // Phase 3 — Context Engine + Prompt Intelligence.
+  "prompt_prepare",
+  "prompt_request_approval",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 
