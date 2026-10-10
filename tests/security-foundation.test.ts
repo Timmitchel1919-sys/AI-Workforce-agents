@@ -6,6 +6,7 @@ import {
   RepositorySecurityEventStore,
   normalizeSecurityEvent,
 } from "../core/index.js";
+import { SecurityControlService } from "../control/services/security-service.js";
 function event(id: string, projectId = "p1") {
   return normalizeSecurityEvent({
     eventId: id,
@@ -39,4 +40,32 @@ test("security event queries are bounded and project scoped", () => {
   for (let i = 0; i < 120; i += 1) store.append(event(`evt-${i}`, "p1"));
   assert.equal(store.query({ limit: 500 }).length, 100);
   assert.equal(store.query({ projectId: "p2" }).length, 0);
+});
+
+test("canonical security reads require admin and an explicit project scope", async () => {
+  const service = new SecurityControlService(
+    new InMemoryRepository(),
+    new InMemoryRepository(),
+    new InMemoryRepository(),
+    new AppendOnlySecurityEventStore(),
+  );
+  const viewer = {
+    id: "viewer",
+    role: "viewer" as const,
+    allowedProjects: ["p1"],
+  };
+  const admin = {
+    id: "admin",
+    role: "admin" as const,
+    allowedProjects: ["p1"],
+  };
+  await assert.rejects(
+    () => service.listCanonicalEvents(viewer),
+    /Requires admin/,
+  );
+  assert.deepEqual(await service.listCanonicalEvents(admin), []);
+  assert.deepEqual(
+    await service.listCanonicalEvents(admin, { projectId: "p2" }),
+    [],
+  );
 });

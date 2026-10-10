@@ -653,10 +653,17 @@ export function createControlPlaneApi(options) {
             return send(res, 404, { error: { message: "security not available" } }, correlationId);
         try {
             if (segs[1] === "events" && method === "GET") {
-                return send(res, 200, await options.security.listEvents(), correlationId);
+                return send(res, 200, await options.security.listEvents(principal), correlationId);
+            }
+            if (segs[1] === "canonical-events" && method === "GET") {
+                const params = new URL(req.url ?? "/", "http://localhost").searchParams;
+                return send(res, 200, await options.security.listCanonicalEvents(principal, {
+                    projectId: params.get("projectId") ?? undefined,
+                    limit: Number(params.get("limit") ?? 100),
+                }), correlationId);
             }
             if (segs[1] === "policies" && method === "GET") {
-                return send(res, 200, await options.security.listPolicies(), correlationId);
+                return send(res, 200, await options.security.listPolicies(principal), correlationId);
             }
             return send(res, 404, { error: { message: "not found" } }, correlationId);
         }

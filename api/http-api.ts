@@ -256,31 +256,103 @@ export function createControlPlaneApi(
     try {
       if (options.projectSync) await options.projectSync();
       if (route.startsWith("/itsm/")) {
-        return await handleItsm(route, segs, method, req, res, principal, correlationId);
+        return await handleItsm(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/ops/")) {
-        return await handleOperations(route, segs, method, req, res, principal, correlationId);
+        return await handleOperations(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/grc/")) {
-        return await handleGrc(route, segs, method, req, res, principal, correlationId);
+        return await handleGrc(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/aigov/")) {
-        return await handleAIGovernance(route, segs, method, req, res, principal, correlationId);
+        return await handleAIGovernance(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/datagov/")) {
-        return await handleDataGovernance(route, segs, method, req, res, principal, correlationId);
+        return await handleDataGovernance(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/security/")) {
-        return await handleSecurity(route, segs, method, req, res, principal, correlationId);
+        return await handleSecurity(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/audit/")) {
-        return await handleAudit(route, segs, method, req, res, principal, correlationId);
+        return await handleAudit(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/portfolio/")) {
-        return await handlePortfolio(route, segs, method, req, res, principal, correlationId);
+        return await handlePortfolio(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/product/")) {
-        return await handleProduct(route, segs, method, req, res, principal, correlationId);
+        return await handleProduct(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       // Specialist workforce routes are handled by the core workforce
       // query/plan handlers below. Keep the newer organization/workforce
@@ -292,7 +364,15 @@ export function createControlPlaneApi(
         route.startsWith("/workforce/assignments/") ||
         route === "/workforce/handoffs";
       if (route.startsWith("/workforce/") && !isSpecialistWorkforceRoute) {
-        return await handleWorkforce(route, segs, method, req, res, principal, correlationId);
+        return await handleWorkforce(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route === "/me/profile" || route === "/me/profile/photo") {
         return await handleProfile(
@@ -1051,40 +1131,87 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.itsm) return send(res, 404, { error: { message: "itsm not found" } }, correlationId);
-    
+    if (!options.itsm)
+      return send(
+        res,
+        404,
+        { error: { message: "itsm not found" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "services") {
         if (method === "GET") {
-          return send(res, 200, await options.itsm.listServices(principal.id), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.listServices(principal.id),
+            correlationId,
+          );
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createService(body as any), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.createService(body as any),
+            correlationId,
+          );
         }
       }
-      
+
       if (segs[1] === "incidents") {
         if (method === "GET") {
-          const serviceId = new URL(req.url ?? "/", "http://localhost").searchParams.get("serviceId");
-          return send(res, 200, await options.itsm.listIncidents(principal.id, serviceId || undefined), correlationId);
+          const serviceId = new URL(
+            req.url ?? "/",
+            "http://localhost",
+          ).searchParams.get("serviceId");
+          return send(
+            res,
+            200,
+            await options.itsm.listIncidents(
+              principal.id,
+              serviceId || undefined,
+            ),
+            correlationId,
+          );
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createIncident(body as any), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.createIncident(body as any),
+            correlationId,
+          );
         }
       }
-      
+
       if (segs[1] === "changes") {
         if (method === "GET") {
-          return send(res, 200, await options.itsm.listChangeRequests(principal.id), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.listChangeRequests(principal.id),
+            correlationId,
+          );
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createChangeRequest(body as any), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.createChangeRequest(body as any),
+            correlationId,
+          );
         }
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1097,15 +1224,31 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.ops) return send(res, 404, { error: { message: "ops not available" } }, correlationId);
-    
+    if (!options.ops)
+      return send(
+        res,
+        404,
+        { error: { message: "ops not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "health") {
         if (method === "GET") {
-          return send(res, 200, await options.ops.getGlobalHealth(), correlationId);
+          return send(
+            res,
+            200,
+            await options.ops.getGlobalHealth(),
+            correlationId,
+          );
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.ops.reportHealth(principal, body as any), correlationId);
+          return send(
+            res,
+            200,
+            await options.ops.reportHealth(principal, body as any),
+            correlationId,
+          );
         }
       }
 
@@ -1117,7 +1260,12 @@ export function createControlPlaneApi(
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1130,22 +1278,48 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.grc) return send(res, 404, { error: { message: "grc not available" } }, correlationId);
-    
+    if (!options.grc)
+      return send(
+        res,
+        404,
+        { error: { message: "grc not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "frameworks" && method === "GET") {
-        return send(res, 200, await options.grc.listFrameworks(), correlationId);
+        return send(
+          res,
+          200,
+          await options.grc.listFrameworks(),
+          correlationId,
+        );
       }
       if (segs[1] === "risks" && method === "GET") {
-        return send(res, 200, await options.grc.listRisks("global"), correlationId);
+        return send(
+          res,
+          200,
+          await options.grc.listRisks("global"),
+          correlationId,
+        );
       }
       if (segs[1] === "trust-content" && method === "GET") {
-        return send(res, 200, await options.grc.listTrustCenterContent(), correlationId);
+        return send(
+          res,
+          200,
+          await options.grc.listTrustCenterContent(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1158,20 +1332,36 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.aiGov) return send(res, 404, { error: { message: "ai governance not available" } }, correlationId);
-    
+    if (!options.aiGov)
+      return send(
+        res,
+        404,
+        { error: { message: "ai governance not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "models" && method === "GET") {
         return send(res, 200, await options.aiGov.listModels(), correlationId);
       }
       if (segs[1] === "use-cases" && method === "GET") {
         // Simple global fetch for prototype
-        return send(res, 200, await options.aiGov.listUseCases("global"), correlationId);
+        return send(
+          res,
+          200,
+          await options.aiGov.listUseCases("global"),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1184,19 +1374,40 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.dataGov) return send(res, 404, { error: { message: "data governance not available" } }, correlationId);
-    
+    if (!options.dataGov)
+      return send(
+        res,
+        404,
+        { error: { message: "data governance not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "assets" && method === "GET") {
-        return send(res, 200, await options.dataGov.listAssets(), correlationId);
+        return send(
+          res,
+          200,
+          await options.dataGov.listAssets(),
+          correlationId,
+        );
       }
       if (segs[1] === "retention-policies" && method === "GET") {
-        return send(res, 200, await options.dataGov.listRetentionPolicies(), correlationId);
+        return send(
+          res,
+          200,
+          await options.dataGov.listRetentionPolicies(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1209,19 +1420,52 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.security) return send(res, 404, { error: { message: "security not available" } }, correlationId);
-    
+    if (!options.security)
+      return send(
+        res,
+        404,
+        { error: { message: "security not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "events" && method === "GET") {
-        return send(res, 200, await options.security.listEvents(), correlationId);
+        return send(
+          res,
+          200,
+          await options.security.listEvents(principal),
+          correlationId,
+        );
+      }
+      if (segs[1] === "canonical-events" && method === "GET") {
+        const params = new URL(req.url ?? "/", "http://localhost").searchParams;
+        return send(
+          res,
+          200,
+          await options.security.listCanonicalEvents(principal, {
+            projectId: params.get("projectId") ?? undefined,
+            limit: Number(params.get("limit") ?? 100),
+          }),
+          correlationId,
+        );
       }
       if (segs[1] === "policies" && method === "GET") {
-        return send(res, 200, await options.security.listPolicies(), correlationId);
+        return send(
+          res,
+          200,
+          await options.security.listPolicies(principal),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1234,19 +1478,40 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.audit) return send(res, 404, { error: { message: "audit not available" } }, correlationId);
-    
+    if (!options.audit)
+      return send(
+        res,
+        404,
+        { error: { message: "audit not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "logs" && method === "GET") {
-        return send(res, 200, await options.audit.listAuditLogs(), correlationId);
+        return send(
+          res,
+          200,
+          await options.audit.listAuditLogs(),
+          correlationId,
+        );
       }
       if (segs[1] === "findings" && method === "GET") {
-        return send(res, 200, await options.audit.listFindings(), correlationId);
+        return send(
+          res,
+          200,
+          await options.audit.listFindings(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1259,22 +1524,48 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.portfolio) return send(res, 404, { error: { message: "portfolio not available" } }, correlationId);
-    
+    if (!options.portfolio)
+      return send(
+        res,
+        404,
+        { error: { message: "portfolio not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "portfolios" && method === "GET") {
-        return send(res, 200, await options.portfolio.listPortfolios(), correlationId);
+        return send(
+          res,
+          200,
+          await options.portfolio.listPortfolios(),
+          correlationId,
+        );
       }
       if (segs[1] === "programs" && method === "GET") {
-        return send(res, 200, await options.portfolio.listPrograms(), correlationId);
+        return send(
+          res,
+          200,
+          await options.portfolio.listPrograms(),
+          correlationId,
+        );
       }
       if (segs[1] === "objectives" && method === "GET") {
-        return send(res, 200, await options.portfolio.listObjectives(), correlationId);
+        return send(
+          res,
+          200,
+          await options.portfolio.listObjectives(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1287,22 +1578,48 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.product) return send(res, 404, { error: { message: "product not available" } }, correlationId);
-    
+    if (!options.product)
+      return send(
+        res,
+        404,
+        { error: { message: "product not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "products" && method === "GET") {
-        return send(res, 200, await options.product.listProducts(), correlationId);
+        return send(
+          res,
+          200,
+          await options.product.listProducts(),
+          correlationId,
+        );
       }
       if (segs[1] === "problems" && method === "GET") {
-        return send(res, 200, await options.product.listProblems(), correlationId);
+        return send(
+          res,
+          200,
+          await options.product.listProblems(),
+          correlationId,
+        );
       }
       if (segs[1] === "features" && method === "GET") {
-        return send(res, 200, await options.product.listFeatures(), correlationId);
+        return send(
+          res,
+          200,
+          await options.product.listFeatures(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1315,22 +1632,48 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.workforce) return send(res, 404, { error: { message: "workforce not available" } }, correlationId);
-    
+    if (!options.workforce)
+      return send(
+        res,
+        404,
+        { error: { message: "workforce not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "departments" && method === "GET") {
-        return send(res, 200, await options.workforce.listDepartments(), correlationId);
+        return send(
+          res,
+          200,
+          await options.workforce.listDepartments(),
+          correlationId,
+        );
       }
       if (segs[1] === "teams" && method === "GET") {
-        return send(res, 200, await options.workforce.listTeams(), correlationId);
+        return send(
+          res,
+          200,
+          await options.workforce.listTeams(),
+          correlationId,
+        );
       }
       if (segs[1] === "agents" && method === "GET") {
-        return send(res, 200, await options.workforce.listAgents(), correlationId);
+        return send(
+          res,
+          200,
+          await options.workforce.listAgents(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1637,5 +1980,3 @@ function parseAuditQuery(params: URLSearchParams): AuditEventQuery {
   if (Number.isFinite(limit) && limit > 0) q.limit = limit;
   return q;
 }
-
-
