@@ -5,7 +5,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n, type MessageKey } from "../i18n";
 import RouteError from "./RouteError";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter } from "./routeModules";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -47,6 +47,7 @@ const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 const PromptIntelligencePage = fromChunk(loadPromptIntelligence, "PromptIntelligencePage");
 const ExecutionCenterPage = fromChunk(loadExecutionCenter, "ExecutionCenterPage");
+const LiveWorkspacePage = fromChunk(loadLiveWorkspace, "LiveWorkspacePage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
 const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
@@ -146,6 +147,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "prompt-intelligence/:requestId", element: withSuspense(<PromptIntelligencePage />) },
       { path: "execution-center", element: withSuspense(<ExecutionCenterPage />) },
       { path: "execution-center/:runId", element: withSuspense(<ExecutionCenterPage />) },
+      { path: "workspace", element: withSuspense(<LiveWorkspacePage />) },
+      { path: "workspace/:executionId", element: withSuspense(<LiveWorkspacePage />) },
       { path: "projects/:projectId", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations/:sessionId", element: withSuspense(<ProjectDetailPage />) },

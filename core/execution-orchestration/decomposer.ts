@@ -318,6 +318,9 @@ export function decompose(input: DecomposeInput): {
         type: "DEVELOPMENT",
         caps: [primary],
         deps: gates,
+        // A failing build goes back to the developer (a gate), not into a blind retry loop.
+        gate: "qa",
+        correctionTarget: implement,
         criteria: ["The production build passes"],
         prompt: slice(
           "Run the project's production build and report the result. Do not modify source files.",

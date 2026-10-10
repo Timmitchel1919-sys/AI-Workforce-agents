@@ -16,7 +16,7 @@ const EXTRA_PATTERNS: readonly RegExp[] = [
   /AIza[0-9A-Za-z_-]{30,}/,
   /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}/,
   /\bBearer\s+[A-Za-z0-9._~+/=-]{20,}/i,
-  /[a-z][a-z0-9+.-]*:\/\/[^\s:@/]+:[^\s@/]{3,}@/i,
+  /(?<![a-z0-9+.-])[a-z][a-z0-9+.-]{1,19}:\/\/[^\s:@/]{1,100}:[^\s@/]{3,100}@/i,
   /\b(?:password|passwd|pwd|secret|api[_-]?key|access[_-]?token|client[_-]?secret|private[_-]?key)\b\s*[:=]\s*["']?[^\s"',;]{6,}/i,
 ];
 
@@ -38,10 +38,16 @@ export function sanitizeText(text: string, max: number): string {
 const MASK = "[masked]";
 
 function globalOf(pattern: RegExp): RegExp {
-  return new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
+  return new RegExp(
+    pattern.source,
+    pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`,
+  );
 }
 
-const MASK_PATTERNS: readonly RegExp[] = [KNOWN_SECRET_VALUE_PATTERN, ...EXTRA_PATTERNS].map(globalOf);
+const MASK_PATTERNS: readonly RegExp[] = [
+  KNOWN_SECRET_VALUE_PATTERN,
+  ...EXTRA_PATTERNS,
+].map(globalOf);
 
 /**
  * Replace every credential-looking value with a mask. Used for anything a
@@ -49,6 +55,14 @@ const MASK_PATTERNS: readonly RegExp[] = [KNOWN_SECRET_VALUE_PATTERN, ...EXTRA_P
  * output, logs, audit data and diffs never carry a secret.
  */
 export function maskSecrets(text: string): string {
+  // Work in bounded segments: every pattern is linear, and a huge single token
+  // can never make masking quadratic.
+  if (text.length > 8192) {
+    const parts: string[] = [];
+    for (let i = 0; i < text.length; i += 8192)
+      parts.push(maskSecrets(text.slice(i, i + 8192)));
+    return parts.join("");
+  }
   let out = text;
   for (const pattern of MASK_PATTERNS) {
     pattern.lastIndex = 0;

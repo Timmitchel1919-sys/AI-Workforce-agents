@@ -268,6 +268,10 @@ export const CONTROL_COMMANDS = [
   "orchestration_resume",
   "orchestration_cancel",
   "orchestration_retry_task",
+  // Layer 5 — Execution Runtime.
+  "runtime_cancel_session",
+  "runtime_pause_session",
+  "runtime_resume_session",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 

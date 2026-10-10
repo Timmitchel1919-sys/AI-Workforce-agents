@@ -16,6 +16,9 @@ export const loadPromptIntelligence = () => import("../pages/PromptIntelligence/
 /** Execution Center (Layer 4) page (separate lazy chunk). */
 export const loadExecutionCenter = () => import("../pages/ExecutionCenter/routes");
 
+/** Live Development Workspace (Layer 5) page (separate lazy chunk). */
+export const loadLiveWorkspace = () => import("../pages/LiveWorkspace/routes");
+
 export type RouteChunk = "landing" | "auth" | "controlCenter";
 
 export const routeChunkLoaders: Record<RouteChunk, () => Promise<unknown>> = {

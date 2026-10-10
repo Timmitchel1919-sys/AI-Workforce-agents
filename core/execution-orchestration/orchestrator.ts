@@ -491,17 +491,33 @@ export class ExecutionOrchestrator {
   }
 
   /** Task counts across the runs the principal may see (for the runtime overview). */
-  stats(principal: OperatorPrincipal): { queued: number; waitingApproval: number; failedTasks: number; completedToday: number } {
-    if (!operatorCan(principal, "view")) throw new PermissionDeniedError("insufficient capabilities");
+  stats(principal: OperatorPrincipal): {
+    queued: number;
+    waitingApproval: number;
+    failedTasks: number;
+    completedToday: number;
+  } {
+    if (!operatorCan(principal, "view"))
+      throw new PermissionDeniedError("insufficient capabilities");
     const today = this.clock().slice(0, 10);
-    const stats = { queued: 0, waitingApproval: 0, failedTasks: 0, completedToday: 0 };
+    const stats = {
+      queued: 0,
+      waitingApproval: 0,
+      failedTasks: 0,
+      completedToday: 0,
+    };
     for (const run of this.deps.runs.list()) {
       if (!operatorCanAccessProject(principal, run.projectId)) continue;
       for (const task of run.tasks) {
-        if (task.status === "READY" || task.status === "QUEUED") stats.queued += 1;
+        if (task.status === "READY" || task.status === "QUEUED")
+          stats.queued += 1;
         else if (task.status === "WAITING_APPROVAL") stats.waitingApproval += 1;
         else if (task.status === "FAILED") stats.failedTasks += 1;
-        else if (task.status === "COMPLETED" && (task.completedAt ?? "").startsWith(today)) stats.completedToday += 1;
+        else if (
+          task.status === "COMPLETED" &&
+          (task.completedAt ?? "").startsWith(today)
+        )
+          stats.completedToday += 1;
       }
     }
     return stats;
@@ -1009,7 +1025,9 @@ export class ExecutionOrchestrator {
           attempts: 0,
           corrections: 0,
           failures: [],
-          independentOf: [...g.independentOf, fix.taskId],
+          // Only independent reviewers must also differ from the fixer.
+          independentOf:
+            g.independentOf.length > 0 ? [...g.independentOf, fix.taskId] : [],
           createdAt: this.clock(),
           updatedAt: this.clock(),
         };
@@ -1048,7 +1066,8 @@ export class ExecutionOrchestrator {
         t.dependencies = [...new Set([...t.dependencies, fix.taskId])];
       if (t.taskId === gate.taskId) {
         t.corrections += 1;
-        t.independentOf = [...new Set([...t.independentOf, fix.taskId])];
+        if (t.independentOf.length > 0)
+          t.independentOf = [...new Set([...t.independentOf, fix.taskId])];
         this.move(t, "RETRYING");
         this.move(t, "PENDING");
         t.attempts = 0;

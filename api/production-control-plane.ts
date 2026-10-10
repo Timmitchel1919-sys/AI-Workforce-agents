@@ -93,6 +93,10 @@ import {
   AI_WORKFORCE_PROFILE,
   CostGateAdapter,
   ExecutionOrchestrator,
+  GovernedTaskRuntime,
+  SessionManager,
+  WorkspaceRegistry,
+  WorkspaceResolver,
   ModelRouterAdapter,
   ContextEngine,
   KnowledgeContextSource,
@@ -145,6 +149,8 @@ import { V1_SPECIALIST_WORKFORCE } from "../agents/specialists/v1-specialist-wor
 import { OnboardingControlService } from "../control/services/onboarding-control-service.js";
 import { PromptIntelligenceControlService } from "../control/services/prompt-intelligence-control-service.js";
 import { ExecutionOrchestrationControlService } from "../control/services/execution-orchestration-control-service.js";
+import { RuntimeControlService } from "../control/services/runtime-control-service.js";
+import type { RuntimeSession } from "../contracts/execution-runtime.js";
 import type { ExecutionRun } from "../contracts/execution-orchestration.js";
 import type { PromptRequestRecord } from "../contracts/prompt-intelligence.js";
 import type { KnowledgeRecord } from "../core/prompt-intelligence/context-sources.js";
@@ -261,80 +267,198 @@ export async function createProductionControlPlaneRuntime(
   const hostRepository = repositories.repository<HostInstance>("hosts");
   const environmentInstanceRepository =
     repositories.repository<EnvironmentInstance>("environment_instances");
-    
+
   // ITSM Repositories
-  const itsmServicesRepository = repositories.repository<import("../contracts/itsm.js").Service>("itsm_services");
-  const itsmIncidentsRepository = repositories.repository<import("../contracts/itsm.js").Incident>("itsm_incidents");
-  const itsmProblemsRepository = repositories.repository<import("../contracts/itsm.js").Problem>("itsm_problems");
-  const itsmChangesRepository = repositories.repository<import("../contracts/itsm.js").ChangeRequest>("itsm_changes");
-  const itsmReleasesRepository = repositories.repository<import("../contracts/itsm.js").ITSMRelease>("itsm_releases");
-  const itsmCisRepository = repositories.repository<import("../contracts/itsm.js").ConfigurationItem>("itsm_cis");
-  const itsmRequestsRepository = repositories.repository<import("../contracts/itsm.js").ServiceRequest>("itsm_requests");
-  const itsmRunbooksRepository = repositories.repository<import("../contracts/itsm.js").Runbook>("itsm_runbooks");
-  const itsmCiRelsRepository = repositories.repository<import("../contracts/itsm.js").CIRelationship>("itsm_cirels");
+  const itsmServicesRepository =
+    repositories.repository<import("../contracts/itsm.js").Service>(
+      "itsm_services",
+    );
+  const itsmIncidentsRepository =
+    repositories.repository<import("../contracts/itsm.js").Incident>(
+      "itsm_incidents",
+    );
+  const itsmProblemsRepository =
+    repositories.repository<import("../contracts/itsm.js").Problem>(
+      "itsm_problems",
+    );
+  const itsmChangesRepository =
+    repositories.repository<import("../contracts/itsm.js").ChangeRequest>(
+      "itsm_changes",
+    );
+  const itsmReleasesRepository =
+    repositories.repository<import("../contracts/itsm.js").ITSMRelease>(
+      "itsm_releases",
+    );
+  const itsmCisRepository =
+    repositories.repository<import("../contracts/itsm.js").ConfigurationItem>(
+      "itsm_cis",
+    );
+  const itsmRequestsRepository =
+    repositories.repository<import("../contracts/itsm.js").ServiceRequest>(
+      "itsm_requests",
+    );
+  const itsmRunbooksRepository =
+    repositories.repository<import("../contracts/itsm.js").Runbook>(
+      "itsm_runbooks",
+    );
+  const itsmCiRelsRepository =
+    repositories.repository<import("../contracts/itsm.js").CIRelationship>(
+      "itsm_cirels",
+    );
 
   // Operations Repositories
-  const opsHealthRepository = repositories.repository<import("../contracts/operations.js").HealthSignal>("ops_health_signals");
-  const opsInventoryRepository = repositories.repository<import("../contracts/operations.js").ServiceInventoryRecord>("ops_service_inventory");
-  const opsAlertsRepository = repositories.repository<import("../contracts/operations.js").Alert>("ops_alerts");
-  const opsConfigRepository = repositories.repository<import("../contracts/operations.js").PlatformConfiguration>("ops_platform_config");
-  const opsRolloutsRepository = repositories.repository<import("../contracts/operations.js").FeatureRollout>("ops_feature_rollouts");
+  const opsHealthRepository =
+    repositories.repository<import("../contracts/operations.js").HealthSignal>(
+      "ops_health_signals",
+    );
+  const opsInventoryRepository = repositories.repository<
+    import("../contracts/operations.js").ServiceInventoryRecord
+  >("ops_service_inventory");
+  const opsAlertsRepository =
+    repositories.repository<import("../contracts/operations.js").Alert>(
+      "ops_alerts",
+    );
+  const opsConfigRepository = repositories.repository<
+    import("../contracts/operations.js").PlatformConfiguration
+  >("ops_platform_config");
+  const opsRolloutsRepository = repositories.repository<
+    import("../contracts/operations.js").FeatureRollout
+  >("ops_feature_rollouts");
 
   // AI Governance Repositories
-  const aiModelsRepository = repositories.repository<import("../contracts/ai-governance.js").AIModelRecord>("ai_models");
-  const aiUseCasesRepository = repositories.repository<import("../contracts/ai-governance.js").AIUseCase>("ai_use_cases");
-  const aiEvaluationsRepository = repositories.repository<import("../contracts/ai-governance.js").ModelEvaluation>("ai_evaluations");
-  const aiIncidentsRepository = repositories.repository<import("../contracts/ai-governance.js").AIIncident>("ai_incidents");
+  const aiModelsRepository =
+    repositories.repository<
+      import("../contracts/ai-governance.js").AIModelRecord
+    >("ai_models");
+  const aiUseCasesRepository =
+    repositories.repository<import("../contracts/ai-governance.js").AIUseCase>(
+      "ai_use_cases",
+    );
+  const aiEvaluationsRepository =
+    repositories.repository<
+      import("../contracts/ai-governance.js").ModelEvaluation
+    >("ai_evaluations");
+  const aiIncidentsRepository =
+    repositories.repository<import("../contracts/ai-governance.js").AIIncident>(
+      "ai_incidents",
+    );
 
   // Data Governance Repositories
-  const dataAssetsRepository = repositories.repository<import("../contracts/data-governance.js").DataAsset>("data_assets");
-  const dataRetentionPoliciesRepository = repositories.repository<import("../contracts/data-governance.js").DataRetentionPolicy>("data_retention_policies");
-  const dsrRepository = repositories.repository<import("../contracts/data-governance.js").DataSubjectRequestRecord>("dsr_records");
+  const dataAssetsRepository =
+    repositories.repository<
+      import("../contracts/data-governance.js").DataAsset
+    >("data_assets");
+  const dataRetentionPoliciesRepository = repositories.repository<
+    import("../contracts/data-governance.js").DataRetentionPolicy
+  >("data_retention_policies");
+  const dsrRepository =
+    repositories.repository<
+      import("../contracts/data-governance.js").DataSubjectRequestRecord
+    >("dsr_records");
 
   // Security Repositories
-  const securityEventsRepository = repositories.repository<import("../contracts/security.js").ZTNSecurityEvent>("security_events");
-  const zeroTrustPoliciesRepository = repositories.repository<import("../contracts/security.js").ZeroTrustPolicy>("zero_trust_policies");
-  const threatIntelRepository = repositories.repository<import("../contracts/security.js").ThreatIntelligenceReport>("threat_intel");
+  const securityEventsRepository =
+    repositories.repository<
+      import("../contracts/security.js").ZTNSecurityEvent
+    >("security_events");
+  const zeroTrustPoliciesRepository = repositories.repository<
+    import("../contracts/security.js").ZeroTrustPolicy
+  >("zero_trust_policies");
+  const threatIntelRepository =
+    repositories.repository<
+      import("../contracts/security.js").ThreatIntelligenceReport
+    >("threat_intel");
 
   // Audit Repositories
-  const auditLogsRepository = repositories.repository<import("../contracts/audit.js").AuditLogEntry>("audit_logs");
-  const complianceFindingsRepository = repositories.repository<import("../contracts/audit.js").ComplianceFinding>("compliance_findings");
+  const auditLogsRepository =
+    repositories.repository<import("../contracts/audit.js").AuditLogEntry>(
+      "audit_logs",
+    );
+  const complianceFindingsRepository = repositories.repository<
+    import("../contracts/audit.js").ComplianceFinding
+  >("compliance_findings");
 
   // Portfolio Repositories
-  const strategicObjectivesRepository = repositories.repository<import("../contracts/portfolio.js").StrategicObjective>("strategic_objectives");
-  const enterprisePortfoliosRepository = repositories.repository<import("../contracts/portfolio.js").EnterprisePortfolio>("enterprise_portfolios");
-  const portfolioProgramsRepository = repositories.repository<import("../contracts/portfolio.js").PortfolioProgram>("portfolio_programs");
+  const strategicObjectivesRepository = repositories.repository<
+    import("../contracts/portfolio.js").StrategicObjective
+  >("strategic_objectives");
+  const enterprisePortfoliosRepository = repositories.repository<
+    import("../contracts/portfolio.js").EnterprisePortfolio
+  >("enterprise_portfolios");
+  const portfolioProgramsRepository =
+    repositories.repository<
+      import("../contracts/portfolio.js").PortfolioProgram
+    >("portfolio_programs");
 
   // Product Repositories
-  const productPortfoliosRepository = repositories.repository<import("../contracts/product.js").ProductPortfolio>("product_portfolios");
-  const productsRepository = repositories.repository<import("../contracts/product.js").ProductDefinition>("products");
-  const problemsRepository = repositories.repository<import("../contracts/product.js").CustomerProblem>("customer_problems");
-  const opportunitiesRepository = repositories.repository<import("../contracts/product.js").ProductOpportunity>("product_opportunities");
-  const featuresRepository = repositories.repository<import("../contracts/product.js").ProductFeature>("product_features");
+  const productPortfoliosRepository =
+    repositories.repository<import("../contracts/product.js").ProductPortfolio>(
+      "product_portfolios",
+    );
+  const productsRepository =
+    repositories.repository<
+      import("../contracts/product.js").ProductDefinition
+    >("products");
+  const problemsRepository =
+    repositories.repository<import("../contracts/product.js").CustomerProblem>(
+      "customer_problems",
+    );
+  const opportunitiesRepository = repositories.repository<
+    import("../contracts/product.js").ProductOpportunity
+  >("product_opportunities");
+  const featuresRepository =
+    repositories.repository<import("../contracts/product.js").ProductFeature>(
+      "product_features",
+    );
 
   // Workforce Repositories
-  const departmentsRepository = repositories.repository<import("../contracts/organization.js").OrganizationDepartment>("organization_departments");
-  const teamsRepository = repositories.repository<import("../contracts/organization.js").WorkforceTeam>("workforce_teams");
-  const humanAgentsRepository = repositories.repository<import("../contracts/organization.js").HumanAgent>("human_agents");
-  const skillsRepository = repositories.repository<import("../contracts/organization.js").SkillDefinition>("skill_definitions");
-  const resourceAssignmentsRepository = repositories.repository<import("../contracts/organization.js").ResourceAssignment>("resource_assignments");
+  const departmentsRepository = repositories.repository<
+    import("../contracts/organization.js").OrganizationDepartment
+  >("organization_departments");
+  const teamsRepository =
+    repositories.repository<
+      import("../contracts/organization.js").WorkforceTeam
+    >("workforce_teams");
+  const humanAgentsRepository =
+    repositories.repository<import("../contracts/organization.js").HumanAgent>(
+      "human_agents",
+    );
+  const skillsRepository =
+    repositories.repository<
+      import("../contracts/organization.js").SkillDefinition
+    >("skill_definitions");
+  const resourceAssignmentsRepository = repositories.repository<
+    import("../contracts/organization.js").ResourceAssignment
+  >("resource_assignments");
 
   // GRC Repositories
   const grcControlsRepository = repositories.repository<any>("grc_controls");
-  const grcFrameworksRepository = repositories.repository<any>("grc_frameworks");
+  const grcFrameworksRepository =
+    repositories.repository<any>("grc_frameworks");
   const grcPoliciesRepository = repositories.repository<any>("grc_policies");
-  const grcControlInstancesRepository = repositories.repository<any>("grc_control_instances");
+  const grcControlInstancesRepository = repositories.repository<any>(
+    "grc_control_instances",
+  );
   const grcRisksRepository = repositories.repository<any>("grc_risks");
-  const grcExceptionsRepository = repositories.repository<any>("grc_exceptions");
+  const grcExceptionsRepository =
+    repositories.repository<any>("grc_exceptions");
   const grcVendorsRepository = repositories.repository<any>("grc_vendors");
-  const grcPrivacyRequestsRepository = repositories.repository<any>("grc_privacy_requests");
-  const grcRetentionPoliciesRepository = repositories.repository<any>("grc_retention_policies");
-  const grcDlpPoliciesRepository = repositories.repository<any>("grc_dlp_policies");
+  const grcPrivacyRequestsRepository = repositories.repository<any>(
+    "grc_privacy_requests",
+  );
+  const grcRetentionPoliciesRepository = repositories.repository<any>(
+    "grc_retention_policies",
+  );
+  const grcDlpPoliciesRepository =
+    repositories.repository<any>("grc_dlp_policies");
   const grcPosturesRepository = repositories.repository<any>("grc_postures");
   const grcAuditsRepository = repositories.repository<any>("grc_audits");
-  const grcAuditPackagesRepository = repositories.repository<any>("grc_audit_packages");
-  const grcCertificationsRepository = repositories.repository<any>("grc_certifications");
-  const grcTrustContentRepository = repositories.repository<any>("grc_trust_content");
+  const grcAuditPackagesRepository =
+    repositories.repository<any>("grc_audit_packages");
+  const grcCertificationsRepository =
+    repositories.repository<any>("grc_certifications");
+  const grcTrustContentRepository =
+    repositories.repository<any>("grc_trust_content");
   const grcFindingsRepository = repositories.repository<any>("grc_findings");
 
   // Phase 3: durable prompt-request traces + a read view of Knowledge. Allocated
@@ -346,6 +470,8 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<KnowledgeRecord>("knowledge_items");
   const executionRunRepository =
     repositories.repository<ExecutionRun>("execution_runs");
+  const runtimeSessionRepository =
+    repositories.repository<RuntimeSession>("runtime_sessions");
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
@@ -857,7 +983,7 @@ export async function createProductionControlPlaneRuntime(
     audit,
     budgetPolicies,
   );
-  
+
   const itsm = new ITSMControlService(
     itsmServicesRepository,
     itsmIncidentsRepository,
@@ -867,7 +993,7 @@ export async function createProductionControlPlaneRuntime(
     itsmCisRepository,
     itsmRequestsRepository,
     itsmRunbooksRepository,
-    itsmCiRelsRepository
+    itsmCiRelsRepository,
   );
 
   const ops = new OperationsControlService(
@@ -875,37 +1001,37 @@ export async function createProductionControlPlaneRuntime(
     opsInventoryRepository,
     opsAlertsRepository,
     opsConfigRepository,
-    opsRolloutsRepository
+    opsRolloutsRepository,
   );
 
   const aiGov = new AIGovernanceControlService(
     aiModelsRepository,
     aiUseCasesRepository,
     aiEvaluationsRepository,
-    aiIncidentsRepository
+    aiIncidentsRepository,
   );
 
   const dataGov = new DataGovernanceService(
     dataAssetsRepository,
     dataRetentionPoliciesRepository,
-    dsrRepository
+    dsrRepository,
   );
 
   const security = new SecurityControlService(
     securityEventsRepository,
     zeroTrustPoliciesRepository,
-    threatIntelRepository
+    threatIntelRepository,
   );
 
   const auditService = new AuditControlService(
     auditLogsRepository,
-    complianceFindingsRepository
+    complianceFindingsRepository,
   );
 
   const portfolio = new PortfolioControlService(
     strategicObjectivesRepository,
     enterprisePortfoliosRepository,
-    portfolioProgramsRepository
+    portfolioProgramsRepository,
   );
 
   const product = new ProductManagementService(
@@ -913,7 +1039,7 @@ export async function createProductionControlPlaneRuntime(
     productsRepository,
     problemsRepository,
     opportunitiesRepository,
-    featuresRepository
+    featuresRepository,
   );
 
   const workforce = new WorkforceManagementService(
@@ -921,7 +1047,7 @@ export async function createProductionControlPlaneRuntime(
     teamsRepository,
     humanAgentsRepository,
     skillsRepository,
-    resourceAssignmentsRepository
+    resourceAssignmentsRepository,
   );
 
   const grc = new GrcControlService(
@@ -940,7 +1066,7 @@ export async function createProductionControlPlaneRuntime(
     grcAuditPackagesRepository,
     grcCertificationsRepository,
     grcTrustContentRepository,
-    grcFindingsRepository
+    grcFindingsRepository,
   );
 
   // READY projects become discoverable through the existing Project Registry.
@@ -964,50 +1090,71 @@ export async function createProductionControlPlaneRuntime(
   // Phase 3: Context Engine + Prompt Intelligence. Every source reads existing
   // platform state through a read-only port; nothing here executes an agent.
   const promptService = new PromptIntelligenceService({
-      projects: bootstrap.projects,
-      analyzer: new RuleBasedIntentAnalyzer(),
-      engine: new ContextEngine(
-        [
-          new PlatformSecurityBaselineSource(),
-          new PlatformDevelopmentDefaultsSource(),
-          new ProjectRegistrySource(bootstrap.projects),
-          new StaticProjectProfileSource(
-            "ai-workforce-profile",
-            "ai-workforce",
-            "AI Workforce repository documentation",
-            AI_WORKFORCE_PROFILE,
-          ),
-          new OnboardedProjectSource(provisionedProjects),
-          new KnowledgeContextSource(promptKnowledgeRepository),
-          new TaskContextSource(tasks),
-        ],
-        {
-          fileResolver: new RepositoryFileResolver(
-            bootstrap.projects,
-            new GitHubRepositoryReader(),
-          ),
-        },
-      ),
-      records: promptRequestRepository,
-      approvals,
-      agents: bootstrap.agents,
+    projects: bootstrap.projects,
+    analyzer: new RuleBasedIntentAnalyzer(),
+    engine: new ContextEngine(
+      [
+        new PlatformSecurityBaselineSource(),
+        new PlatformDevelopmentDefaultsSource(),
+        new ProjectRegistrySource(bootstrap.projects),
+        new StaticProjectProfileSource(
+          "ai-workforce-profile",
+          "ai-workforce",
+          "AI Workforce repository documentation",
+          AI_WORKFORCE_PROFILE,
+        ),
+        new OnboardedProjectSource(provisionedProjects),
+        new KnowledgeContextSource(promptKnowledgeRepository),
+        new TaskContextSource(tasks),
+      ],
+      {
+        fileResolver: new RepositoryFileResolver(
+          bootstrap.projects,
+          new GitHubRepositoryReader(),
+        ),
+      },
+    ),
+    records: promptRequestRepository,
+    approvals,
+    agents: bootstrap.agents,
   });
-  const promptIntelligence = new PromptIntelligenceControlService(promptService, audit);
-  // Layer 4: Execution Orchestration. Plans, routes, gates and audits; there is no
-  // execution runtime in this deployment, so a task that reaches RUNNING is
-  // reported BLOCKED ("no execution runtime") — nothing is ever faked.
-  const orchestration = new ExecutionOrchestrationControlService(
-    new ExecutionOrchestrator({
-      runs: executionRunRepository,
-      projects: bootstrap.projects,
-      agents: bootstrap.agents,
-      isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
-      approvals,
-      audit,
-      models: new ModelRouterAdapter(modelRouter),
-      cost: new CostGateAdapter(budgetEnforcer, usageLedger),
-    }),
+  const promptIntelligence = new PromptIntelligenceControlService(
     promptService,
+    audit,
+  );
+  // Layer 5: the Execution Runtime. A project's workspace must be REGISTERED
+  // (trusted configuration, a host path); a Cloud Function has none, so in this
+  // deployment every task reports "no workspace is registered" and blocks —
+  // nothing runs and nothing is faked. A local host registers workspaces here.
+  const runtimeSessions = new SessionManager(runtimeSessionRepository, audit);
+  const workspaceRegistry = new WorkspaceRegistry();
+  const workspaceResolver = new WorkspaceResolver(workspaceRegistry);
+  const taskRuntime = new GovernedTaskRuntime({
+    resolver: workspaceResolver,
+    manager: runtimeSessions,
+  });
+  // Layer 4: Execution Orchestration. Plans, routes, gates and audits; it drives
+  // the runtime through the TaskRuntimePort.
+  const executionOrchestrator = new ExecutionOrchestrator({
+    runs: executionRunRepository,
+    projects: bootstrap.projects,
+    agents: bootstrap.agents,
+    isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+    approvals,
+    audit,
+    runtime: taskRuntime,
+    models: new ModelRouterAdapter(modelRouter),
+    cost: new CostGateAdapter(budgetEnforcer, usageLedger),
+  });
+  const orchestration = new ExecutionOrchestrationControlService(
+    executionOrchestrator,
+    promptService,
+    audit,
+  );
+  const runtimeControl = new RuntimeControlService(
+    runtimeSessions,
+    workspaceResolver,
+    executionOrchestrator,
     audit,
   );
   const query = new WorkforceQueryService(context);
@@ -1017,6 +1164,7 @@ export async function createProductionControlPlaneRuntime(
     onboarding,
     promptIntelligence,
     orchestration,
+    runtime: runtimeControl,
     projectSync,
     graphQuery,
     query,
