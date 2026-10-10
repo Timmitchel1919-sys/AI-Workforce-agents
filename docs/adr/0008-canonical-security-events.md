@@ -16,6 +16,11 @@ keys and values, require a schema version, and are appended through a store
 that rejects duplicate event IDs. Queries are bounded to 100 records and may
 be project-scoped.
 
+Existing security-relevant audit events are projected into the canonical shape
+for permission decisions, approvals, tool execution, agent activity, and
+access events. Canonical event reads are admin-only and a scoped operator must
+provide an explicitly allowed project.
+
 The repository-backed store is an adapter seam. The current generic repository
 still exposes mutation methods, so production Firestore immutability requires
 the next persistence hardening step: a write-only event collection or Firestore

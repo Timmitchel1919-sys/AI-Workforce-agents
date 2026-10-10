@@ -5,7 +5,9 @@ import {
   AppendOnlySecurityEventStore,
   RepositorySecurityEventStore,
   normalizeSecurityEvent,
+  projectAuditEvent,
 } from "../core/index.js";
+import type { AuditEvent } from "../contracts/index.js";
 import { SecurityControlService } from "../control/services/security-service.js";
 function event(id: string, projectId = "p1") {
   return normalizeSecurityEvent({
@@ -67,5 +69,24 @@ test("canonical security reads require admin and an explicit project scope", asy
   assert.deepEqual(
     await service.listCanonicalEvents(admin, { projectId: "p2" }),
     [],
+  );
+});
+
+test("security projector preserves governed audit decisions and redacts evidence", () => {
+  const source = {
+    id: "audit-1",
+    type: "permission_decision",
+    timestamp: "2026-10-10T00:00:00.000Z",
+    agentId: "agent-1",
+    projectId: "p1",
+    data: { outcome: "denied", apiKey: "sk-live-never-store" },
+  } satisfies AuditEvent;
+  const projected = projectAuditEvent(source);
+  assert.equal(projected?.category, "authorization");
+  assert.equal(projected?.outcome, "denied");
+  assert.equal(projected?.evidence?.apiKey, "[REDACTED]");
+  assert.equal(
+    projectAuditEvent({ ...source, type: "task_created" }),
+    undefined,
   );
 });
