@@ -1,8 +1,25 @@
-export type ServiceStatus = "operational" | "degraded" | "outage" | "maintenance";
+export type ServiceStatus =
+  "operational" | "degraded" | "outage" | "maintenance";
 export type IncidentSeverity = "low" | "medium" | "high" | "critical" | "major";
 export type ChangeType = "standard" | "normal" | "emergency";
-export type ChangeStatus = "draft" | "pending_approval" | "approved" | "scheduled" | "implementing" | "review" | "closed" | "canceled" | "rejected";
-export type ITSMReleaseStatus = "planning" | "building" | "testing" | "deploying" | "deployed" | "failed" | "rolled_back";
+export type ChangeStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "scheduled"
+  | "implementing"
+  | "review"
+  | "closed"
+  | "canceled"
+  | "rejected";
+export type ITSMReleaseStatus =
+  | "planning"
+  | "building"
+  | "testing"
+  | "deploying"
+  | "deployed"
+  | "failed"
+  | "rolled_back";
 
 export interface BaseITSMRecord {
   id: string;
@@ -25,7 +42,7 @@ export interface ConfigurationItem extends BaseITSMRecord {
   ciType: string;
   serviceId?: string;
   status: string;
-  attributes?: Record<string, any>;
+  attributes?: Record<string, unknown>;
 }
 
 export interface CIRelationship extends BaseITSMRecord {
@@ -97,26 +114,58 @@ export interface ITSMControlPlane {
   // Service Catalog
   getService(organizationId: string, id: string): Promise<Service | null>;
   listServices(organizationId: string): Promise<Service[]>;
-  createService(service: Omit<Service, "id" | "createdAt" | "updatedAt">): Promise<Service>;
-  
+  createService(
+    service: Omit<Service, "id" | "createdAt" | "updatedAt">,
+  ): Promise<Service>;
+
   // Incident Management
-  createIncident(incident: Omit<Incident, "id" | "createdAt">): Promise<Incident>;
-  updateIncident(organizationId: string, id: string, updates: Partial<Incident>): Promise<Incident>;
-  listIncidents(organizationId: string, serviceId?: string): Promise<Incident[]>;
+  createIncident(
+    incident: Omit<Incident, "id" | "createdAt">,
+  ): Promise<Incident>;
+  updateIncident(
+    organizationId: string,
+    id: string,
+    updates: Partial<Incident>,
+  ): Promise<Incident>;
+  listIncidents(
+    organizationId: string,
+    serviceId?: string,
+  ): Promise<Incident[]>;
   routeIncident(organizationId: string, incidentId: string): Promise<Incident>;
-  
+
   // Problem Management
   createProblem(problem: Omit<Problem, "id" | "createdAt">): Promise<Problem>;
-  updateProblem(organizationId: string, id: string, updates: Partial<Problem>): Promise<Problem>;
-  
+  updateProblem(
+    organizationId: string,
+    id: string,
+    updates: Partial<Problem>,
+  ): Promise<Problem>;
+
   // Change Management
-  createChangeRequest(cr: Omit<ChangeRequest, "id" | "createdAt">): Promise<ChangeRequest>;
-  updateChangeRequest(organizationId: string, id: string, updates: Partial<ChangeRequest>): Promise<ChangeRequest>;
-  approveChange(organizationId: string, id: string, approverId: string): Promise<ChangeRequest>;
+  createChangeRequest(
+    cr: Omit<ChangeRequest, "id" | "createdAt">,
+  ): Promise<ChangeRequest>;
+  updateChangeRequest(
+    organizationId: string,
+    id: string,
+    updates: Partial<ChangeRequest>,
+  ): Promise<ChangeRequest>;
+  approveChange(
+    organizationId: string,
+    id: string,
+    approverId: string,
+  ): Promise<ChangeRequest>;
   listChangeRequests(organizationId: string): Promise<ChangeRequest[]>;
-  
+
   // CMDB
-  createCI(ci: Omit<ConfigurationItem, "id" | "createdAt">): Promise<ConfigurationItem>;
-  addCIRelationship(rel: Omit<CIRelationship, "id" | "createdAt">): Promise<CIRelationship>;
-  getCIDependencies(organizationId: string, ciId: string): Promise<ConfigurationItem[]>;
+  createCI(
+    ci: Omit<ConfigurationItem, "id" | "createdAt">,
+  ): Promise<ConfigurationItem>;
+  addCIRelationship(
+    rel: Omit<CIRelationship, "id" | "createdAt">,
+  ): Promise<CIRelationship>;
+  getCIDependencies(
+    organizationId: string,
+    ciId: string,
+  ): Promise<ConfigurationItem[]>;
 }

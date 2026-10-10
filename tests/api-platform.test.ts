@@ -181,10 +181,7 @@ describe("ApiKeyService", () => {
       () => service.createKey("org_1", "k", ["not-a-scope"]),
       ValidationError,
     );
-    assert.throws(
-      () => service.createKey("org_1", "k", []),
-      ValidationError,
-    );
+    assert.throws(() => service.createKey("org_1", "k", []), ValidationError);
     assert.throws(
       () => service.createKey("org_1", "k", ["read:data"], 0),
       ValidationError,
@@ -202,7 +199,6 @@ describe("ApiKeyService", () => {
   });
 
   it("centralizes scope enforcement for the API boundary", () => {
-    const service = new ApiKeyService();
     const principal = { keyId: "k", organizationId: "o", scopes: ["read:x"] };
 
     ApiKeyService.requireScope(principal, "read:x");
@@ -224,7 +220,10 @@ describe("WebhookService", () => {
     );
 
     assert.ok(registered.secret.startsWith("whsec_"));
-    assert.equal(JSON.stringify(registered.endpoint).includes(registered.secret), false);
+    assert.equal(
+      JSON.stringify(registered.endpoint).includes(registered.secret),
+      false,
+    );
 
     const [listed] = service.listEndpoints("org_1");
     assert.ok(listed);
@@ -246,22 +245,42 @@ describe("WebhookService", () => {
     assert.match(signature, /^t=1700000000,v1=[0-9a-f]{64}$/);
 
     assert.equal(
-      service.verifySignature('{"a":1}', registered.secret, signature, 1_700_000_000),
+      service.verifySignature(
+        '{"a":1}',
+        registered.secret,
+        signature,
+        1_700_000_000,
+      ),
       true,
     );
     // Same instant, altered body.
     assert.equal(
-      service.verifySignature('{"a":2}', registered.secret, signature, 1_700_000_000),
+      service.verifySignature(
+        '{"a":2}',
+        registered.secret,
+        signature,
+        1_700_000_000,
+      ),
       false,
     );
     // Same body, replayed at a different instant.
     assert.equal(
-      service.verifySignature('{"a":1}', registered.secret, signature, 1_700_000_001),
+      service.verifySignature(
+        '{"a":1}',
+        registered.secret,
+        signature,
+        1_700_000_001,
+      ),
       false,
     );
     // Wrong secret entirely.
     assert.equal(
-      service.verifySignature('{"a":1}', "whsec_other", signature, 1_700_000_000),
+      service.verifySignature(
+        '{"a":1}',
+        "whsec_other",
+        signature,
+        1_700_000_000,
+      ),
       false,
     );
   });
@@ -272,11 +291,18 @@ describe("WebhookService", () => {
       latencyMs: 8,
     }));
     const service = new WebhookService(transport);
-    service.registerEndpoint("org_1", "https://hooks.example.com/aiw", "", ["*"]);
+    service.registerEndpoint("org_1", "https://hooks.example.com/aiw", "", [
+      "*",
+    ]);
 
-    const [delivery] = await service.dispatch("org_1", "evt_1", "user.created", {
-      id: "u_1",
-    });
+    const [delivery] = await service.dispatch(
+      "org_1",
+      "evt_1",
+      "user.created",
+      {
+        id: "u_1",
+      },
+    );
 
     assert.ok(delivery);
     assert.equal(delivery.status, "DELIVERED");
@@ -293,9 +319,16 @@ describe("WebhookService", () => {
       latencyMs: 30,
     }));
     const service = new WebhookService(transport);
-    service.registerEndpoint("org_1", "https://hooks.example.com/aiw", "", ["*"]);
+    service.registerEndpoint("org_1", "https://hooks.example.com/aiw", "", [
+      "*",
+    ]);
 
-    const [delivery] = await service.dispatch("org_1", "evt_1", "user.created", {});
+    const [delivery] = await service.dispatch(
+      "org_1",
+      "evt_1",
+      "user.created",
+      {},
+    );
     assert.ok(delivery);
     assert.equal(delivery.status, "FAILED");
     assert.equal(delivery.responseStatusClass, "5xx");
@@ -303,13 +336,18 @@ describe("WebhookService", () => {
   });
 
   it("records a transport throw as FAILED with a truncated reason", async () => {
-    const { transport } = recordingTransport(() =>
-      new Error("x".repeat(500)),
-    );
+    const { transport } = recordingTransport(() => new Error("x".repeat(500)));
     const service = new WebhookService(transport);
-    service.registerEndpoint("org_1", "https://hooks.example.com/aiw", "", ["*"]);
+    service.registerEndpoint("org_1", "https://hooks.example.com/aiw", "", [
+      "*",
+    ]);
 
-    const [delivery] = await service.dispatch("org_1", "evt_1", "user.created", {});
+    const [delivery] = await service.dispatch(
+      "org_1",
+      "evt_1",
+      "user.created",
+      {},
+    );
     assert.ok(delivery);
     assert.equal(delivery.status, "FAILED");
     assert.equal(delivery.responseStatusClass, undefined);
@@ -319,7 +357,9 @@ describe("WebhookService", () => {
   it("deactivates an endpoint after the consecutive-failure threshold and records skips", async () => {
     let fail = true;
     const { transport } = recordingTransport(() =>
-      fail ? { statusCode: 500, latencyMs: 1 } : { statusCode: 200, latencyMs: 1 },
+      fail
+        ? { statusCode: 500, latencyMs: 1 }
+        : { statusCode: 200, latencyMs: 1 },
     );
     const service = new WebhookService(transport);
     const registered = service.registerEndpoint(
@@ -338,7 +378,12 @@ describe("WebhookService", () => {
 
     // A later success does not silently resume an inactive endpoint.
     fail = false;
-    const [skipped] = await service.dispatch("org_1", "evt_after", "user.created", {});
+    const [skipped] = await service.dispatch(
+      "org_1",
+      "evt_after",
+      "user.created",
+      {},
+    );
     assert.ok(skipped);
     assert.equal(skipped.status, "SKIPPED_ENDPOINT_INACTIVE");
     assert.equal(service.listEndpoints("org_1")[0]!.status, "INACTIVE");
@@ -351,7 +396,9 @@ describe("WebhookService", () => {
   it("resets the failure count after a success and resumes on explicit action", async () => {
     let fail = true;
     const { transport } = recordingTransport(() =>
-      fail ? { statusCode: 500, latencyMs: 1 } : { statusCode: 200, latencyMs: 1 },
+      fail
+        ? { statusCode: 500, latencyMs: 1 }
+        : { statusCode: 200, latencyMs: 1 },
     );
     const service = new WebhookService(transport);
     const registered = service.registerEndpoint(
@@ -400,7 +447,10 @@ describe("WebhookService", () => {
       service.verifySignature(calls[0]!.body, rotated.secret, sent),
       true,
     );
-    assert.equal(service.verifySignature(calls[0]!.body, first.secret, sent), false);
+    assert.equal(
+      service.verifySignature(calls[0]!.body, first.secret, sent),
+      false,
+    );
 
     // And a signature minted with the retired secret no longer matches the
     // endpoint's recorded digest.
@@ -432,7 +482,9 @@ describe("WebhookService", () => {
   it("does not deliver one tenant's event to another tenant's endpoints", async () => {
     const { transport, calls } = recordingTransport(() => alwaysOk());
     const service = new WebhookService(transport);
-    service.registerEndpoint("org_acme", "https://acme.example.com/h", "", ["*"]);
+    service.registerEndpoint("org_acme", "https://acme.example.com/h", "", [
+      "*",
+    ]);
 
     await service.dispatch("org_globex", "evt_1", "user.created", {});
     assert.equal(calls.length, 0);
@@ -489,7 +541,12 @@ describe("WebhookService", () => {
     const service = new WebhookService({ send: async () => alwaysOk() });
     assert.throws(
       () =>
-        service.registerEndpoint("org_1", "https://hooks.example.com/h", "", []),
+        service.registerEndpoint(
+          "org_1",
+          "https://hooks.example.com/h",
+          "",
+          [],
+        ),
       ValidationError,
     );
     assert.throws(

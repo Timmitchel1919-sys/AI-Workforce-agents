@@ -37,7 +37,9 @@ export class DefaultConnectorRegistry implements ConnectorRegistry {
 
     return all.filter((c) => {
       const config = c.getConfig();
-      return Object.entries(filter).every(([k, v]) => (config as any)[k] === v);
+      return Object.entries(filter).every(
+        ([k, v]) => (config as unknown as Record<string, unknown>)[k] === v,
+      );
     });
   }
 
@@ -60,7 +62,7 @@ export class DefaultConnectorRegistry implements ConnectorRegistry {
 }
 
 export class DefaultCredentialBroker implements CredentialBroker {
-  private store: Map<string, any> = new Map();
+  private store: Map<string, unknown> = new Map();
 
   private getKey(connectorId: string, context: InvocationContext): string {
     return `${connectorId}:${context.userId}`;
@@ -69,13 +71,13 @@ export class DefaultCredentialBroker implements CredentialBroker {
   async getCredentials(
     connectorId: string,
     context: InvocationContext,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return this.store.get(this.getKey(connectorId, context));
   }
 
   async storeCredentials(
     connectorId: string,
-    credentials: any,
+    credentials: unknown,
     context: InvocationContext,
   ): Promise<void> {
     this.store.set(this.getKey(connectorId, context), credentials);
@@ -107,7 +109,7 @@ export class ToolInvocationEngine {
   async invoke(
     connectorId: string,
     capabilityId: string,
-    input: any,
+    input: unknown,
     context: InvocationContext,
   ): Promise<InvocationResult> {
     const start = Date.now();
@@ -122,7 +124,7 @@ export class ToolInvocationEngine {
           JSON.stringify(input),
         );
         changeSetId = changeSet.id;
-      } catch (e) {
+      } catch {
         // Non-blocking if lifecycle objects don't strictly exist for minor invocations,
         // but logs error. (In a strict mode we could fail here)
       }
@@ -190,8 +192,9 @@ export class ToolInvocationEngine {
 
       this.trackOutcome(context, capabilityId, result, start);
       return result;
-    } catch (error: any) {
-      const err = this.errorResult(error.message, start);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      const err = this.errorResult(message, start);
       this.trackOutcome(context, capabilityId, err, start);
       return err;
     }

@@ -18,10 +18,28 @@ export interface DlpRule {
   matchThreshold: number;
 }
 
-export const DSR_TYPES = ["ACCESS", "CORRECTION", "DELETION", "PORTABILITY", "RESTRICTION", "OBJECTION", "DATA_EXPORT"] as const;
+export const DSR_TYPES = [
+  "ACCESS",
+  "CORRECTION",
+  "DELETION",
+  "PORTABILITY",
+  "RESTRICTION",
+  "OBJECTION",
+  "DATA_EXPORT",
+] as const;
 export type DsrType = (typeof DSR_TYPES)[number];
 
-export const DSR_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "REJECTED", "IDENTITY_VERIFICATION_REQUIRED", "VERIFIED", "WAITING", "CANCELLED", "IN_PROGRESS"] as const;
+export const DSR_STATUSES = [
+  "PENDING",
+  "PROCESSING",
+  "COMPLETED",
+  "REJECTED",
+  "IDENTITY_VERIFICATION_REQUIRED",
+  "VERIFIED",
+  "WAITING",
+  "CANCELLED",
+  "IN_PROGRESS",
+] as const;
 export type DsrStatus = (typeof DSR_STATUSES)[number];
 
 export interface DataSubjectRequest {
@@ -40,7 +58,7 @@ export interface DataSubjectRequest {
   metadata?: Record<string, unknown>;
 }
 
-export interface PrivacyRequest extends DataSubjectRequest {}
+export type PrivacyRequest = DataSubjectRequest;
 
 export interface RetentionPolicy {
   policyId: string;

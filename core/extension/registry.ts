@@ -1,6 +1,11 @@
+export interface ExtensionManifest {
+  id: string;
+  [key: string]: unknown;
+}
+
 export class ExtensionRegistry {
-  private extensions = new Map<string, any>();
-  register(manifest: any) {
+  private extensions = new Map<string, ExtensionManifest>();
+  register(manifest: ExtensionManifest) {
     this.extensions.set(manifest.id, manifest);
   }
   get(id: string) {

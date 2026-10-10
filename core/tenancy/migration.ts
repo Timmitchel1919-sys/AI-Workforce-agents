@@ -1,13 +1,5 @@
-import {
-  Organization,
-  Workspace,
-  TenancyStore,
-} from "../../contracts/tenancy.js";
-import {
-  ProvisionedProject,
-  ProvisionedProjectStore,
-} from "../../contracts/onboarding.js";
-import { Agent } from "../../contracts/index.js";
+import { TenancyStore } from "../../contracts/tenancy.js";
+import { ProvisionedProjectStore } from "../../contracts/onboarding.js";
 import { AgentRegistry } from "../registry/agent-registry.js";
 import { WorkflowSystem } from "../workflows/workflow-system.js";
 

@@ -4,7 +4,7 @@ export interface KnowledgeContext {
   id: string;
   projectId: string;
   key: string;
-  value: any;
+  value: unknown;
   provenance: string;
   stalenessThresholdMs: number;
   lastUpdatedAt: Date;
@@ -16,7 +16,7 @@ export class KnowledgeEngine {
   setContext(
     projectId: string,
     key: string,
-    value: any,
+    value: unknown,
     provenance: string,
     stalenessThresholdMs: number,
   ): KnowledgeContext {

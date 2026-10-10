@@ -2,7 +2,7 @@ export interface AnalyticsEvent {
     id: string;
     projectId: string;
     eventType: string;
-    payload: Record<string, any>;
+    payload: Record<string, unknown>;
     timestamp: Date;
 }
 export interface OutcomeRecord {
@@ -16,7 +16,7 @@ export interface OutcomeRecord {
 export declare class AnalyticsTracker {
     private events;
     private outcomes;
-    trackEvent(projectId: string, eventType: string, payload: Record<string, any>): AnalyticsEvent;
+    trackEvent(projectId: string, eventType: string, payload: Record<string, unknown>): AnalyticsEvent;
     recordOutcome(projectId: string, objectiveId: string, status: "SUCCESS" | "FAILURE" | "PARTIAL", metrics: Record<string, number>): OutcomeRecord;
     getEventsByProject(projectId: string): AnalyticsEvent[];
     getOutcomesByProject(projectId: string): OutcomeRecord[];

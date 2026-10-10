@@ -53,6 +53,16 @@ export interface SecurityEventQuery {
   before?: string;
   limit?: number;
 }
+
+/**
+ * Async port used by durable security-event adapters.  The port intentionally
+ * exposes only append and query: canonical security events are immutable once
+ * accepted by the control plane.
+ */
+export interface AsyncSecurityEventStore {
+  append(event: CanonicalSecurityEvent): Promise<void>;
+  query(query?: SecurityEventQuery): Promise<CanonicalSecurityEvent[]>;
+}
 export function validateSecurityEvent(event: CanonicalSecurityEvent): void {
   if (!event.id || !event.eventId || event.id !== event.eventId)
     throw new Error("security event id must equal eventId");

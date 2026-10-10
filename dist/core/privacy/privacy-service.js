@@ -16,7 +16,7 @@ export class PrivacyService {
         return request;
     }
     getRequests(organizationId) {
-        return Array.from(this.requests.values()).filter(r => r.organizationId === organizationId);
+        return Array.from(this.requests.values()).filter((r) => r.organizationId === organizationId);
     }
     processRequest(requestId, status) {
         const req = this.requests.get(requestId);
@@ -33,7 +33,7 @@ export class PrivacyService {
     }
     setRetentionPolicy(policy) {
         const list = this.retentionPolicies.get(policy.organizationId) || [];
-        const existing = list.findIndex(p => p.dataType === policy.dataType);
+        const existing = list.findIndex((p) => p.dataType === policy.dataType);
         if (existing >= 0) {
             list[existing] = policy;
         }

@@ -34,8 +34,7 @@ export interface DataSubjectRequest {
     notes?: string;
     metadata?: Record<string, unknown>;
 }
-export interface PrivacyRequest extends DataSubjectRequest {
-}
+export type PrivacyRequest = DataSubjectRequest;
 export interface RetentionPolicy {
     policyId: string;
     organizationId: string;

@@ -51,12 +51,12 @@ export class DefaultPredictiveEngine implements PredictiveIntelligenceEngine {
       confidenceInterval: [0.8, 1.2],
       predictedValues: Array(horizon)
         .fill(0)
-        .map((_, i) => Math.random() * 100),
+        .map(() => Math.random() * 100),
       timestamp: new Date(),
     };
   }
 
-  async detectAnomalies(dataStream: any[]): Promise<Anomaly[]> {
+  async detectAnomalies(_dataStream: readonly unknown[]): Promise<Anomaly[]> {
     console.log("[PredictiveEngine] Running Anomaly Detection...");
     return [
       {
@@ -83,7 +83,7 @@ export class DefaultPredictiveEngine implements PredictiveIntelligenceEngine {
     };
   }
 
-  async simulateScenario(scenario: Scenario): Promise<any> {
+  async simulateScenario(scenario: Scenario): Promise<unknown> {
     console.log(`[PredictiveEngine] Simulating Scenario: ${scenario.name}...`);
     return {
       scenarioId: scenario.id,
@@ -107,7 +107,7 @@ export class DefaultPredictiveEngine implements PredictiveIntelligenceEngine {
     ];
   }
 
-  async optimizeResources(goal: OptimizationGoal): Promise<any> {
+  async optimizeResources(goal: OptimizationGoal): Promise<unknown> {
     console.log(
       `[PredictiveEngine] Running Optimization for ${goal.targetMetric}...`,
     );

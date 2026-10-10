@@ -5,7 +5,7 @@ export interface SecurityEvent {
     type: "FAILED_LOGIN" | "API_ABUSE" | "DATA_EXFILTRATION_ATTEMPT" | "SUSPICIOUS_IP";
     severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
     actor: string;
-    details: Record<string, any>;
+    details: Record<string, unknown>;
     timestamp: Date;
 }
 export interface ThreatRule {

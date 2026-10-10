@@ -4,7 +4,7 @@ export interface AnalyticsEvent {
   id: string;
   projectId: string;
   eventType: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   timestamp: Date;
 }
 
@@ -24,7 +24,7 @@ export class AnalyticsTracker {
   trackEvent(
     projectId: string,
     eventType: string,
-    payload: Record<string, any>,
+    payload: Record<string, unknown>,
   ): AnalyticsEvent {
     const event: AnalyticsEvent = {
       id: crypto.randomUUID(),

@@ -11,6 +11,7 @@ import type {
 } from "../../contracts/security.js";
 import type {
   CanonicalSecurityEvent,
+  AsyncSecurityEventStore,
   SecurityEventQuery,
 } from "../../contracts/security-event.js";
 import type { SecurityEventStore } from "../../core/security/security-event-store.js";
@@ -20,7 +21,8 @@ export class SecurityControlService {
     private readonly events: Repository<ZTNSecurityEvent>,
     private readonly policies: Repository<ZeroTrustPolicy>,
     private readonly threatIntel: Repository<ThreatIntelligenceReport>,
-    private readonly canonicalEvents?: SecurityEventStore,
+    private readonly canonicalEvents?:
+      SecurityEventStore | AsyncSecurityEventStore,
   ) {}
 
   private enforceAdmin(operator: OperatorPrincipal) {
@@ -63,6 +65,7 @@ export class SecurityControlService {
     if (query.projectId && !operatorCanAccessProject(operator, query.projectId))
       return [];
     if (operator.allowedProjects !== "*" && !query.projectId) return [];
-    return this.canonicalEvents?.query(query) ?? [];
+    if (!this.canonicalEvents) return [];
+    return await this.canonicalEvents.query(query);
   }
 }

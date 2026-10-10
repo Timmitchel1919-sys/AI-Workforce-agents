@@ -6,9 +6,9 @@ export interface AuditLogEntry extends Entity {
   action: string;
   resourceType: string;
   resourceRef: string;
-  previousState?: Record<string, any>;
-  newState?: Record<string, any>;
-  metadata?: Record<string, any>;
+  previousState?: Record<string, unknown>;
+  newState?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
   status: "SUCCESS" | "FAILURE" | "DENIED";

@@ -39,7 +39,7 @@ export abstract class BaseAdapter implements Connector {
 
   protected trackExecution(
     capabilityId: string,
-    input: any,
+    input: unknown,
     context: InvocationContext,
     result: InvocationResult,
     start: number,
@@ -78,18 +78,18 @@ export abstract class BaseAdapter implements Connector {
         if (result.success) {
           this.orchestrator.createVerification(changeSet.id, true, 1.0);
         }
-      } catch (e) {
+      } catch {
         // Ignore if lifecycle objects don't strictly exist
       }
     }
   }
 
   abstract getCapabilities(): Promise<ConnectorCapability[]>;
-  abstract initialize(credentials?: any): Promise<void>;
+  abstract initialize(_credentials?: unknown): Promise<void>;
   abstract shutdown(): Promise<void>;
   abstract invokeCapability(
     capabilityId: string,
-    input: any,
+    input: unknown,
     context: InvocationContext,
   ): Promise<InvocationResult>;
 }
@@ -117,7 +117,7 @@ export class MCPAdapterImpl extends BaseAdapter {
     ];
   }
 
-  async initialize(credentials?: any): Promise<void> {
+  async initialize(_credentials?: unknown): Promise<void> {
     this.status = "active";
   }
 
@@ -127,7 +127,7 @@ export class MCPAdapterImpl extends BaseAdapter {
 
   async invokeCapability(
     capabilityId: string,
-    input: any,
+    input: unknown,
     context: InvocationContext,
   ): Promise<InvocationResult> {
     const start = Date.now();
@@ -165,7 +165,7 @@ export class APIAdapterImpl extends BaseAdapter {
     ];
   }
 
-  async initialize(credentials?: any): Promise<void> {
+  async initialize(_credentials?: unknown): Promise<void> {
     this.status = "active";
   }
 
@@ -175,7 +175,7 @@ export class APIAdapterImpl extends BaseAdapter {
 
   async invokeCapability(
     capabilityId: string,
-    input: any,
+    input: unknown,
     context: InvocationContext,
   ): Promise<InvocationResult> {
     const start = Date.now();
@@ -213,7 +213,7 @@ export class CLIAdapterImpl extends BaseAdapter {
     ];
   }
 
-  async initialize(credentials?: any): Promise<void> {
+  async initialize(_credentials?: unknown): Promise<void> {
     this.status = "active";
   }
 
@@ -223,7 +223,7 @@ export class CLIAdapterImpl extends BaseAdapter {
 
   async invokeCapability(
     capabilityId: string,
-    input: any,
+    input: unknown,
     context: InvocationContext,
   ): Promise<InvocationResult> {
     const start = Date.now();

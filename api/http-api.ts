@@ -1153,7 +1153,9 @@ export function createControlPlaneApi(
           return send(
             res,
             200,
-            await options.itsm.createService(body as any),
+            await options.itsm.createService(
+              body as Parameters<typeof options.itsm.createService>[0],
+            ),
             correlationId,
           );
         }
@@ -1179,7 +1181,9 @@ export function createControlPlaneApi(
           return send(
             res,
             200,
-            await options.itsm.createIncident(body as any),
+            await options.itsm.createIncident(
+              body as Parameters<typeof options.itsm.createIncident>[0],
+            ),
             correlationId,
           );
         }
@@ -1198,7 +1202,9 @@ export function createControlPlaneApi(
           return send(
             res,
             200,
-            await options.itsm.createChangeRequest(body as any),
+            await options.itsm.createChangeRequest(
+              body as Parameters<typeof options.itsm.createChangeRequest>[0],
+            ),
             correlationId,
           );
         }
@@ -1246,7 +1252,10 @@ export function createControlPlaneApi(
           return send(
             res,
             200,
-            await options.ops.reportHealth(principal, body as any),
+            await options.ops.reportHealth(
+              principal,
+              body as Parameters<typeof options.ops.reportHealth>[1],
+            ),
             correlationId,
           );
         }

@@ -26,7 +26,7 @@ export class ScimService {
   handleProvisioningEvent(
     organizationId: string,
     action: ScimProvisioningEvent["action"],
-    payload: any,
+    payload: Record<string, unknown>,
   ) {
     const event: ScimProvisioningEvent = {
       eventId: `scim_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -64,4 +64,3 @@ export class ScimService {
     return this.events.filter((e) => e.organizationId === organizationId);
   }
 }
-

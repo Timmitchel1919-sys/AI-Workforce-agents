@@ -20,10 +20,10 @@ export class SecOpsService {
         }
     }
     // 2. Evaluate Zero-Trust Policies against CMDB
-    async evaluateZeroTrustPolicy(organizationId, policyId, ciId, actor) {
+    async evaluateZeroTrustPolicy(organizationId, policyId, ciId, _actor) {
         if (!organizationId)
             throw new Error("Tenant Isolation Violation: organizationId is required");
-        const policy = this.policies.find(p => p.policyId === policyId && p.organizationId === organizationId);
+        const policy = this.policies.find((p) => p.policyId === policyId && p.organizationId === organizationId);
         if (!policy) {
             throw new Error(`Policy ${policyId} not found for org ${organizationId}`);
         }
@@ -33,7 +33,7 @@ export class SecOpsService {
         if (this.itsmControlPlane) {
             // Fetch CI from CMDB mock to evaluate if actor has access to it based on policy conditions
             // In a real system, we'd check if the CI attributes match the requiredConditions
-            const dependencies = await this.itsmControlPlane.getCIDependencies(organizationId, ciId);
+            await this.itsmControlPlane.getCIDependencies(organizationId, ciId);
             // Mock evaluation:
             if (policy.requiredConditions.includes("REQUIRES_ENCRYPTION")) {
                 // Check if CI or dependencies have encryption
@@ -50,7 +50,7 @@ export class SecOpsService {
         if (!request.organizationId)
             throw new Error("Tenant Isolation Violation: organizationId is required");
         // Find active policies for the target resource scope
-        const activePolicies = this.policies.filter(p => p.organizationId === request.organizationId &&
+        const activePolicies = this.policies.filter((p) => p.organizationId === request.organizationId &&
             p.status === "ACTIVE" &&
             (p.targetScope === "ALL" || p.targetScope === request.targetResourceId));
         let finalAction = "ALLOW";
@@ -89,7 +89,7 @@ export class SecOpsService {
     async updateVulnerabilityStatus(organizationId, vulnId, status) {
         if (!organizationId)
             throw new Error("Tenant Isolation Violation: organizationId is required");
-        const vuln = this.vulnerabilities.find(v => v.vulnerabilityId === vulnId && v.organizationId === organizationId);
+        const vuln = this.vulnerabilities.find((v) => v.vulnerabilityId === vulnId && v.organizationId === organizationId);
         if (!vuln) {
             throw new Error(`Vulnerability ${vulnId} not found in org ${organizationId}`);
         }
@@ -106,9 +106,9 @@ export class SecOpsService {
         this.policies.push(policy);
     }
     getVulnerabilities(organizationId) {
-        return this.vulnerabilities.filter(v => v.organizationId === organizationId);
+        return this.vulnerabilities.filter((v) => v.organizationId === organizationId);
     }
     getEvents(organizationId) {
-        return this.events.filter(e => e.organizationId === organizationId);
+        return this.events.filter((e) => e.organizationId === organizationId);
     }
 }

@@ -8,6 +8,8 @@ export interface SecurityEventStore {
   append(event: CanonicalSecurityEvent): void;
   query(query?: SecurityEventQuery): CanonicalSecurityEvent[];
 }
+
+export type { AsyncSecurityEventStore } from "../../contracts/security-event.js";
 function select(
   events: CanonicalSecurityEvent[],
   query: SecurityEventQuery = {},

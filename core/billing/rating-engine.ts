@@ -1,9 +1,4 @@
-import {
-  Price,
-  PriceComponent,
-  BillableUsage,
-  RatedCharge,
-} from "../../contracts/billing.js";
+import { Price, BillableUsage, RatedCharge } from "../../contracts/billing.js";
 
 export class RatingEngine {
   rateUsage(

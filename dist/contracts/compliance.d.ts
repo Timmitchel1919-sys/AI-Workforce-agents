@@ -1,3 +1,7 @@
+/**
+ * Enterprise Compliance, Risk, Privacy & Trust Management
+ * Compliance Controls, Policies, Evidence, Frameworks
+ */
 export declare const CONTROL_CATEGORIES: readonly ["Identity & Access", "Authentication", "Authorization", "Secrets", "Cryptography", "Logging", "Monitoring", "Incident Response", "Change Management", "Software Development", "Vulnerability Management", "Data Protection", "Privacy", "Retention", "Backup & Recovery", "Business Continuity", "Vendor Management", "AI Governance", "Governance", "Risk Management"];
 export type ControlCategory = (typeof CONTROL_CATEGORIES)[number];
 export declare const CONTROL_TYPES: readonly ["PREVENTIVE", "DETECTIVE", "CORRECTIVE"];

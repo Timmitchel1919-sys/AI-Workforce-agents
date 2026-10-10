@@ -1,7 +1,5 @@
 import type {
   EnterpriseRisk,
-  RiskState,
-  RiskTreatment,
   ComplianceException,
   ExceptionState,
   ThirdPartyVendor,
@@ -30,10 +28,14 @@ export class RiskService {
   }
 
   getRisks(orgId?: string): EnterpriseRisk[] {
-    return Array.from(this.risks.values()).filter(r => !orgId || r.organizationId === orgId);
+    return Array.from(this.risks.values()).filter(
+      (r) => !orgId || r.organizationId === orgId,
+    );
   }
 
-  createException(e: Omit<ComplianceException, "exceptionId">): ComplianceException {
+  createException(
+    e: Omit<ComplianceException, "exceptionId">,
+  ): ComplianceException {
     const ex: ComplianceException = {
       ...e,
       exceptionId: createId("ex"),
@@ -42,7 +44,11 @@ export class RiskService {
     return ex;
   }
 
-  updateException(exceptionId: string, status: ExceptionState, approvedBy?: string): ComplianceException {
+  updateException(
+    exceptionId: string,
+    status: ExceptionState,
+    approvedBy?: string,
+  ): ComplianceException {
     const ex = this.exceptions.get(exceptionId);
     if (!ex) throw new Error("Exception not found");
     ex.status = status;
@@ -60,7 +66,9 @@ export class RiskService {
   }
 
   getExceptions(orgId: string): ComplianceException[] {
-    return Array.from(this.exceptions.values()).filter(e => e.organizationId === orgId);
+    return Array.from(this.exceptions.values()).filter(
+      (e) => e.organizationId === orgId,
+    );
   }
 
   createVendor(v: Omit<ThirdPartyVendor, "vendorId">): ThirdPartyVendor {
@@ -73,6 +81,8 @@ export class RiskService {
   }
 
   getVendors(orgId?: string): ThirdPartyVendor[] {
-    return Array.from(this.vendors.values()).filter(v => !orgId || v.organizationId === orgId);
+    return Array.from(this.vendors.values()).filter(
+      (v) => !orgId || v.organizationId === orgId,
+    );
   }
 }

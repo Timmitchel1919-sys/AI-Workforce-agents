@@ -7,11 +7,11 @@ export declare class DefaultPredictiveEngine implements PredictiveIntelligenceEn
     establishBaselines(): Promise<void>;
     setupEvaluationFramework(): Promise<void>;
     runForecasting(metric: string, horizon: number): Promise<PredictiveForecast>;
-    detectAnomalies(dataStream: any[]): Promise<Anomaly[]>;
+    detectAnomalies(_dataStream: readonly unknown[]): Promise<Anomaly[]>;
     estimateRisk(component: string): Promise<RiskEstimate>;
-    simulateScenario(scenario: Scenario): Promise<any>;
+    simulateScenario(scenario: Scenario): Promise<unknown>;
     generateRecommendations(): Promise<Recommendation[]>;
-    optimizeResources(goal: OptimizationGoal): Promise<any>;
+    optimizeResources(goal: OptimizationGoal): Promise<unknown>;
     runDecisionEngine(): Promise<void>;
     detectDrift(modelId: string): Promise<DriftReport>;
     requestGovernanceApproval(recommendationId: string): Promise<GovernanceApproval>;

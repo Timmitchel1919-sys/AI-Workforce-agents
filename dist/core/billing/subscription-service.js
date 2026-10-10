@@ -15,16 +15,17 @@ export class SubscriptionService {
         const oldStatus = sub.status;
         // Validate state transitions for commercial lifecycle logic
         const validTransitions = {
-            "TRIALING": ["ACTIVE", "CANCELLED", "EXPIRED", "RESTRICTED"],
-            "ACTIVE": ["PAST_DUE", "CANCELLED", "RESTRICTED"],
-            "PAST_DUE": ["ACTIVE", "RESTRICTED", "CANCELLED"],
-            "RESTRICTED": ["ACTIVE", "CANCELLED"],
-            "CANCELLED": ["ACTIVE"], // Reactivation
-            "EXPIRED": ["ACTIVE"],
-            "INCOMPLETE": ["TRIALING", "ACTIVE", "CANCELLED"],
-            "UNKNOWN": ["ACTIVE", "CANCELLED"]
+            TRIALING: ["ACTIVE", "CANCELLED", "EXPIRED", "RESTRICTED"],
+            ACTIVE: ["PAST_DUE", "CANCELLED", "RESTRICTED"],
+            PAST_DUE: ["ACTIVE", "RESTRICTED", "CANCELLED"],
+            RESTRICTED: ["ACTIVE", "CANCELLED"],
+            CANCELLED: ["ACTIVE"], // Reactivation
+            EXPIRED: ["ACTIVE"],
+            INCOMPLETE: ["TRIALING", "ACTIVE", "CANCELLED"],
+            UNKNOWN: ["ACTIVE", "CANCELLED"],
         };
-        if (validTransitions[oldStatus] && !validTransitions[oldStatus].includes(newStatus)) {
+        if (validTransitions[oldStatus] &&
+            !validTransitions[oldStatus].includes(newStatus)) {
             throw new Error(`Invalid transition from ${oldStatus} to ${newStatus}`);
         }
         sub.status = newStatus;
@@ -68,7 +69,7 @@ export class SubscriptionService {
             resourceType: type,
             resourceId: resId,
             timestamp: new Date(),
-            details
+            details,
         });
     }
 }

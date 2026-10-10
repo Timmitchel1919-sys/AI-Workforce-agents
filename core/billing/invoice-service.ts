@@ -2,10 +2,8 @@ import {
   Invoice,
   InvoiceLineItem,
   RatedCharge,
-  InvoiceStatus,
   CommercialAuditRecord,
 } from "../../contracts/billing.js";
-import { sumUsd } from "../../contracts/cost-center.js";
 
 export class InvoiceService {
   private invoices = new Map<string, Invoice>();
@@ -177,7 +175,7 @@ export class InvoiceService {
     action: string,
     type: string,
     resId: string,
-    details: any,
+    details: Record<string, unknown>,
   ) {
     this.auditLog.push({
       id: `audit_${Date.now()}`,

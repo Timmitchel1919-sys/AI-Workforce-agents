@@ -1,8 +1,6 @@
 /**
  * Enterprise Risk Management
  */
-import { ValidationError } from "./index.js";
-
 export const RISK_CATEGORIES = [
   "SECURITY",
   "PRIVACY",
@@ -16,10 +14,22 @@ export const RISK_CATEGORIES = [
 ] as const;
 export type RiskCategory = (typeof RISK_CATEGORIES)[number];
 
-export const RISK_LIKELIHOODS = ["VERY_LOW", "LOW", "MEDIUM", "HIGH", "VERY_HIGH"] as const;
+export const RISK_LIKELIHOODS = [
+  "VERY_LOW",
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+  "VERY_HIGH",
+] as const;
 export type RiskLikelihood = (typeof RISK_LIKELIHOODS)[number];
 
-export const RISK_IMPACTS = ["VERY_LOW", "LOW", "MEDIUM", "HIGH", "VERY_HIGH"] as const;
+export const RISK_IMPACTS = [
+  "VERY_LOW",
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+  "VERY_HIGH",
+] as const;
 export type RiskImpact = (typeof RISK_IMPACTS)[number];
 
 export const RISK_STATES = [
@@ -33,7 +43,12 @@ export const RISK_STATES = [
 ] as const;
 export type RiskState = (typeof RISK_STATES)[number];
 
-export const RISK_TREATMENTS = ["MITIGATE", "AVOID", "TRANSFER", "ACCEPT"] as const;
+export const RISK_TREATMENTS = [
+  "MITIGATE",
+  "AVOID",
+  "TRANSFER",
+  "ACCEPT",
+] as const;
 export type RiskTreatment = (typeof RISK_TREATMENTS)[number];
 
 export interface EnterpriseRisk {
@@ -95,7 +110,12 @@ export interface ComplianceException {
   metadata?: Record<string, unknown>;
 }
 
-export const VENDOR_CRITICALITY = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
+export const VENDOR_CRITICALITY = [
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+  "CRITICAL",
+] as const;
 export type VendorCriticality = (typeof VENDOR_CRITICALITY)[number];
 
 export interface ThirdPartyVendor {
@@ -105,8 +125,10 @@ export interface ThirdPartyVendor {
   service: string;
   dataAccessLevel: "NONE" | "LIMITED" | "MODERATE" | "EXTENSIVE";
   criticality: VendorCriticality;
-  securityReviewStatus: "NOT_REVIEWED" | "IN_REVIEW" | "APPROVED" | "REJECTED" | "EXPIRED";
-  privacyReviewStatus: "NOT_REVIEWED" | "IN_REVIEW" | "APPROVED" | "REJECTED" | "EXPIRED";
+  securityReviewStatus:
+    "NOT_REVIEWED" | "IN_REVIEW" | "APPROVED" | "REJECTED" | "EXPIRED";
+  privacyReviewStatus:
+    "NOT_REVIEWED" | "IN_REVIEW" | "APPROVED" | "REJECTED" | "EXPIRED";
   contractStatus?: "NO_CONTRACT" | "DRAFT" | "ACTIVE" | "EXPIRED";
   dpaExists?: boolean;
   subprocessorsKnown?: boolean;

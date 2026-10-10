@@ -22,7 +22,7 @@ export interface ConfigurationItem extends BaseITSMRecord {
     ciType: string;
     serviceId?: string;
     status: string;
-    attributes?: Record<string, any>;
+    attributes?: Record<string, unknown>;
 }
 export interface CIRelationship extends BaseITSMRecord {
     sourceCiId: string;

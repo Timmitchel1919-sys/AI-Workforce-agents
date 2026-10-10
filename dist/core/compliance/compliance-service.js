@@ -29,7 +29,7 @@ export class ComplianceService {
         return ci;
     }
     getControlInstances(orgId) {
-        return Array.from(this.controlInstances.values()).filter(c => c.organizationId === orgId);
+        return Array.from(this.controlInstances.values()).filter((c) => c.organizationId === orgId);
     }
     addEvidence(ev) {
         const e = {
@@ -40,7 +40,7 @@ export class ComplianceService {
         return e;
     }
     getEvidence(orgId) {
-        return Array.from(this.evidence.values()).filter(e => e.organizationId === orgId);
+        return Array.from(this.evidence.values()).filter((e) => e.organizationId === orgId);
     }
     recordTestRun(tr) {
         const t = {
@@ -51,7 +51,7 @@ export class ComplianceService {
         return t;
     }
     getTestRuns(orgId) {
-        return Array.from(this.testRuns.values()).filter(t => t.organizationId === orgId);
+        return Array.from(this.testRuns.values()).filter((t) => t.organizationId === orgId);
     }
     updateControlInstanceStatus(instanceId, status, effectiveness, freshness) {
         const ci = this.controlInstances.get(instanceId);

@@ -2,15 +2,35 @@ import { test } from "node:test";
 import * as assert from "node:assert";
 import { ITSMControlService } from "../control/services/itsm-control-service.js";
 import { Repository, Entity } from "../contracts/persistence.js";
-import { Incident, ChangeRequest, ConfigurationItem, CIRelationship, Problem, Service } from "../contracts/itsm.js";
+import {
+  Incident,
+  ChangeRequest,
+  ConfigurationItem,
+  CIRelationship,
+  Problem,
+  Service,
+  ITSMRelease,
+  ServiceRequest,
+  Runbook,
+} from "../contracts/itsm.js";
 
 class InMemoryRepo<T extends Entity> implements Repository<T> {
   private data = new Map<string, T>();
-  upsert(entity: T): void { this.data.set(entity.id, { ...entity }); }
-  findById(id: string): T | undefined { return this.data.get(id); }
-  list(): T[] { return Array.from(this.data.values()); }
-  delete(id: string): boolean { return this.data.delete(id); }
-  clear(): void { this.data.clear(); }
+  upsert(entity: T): void {
+    this.data.set(entity.id, { ...entity });
+  }
+  findById(id: string): T | undefined {
+    return this.data.get(id);
+  }
+  list(): T[] {
+    return Array.from(this.data.values());
+  }
+  delete(id: string): boolean {
+    return this.data.delete(id);
+  }
+  clear(): void {
+    this.data.clear();
+  }
 }
 
 test("ITSMControlService - Routing Incidents", async () => {
@@ -19,11 +39,11 @@ test("ITSMControlService - Routing Incidents", async () => {
     new InMemoryRepo<Incident>(),
     new InMemoryRepo<Problem>(),
     new InMemoryRepo<ChangeRequest>(),
-    new InMemoryRepo<any>(), // ITSMRelease
+    new InMemoryRepo<ITSMRelease>(), // ITSMRelease
     new InMemoryRepo<ConfigurationItem>(),
-    new InMemoryRepo<any>(), // ServiceRequest
-    new InMemoryRepo<any>(), // Runbook
-    new InMemoryRepo<CIRelationship>()
+    new InMemoryRepo<ServiceRequest>(), // ServiceRequest
+    new InMemoryRepo<Runbook>(), // Runbook
+    new InMemoryRepo<CIRelationship>(),
   );
 
   const incident = await service.createIncident({
@@ -33,7 +53,7 @@ test("ITSMControlService - Routing Incidents", async () => {
     serviceId: "svc-db-1",
     severity: "critical",
     status: "new",
-    majorIncident: false
+    majorIncident: false,
   });
 
   assert.strictEqual(incident.majorIncident, true);
@@ -49,9 +69,9 @@ test("ITSMControlService - Routing Incidents", async () => {
     serviceId: "svc-db-2",
     severity: "medium",
     status: "new",
-    majorIncident: false
+    majorIncident: false,
   });
-  
+
   const routedDb = await service.routeIncident("org-1", dbIncident.id);
   assert.strictEqual(routedDb.assignmentGroup, "Database Team");
 });
@@ -62,11 +82,11 @@ test("ITSMControlService - Change Approvals", async () => {
     new InMemoryRepo<Incident>(),
     new InMemoryRepo<Problem>(),
     new InMemoryRepo<ChangeRequest>(),
-    new InMemoryRepo<any>(), // ITSMRelease
+    new InMemoryRepo<ITSMRelease>(), // ITSMRelease
     new InMemoryRepo<ConfigurationItem>(),
-    new InMemoryRepo<any>(), // ServiceRequest
-    new InMemoryRepo<any>(), // Runbook
-    new InMemoryRepo<CIRelationship>()
+    new InMemoryRepo<ServiceRequest>(), // ServiceRequest
+    new InMemoryRepo<Runbook>(), // Runbook
+    new InMemoryRepo<CIRelationship>(),
   );
 
   const cr = await service.createChangeRequest({
@@ -76,7 +96,7 @@ test("ITSMControlService - Change Approvals", async () => {
     type: "normal",
     status: "pending_approval",
     serviceId: "svc-db-1",
-    requestedBy: "user-1"
+    requestedBy: "user-1",
   });
 
   assert.strictEqual(cr.cabRequired, true);
@@ -93,32 +113,32 @@ test("ITSMControlService - CMDB Relationships", async () => {
     new InMemoryRepo<Incident>(),
     new InMemoryRepo<Problem>(),
     new InMemoryRepo<ChangeRequest>(),
-    new InMemoryRepo<any>(), // ITSMRelease
+    new InMemoryRepo<ITSMRelease>(), // ITSMRelease
     new InMemoryRepo<ConfigurationItem>(),
-    new InMemoryRepo<any>(), // ServiceRequest
-    new InMemoryRepo<any>(), // Runbook
-    new InMemoryRepo<CIRelationship>()
+    new InMemoryRepo<ServiceRequest>(), // ServiceRequest
+    new InMemoryRepo<Runbook>(), // Runbook
+    new InMemoryRepo<CIRelationship>(),
   );
 
   const ci1 = await service.createCI({
     organizationId: "org-1",
     name: "Web Server",
     ciType: "Server",
-    status: "active"
+    status: "active",
   });
 
   const ci2 = await service.createCI({
     organizationId: "org-1",
     name: "Database",
     ciType: "Database",
-    status: "active"
+    status: "active",
   });
 
   await service.addCIRelationship({
     organizationId: "org-1",
     sourceCiId: ci1.id,
     targetCiId: ci2.id,
-    relationshipType: "depends_on"
+    relationshipType: "depends_on",
   });
 
   const deps = await service.getCIDependencies("org-1", ci1.id);

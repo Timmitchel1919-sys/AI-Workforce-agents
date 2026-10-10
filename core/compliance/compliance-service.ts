@@ -5,7 +5,6 @@ import type {
   ControlTestRun,
   ControlStatus,
   EvidenceFreshness,
-  ControlTestResult,
 } from "../../contracts/compliance.js";
 import { createId, now } from "../shared.js";
 
@@ -15,7 +14,9 @@ export class ComplianceService {
   private evidence = new Map<string, ComplianceEvidence>();
   private testRuns = new Map<string, ControlTestRun>();
 
-  createControlDefinition(def: Omit<ControlDefinition, "controlId" | "createdAt" | "updatedAt">): ControlDefinition {
+  createControlDefinition(
+    def: Omit<ControlDefinition, "controlId" | "createdAt" | "updatedAt">,
+  ): ControlDefinition {
     const cd: ControlDefinition = {
       ...def,
       controlId: createId("ctrl"),
@@ -34,7 +35,9 @@ export class ComplianceService {
     return Array.from(this.controlDefs.values());
   }
 
-  createControlInstance(inst: Omit<ControlInstance, "instanceId">): ControlInstance {
+  createControlInstance(
+    inst: Omit<ControlInstance, "instanceId">,
+  ): ControlInstance {
     const ci: ControlInstance = {
       ...inst,
       instanceId: createId("ci"),
@@ -44,7 +47,9 @@ export class ComplianceService {
   }
 
   getControlInstances(orgId: string): ControlInstance[] {
-    return Array.from(this.controlInstances.values()).filter(c => c.organizationId === orgId);
+    return Array.from(this.controlInstances.values()).filter(
+      (c) => c.organizationId === orgId,
+    );
   }
 
   addEvidence(ev: Omit<ComplianceEvidence, "evidenceId">): ComplianceEvidence {
@@ -57,7 +62,9 @@ export class ComplianceService {
   }
 
   getEvidence(orgId: string): ComplianceEvidence[] {
-    return Array.from(this.evidence.values()).filter(e => e.organizationId === orgId);
+    return Array.from(this.evidence.values()).filter(
+      (e) => e.organizationId === orgId,
+    );
   }
 
   recordTestRun(tr: Omit<ControlTestRun, "testId">): ControlTestRun {
@@ -70,14 +77,22 @@ export class ComplianceService {
   }
 
   getTestRuns(orgId: string): ControlTestRun[] {
-    return Array.from(this.testRuns.values()).filter(t => t.organizationId === orgId);
+    return Array.from(this.testRuns.values()).filter(
+      (t) => t.organizationId === orgId,
+    );
   }
 
-  updateControlInstanceStatus(instanceId: string, status: ControlStatus, effectiveness?: string, freshness?: EvidenceFreshness) {
+  updateControlInstanceStatus(
+    instanceId: string,
+    status: ControlStatus,
+    effectiveness?: string,
+    freshness?: EvidenceFreshness,
+  ) {
     const ci = this.controlInstances.get(instanceId);
     if (!ci) throw new Error("Control instance not found");
     ci.status = status;
-    if (effectiveness) ci.effectiveness = effectiveness as any;
+    if (effectiveness)
+      ci.effectiveness = effectiveness as ControlInstance["effectiveness"];
     if (freshness) ci.evidenceFreshness = freshness;
     if (status === "IMPLEMENTED" || status === "EFFECTIVE") {
       ci.lastTestedAt = now();

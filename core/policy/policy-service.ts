@@ -1,11 +1,19 @@
-import type { PolicyDefinition, PolicyAcknowledgement, PolicyState } from "../../contracts/policy.js";
+import type {
+  PolicyDefinition,
+  PolicyAcknowledgement,
+} from "../../contracts/policy.js";
 import { createId, now } from "../shared.js";
 
 export class PolicyService {
   private policies = new Map<string, PolicyDefinition>();
   private acks = new Map<string, PolicyAcknowledgement>();
 
-  createPolicy(p: Omit<PolicyDefinition, "policyId" | "createdAt" | "updatedAt" | "version"> & { version?: number }): PolicyDefinition {
+  createPolicy(
+    p: Omit<
+      PolicyDefinition,
+      "policyId" | "createdAt" | "updatedAt" | "version"
+    > & { version?: number },
+  ): PolicyDefinition {
     const pol: PolicyDefinition = {
       ...p,
       policyId: createId("pol"),
@@ -17,7 +25,10 @@ export class PolicyService {
     return pol;
   }
 
-  updatePolicy(policyId: string, updates: Partial<PolicyDefinition>): PolicyDefinition {
+  updatePolicy(
+    policyId: string,
+    updates: Partial<PolicyDefinition>,
+  ): PolicyDefinition {
     const p = this.policies.get(policyId);
     if (!p) throw new Error("Policy not found");
     Object.assign(p, updates);
@@ -25,7 +36,11 @@ export class PolicyService {
     return p;
   }
 
-  newVersion(policyId: string, content?: string, updatedBy?: string): PolicyDefinition {
+  newVersion(
+    policyId: string,
+    content?: string,
+    updatedBy?: string,
+  ): PolicyDefinition {
     const p = this.policies.get(policyId);
     if (!p) throw new Error("Policy not found");
     const newPol: PolicyDefinition = {
@@ -44,10 +59,17 @@ export class PolicyService {
   }
 
   getPolicies(orgId?: string): PolicyDefinition[] {
-    return Array.from(this.policies.values()).filter(p => !orgId || p.organizationId === orgId);
+    return Array.from(this.policies.values()).filter(
+      (p) => !orgId || p.organizationId === orgId,
+    );
   }
 
-  acknowledge(policyId: string, principalId: string, policyVersion: number, orgId?: string): PolicyAcknowledgement {
+  acknowledge(
+    policyId: string,
+    principalId: string,
+    policyVersion: number,
+    orgId?: string,
+  ): PolicyAcknowledgement {
     const ack: PolicyAcknowledgement = {
       ackId: createId("ack"),
       principalId,
@@ -61,6 +83,8 @@ export class PolicyService {
   }
 
   getAcknowledgements(policyId: string): PolicyAcknowledgement[] {
-    return Array.from(this.acks.values()).filter(a => a.policyId === policyId);
+    return Array.from(this.acks.values()).filter(
+      (a) => a.policyId === policyId,
+    );
   }
 }

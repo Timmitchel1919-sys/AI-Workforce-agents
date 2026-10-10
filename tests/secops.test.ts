@@ -5,7 +5,7 @@ import { ThreatEngine } from "../core/secops/index.js";
 
 test("SecOps: Threat Engine detection and incident creation", () => {
   const engine = new ThreatEngine();
-  
+
   engine.registerRule({
     ruleId: "rule_1",
     organizationId: "org_1",
@@ -14,7 +14,7 @@ test("SecOps: Threat Engine detection and incident creation", () => {
     threshold: 3,
     timeWindowSeconds: 60,
     action: "BLOCK_USER",
-    status: "ACTIVE"
+    status: "ACTIVE",
   });
 
   const now = new Date();
@@ -28,7 +28,7 @@ test("SecOps: Threat Engine detection and incident creation", () => {
     severity: "MEDIUM",
     actor: "usr_123",
     details: {},
-    timestamp: new Date(now.getTime() - 10000)
+    timestamp: new Date(now.getTime() - 10000),
   });
 
   engine.logEvent({
@@ -39,7 +39,7 @@ test("SecOps: Threat Engine detection and incident creation", () => {
     severity: "MEDIUM",
     actor: "usr_123",
     details: {},
-    timestamp: new Date(now.getTime() - 5000)
+    timestamp: new Date(now.getTime() - 5000),
   });
 
   assert.equal(engine.getIncidents("org_1").length, 0);
@@ -53,7 +53,7 @@ test("SecOps: Threat Engine detection and incident creation", () => {
     severity: "HIGH",
     actor: "usr_123",
     details: {},
-    timestamp: now
+    timestamp: now,
   });
 
   const incidents = engine.getIncidents("org_1");
@@ -67,7 +67,7 @@ import { SecOpsService } from "../core/secops/secops-service.js";
 
 test("SecOpsService: Zero-Trust Policy enforcement and Tenant Isolation", async () => {
   const service = new SecOpsService();
-  
+
   service.addPolicy({
     id: "p_1",
     policyId: "zt_1",
@@ -78,7 +78,7 @@ test("SecOpsService: Zero-Trust Policy enforcement and Tenant Isolation", async 
     requiredConditions: [],
     action: "DENY",
     status: "ACTIVE",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   });
 
   service.addPolicy({
@@ -91,23 +91,33 @@ test("SecOpsService: Zero-Trust Policy enforcement and Tenant Isolation", async 
     requiredConditions: [],
     action: "ALLOW",
     status: "ACTIVE",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   });
 
   // Evaluate for org 1 (Should Deny)
-  const allowed1 = await service.evaluateZeroTrustPolicy("org_1", "zt_1", "ci_1", "user_1");
+  const allowed1 = await service.evaluateZeroTrustPolicy(
+    "org_1",
+    "zt_1",
+    "ci_1",
+    "user_1",
+  );
   assert.equal(allowed1, false);
 
   // Evaluate for org 2 (Should Allow)
-  const allowed2 = await service.evaluateZeroTrustPolicy("org_2", "zt_2", "ci_1", "user_1");
+  const allowed2 = await service.evaluateZeroTrustPolicy(
+    "org_2",
+    "zt_2",
+    "ci_1",
+    "user_1",
+  );
   assert.equal(allowed2, true);
 
   // Attempt to evaluate across tenants
   try {
     await service.evaluateZeroTrustPolicy("org_1", "zt_2", "ci_1", "user_1");
     assert.ok(false, "Should have thrown tenant isolation error");
-  } catch (e: any) {
-    assert.include(e.message, "Policy zt_2 not found for org org_1");
+  } catch (e) {
+    assert.include(String(e), "Policy zt_2 not found for org org_1");
   }
 });
 
@@ -123,7 +133,7 @@ test("SecOpsService: Threat intel and Access Request tenant isolation", async ()
     requiredConditions: [],
     action: "DENY",
     status: "ACTIVE",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   });
 
   const request = await service.evaluateAccessRequest({
@@ -133,7 +143,7 @@ test("SecOpsService: Threat intel and Access Request tenant isolation", async ()
     targetResourceId: "res_1",
     justification: "Need access",
     status: "PENDING",
-    requestedAt: new Date()
+    requestedAt: new Date(),
   });
 
   assert.equal(request.status, "DENIED");

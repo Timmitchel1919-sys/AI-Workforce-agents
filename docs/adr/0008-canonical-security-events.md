@@ -21,17 +21,18 @@ for permission decisions, approvals, tool execution, agent activity, and
 access events. Canonical event reads are admin-only and a scoped operator must
 provide an explicitly allowed project.
 
-The repository-backed store is an adapter seam. The current generic repository
-still exposes mutation methods, so production Firestore immutability requires
-the next persistence hardening step: a write-only event collection or Firestore
-rules/adapter that rejects update and delete operations.
+Production Firestore now uses a dedicated `FirestoreAppendOnlySecurityEventStore`.
+It exposes only `append` and `query`, writes through a transaction's
+`create()` operation, and therefore rejects duplicate event IDs without
+exposing update or delete methods. The client-facing Firestore rules remain
+deny-all; the adapter protects the trusted server-side composition boundary.
 
 ## Consequences
 
 - Permission, approval, policy, authentication, and agent-security events can
   converge on one redacted shape without coupling core code to Firebase.
 - Project scoping is explicit and cannot be inferred from free text.
-- The current store prevents duplicate appends but cannot by itself prevent a
-  privileged repository implementation from deleting records.
+- The generic repository remains available for unrelated mutable domains, but
+  it is not used for canonical security events in the production composition.
 - Existing audit and SecOps records remain compatible and can be migrated by a
   later adapter rather than by changing their public contracts.

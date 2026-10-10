@@ -5,7 +5,7 @@ import { DlpEngine, PrivacyService } from "../core/privacy/index.js";
 
 test("Privacy: DLP Engine rules and scanning", () => {
   const engine = new DlpEngine();
-  
+
   engine.registerPolicy({
     policyId: "dlp_1",
     organizationId: "org_1",
@@ -19,9 +19,9 @@ test("Privacy: DLP Engine rules and scanning", () => {
         type: "REGEX",
         target: "SSN",
         pattern: "\\d{3}-\\d{2}-\\d{4}",
-        matchThreshold: 1
-      }
-    ]
+        matchThreshold: 1,
+      },
+    ],
   });
 
   engine.registerPolicy({
@@ -37,22 +37,22 @@ test("Privacy: DLP Engine rules and scanning", () => {
         type: "REGEX",
         target: "CREDIT_CARD",
         pattern: "\\b(?:\\d[ -]*?){13,16}\\b",
-        matchThreshold: 1
-      }
-    ]
+        matchThreshold: 1,
+      },
+    ],
   });
 
   // Test Block (highest priority)
   const text1 = "My SSN is 123-45-6789 and my card is 1234-5678-9012-3456";
   const result1 = engine.scanText("org_1", text1);
-  
+
   assert.equal(result1.action, "BLOCK");
   assert.include(result1.matches, "SSN");
 
   // Test Redact
   const text2 = "My card is 1234 5678 9012 3456 here.";
   const result2 = engine.scanText("org_1", text2);
-  
+
   assert.equal(result2.action, "REDACT");
   assert.include(result2.matches, "CREDIT_CARD");
 });
@@ -60,9 +60,13 @@ test("Privacy: DLP Engine rules and scanning", () => {
 test("Privacy: GDPR/CCPA Privacy Requests and Retention", () => {
   const service = new PrivacyService();
 
-  const req = service.submitPrivacyRequest("org_1", "test@example.com", "DATA_DELETION" as any);
+  const req = service.submitPrivacyRequest(
+    "org_1",
+    "test@example.com",
+    "DELETION",
+  );
   assert.equal(req.status, "PENDING");
-  
+
   service.processRequest(req.requestId, "PROCESSING");
   assert.equal(service.getRequests("org_1")[0].status, "PROCESSING");
 
@@ -75,7 +79,7 @@ test("Privacy: GDPR/CCPA Privacy Requests and Retention", () => {
     organizationId: "org_1",
     dataType: "CHAT_HISTORY",
     retentionDays: 30,
-    enforceDeletion: true
+    enforceDeletion: true,
   });
 
   const policies = service.getRetentionPolicies("org_1");

@@ -4,11 +4,10 @@ import type {
   Alert,
   PlatformConfiguration,
   FeatureRollout,
-  PlatformResourceRef,
 } from "../../contracts/operations.js";
 import type { Repository } from "../../contracts/persistence.js";
 import type { OperatorPrincipal } from "../../contracts/control.js";
-import { requireText, ValidationError } from "../../contracts/index.js";
+import { ValidationError } from "../../contracts/index.js";
 
 export class OperationsControlService {
   constructor(
@@ -16,7 +15,7 @@ export class OperationsControlService {
     private readonly serviceInventory: Repository<ServiceInventoryRecord>,
     private readonly alerts: Repository<Alert>,
     private readonly platformConfigs: Repository<PlatformConfiguration>,
-    private readonly featureRollouts: Repository<FeatureRollout>
+    private readonly featureRollouts: Repository<FeatureRollout>,
   ) {}
 
   private enforcePlatformAdmin(operator: OperatorPrincipal) {
@@ -31,7 +30,7 @@ export class OperationsControlService {
 
   async reportHealth(
     operator: OperatorPrincipal,
-    signal: Omit<HealthSignal, "id" | "observedAt">
+    signal: Omit<HealthSignal, "id" | "observedAt">,
   ): Promise<HealthSignal> {
     this.enforcePlatformAdmin(operator);
     const newSignal: HealthSignal = {
@@ -47,7 +46,10 @@ export class OperationsControlService {
     return this.alerts.list();
   }
 
-  async acknowledgeAlert(operator: OperatorPrincipal, alertId: string): Promise<Alert> {
+  async acknowledgeAlert(
+    operator: OperatorPrincipal,
+    alertId: string,
+  ): Promise<Alert> {
     this.enforcePlatformAdmin(operator);
     const alert = await this.alerts.findById(alertId);
     if (!alert) throw new ValidationError("Alert not found");
@@ -58,12 +60,16 @@ export class OperationsControlService {
 
   async applyConfiguration(
     operator: OperatorPrincipal,
-    configId: string
+    configId: string,
   ): Promise<PlatformConfiguration> {
     this.enforcePlatformAdmin(operator);
     const config = await this.platformConfigs.findById(configId);
     if (!config) throw new ValidationError("Config not found");
-    const updated = { ...config, status: "applied" as const, appliedAt: new Date().toISOString() };
+    const updated = {
+      ...config,
+      status: "applied" as const,
+      appliedAt: new Date().toISOString(),
+    };
     this.platformConfigs.upsert(updated);
     return updated;
   }

@@ -41,6 +41,8 @@ export class SecurityControlService {
             return [];
         if (operator.allowedProjects !== "*" && !query.projectId)
             return [];
-        return this.canonicalEvents?.query(query) ?? [];
+        if (!this.canonicalEvents)
+            return [];
+        return await this.canonicalEvents.query(query);
     }
 }

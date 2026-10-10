@@ -1,7 +1,6 @@
 import test from "node:test";
 import { assert } from "./helpers/assert.js";
 import { AssetService } from "../core/assets/index.js";
-import { EnterpriseAsset } from "../contracts/assets.js";
 
 test("Assets: Tenant isolation prevents cross-tenant access", async () => {
   const svc = new AssetService();
@@ -13,14 +12,14 @@ test("Assets: Tenant isolation prevents cross-tenant access", async () => {
     category: "HARDWARE",
     status: "IN_STOCK",
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   });
 
   try {
     await svc.getAsset("org_B", "asset_1");
     assert.ok(false, "Should throw tenant isolation violation");
-  } catch (e: any) {
-    assert.include(e.message, "Tenant isolation violation");
+  } catch (e) {
+    assert.include(String(e), "Tenant isolation violation");
   }
 });
 
@@ -34,15 +33,20 @@ test("Assets: Status update records lifecycle event", async () => {
     category: "SOFTWARE",
     status: "PROCURED",
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   });
 
-  await svc.updateAssetStatus("org_A", "asset_2", "DEPLOYED", "admin_1", "Assigned to design team");
-  
+  await svc.updateAssetStatus(
+    "org_A",
+    "asset_2",
+    "DEPLOYED",
+    "admin_1",
+    "Assigned to design team",
+  );
+
   const events = await svc.getAssetLifecycle("org_A", "asset_2");
   assert.equal(events.length, 1);
   assert.equal(events[0].eventType, "STATUS_CHANGED");
   assert.equal(events[0].previousState, "PROCURED");
   assert.equal(events[0].newState, "DEPLOYED");
 });
-

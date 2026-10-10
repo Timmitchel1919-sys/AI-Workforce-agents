@@ -1,11 +1,15 @@
-import { DataSubjectRequest, PrivacyRequest, RetentionPolicy } from "../../contracts/privacy.js";
-import { createId, now } from "../shared.js";
+import { PrivacyRequest, RetentionPolicy } from "../../contracts/privacy.js";
+import { createId } from "../shared.js";
 
 export class PrivacyService {
   private requests = new Map<string, PrivacyRequest>();
   private retentionPolicies = new Map<string, RetentionPolicy[]>();
 
-  submitPrivacyRequest(organizationId: string, email: string, type: PrivacyRequest["type"]): PrivacyRequest {
+  submitPrivacyRequest(
+    organizationId: string,
+    email: string,
+    type: PrivacyRequest["type"],
+  ): PrivacyRequest {
     const request: PrivacyRequest = {
       requestId: createId("dsr"),
       organizationId,
@@ -20,10 +24,20 @@ export class PrivacyService {
   }
 
   getRequests(organizationId: string): PrivacyRequest[] {
-    return Array.from(this.requests.values()).filter(r => r.organizationId === organizationId);
+    return Array.from(this.requests.values()).filter(
+      (r) => r.organizationId === organizationId,
+    );
   }
 
-  processRequest(requestId: string, status: "PROCESSING" | "COMPLETED" | "REJECTED" | "VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED"): void {
+  processRequest(
+    requestId: string,
+    status:
+      | "PROCESSING"
+      | "COMPLETED"
+      | "REJECTED"
+      | "VERIFIED"
+      | "IDENTITY_VERIFICATION_REQUIRED",
+  ): void {
     const req = this.requests.get(requestId);
     if (!req) throw new Error("Privacy request not found");
     req.status = status;
@@ -38,7 +52,7 @@ export class PrivacyService {
 
   setRetentionPolicy(policy: RetentionPolicy): void {
     const list = this.retentionPolicies.get(policy.organizationId) || [];
-    const existing = list.findIndex(p => p.dataType === policy.dataType);
+    const existing = list.findIndex((p) => p.dataType === policy.dataType);
     if (existing >= 0) {
       list[existing] = policy;
     } else {

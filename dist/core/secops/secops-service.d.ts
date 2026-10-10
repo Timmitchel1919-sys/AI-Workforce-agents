@@ -9,7 +9,7 @@ export declare class SecOpsService {
     private accessRequests;
     constructor(itsmControlPlane?: ITSMControlPlane | undefined);
     routeSecurityEvent(event: SecurityEvent): Promise<void>;
-    evaluateZeroTrustPolicy(organizationId: string, policyId: string, ciId: string, actor: string): Promise<boolean>;
+    evaluateZeroTrustPolicy(organizationId: string, policyId: string, ciId: string, _actor: string): Promise<boolean>;
     evaluateAccessRequest(request: AccessRequest): Promise<AccessRequest>;
     registerVulnerability(vuln: Vulnerability): Promise<Vulnerability>;
     updateVulnerabilityStatus(organizationId: string, vulnId: string, status: Vulnerability["status"]): Promise<Vulnerability>;

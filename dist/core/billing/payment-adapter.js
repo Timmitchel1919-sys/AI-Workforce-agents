@@ -1,29 +1,29 @@
 export class NotConfiguredPaymentAdapter {
-    async createCustomer(organizationId, email) {
+    async createCustomer(_organizationId, _email) {
         throw new Error("BILLING PROVIDER: NOT CONFIGURED");
     }
-    async createSubscription(customerId, planProviderId) {
+    async createSubscription(_customerId, _planProviderId) {
         throw new Error("BILLING PROVIDER: NOT CONFIGURED");
     }
-    async cancelSubscription(subscriptionProviderId) {
+    async cancelSubscription(_subscriptionProviderId) {
         throw new Error("BILLING PROVIDER: NOT CONFIGURED");
     }
-    async createPaymentIntent(customerId, amountMinorUnits, currency) {
+    async createPaymentIntent(_customerId, _amountMinorUnits, _currency) {
         throw new Error("BILLING PROVIDER: NOT CONFIGURED");
     }
-    verifyWebhookSignature(payload, signature) {
+    verifyWebhookSignature(_payload, _signature) {
         throw new Error("BILLING PROVIDER: NOT CONFIGURED");
     }
 }
 export class TestPaymentAdapter {
     webhookSecret = "test_whsec_12345";
-    async createCustomer(organizationId, email) {
+    async createCustomer(organizationId, _email) {
         return `cust_test_${organizationId}`;
     }
-    async createSubscription(customerId, planProviderId) {
+    async createSubscription(_customerId, _planProviderId) {
         return `sub_test_${Date.now()}`;
     }
-    async cancelSubscription(subscriptionProviderId) {
+    async cancelSubscription(_subscriptionProviderId) {
         // Test mode: succeed immediately
     }
     async createPaymentIntent(customerId, amountMinorUnits, currency) {

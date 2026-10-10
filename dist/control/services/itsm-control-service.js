@@ -24,7 +24,7 @@ export class ITSMControlService {
             ...service,
             id: `svc_${Date.now()}_${Math.random().toString(36).substring(7)}`,
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
         };
         this.services.upsert(newService);
         return newService;
@@ -36,13 +36,15 @@ export class ITSMControlService {
         return null;
     }
     async listServices(organizationId) {
-        return this.services.list().filter(s => s.organizationId === organizationId);
+        return this.services
+            .list()
+            .filter((s) => s.organizationId === organizationId);
     }
     async createIncident(incident) {
         const newIncident = {
             ...incident,
             id: `inc_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
         // Basic routing logic
         if (incident.severity === "critical" || incident.severity === "major") {
@@ -59,7 +61,11 @@ export class ITSMControlService {
         const existing = this.incidents.findById(id);
         if (!existing || existing.organizationId !== organizationId)
             throw new Error("Incident not found");
-        const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+        const updated = {
+            ...existing,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+        };
         if (updates.status === "resolved" && !existing.resolvedAt) {
             updated.resolvedAt = new Date().toISOString();
         }
@@ -67,9 +73,11 @@ export class ITSMControlService {
         return updated;
     }
     async listIncidents(organizationId, serviceId) {
-        const all = this.incidents.list().filter(i => i.organizationId === organizationId);
+        const all = this.incidents
+            .list()
+            .filter((i) => i.organizationId === organizationId);
         if (serviceId) {
-            return all.filter(i => i.serviceId === serviceId);
+            return all.filter((i) => i.serviceId === serviceId);
         }
         return all;
     }
@@ -96,7 +104,7 @@ export class ITSMControlService {
         const newProblem = {
             ...problem,
             id: `prb_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
         this.problems.upsert(newProblem);
         return newProblem;
@@ -105,7 +113,11 @@ export class ITSMControlService {
         const existing = this.problems.findById(id);
         if (!existing || existing.organizationId !== organizationId)
             throw new Error("Problem not found");
-        const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+        const updated = {
+            ...existing,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+        };
         this.problems.upsert(updated);
         return updated;
     }
@@ -113,7 +125,7 @@ export class ITSMControlService {
         const newCr = {
             ...cr,
             id: `cr_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
         // CAB logic
         if (newCr.type === "normal" || newCr.type === "emergency") {
@@ -130,7 +142,11 @@ export class ITSMControlService {
         const existing = this.changes.findById(id);
         if (!existing || existing.organizationId !== organizationId)
             throw new Error("ChangeRequest not found");
-        const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+        const updated = {
+            ...existing,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+        };
         this.changes.upsert(updated);
         return updated;
     }
@@ -145,19 +161,21 @@ export class ITSMControlService {
             cabApprovalStatus: "approved",
             approvedBy: approverId,
             status: "approved",
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
         };
         this.changes.upsert(updated);
         return updated;
     }
     async listChangeRequests(organizationId) {
-        return this.changes.list().filter(cr => cr.organizationId === organizationId);
+        return this.changes
+            .list()
+            .filter((cr) => cr.organizationId === organizationId);
     }
     async createCI(ci) {
         const newCI = {
             ...ci,
             id: `ci_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
         this.cis.upsert(newCI);
         return newCI;
@@ -166,14 +184,18 @@ export class ITSMControlService {
         const newRel = {
             ...rel,
             id: `rel_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
         this.ciRels.upsert(newRel);
         return newRel;
     }
     async getCIDependencies(organizationId, ciId) {
-        const rels = this.ciRels.list().filter(r => r.organizationId === organizationId && r.sourceCiId === ciId);
-        const deps = rels.map(r => this.cis.findById(r.targetCiId)).filter(Boolean);
+        const rels = this.ciRels
+            .list()
+            .filter((r) => r.organizationId === organizationId && r.sourceCiId === ciId);
+        const deps = rels
+            .map((r) => this.cis.findById(r.targetCiId))
+            .filter(Boolean);
         return deps;
     }
 }

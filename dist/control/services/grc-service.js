@@ -58,7 +58,7 @@ export class GrcControlService {
             riskId: `risk_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
             status: "IDENTIFIED",
         };
-        this.risks.upsert(newRisk);
+        this.risks.upsert({ ...newRisk, id: newRisk.riskId });
         return newRisk;
     }
     // --- PRIVACY ---
@@ -73,7 +73,7 @@ export class GrcControlService {
             status: "PENDING",
             receivedAt: new Date().toISOString(),
         };
-        this.privacyRequests.upsert(newRequest);
+        this.privacyRequests.upsert({ ...newRequest, id: newRequest.requestId });
         return newRequest;
     }
     // --- TRUST CENTER ---

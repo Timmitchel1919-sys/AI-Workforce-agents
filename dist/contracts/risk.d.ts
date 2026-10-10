@@ -1,3 +1,6 @@
+/**
+ * Enterprise Risk Management
+ */
 export declare const RISK_CATEGORIES: readonly ["SECURITY", "PRIVACY", "OPERATIONAL", "COMPLIANCE", "VENDOR", "AI", "FINANCIAL", "REPUTATIONAL", "STRATEGIC"];
 export type RiskCategory = (typeof RISK_CATEGORIES)[number];
 export declare const RISK_LIKELIHOODS: readonly ["VERY_LOW", "LOW", "MEDIUM", "HIGH", "VERY_HIGH"];

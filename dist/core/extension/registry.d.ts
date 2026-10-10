@@ -1,5 +1,9 @@
+export interface ExtensionManifest {
+    id: string;
+    [key: string]: unknown;
+}
 export declare class ExtensionRegistry {
     private extensions;
-    register(manifest: any): void;
-    get(id: string): any;
+    register(manifest: ExtensionManifest): void;
+    get(id: string): ExtensionManifest | undefined;
 }

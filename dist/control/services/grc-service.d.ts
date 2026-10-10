@@ -1,9 +1,10 @@
-import type { ComplianceFramework } from "../../contracts/compliance.js";
-import type { EnterpriseRisk } from "../../contracts/risk.js";
-import type { DataSubjectRequest } from "../../contracts/privacy.js";
-import type { CompliancePosture, CertificationRecord, TrustCenterContent } from "../../contracts/trust.js";
-import type { Repository } from "../../contracts/persistence.js";
+import type { ComplianceFramework, ControlInstance } from "../../contracts/compliance.js";
+import type { EnterpriseRisk, ComplianceException, ThirdPartyVendor } from "../../contracts/risk.js";
+import type { DataSubjectRequest, RetentionPolicy, DlpPolicy } from "../../contracts/privacy.js";
+import type { CompliancePosture, AuditReadiness, AuditPackage, CertificationRecord, TrustCenterContent, ControlFinding } from "../../contracts/trust.js";
+import type { Entity, Repository } from "../../contracts/persistence.js";
 import type { OperatorPrincipal } from "../../contracts/control.js";
+type EntityRecord<T> = Entity & T;
 export declare class GrcControlService {
     private readonly controls;
     private readonly frameworks;
@@ -21,7 +22,7 @@ export declare class GrcControlService {
     private readonly certifications;
     private readonly trustContent;
     private readonly findings;
-    constructor(controls: Repository<any>, frameworks: Repository<any>, policies: Repository<any>, controlInstances: Repository<any>, risks: Repository<any>, exceptions: Repository<any>, vendors: Repository<any>, privacyRequests: Repository<any>, retentionPolicies: Repository<any>, dlpPolicies: Repository<any>, postures: Repository<any>, audits: Repository<any>, auditPackages: Repository<any>, certifications: Repository<any>, trustContent: Repository<any>, findings: Repository<any>);
+    constructor(controls: Repository<EntityRecord<ControlInstance>>, frameworks: Repository<EntityRecord<ComplianceFramework>>, policies: Repository<EntityRecord<ComplianceFramework>>, controlInstances: Repository<EntityRecord<ControlInstance>>, risks: Repository<EntityRecord<EnterpriseRisk>>, exceptions: Repository<EntityRecord<ComplianceException>>, vendors: Repository<EntityRecord<ThirdPartyVendor>>, privacyRequests: Repository<EntityRecord<DataSubjectRequest>>, retentionPolicies: Repository<EntityRecord<RetentionPolicy>>, dlpPolicies: Repository<EntityRecord<DlpPolicy>>, postures: Repository<EntityRecord<CompliancePosture>>, audits: Repository<EntityRecord<AuditReadiness>>, auditPackages: Repository<EntityRecord<AuditPackage>>, certifications: Repository<EntityRecord<CertificationRecord>>, trustContent: Repository<EntityRecord<TrustCenterContent>>, findings: Repository<EntityRecord<ControlFinding>>);
     private enforceComplianceAdmin;
     listFrameworks(): Promise<ComplianceFramework[]>;
     getCompliancePosture(organizationId: string): Promise<CompliancePosture[]>;
@@ -32,3 +33,4 @@ export declare class GrcControlService {
     listTrustCenterContent(): Promise<TrustCenterContent[]>;
     listCertifications(): Promise<CertificationRecord[]>;
 }
+export {};

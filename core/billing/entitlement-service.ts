@@ -1,7 +1,6 @@
 import {
   Subscription,
   CommercialContractOverride,
-  PlanVersion,
   EntitlementDefinition,
   CommercialRestriction,
 } from "../../contracts/billing.js";

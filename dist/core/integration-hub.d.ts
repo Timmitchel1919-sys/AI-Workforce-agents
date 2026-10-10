@@ -10,8 +10,8 @@ export declare class DefaultConnectorRegistry implements ConnectorRegistry {
 export declare class DefaultCredentialBroker implements CredentialBroker {
     private store;
     private getKey;
-    getCredentials(connectorId: string, context: InvocationContext): Promise<any>;
-    storeCredentials(connectorId: string, credentials: any, context: InvocationContext): Promise<void>;
+    getCredentials(connectorId: string, context: InvocationContext): Promise<unknown>;
+    storeCredentials(connectorId: string, credentials: unknown, context: InvocationContext): Promise<void>;
     revokeCredentials(connectorId: string, context: InvocationContext): Promise<void>;
 }
 import { ExecutionOrchestrator } from "./foundation/execution-chain.js";
@@ -26,7 +26,7 @@ export declare class ToolInvocationEngine {
     private analytics?;
     private dataQuality?;
     constructor(registry: ConnectorRegistry, credentialBroker: CredentialBroker, governance: GovernancePolicy, validator: ResultValidator, orchestrator?: ExecutionOrchestrator | undefined, analytics?: AnalyticsTracker | undefined, dataQuality?: DataQualityEngine | undefined);
-    invoke(connectorId: string, capabilityId: string, input: any, context: InvocationContext): Promise<InvocationResult>;
+    invoke(connectorId: string, capabilityId: string, input: unknown, context: InvocationContext): Promise<InvocationResult>;
     private trackOutcome;
     private errorResult;
 }

@@ -19,7 +19,7 @@ export class RiskService {
         return r;
     }
     getRisks(orgId) {
-        return Array.from(this.risks.values()).filter(r => !orgId || r.organizationId === orgId);
+        return Array.from(this.risks.values()).filter((r) => !orgId || r.organizationId === orgId);
     }
     createException(e) {
         const ex = {
@@ -49,7 +49,7 @@ export class RiskService {
         return ex;
     }
     getExceptions(orgId) {
-        return Array.from(this.exceptions.values()).filter(e => e.organizationId === orgId);
+        return Array.from(this.exceptions.values()).filter((e) => e.organizationId === orgId);
     }
     createVendor(v) {
         const vend = {
@@ -60,6 +60,6 @@ export class RiskService {
         return vend;
     }
     getVendors(orgId) {
-        return Array.from(this.vendors.values()).filter(v => !orgId || v.organizationId === orgId);
+        return Array.from(this.vendors.values()).filter((v) => !orgId || v.organizationId === orgId);
     }
 }

@@ -40,7 +40,7 @@ export class PolicyService {
         return newPol;
     }
     getPolicies(orgId) {
-        return Array.from(this.policies.values()).filter(p => !orgId || p.organizationId === orgId);
+        return Array.from(this.policies.values()).filter((p) => !orgId || p.organizationId === orgId);
     }
     acknowledge(policyId, principalId, policyVersion, orgId) {
         const ack = {
@@ -55,6 +55,6 @@ export class PolicyService {
         return ack;
     }
     getAcknowledgements(policyId) {
-        return Array.from(this.acks.values()).filter(a => a.policyId === policyId);
+        return Array.from(this.acks.values()).filter((a) => a.policyId === policyId);
     }
 }

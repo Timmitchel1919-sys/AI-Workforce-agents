@@ -1,6 +1,21 @@
-export declare class MarketingEngine {
-    createCampaign(org: string, name: string, budget: number, tags: string[]): any;
-    activateCampaign(cmp: string): void;
-    recordLead(org: string, email: string, cmp: string): any;
-    qualifyLead(lead: string): void;
+interface CampaignRecord {
+    campaignId: string;
+    status: "DRAFT" | "ACTIVE";
+    metrics: {
+        conversions: number;
+    };
 }
+interface LeadRecord {
+    leadId: string;
+    status: "NEW" | "QUALIFIED";
+    score: number;
+}
+export declare class MarketingEngine {
+    private readonly campaigns;
+    private readonly leads;
+    createCampaign(_org: string, _name: string, _budget: number, _tags: string[]): CampaignRecord;
+    activateCampaign(cmp: string): void;
+    recordLead(_org: string, _email: string, cmp: string): LeadRecord;
+    qualifyLead(leadId: string): void;
+}
+export {};

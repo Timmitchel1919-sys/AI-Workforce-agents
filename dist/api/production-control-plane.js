@@ -17,10 +17,10 @@ import { WorkforceManagementService } from "../control/services/workforce-servic
  * without changing this authoritative runtime graph.
  */
 import { randomUUID } from "node:crypto";
-import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, OperationalAuditSink, OperationalDataSystem, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, RepositorySecurityEventStore, now, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, OperationalAuditSink, OperationalDataSystem, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
 import { CONTROL_PLANE_ANALYSIS_AGENT_ID, LazyOpenAIModelProvider, createProductionOpenAIAgentExecutor, } from "../agents/control-plane-analysis/index.js";
 import { DEVELOPER_AGENT_ID, DeveloperAgent, } from "../agents/developer/index.js";
 import { QA_AGENT_ID, QaAgent } from "../agents/qa/index.js";
@@ -86,7 +86,6 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const dsrRepository = repositories.repository("dsr_records");
     // Security Repositories
     const securityEventsRepository = repositories.repository("security_events");
-    const canonicalSecurityEventsRepository = repositories.repository("canonical_security_events");
     const zeroTrustPoliciesRepository = repositories.repository("zero_trust_policies");
     const threatIntelRepository = repositories.repository("threat_intel");
     // Audit Repositories
@@ -533,7 +532,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const ops = new OperationsControlService(opsHealthRepository, opsInventoryRepository, opsAlertsRepository, opsConfigRepository, opsRolloutsRepository);
     const aiGov = new AIGovernanceControlService(aiModelsRepository, aiUseCasesRepository, aiEvaluationsRepository, aiIncidentsRepository);
     const dataGov = new DataGovernanceService(dataAssetsRepository, dataRetentionPoliciesRepository, dsrRepository);
-    const security = new SecurityControlService(securityEventsRepository, zeroTrustPoliciesRepository, threatIntelRepository, new RepositorySecurityEventStore(canonicalSecurityEventsRepository));
+    const security = new SecurityControlService(securityEventsRepository, zeroTrustPoliciesRepository, threatIntelRepository, new FirestoreAppendOnlySecurityEventStore(transactionalFirestore));
     const auditService = new AuditControlService(auditLogsRepository, complianceFindingsRepository);
     const portfolio = new PortfolioControlService(strategicObjectivesRepository, enterprisePortfoliosRepository, portfolioProgramsRepository);
     const product = new ProductManagementService(productPortfoliosRepository, productsRepository, problemsRepository, opportunitiesRepository, featuresRepository);

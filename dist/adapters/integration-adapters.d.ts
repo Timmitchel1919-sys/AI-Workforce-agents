@@ -12,30 +12,30 @@ export declare abstract class BaseAdapter implements Connector {
     getConfig(): ConnectorConfig;
     getStatus(): ConnectorStatus;
     checkHealth(): Promise<HealthStatus>;
-    protected trackExecution(capabilityId: string, input: any, context: InvocationContext, result: InvocationResult, start: number): void;
+    protected trackExecution(capabilityId: string, input: unknown, context: InvocationContext, result: InvocationResult, start: number): void;
     abstract getCapabilities(): Promise<ConnectorCapability[]>;
-    abstract initialize(credentials?: any): Promise<void>;
+    abstract initialize(_credentials?: unknown): Promise<void>;
     abstract shutdown(): Promise<void>;
-    abstract invokeCapability(capabilityId: string, input: any, context: InvocationContext): Promise<InvocationResult>;
+    abstract invokeCapability(capabilityId: string, input: unknown, context: InvocationContext): Promise<InvocationResult>;
 }
 export declare class MCPAdapterImpl extends BaseAdapter {
     constructor(config: ConnectorConfig, orchestrator?: ExecutionOrchestrator, analytics?: AnalyticsTracker, dataQuality?: DataQualityEngine);
     getCapabilities(): Promise<ConnectorCapability[]>;
-    initialize(credentials?: any): Promise<void>;
+    initialize(_credentials?: unknown): Promise<void>;
     shutdown(): Promise<void>;
-    invokeCapability(capabilityId: string, input: any, context: InvocationContext): Promise<InvocationResult>;
+    invokeCapability(capabilityId: string, input: unknown, context: InvocationContext): Promise<InvocationResult>;
 }
 export declare class APIAdapterImpl extends BaseAdapter {
     constructor(config: ConnectorConfig, orchestrator?: ExecutionOrchestrator, analytics?: AnalyticsTracker, dataQuality?: DataQualityEngine);
     getCapabilities(): Promise<ConnectorCapability[]>;
-    initialize(credentials?: any): Promise<void>;
+    initialize(_credentials?: unknown): Promise<void>;
     shutdown(): Promise<void>;
-    invokeCapability(capabilityId: string, input: any, context: InvocationContext): Promise<InvocationResult>;
+    invokeCapability(capabilityId: string, input: unknown, context: InvocationContext): Promise<InvocationResult>;
 }
 export declare class CLIAdapterImpl extends BaseAdapter {
     constructor(config: ConnectorConfig, orchestrator?: ExecutionOrchestrator, analytics?: AnalyticsTracker, dataQuality?: DataQualityEngine);
     getCapabilities(): Promise<ConnectorCapability[]>;
-    initialize(credentials?: any): Promise<void>;
+    initialize(_credentials?: unknown): Promise<void>;
     shutdown(): Promise<void>;
-    invokeCapability(capabilityId: string, input: any, context: InvocationContext): Promise<InvocationResult>;
+    invokeCapability(capabilityId: string, input: unknown, context: InvocationContext): Promise<InvocationResult>;
 }

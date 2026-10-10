@@ -46,7 +46,7 @@ export class BaseAdapter {
                     this.orchestrator.createVerification(changeSet.id, true, 1.0);
                 }
             }
-            catch (e) {
+            catch {
                 // Ignore if lifecycle objects don't strictly exist
             }
         }
@@ -68,7 +68,7 @@ export class MCPAdapterImpl extends BaseAdapter {
             },
         ];
     }
-    async initialize(credentials) {
+    async initialize(_credentials) {
         this.status = "active";
     }
     async shutdown() {
@@ -102,7 +102,7 @@ export class APIAdapterImpl extends BaseAdapter {
             },
         ];
     }
-    async initialize(credentials) {
+    async initialize(_credentials) {
         this.status = "active";
     }
     async shutdown() {
@@ -136,7 +136,7 @@ export class CLIAdapterImpl extends BaseAdapter {
             },
         ];
     }
-    async initialize(credentials) {
+    async initialize(_credentials) {
         this.status = "active";
     }
     async shutdown() {

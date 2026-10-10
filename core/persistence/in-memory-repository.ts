@@ -29,7 +29,7 @@ export class InMemoryRepository<T extends Entity> implements Repository<T> {
   }
 
   private isAllowed(entity: T): boolean {
-    const orgId = (entity as any).organizationId;
+    const orgId = (entity as { organizationId?: unknown }).organizationId;
     if (!orgId) return true; // Legacy entities
     // In a real environment, we'd extract executionId from async local storage or parameter.
     // For now, we assume if tenant context exists for a global execution, we check it.

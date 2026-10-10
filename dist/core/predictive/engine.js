@@ -28,11 +28,11 @@ export class DefaultPredictiveEngine {
             confidenceInterval: [0.8, 1.2],
             predictedValues: Array(horizon)
                 .fill(0)
-                .map((_, i) => Math.random() * 100),
+                .map(() => Math.random() * 100),
             timestamp: new Date(),
         };
     }
-    async detectAnomalies(dataStream) {
+    async detectAnomalies(_dataStream) {
         console.log("[PredictiveEngine] Running Anomaly Detection...");
         return [
             {

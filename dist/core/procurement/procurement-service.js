@@ -25,10 +25,12 @@ export class ProcurementService {
         return qualification;
     }
     async isVendorQualifiedFor(organizationId, vendorId, scope) {
-        const q = Array.from(this.qualifications.values()).find(q => q.vendorId === vendorId && q.organizationId === organizationId && q.status === "VALID");
+        const q = Array.from(this.qualifications.values()).find((q) => q.vendorId === vendorId &&
+            q.organizationId === organizationId &&
+            q.status === "VALID");
         if (!q)
             return false;
-        return q.approvedScope.includes(scope) && !q.restrictedScope.includes(scope);
+        return (q.approvedScope.includes(scope) && !q.restrictedScope.includes(scope));
     }
     // PROCUREMENT REQUESTS
     async submitRequest(request) {

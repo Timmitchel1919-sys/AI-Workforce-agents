@@ -46,6 +46,7 @@ import {
   FirestoreOperatorProfileStore,
   FirestoreOnboardingSessionStore,
   FirestoreProvisionedProjectStore,
+  FirestoreAppendOnlySecurityEventStore,
   isTransactionalFirestore,
   FirestoreEventPublisher,
   type FirebaseServices,
@@ -113,7 +114,6 @@ import {
   VerificationService,
   deriveCostCenterCapabilities,
   deriveReleaseCapabilities,
-  RepositorySecurityEventStore,
   now,
 } from "../core/index.js";
 import {
@@ -346,9 +346,6 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<
       import("../contracts/security.js").ZTNSecurityEvent
     >("security_events");
-  const canonicalSecurityEventsRepository = repositories.repository<
-    import("../contracts/security-event.js").CanonicalSecurityEvent
-  >("canonical_security_events");
   const zeroTrustPoliciesRepository = repositories.repository<
     import("../contracts/security.js").ZeroTrustPolicy
   >("zero_trust_policies");
@@ -420,34 +417,70 @@ export async function createProductionControlPlaneRuntime(
   >("resource_assignments");
 
   // GRC Repositories
-  const grcControlsRepository = repositories.repository<any>("grc_controls");
-  const grcFrameworksRepository =
-    repositories.repository<any>("grc_frameworks");
-  const grcPoliciesRepository = repositories.repository<any>("grc_policies");
-  const grcControlInstancesRepository = repositories.repository<any>(
-    "grc_control_instances",
-  );
-  const grcRisksRepository = repositories.repository<any>("grc_risks");
-  const grcExceptionsRepository =
-    repositories.repository<any>("grc_exceptions");
-  const grcVendorsRepository = repositories.repository<any>("grc_vendors");
-  const grcPrivacyRequestsRepository = repositories.repository<any>(
-    "grc_privacy_requests",
-  );
-  const grcRetentionPoliciesRepository = repositories.repository<any>(
-    "grc_retention_policies",
-  );
-  const grcDlpPoliciesRepository =
-    repositories.repository<any>("grc_dlp_policies");
-  const grcPosturesRepository = repositories.repository<any>("grc_postures");
-  const grcAuditsRepository = repositories.repository<any>("grc_audits");
-  const grcAuditPackagesRepository =
-    repositories.repository<any>("grc_audit_packages");
-  const grcCertificationsRepository =
-    repositories.repository<any>("grc_certifications");
-  const grcTrustContentRepository =
-    repositories.repository<any>("grc_trust_content");
-  const grcFindingsRepository = repositories.repository<any>("grc_findings");
+  const grcControlsRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/compliance.js").ControlInstance
+  >("grc_controls");
+  const grcFrameworksRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/compliance.js").ComplianceFramework
+  >("grc_frameworks");
+  const grcPoliciesRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/compliance.js").ComplianceFramework
+  >("grc_policies");
+  const grcControlInstancesRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/compliance.js").ControlInstance
+  >("grc_control_instances");
+  const grcRisksRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/risk.js").EnterpriseRisk
+  >("grc_risks");
+  const grcExceptionsRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/risk.js").ComplianceException
+  >("grc_exceptions");
+  const grcVendorsRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/risk.js").ThirdPartyVendor
+  >("grc_vendors");
+  const grcPrivacyRequestsRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/privacy.js").DataSubjectRequest
+  >("grc_privacy_requests");
+  const grcRetentionPoliciesRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/privacy.js").RetentionPolicy
+  >("grc_retention_policies");
+  const grcDlpPoliciesRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/privacy.js").DlpPolicy
+  >("grc_dlp_policies");
+  const grcPosturesRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/trust.js").CompliancePosture
+  >("grc_postures");
+  const grcAuditsRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/trust.js").AuditReadiness
+  >("grc_audits");
+  const grcAuditPackagesRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/trust.js").AuditPackage
+  >("grc_audit_packages");
+  const grcCertificationsRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/trust.js").CertificationRecord
+  >("grc_certifications");
+  const grcTrustContentRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/trust.js").TrustCenterContent
+  >("grc_trust_content");
+  const grcFindingsRepository = repositories.repository<
+    import("../contracts/persistence.js").Entity &
+      import("../contracts/trust.js").ControlFinding
+  >("grc_findings");
 
   await repositories.hydrateAll();
 
@@ -1006,7 +1039,7 @@ export async function createProductionControlPlaneRuntime(
     securityEventsRepository,
     zeroTrustPoliciesRepository,
     threatIntelRepository,
-    new RepositorySecurityEventStore(canonicalSecurityEventsRepository),
+    new FirestoreAppendOnlySecurityEventStore(transactionalFirestore),
   );
 
   const auditService = new AuditControlService(

@@ -18,3 +18,4 @@ export * from "./firestore-operator-account-store.js";
 export * from "./firestore-operator-profile-store.js";
 export * from "./firestore-execution-state.js";
 export * from "./firestore-onboarding-store.js";
+export * from "./firestore-append-only-security-events.js";

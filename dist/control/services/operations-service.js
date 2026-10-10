@@ -47,7 +47,11 @@ export class OperationsControlService {
         const config = await this.platformConfigs.findById(configId);
         if (!config)
             throw new ValidationError("Config not found");
-        const updated = { ...config, status: "applied", appliedAt: new Date().toISOString() };
+        const updated = {
+            ...config,
+            status: "applied",
+            appliedAt: new Date().toISOString(),
+        };
         this.platformConfigs.upsert(updated);
         return updated;
     }

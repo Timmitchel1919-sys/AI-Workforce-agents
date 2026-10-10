@@ -1,7 +1,7 @@
 import test from "node:test";
 import { assert } from "./helpers/assert.js";
 import { ProcurementService } from "../core/procurement/index.js";
-import { Vendor, VendorQualification, ProcurementRequest, ContractRecord, SoftwareLicense, RenewalCase } from "../contracts/procurement.js";
+import { Vendor, ProcurementRequest } from "../contracts/procurement.js";
 
 test("Procurement: CROSS-TENANT VENDOR - Org A cannot access Org B vendor", async () => {
   const svc = new ProcurementService();
@@ -16,14 +16,14 @@ test("Procurement: CROSS-TENANT VENDOR - Org A cannot access Org B vendor", asyn
     contractRefs: [],
     integrationRefs: [],
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   });
 
   try {
     await svc.getVendor("org_A", "vendor_b");
     assert.ok(false, "Should throw tenant isolation violation");
-  } catch (e: any) {
-    assert.include(e.message, "Tenant isolation violation");
+  } catch (e) {
+    assert.include(String(e), "Tenant isolation violation");
   }
 });
 
@@ -40,15 +40,15 @@ test("Procurement: DUPLICATE VENDOR - Same legal vendor submitted twice prevents
     contractRefs: [],
     integrationRefs: [],
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
   await svc.registerVendor(v);
 
   try {
     await svc.registerVendor(v);
     assert.ok(false, "Should throw duplicate vendor error");
-  } catch (e: any) {
-    assert.include(e.message, "already exists");
+  } catch (e) {
+    assert.include(String(e), "already exists");
   }
 });
 
@@ -62,13 +62,21 @@ test("Procurement: VENDOR QUALIFICATION - Qualification is scoped, not inherited
     approvedScope: ["public-data"],
     restrictedScope: ["restricted-customer-data"],
     status: "VALID",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   });
 
-  const canPublic = await svc.isVendorQualifiedFor("org_A", "vendor_A", "public-data");
+  const canPublic = await svc.isVendorQualifiedFor(
+    "org_A",
+    "vendor_A",
+    "public-data",
+  );
   assert.equal(canPublic, true);
 
-  const canRestricted = await svc.isVendorQualifiedFor("org_A", "vendor_A", "restricted-customer-data");
+  const canRestricted = await svc.isVendorQualifiedFor(
+    "org_A",
+    "vendor_A",
+    "restricted-customer-data",
+  );
   assert.equal(canRestricted, false);
 });
 
@@ -87,7 +95,7 @@ test("Procurement: REQUEST / PURCHASE - Approved request does not mean PURCHASED
     dataClassification: "PUBLIC",
     status: "DRAFT",
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
   await svc.submitRequest(req);
   const approved = await svc.approveRequest("org_A", "req_1");
@@ -112,14 +120,14 @@ test("Procurement: CONTRACT ACCESS - Project member without permission denied", 
     ownerRef: "user_owner",
     terms: {},
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   });
 
   try {
     await svc.getContract("org_A", "contract_1", false);
     assert.ok(false, "Should deny access");
-  } catch (e: any) {
-    assert.include(e.message, "Access Denied");
+  } catch (e) {
+    assert.include(String(e), "Access Denied");
   }
 
   const contract = await svc.getContract("org_A", "contract_1", true);
@@ -144,10 +152,10 @@ test("Procurement: AI CONTRACT EXTRACTION - Extracted terms are UNVERIFIED", asy
     terms: {
       pricing: "1000/yr",
       extractedByAi: true,
-      verified: false
+      verified: false,
     },
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   });
 
   assert.equal(c.terms.extractedByAi, true);
@@ -168,7 +176,7 @@ test("Procurement: LICENSE ASSIGNMENT & UTILIZATION - Do not infer usage", async
     availableQuantity: 100,
     start: new Date().toISOString(),
     status: "ACTIVE",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   });
 
   const updated = await svc.assignLicense("org_A", "lic_1", 80);
@@ -182,7 +190,7 @@ test("Procurement: LICENSE ASSIGNMENT & UTILIZATION - Do not infer usage", async
 
 test("Procurement: RENEWAL - Auto-renew date approaches does not mean autonomous approval", async () => {
   const svc = new ProcurementService();
-  const renewal = await svc.createRenewalCase({
+  await svc.createRenewalCase({
     id: "ren_1",
     renewalId: "renewal_1",
     organizationId: "org_A",
@@ -191,7 +199,7 @@ test("Procurement: RENEWAL - Auto-renew date approaches does not mean autonomous
     renewalDate: new Date().toISOString(),
     noticeDeadline: new Date().toISOString(),
     status: "OPEN",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   });
 
   const rec = await svc.generateRenewalRecommendation("org_A", "renewal_1");

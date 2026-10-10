@@ -1,3 +1,6 @@
+/**
+ * Enterprise Risk Management
+ */
 export const RISK_CATEGORIES = [
     "SECURITY",
     "PRIVACY",
@@ -9,8 +12,20 @@ export const RISK_CATEGORIES = [
     "REPUTATIONAL",
     "STRATEGIC",
 ];
-export const RISK_LIKELIHOODS = ["VERY_LOW", "LOW", "MEDIUM", "HIGH", "VERY_HIGH"];
-export const RISK_IMPACTS = ["VERY_LOW", "LOW", "MEDIUM", "HIGH", "VERY_HIGH"];
+export const RISK_LIKELIHOODS = [
+    "VERY_LOW",
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "VERY_HIGH",
+];
+export const RISK_IMPACTS = [
+    "VERY_LOW",
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "VERY_HIGH",
+];
 export const RISK_STATES = [
     "IDENTIFIED",
     "ASSESSED",
@@ -20,7 +35,12 @@ export const RISK_STATES = [
     "ACCEPTED",
     "CLOSED",
 ];
-export const RISK_TREATMENTS = ["MITIGATE", "AVOID", "TRANSFER", "ACCEPT"];
+export const RISK_TREATMENTS = [
+    "MITIGATE",
+    "AVOID",
+    "TRANSFER",
+    "ACCEPT",
+];
 export const EXCEPTION_STATES = [
     "REQUESTED",
     "UNDER_REVIEW",
@@ -31,4 +51,9 @@ export const EXCEPTION_STATES = [
     "REJECTED",
     "CLOSED",
 ];
-export const VENDOR_CRITICALITY = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+export const VENDOR_CRITICALITY = [
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "CRITICAL",
+];

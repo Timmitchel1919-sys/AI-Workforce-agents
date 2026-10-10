@@ -4,7 +4,7 @@ export declare class ScimService {
     private ssoService;
     private events;
     constructor(ssoService: SsoService);
-    handleProvisioningEvent(organizationId: string, action: ScimProvisioningEvent["action"], payload: any): void;
+    handleProvisioningEvent(organizationId: string, action: ScimProvisioningEvent["action"], payload: Record<string, unknown>): void;
     private processEvent;
     getEvents(organizationId: string): ScimProvisioningEvent[];
 }

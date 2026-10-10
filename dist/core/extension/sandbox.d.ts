@@ -1,6 +1,7 @@
+import type { ExtensionManifest } from "./registry.js";
 export declare class ExtensionSandbox {
-    create(manifest: any): {
+    create(manifest: ExtensionManifest): {
         isolated: boolean;
-        manifestId: any;
+        manifestId: string;
     };
 }

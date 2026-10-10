@@ -76,7 +76,7 @@ export class ToolInvocationEngine {
                 const changeSet = this.orchestrator.createChangeSet(context.deliveryPlanId, [`invocation:${connectorId}:${capabilityId}`], JSON.stringify(input));
                 changeSetId = changeSet.id;
             }
-            catch (e) {
+            catch {
                 // Non-blocking if lifecycle objects don't strictly exist for minor invocations,
                 // but logs error. (In a strict mode we could fail here)
             }
@@ -117,7 +117,8 @@ export class ToolInvocationEngine {
             return result;
         }
         catch (error) {
-            const err = this.errorResult(error.message, start);
+            const message = error instanceof Error ? error.message : "unknown error";
+            const err = this.errorResult(message, start);
             this.trackOutcome(context, capabilityId, err, start);
             return err;
         }

@@ -2,8 +2,6 @@
  * Enterprise Compliance, Risk, Privacy & Trust Management
  * Compliance Controls, Policies, Evidence, Frameworks
  */
-import { ValidationError, requireText } from "./index.js";
-
 export const CONTROL_CATEGORIES = [
   "Identity & Access",
   "Authentication",
@@ -31,10 +29,18 @@ export type ControlCategory = (typeof CONTROL_CATEGORIES)[number];
 export const CONTROL_TYPES = ["PREVENTIVE", "DETECTIVE", "CORRECTIVE"] as const;
 export type ControlType = (typeof CONTROL_TYPES)[number];
 
-export const CONTROL_IMPACT_CLASSES = ["TECHNICAL", "ADMINISTRATIVE", "PHYSICAL"] as const;
+export const CONTROL_IMPACT_CLASSES = [
+  "TECHNICAL",
+  "ADMINISTRATIVE",
+  "PHYSICAL",
+] as const;
 export type ControlImpactClass = (typeof CONTROL_IMPACT_CLASSES)[number];
 
-export const AUTOMATION_LEVELS = ["MANUAL", "SEMI_AUTOMATED", "AUTOMATED"] as const;
+export const AUTOMATION_LEVELS = [
+  "MANUAL",
+  "SEMI_AUTOMATED",
+  "AUTOMATED",
+] as const;
 export type AutomationLevel = (typeof AUTOMATION_LEVELS)[number];
 
 export const CONTROL_STATUSES = [
@@ -71,7 +77,14 @@ export interface ControlDefinition {
   controlType: ControlType;
   controlClass?: ControlImpactClass;
   objective: string;
-  scope: "PLATFORM" | "ORGANIZATION" | "WORKSPACE" | "PROJECT" | "SERVICE" | "ENVIRONMENT" | "GLOBAL";
+  scope:
+    | "PLATFORM"
+    | "ORGANIZATION"
+    | "WORKSPACE"
+    | "PROJECT"
+    | "SERVICE"
+    | "ENVIRONMENT"
+    | "GLOBAL";
   automationLevel: AutomationLevel;
   testingMethod: ControlTestMethod;
   evidenceRequirements: readonly string[];
@@ -89,7 +102,13 @@ export interface ControlInstance {
   controlId: string;
   organizationId: string;
   scopeId?: string;
-  scopeType: "PLATFORM" | "ORGANIZATION" | "WORKSPACE" | "PROJECT" | "SERVICE" | "ENVIRONMENT";
+  scopeType:
+    | "PLATFORM"
+    | "ORGANIZATION"
+    | "WORKSPACE"
+    | "PROJECT"
+    | "SERVICE"
+    | "ENVIRONMENT";
   implementationOwner: string;
   evidenceOwner?: string;
   controlOwner: string;
@@ -134,7 +153,13 @@ export const EVIDENCE_TYPES = [
 ] as const;
 export type EvidenceType = (typeof EVIDENCE_TYPES)[number];
 
-export const EVIDENCE_FRESHNESS_STATES = ["CURRENT", "AGING", "STALE", "EXPIRED", "UNKNOWN"] as const;
+export const EVIDENCE_FRESHNESS_STATES = [
+  "CURRENT",
+  "AGING",
+  "STALE",
+  "EXPIRED",
+  "UNKNOWN",
+] as const;
 export type EvidenceFreshness = (typeof EVIDENCE_FRESHNESS_STATES)[number];
 
 export interface ComplianceEvidence {

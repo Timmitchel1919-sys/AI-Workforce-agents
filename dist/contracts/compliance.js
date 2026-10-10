@@ -1,3 +1,7 @@
+/**
+ * Enterprise Compliance, Risk, Privacy & Trust Management
+ * Compliance Controls, Policies, Evidence, Frameworks
+ */
 export const CONTROL_CATEGORIES = [
     "Identity & Access",
     "Authentication",
@@ -21,8 +25,16 @@ export const CONTROL_CATEGORIES = [
     "Risk Management",
 ];
 export const CONTROL_TYPES = ["PREVENTIVE", "DETECTIVE", "CORRECTIVE"];
-export const CONTROL_IMPACT_CLASSES = ["TECHNICAL", "ADMINISTRATIVE", "PHYSICAL"];
-export const AUTOMATION_LEVELS = ["MANUAL", "SEMI_AUTOMATED", "AUTOMATED"];
+export const CONTROL_IMPACT_CLASSES = [
+    "TECHNICAL",
+    "ADMINISTRATIVE",
+    "PHYSICAL",
+];
+export const AUTOMATION_LEVELS = [
+    "MANUAL",
+    "SEMI_AUTOMATED",
+    "AUTOMATED",
+];
 export const CONTROL_STATUSES = [
     "NOT_ASSESSED",
     "PLANNED",
@@ -54,4 +66,10 @@ export const EVIDENCE_TYPES = [
     "ATTESTATION",
     "EXTERNAL_REPORT",
 ];
-export const EVIDENCE_FRESHNESS_STATES = ["CURRENT", "AGING", "STALE", "EXPIRED", "UNKNOWN"];
+export const EVIDENCE_FRESHNESS_STATES = [
+    "CURRENT",
+    "AGING",
+    "STALE",
+    "EXPIRED",
+    "UNKNOWN",
+];
