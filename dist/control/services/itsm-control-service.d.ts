@@ -1,0 +1,30 @@
+import { Service, Incident, ChangeRequest, Problem, ConfigurationItem, CIRelationship, ITSMControlPlane, ITSMRelease, ServiceRequest, Runbook } from "../../contracts/itsm.js";
+import { Repository } from "../../contracts/persistence.js";
+export declare class ITSMControlService implements ITSMControlPlane {
+    private readonly services;
+    private readonly incidents;
+    private readonly problems;
+    private readonly changes;
+    private readonly releases;
+    private readonly cis;
+    private readonly serviceRequests;
+    private readonly runbooks;
+    private readonly ciRels;
+    constructor(services: Repository<Service>, incidents: Repository<Incident>, problems: Repository<Problem>, changes: Repository<ChangeRequest>, releases: Repository<ITSMRelease>, cis: Repository<ConfigurationItem>, serviceRequests: Repository<ServiceRequest>, runbooks: Repository<Runbook>, ciRels: Repository<CIRelationship>);
+    createService(service: Omit<Service, "id" | "createdAt" | "updatedAt">): Promise<Service>;
+    getService(organizationId: string, id: string): Promise<Service | null>;
+    listServices(organizationId: string): Promise<Service[]>;
+    createIncident(incident: Omit<Incident, "id" | "createdAt">): Promise<Incident>;
+    updateIncident(organizationId: string, id: string, updates: Partial<Incident>): Promise<Incident>;
+    listIncidents(organizationId: string, serviceId?: string): Promise<Incident[]>;
+    routeIncident(organizationId: string, incidentId: string): Promise<Incident>;
+    createProblem(problem: Omit<Problem, "id" | "createdAt">): Promise<Problem>;
+    updateProblem(organizationId: string, id: string, updates: Partial<Problem>): Promise<Problem>;
+    createChangeRequest(cr: Omit<ChangeRequest, "id" | "createdAt">): Promise<ChangeRequest>;
+    updateChangeRequest(organizationId: string, id: string, updates: Partial<ChangeRequest>): Promise<ChangeRequest>;
+    approveChange(organizationId: string, id: string, approverId: string): Promise<ChangeRequest>;
+    listChangeRequests(organizationId: string): Promise<ChangeRequest[]>;
+    createCI(ci: Omit<ConfigurationItem, "id" | "createdAt">): Promise<ConfigurationItem>;
+    addCIRelationship(rel: Omit<CIRelationship, "id" | "createdAt">): Promise<CIRelationship>;
+    getCIDependencies(organizationId: string, ciId: string): Promise<ConfigurationItem[]>;
+}

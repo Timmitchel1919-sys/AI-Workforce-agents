@@ -47,12 +47,28 @@ const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
-const BillingPortalPage = fromChunk(loadControlCenterRoutes, "BillingPortalPage");
+const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
 const PlatformAdminPage = fromChunk(loadControlCenterRoutes, "PlatformAdminPage");
 const CommercialAdminPage = fromChunk(loadControlCenterRoutes, "CommercialAdminPage");
 const CustomerProfilePage = fromChunk(loadControlCenterRoutes, "CustomerProfilePage");
 const IncidentsPage = fromChunk(loadControlCenterRoutes, "IncidentsPage");
+
 const SsoSettingsPage = fromChunk(loadControlCenterRoutes, "SsoSettingsPage");
+const PrivacySettingsPage = fromChunk(loadControlCenterRoutes, "PrivacySettingsPage");
+const DeveloperPlatformPage = fromChunk(loadControlCenterRoutes, "DeveloperPlatformPage");
+const SecOpsPage = fromChunk(loadControlCenterRoutes, "SecOpsPage");
+const MarketingPage = fromChunk(loadControlCenterRoutes, "MarketingPage");
+const ContinuityPage = fromChunk(loadControlCenterRoutes, "ContinuityPage");
+const ITSMPage = fromChunk(loadControlCenterRoutes, "ITSMPage");
+const OperationsPage = fromChunk(loadControlCenterRoutes, "OperationsPage");
+const TrustCenterPage = fromChunk(loadControlCenterRoutes, "TrustCenterPage");
+const AIGovernancePage = fromChunk(loadControlCenterRoutes, "AIGovernancePage");
+const DataGovernancePage = fromChunk(loadControlCenterRoutes, "DataGovernancePage");
+const SecurityPage = fromChunk(loadControlCenterRoutes, "SecurityPage");
+const AuditPage = fromChunk(loadControlCenterRoutes, "AuditPage");
+const PortfolioPage = fromChunk(loadControlCenterRoutes, "PortfolioPage");
+const ProductPage = fromChunk(loadControlCenterRoutes, "ProductPage");
+const WorkforcePage = fromChunk(loadControlCenterRoutes, "WorkforcePage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -137,6 +153,17 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "approvals", element: withSuspense(<ApprovalsPage />) },
       { path: "audit-log", element: withSuspense(<AuditLogPage />) },
       { path: "governance", element: withSuspense(<GovernancePage />) },
+      { path: "continuity", element: withSuspense(<ContinuityPage />) },
+      { path: "itsm", element: withSuspense(<ITSMPage />) },
+      { path: "operations", element: withSuspense(<OperationsPage />) },
+      { path: "trust-center", element: withSuspense(<TrustCenterPage />) },
+      { path: "ai-governance", element: withSuspense(<AIGovernancePage />) },
+      { path: "data-governance", element: withSuspense(<DataGovernancePage />) },
+      { path: "security", element: withSuspense(<SecurityPage />) },
+      { path: "audit", element: withSuspense(<AuditPage />) },
+      { path: "portfolio", element: withSuspense(<PortfolioPage />) },
+      { path: "product", element: withSuspense(<ProductPage />) },
+      { path: "workforce", element: withSuspense(<WorkforcePage />) },
       { path: "cost", element: withSuspense(<CostCenterPage />) },
       { path: "intelligence", element: withSuspense(<IntelligencePage />) },
       { path: "integrations", element: withSuspense(<IntegrationsPage />) },
@@ -152,12 +179,17 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "design-system", element: withSuspense(<DesignSystemPage />) },
       { path: "extensions", element: withSuspense(<ExtensionsPage />) },
       { path: "organizations", element: withSuspense(<OrganizationPage />) },
-      { path: "billing", element: withSuspense(<BillingPortalPage />) },
+      { path: "billing", element: withSuspense(<BillingPage />) },
       { path: "sso-settings", element: withSuspense(<SsoSettingsPage />) },
       { path: "admin", element: withSuspense(<PlatformAdminPage />) },
       { path: "commercial-admin", element: withSuspense(<CommercialAdminPage />) },
       { path: "customer-operations", element: withSuspense(<CustomerProfilePage />) },
       { path: "incidents", element: withSuspense(<IncidentsPage />) },
+      { path: "privacy", element: withSuspense(<PrivacySettingsPage />) },
+      { path: "developer-platform", element: withSuspense(<DeveloperPlatformPage />) },
+      { path: "secops", element: withSuspense(<SecOpsPage />) },
+      { path: "marketing", element: withSuspense(<MarketingPage />) },
+      { path: "trust", element: withSuspense(<TrustCenterPage />) },
     ],
   },
 ]));

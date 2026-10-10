@@ -1,0 +1,12 @@
+/**
+ * Trust Center, Frameworks, Audit Readiness
+ */
+export const COMPLIANCE_POSTURE_STATES = [
+    "NOT_ASSESSED",
+    "IN_PROGRESS",
+    "EVIDENCE_INCOMPLETE",
+    "READY_FOR_REVIEW",
+    "REVIEWED",
+];
+export const FINDING_SEVERITIES = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"];
+export const FINDING_STATES = ["OPEN", "ACKNOWLEDGED", "REMEDIATING", "RESOLVED", "ACCEPTED", "FALSE_POSITIVE"];

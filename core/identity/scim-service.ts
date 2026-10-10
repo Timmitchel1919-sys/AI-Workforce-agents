@@ -64,3 +64,4 @@ export class ScimService {
     return this.events.filter((e) => e.organizationId === organizationId);
   }
 }
+

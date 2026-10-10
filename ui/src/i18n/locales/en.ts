@@ -50,8 +50,9 @@ export const en = {
     infrastructure: "Infrastructure",
     softwareFactory: "Software Factory",
     governanceControls: "Governance",
+    continuity: "Continuity",
     costCenter: "Cost Center",
-    auditLog: "Audit Log",
+    auditLog: "Audit Log", itsm: "ITSM", 
     settings: "Settings",
     designSystem: "Design System",
     organization: "Organizations",
@@ -61,6 +62,12 @@ export const en = {
     commercialAdmin: "Commercial Admin",
     customerOps: "Customer Operations",
     incidents: "Incidents & Status",
+    privacy: "Privacy & DLP",
+    developer: "Developer Platform",
+    secops: "Security Operations",
+    trustCenter: "Trust Center & GRC",
+    extensions: "Extensions & Plugins",
+    marketing: "Marketing & Growth",
     sectionNavigation: "{section} navigation",
   },
   shell: {
@@ -114,6 +121,18 @@ export const en = {
     storageNote: "Saved in this browser. Account-level sync will follow when the Control Plane offers a preferences service.",
     preferencesLink: "Profile & preferences",
     preferencesLinkDescription: "Theme, language and your profile photo now live on your profile.",
+  },
+  billing: {
+    title: "Billing Control Center",
+    description: "Manage enterprise commercial SaaS subscriptions and entitlements.",
+    providerNotConfigured: "BILLING PROVIDER: NOT CONFIGURED",
+    tabs: {
+      subscriptions: "Subscriptions",
+      plans: "Plans",
+      usage: "Usage Metering",
+      entitlements: "Entitlements",
+      invoices: "Invoices"
+    }
   },
   profile: {
     title: "Profile",
@@ -2197,3 +2216,4 @@ export const en = {
     }
   }
 };
+

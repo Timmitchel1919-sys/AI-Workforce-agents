@@ -28,9 +28,25 @@ export { default as IntegrationsPage } from "../../pages/Integrations/Integratio
 
 export { default as ExtensionsPage } from "../../pages/Extensions/ExtensionsPage";
 export { default as OrganizationPage } from "../../pages/Organizations/OrganizationPage";
-export { BillingPortalPage } from "../../pages/Organizations/BillingPortalPage";
+export { default as BillingPage } from "../../pages/Billing/BillingPage";
 export { default as PlatformAdminPage } from "../../pages/Admin/PlatformAdminPage";
 export { CommercialAdminPage } from "../../pages/Admin/CommercialAdminPage";
 export { CustomerProfilePage } from "../../pages/CustomerOperations/CustomerProfilePage";
 export { IncidentsPage } from "../../pages/CustomerOperations/IncidentsPage";
 export { SsoSettingsPage } from "../../pages/Organizations/SsoSettingsPage";
+export { PrivacySettingsPage } from "../../pages/Organizations/PrivacySettingsPage";
+export { TrustCenterPage } from "../../pages/Trust/index.js";
+export { DeveloperPlatformPage } from "../../pages/Organizations/DeveloperPlatformPage";
+export { SecOpsPage } from "../../pages/Organizations/SecOpsPage";
+export { MarketingPage } from "../../pages/Organizations/MarketingPage";
+export { default as ContinuityPage } from "../../pages/Continuity/ContinuityPage";
+export { default as ITSMPage } from "../../pages/ITSM/ITSMPage";
+export { default as OperationsPage } from "../../pages/Operations/OperationsPage";
+
+export { default as AIGovernancePage } from "../../pages/Governance/AIGovernancePage";
+export { default as DataGovernancePage } from "../../pages/Governance/DataGovernancePage";
+export { default as SecurityPage } from "../../pages/Governance/SecurityPage";
+export { default as AuditPage } from "../../pages/Governance/AuditPage";
+export { default as PortfolioPage } from "../../pages/Governance/PortfolioPage";
+export { default as ProductPage } from "../../pages/Governance/ProductPage";
+export { default as WorkforcePage } from "../../pages/Governance/WorkforcePage";

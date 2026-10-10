@@ -24,6 +24,11 @@ import {
   HeartHandshake,
   AlertTriangle,
   KeyRound,
+  ShieldCheck,
+  Code,
+  ShieldAlert,
+  Puzzle,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -52,6 +57,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   "cost-center": Wallet,
   settings: Settings,
   integrations: Blocks,
+  extensions: Puzzle,
   organization: Building2,
   billing: CreditCard,
   sso: KeyRound,
@@ -59,6 +65,10 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   "commercial-admin": Landmark,
   "customer-ops": HeartHandshake,
   incidents: AlertTriangle,
+  privacy: ShieldCheck,
+  developer: Code,
+  secops: ShieldAlert,
+  marketing: Megaphone,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";

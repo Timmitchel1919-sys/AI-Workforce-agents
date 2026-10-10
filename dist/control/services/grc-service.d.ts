@@ -1,0 +1,34 @@
+import type { ComplianceFramework } from "../../contracts/compliance.js";
+import type { EnterpriseRisk } from "../../contracts/risk.js";
+import type { DataSubjectRequest } from "../../contracts/privacy.js";
+import type { CompliancePosture, CertificationRecord, TrustCenterContent } from "../../contracts/trust.js";
+import type { Repository } from "../../contracts/persistence.js";
+import type { OperatorPrincipal } from "../../contracts/control.js";
+export declare class GrcControlService {
+    private readonly controls;
+    private readonly frameworks;
+    private readonly policies;
+    private readonly controlInstances;
+    private readonly risks;
+    private readonly exceptions;
+    private readonly vendors;
+    private readonly privacyRequests;
+    private readonly retentionPolicies;
+    private readonly dlpPolicies;
+    private readonly postures;
+    private readonly audits;
+    private readonly auditPackages;
+    private readonly certifications;
+    private readonly trustContent;
+    private readonly findings;
+    constructor(controls: Repository<any>, frameworks: Repository<any>, policies: Repository<any>, controlInstances: Repository<any>, risks: Repository<any>, exceptions: Repository<any>, vendors: Repository<any>, privacyRequests: Repository<any>, retentionPolicies: Repository<any>, dlpPolicies: Repository<any>, postures: Repository<any>, audits: Repository<any>, auditPackages: Repository<any>, certifications: Repository<any>, trustContent: Repository<any>, findings: Repository<any>);
+    private enforceComplianceAdmin;
+    listFrameworks(): Promise<ComplianceFramework[]>;
+    getCompliancePosture(organizationId: string): Promise<CompliancePosture[]>;
+    listRisks(organizationId: string): Promise<EnterpriseRisk[]>;
+    reportRisk(operator: OperatorPrincipal, risk: Omit<EnterpriseRisk, "riskId" | "status">): Promise<EnterpriseRisk>;
+    listDataSubjectRequests(organizationId: string): Promise<DataSubjectRequest[]>;
+    createDataSubjectRequest(operator: OperatorPrincipal, request: Omit<DataSubjectRequest, "requestId" | "status" | "receivedAt">): Promise<DataSubjectRequest>;
+    listTrustCenterContent(): Promise<TrustCenterContent[]>;
+    listCertifications(): Promise<CertificationRecord[]>;
+}

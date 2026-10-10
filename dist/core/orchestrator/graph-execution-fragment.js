@@ -86,7 +86,7 @@ export function buildExecutionFragment(input) {
     for (const c of changeSets) {
         if (c.projectId !== projectId)
             continue;
-        node(executionNodeId.changeSet(c.changeSetId), "CHANGESET", c.changeSetId, "ChangeSet", c.status, normalise(CHANGESET_STATE, c.status),
+        node(executionNodeId.changeSet(c.changeSetId), "CHANGESET", c.changeSetId, "ChangeSet", c.status, normalise(CHANGESET_STATE, c.status), 
         // Counts only — never paths, hashes or file contents.
         {
             fileCount: c.entries.length,
@@ -119,7 +119,7 @@ export function buildExecutionFragment(input) {
     for (const r of releases) {
         if (r.projectId !== projectId)
             continue;
-        node(executionNodeId.deployment(r.releaseId), "DEPLOYMENT", r.releaseId,
+        node(executionNodeId.deployment(r.releaseId), "DEPLOYMENT", r.releaseId, 
         // VISUALIZATION != EXECUTION: a simulated release must never read as a real one.
         `Deployment ${r.targetClass}${r.simulated ? " (simulated)" : ""}`, r.status, normalise(RELEASE_STATE, r.status), {
             targetClass: r.targetClass,
@@ -138,7 +138,7 @@ export function buildExecutionFragment(input) {
             const a = approvalById.get(approvalId);
             if (!a)
                 continue;
-            node(executionNodeId.approval(a.id), "APPROVAL", a.id,
+            node(executionNodeId.approval(a.id), "APPROVAL", a.id, 
             // The action says WHAT is being approved (commit / push / deployment / a tool call); a bare
             // "Approval" would make different decisions indistinguishable at the point of deciding.
             `Approval: ${a.action}`, a.status, normalise(APPROVAL_STATE, a.status), {

@@ -312,6 +312,7 @@ test("demonstration: Project Manager -> Money Mind (Research) -> QA -> Project M
       "Inspect the current Money Mind V2 development state and report what " +
       "is complete, what tests exist, and what should be worked on next.",
     projectId: PROJECT_ID,
+    organizationId: "org_test",
     participatingAgents: [RESEARCH_AGENT_ID, QA_AGENT_ID],
     objective:
       "Inspect the current Money Mind V2 development state and report what " +

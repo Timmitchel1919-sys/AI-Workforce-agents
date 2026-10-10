@@ -1,4 +1,14 @@
 import { GraphQueryService } from "../control/services/graph-query-service.js";
+import { ITSMControlService } from "../control/services/itsm-control-service.js";
+import { OperationsControlService } from "../control/services/operations-service.js";
+import { GrcControlService } from "../control/services/grc-service.js";
+import { AIGovernanceControlService } from "../control/services/ai-governance-service.js";
+import { DataGovernanceService } from "../control/services/data-governance-service.js";
+import { SecurityControlService } from "../control/services/security-service.js";
+import { AuditControlService } from "../control/services/audit-service.js";
+import { PortfolioControlService } from "../control/services/portfolio-service.js";
+import { ProductManagementService } from "../control/services/product-service.js";
+import { WorkforceManagementService } from "../control/services/workforce-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -241,6 +251,82 @@ export async function createProductionControlPlaneRuntime(
   const hostRepository = repositories.repository<HostInstance>("hosts");
   const environmentInstanceRepository =
     repositories.repository<EnvironmentInstance>("environment_instances");
+    
+  // ITSM Repositories
+  const itsmServicesRepository = repositories.repository<import("../contracts/itsm.js").Service>("itsm_services");
+  const itsmIncidentsRepository = repositories.repository<import("../contracts/itsm.js").Incident>("itsm_incidents");
+  const itsmProblemsRepository = repositories.repository<import("../contracts/itsm.js").Problem>("itsm_problems");
+  const itsmChangesRepository = repositories.repository<import("../contracts/itsm.js").ChangeRequest>("itsm_changes");
+  const itsmReleasesRepository = repositories.repository<import("../contracts/itsm.js").ITSMRelease>("itsm_releases");
+  const itsmCisRepository = repositories.repository<import("../contracts/itsm.js").ConfigurationItem>("itsm_cis");
+  const itsmRequestsRepository = repositories.repository<import("../contracts/itsm.js").ServiceRequest>("itsm_requests");
+  const itsmRunbooksRepository = repositories.repository<import("../contracts/itsm.js").Runbook>("itsm_runbooks");
+  const itsmCiRelsRepository = repositories.repository<import("../contracts/itsm.js").CIRelationship>("itsm_cirels");
+
+  // Operations Repositories
+  const opsHealthRepository = repositories.repository<import("../contracts/operations.js").HealthSignal>("ops_health_signals");
+  const opsInventoryRepository = repositories.repository<import("../contracts/operations.js").ServiceInventoryRecord>("ops_service_inventory");
+  const opsAlertsRepository = repositories.repository<import("../contracts/operations.js").Alert>("ops_alerts");
+  const opsConfigRepository = repositories.repository<import("../contracts/operations.js").PlatformConfiguration>("ops_platform_config");
+  const opsRolloutsRepository = repositories.repository<import("../contracts/operations.js").FeatureRollout>("ops_feature_rollouts");
+
+  // AI Governance Repositories
+  const aiModelsRepository = repositories.repository<import("../contracts/ai-governance.js").AIModelRecord>("ai_models");
+  const aiUseCasesRepository = repositories.repository<import("../contracts/ai-governance.js").AIUseCase>("ai_use_cases");
+  const aiEvaluationsRepository = repositories.repository<import("../contracts/ai-governance.js").ModelEvaluation>("ai_evaluations");
+  const aiIncidentsRepository = repositories.repository<import("../contracts/ai-governance.js").AIIncident>("ai_incidents");
+
+  // Data Governance Repositories
+  const dataAssetsRepository = repositories.repository<import("../contracts/data-governance.js").DataAsset>("data_assets");
+  const dataRetentionPoliciesRepository = repositories.repository<import("../contracts/data-governance.js").DataRetentionPolicy>("data_retention_policies");
+  const dsrRepository = repositories.repository<import("../contracts/data-governance.js").DataSubjectRequestRecord>("dsr_records");
+
+  // Security Repositories
+  const securityEventsRepository = repositories.repository<import("../contracts/security.js").ZTNSecurityEvent>("security_events");
+  const zeroTrustPoliciesRepository = repositories.repository<import("../contracts/security.js").ZeroTrustPolicy>("zero_trust_policies");
+  const threatIntelRepository = repositories.repository<import("../contracts/security.js").ThreatIntelligenceReport>("threat_intel");
+
+  // Audit Repositories
+  const auditLogsRepository = repositories.repository<import("../contracts/audit.js").AuditLogEntry>("audit_logs");
+  const complianceFindingsRepository = repositories.repository<import("../contracts/audit.js").ComplianceFinding>("compliance_findings");
+
+  // Portfolio Repositories
+  const strategicObjectivesRepository = repositories.repository<import("../contracts/portfolio.js").StrategicObjective>("strategic_objectives");
+  const enterprisePortfoliosRepository = repositories.repository<import("../contracts/portfolio.js").EnterprisePortfolio>("enterprise_portfolios");
+  const portfolioProgramsRepository = repositories.repository<import("../contracts/portfolio.js").PortfolioProgram>("portfolio_programs");
+
+  // Product Repositories
+  const productPortfoliosRepository = repositories.repository<import("../contracts/product.js").ProductPortfolio>("product_portfolios");
+  const productsRepository = repositories.repository<import("../contracts/product.js").ProductDefinition>("products");
+  const problemsRepository = repositories.repository<import("../contracts/product.js").CustomerProblem>("customer_problems");
+  const opportunitiesRepository = repositories.repository<import("../contracts/product.js").ProductOpportunity>("product_opportunities");
+  const featuresRepository = repositories.repository<import("../contracts/product.js").ProductFeature>("product_features");
+
+  // Workforce Repositories
+  const departmentsRepository = repositories.repository<import("../contracts/organization.js").OrganizationDepartment>("organization_departments");
+  const teamsRepository = repositories.repository<import("../contracts/organization.js").WorkforceTeam>("workforce_teams");
+  const humanAgentsRepository = repositories.repository<import("../contracts/organization.js").HumanAgent>("human_agents");
+  const skillsRepository = repositories.repository<import("../contracts/organization.js").SkillDefinition>("skill_definitions");
+  const resourceAssignmentsRepository = repositories.repository<import("../contracts/organization.js").ResourceAssignment>("resource_assignments");
+
+  // GRC Repositories
+  const grcControlsRepository = repositories.repository<any>("grc_controls");
+  const grcFrameworksRepository = repositories.repository<any>("grc_frameworks");
+  const grcPoliciesRepository = repositories.repository<any>("grc_policies");
+  const grcControlInstancesRepository = repositories.repository<any>("grc_control_instances");
+  const grcRisksRepository = repositories.repository<any>("grc_risks");
+  const grcExceptionsRepository = repositories.repository<any>("grc_exceptions");
+  const grcVendorsRepository = repositories.repository<any>("grc_vendors");
+  const grcPrivacyRequestsRepository = repositories.repository<any>("grc_privacy_requests");
+  const grcRetentionPoliciesRepository = repositories.repository<any>("grc_retention_policies");
+  const grcDlpPoliciesRepository = repositories.repository<any>("grc_dlp_policies");
+  const grcPosturesRepository = repositories.repository<any>("grc_postures");
+  const grcAuditsRepository = repositories.repository<any>("grc_audits");
+  const grcAuditPackagesRepository = repositories.repository<any>("grc_audit_packages");
+  const grcCertificationsRepository = repositories.repository<any>("grc_certifications");
+  const grcTrustContentRepository = repositories.repository<any>("grc_trust_content");
+  const grcFindingsRepository = repositories.repository<any>("grc_findings");
+
   await repositories.hydrateAll();
 
   const operations = new OperationalDataSystem({
@@ -760,6 +846,92 @@ export async function createProductionControlPlaneRuntime(
     audit,
     budgetPolicies,
   );
+  
+  const itsm = new ITSMControlService(
+    itsmServicesRepository,
+    itsmIncidentsRepository,
+    itsmProblemsRepository,
+    itsmChangesRepository,
+    itsmReleasesRepository,
+    itsmCisRepository,
+    itsmRequestsRepository,
+    itsmRunbooksRepository,
+    itsmCiRelsRepository
+  );
+
+  const ops = new OperationsControlService(
+    opsHealthRepository,
+    opsInventoryRepository,
+    opsAlertsRepository,
+    opsConfigRepository,
+    opsRolloutsRepository
+  );
+
+  const aiGov = new AIGovernanceControlService(
+    aiModelsRepository,
+    aiUseCasesRepository,
+    aiEvaluationsRepository,
+    aiIncidentsRepository
+  );
+
+  const dataGov = new DataGovernanceService(
+    dataAssetsRepository,
+    dataRetentionPoliciesRepository,
+    dsrRepository
+  );
+
+  const security = new SecurityControlService(
+    securityEventsRepository,
+    zeroTrustPoliciesRepository,
+    threatIntelRepository
+  );
+
+  const auditService = new AuditControlService(
+    auditLogsRepository,
+    complianceFindingsRepository
+  );
+
+  const portfolio = new PortfolioControlService(
+    strategicObjectivesRepository,
+    enterprisePortfoliosRepository,
+    portfolioProgramsRepository
+  );
+
+  const product = new ProductManagementService(
+    productPortfoliosRepository,
+    productsRepository,
+    problemsRepository,
+    opportunitiesRepository,
+    featuresRepository
+  );
+
+  const workforce = new WorkforceManagementService(
+    departmentsRepository,
+    teamsRepository,
+    humanAgentsRepository,
+    skillsRepository,
+    resourceAssignmentsRepository
+  );
+
+  const grc = new GrcControlService(
+    grcControlsRepository,
+    grcFrameworksRepository,
+    grcPoliciesRepository,
+    grcControlInstancesRepository,
+    grcRisksRepository,
+    grcExceptionsRepository,
+    grcVendorsRepository,
+    grcPrivacyRequestsRepository,
+    grcRetentionPoliciesRepository,
+    grcDlpPoliciesRepository,
+    grcPosturesRepository,
+    grcAuditsRepository,
+    grcAuditPackagesRepository,
+    grcCertificationsRepository,
+    grcTrustContentRepository,
+    grcFindingsRepository
+  );
+
   // READY projects become discoverable through the existing Project Registry.
   // Other warm instances pick them up through this throttled sync.
   const syncProjects = async (): Promise<void> => {
@@ -791,6 +963,16 @@ export async function createProductionControlPlaneRuntime(
     identityVerifier: operatorDirectory,
     access,
     profile,
+    itsm,
+    ops,
+    grc,
+    aiGov,
+    dataGov,
+    security,
+    audit: auditService,
+    portfolio,
+    product,
+    workforce,
   });
 
   return Object.freeze({

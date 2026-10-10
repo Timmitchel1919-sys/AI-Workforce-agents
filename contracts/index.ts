@@ -949,3 +949,29 @@ export * from "./tenancy.js";
 export * from "./billing.js";
 export * from "./customer.js";
 export * from "./identity.js";
+export * from "./privacy.js";
+export * from "./api-platform.js";
+export * from "./secops.js";
+export * from "./extensions.js";
+export * from "./mlops.js";
+export * from "./marketing.js";
+
+/* ------------------------------------------------------------------ */
+/* GRC / Compliance / Risk / Privacy / Trust                         */
+/* ------------------------------------------------------------------ */
+export * from "./compliance.js";
+export * from "./risk.js";
+export * from "./trust.js";
+export * from "./policy.js";
+export * from "./privacy.js";
+export * from "./operations.js";
+export * from "./itsm.js";
+export * from "./ai-governance.js";
+export * from "./data-governance.js";
+export * from "./security.js";
+export * from "./audit.js";
+export * from "./portfolio.js";
+export * from "./product.js";
+export * from "./organization.js";
+export * from "./procurement.js";
+export * from "./assets.js";

@@ -119,6 +119,8 @@ export class WorkflowEngine {
         return this.submit({
             name: input.name,
             description: input.description,
+            organizationId: input.organizationId,
+            workspaceId: input.workspaceId,
             projectId: input.projectId,
             participatingAgents: input.participatingAgents,
             tasks,

@@ -183,6 +183,7 @@ test("WORKFLOW mode uses real workflow specs and their dependencies", () => {
     name: "Delivery",
     description: "d",
     projectId: A,
+    organizationId: "org_test",
     participatingAgents: ["dev"],
     tasks: [
       { id: "analyze", type: "ops", description: "Analyze", agentId: "dev" },

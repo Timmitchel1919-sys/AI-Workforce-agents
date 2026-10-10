@@ -47,3 +47,4 @@ export interface ScimProvisioningEvent {
   status: "PROCESSED" | "FAILED" | "PENDING";
   receivedAt: Date;
 }
+

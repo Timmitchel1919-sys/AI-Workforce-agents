@@ -49,8 +49,9 @@ export const nl: Messages = {
     infrastructure: "Infrastructuur",
     softwareFactory: "Softwarefabriek",
     governanceControls: "Governance",
+    continuity: "Continuïteit",
     costCenter: "Kostenplaats",
-    auditLog: "Auditlog",
+    auditLog: "Auditlog", itsm: "ITSM Control Plane",
     settings: "Instellingen",
     designSystem: "Designsysteem",
     organization: "Organisaties",
@@ -60,6 +61,12 @@ export const nl: Messages = {
     commercialAdmin: "Commercieel Beheer",
     customerOps: "Klantoperaties",
     incidents: "Incidenten & Status",
+    privacy: "Privacy & DLP",
+    developer: "Ontwikkelaarsplatform",
+    secops: "Beveiligingsoperaties",
+    trustCenter: "Trustcentrum & GRC",
+    extensions: "Extensies & Plugins",
+    marketing: "Marketing & Groei",
     sectionNavigation: "Navigatie {section}",
   },
   shell: {
@@ -113,6 +120,18 @@ export const nl: Messages = {
     storageNote: "Opgeslagen in deze browser. Synchronisatie per account volgt zodra de Control Plane een voorkeurenservice biedt.",
     preferencesLink: "Profiel & voorkeuren",
     preferencesLinkDescription: "Thema, taal en je profielfoto staan nu in je profiel.",
+  },
+  billing: {
+    title: "Facturering Control Center",
+    description: "Beheer enterprise commerciële SaaS-abonnementen en rechten.",
+    providerNotConfigured: "FACTURERINGS-PROVIDER: NIET GECONFIGUREUREERD",
+    tabs: {
+      subscriptions: "Abonnementen",
+      plans: "Plannen",
+      usage: "Gebruiksmeting",
+      entitlements: "Rechten",
+      invoices: "Facturen"
+    }
   },
   profile: {
     title: "Profiel",
@@ -2196,3 +2215,4 @@ export const nl: Messages = {
     }
   }
 };
+

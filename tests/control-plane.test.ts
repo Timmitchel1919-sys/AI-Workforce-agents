@@ -322,9 +322,9 @@ test("query: workflow progress comes from real task records", async () => {
   const h = harness();
   const wf = h.workflows.create({
     name: "Ship it",
-    organizationId: "org_money_mind",
     description: "two-step",
     projectId: PROJECT,
+    organizationId: "org_test",
     participatingAgents: ["research-agent", "qa-agent"],
     tasks: [
       {
@@ -558,9 +558,9 @@ test("command: pause / resume / cancel workflow", async () => {
   const mkWf = () =>
     h.workflows.create({
       name: "wf",
-      organizationId: "org_money_mind",
       description: "d",
       projectId: PROJECT,
+      organizationId: "org_test",
       participatingAgents: ["qa-agent"],
       tasks: [{ id: "a", type: "qa", description: "qa", agentId: "qa-agent" }],
     });
@@ -688,9 +688,9 @@ test("state: invalid approve / retry / cancel / pause / resume are rejected", as
 
   const wf = h.workflows.create({
     name: "term",
-    organizationId: "org_money_mind",
     description: "d",
     projectId: PROJECT,
+    organizationId: "org_test",
     participatingAgents: ["qa-agent"],
     tasks: [{ id: "a", type: "qa", description: "qa", agentId: "qa-agent" }],
   });

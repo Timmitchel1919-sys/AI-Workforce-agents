@@ -125,3 +125,90 @@ h6 {
   min-height: 100vh;
   color: var(--color-text-muted);
 }
+
+/* Control Plane unreachable on a protected route: a stated, retryable state. */
+.auth-guard-blocked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-guard-blocked__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  max-width: 34rem;
+  padding: 28px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-solid);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+}
+
+.auth-guard-blocked__icon {
+  display: inline-flex;
+  color: var(--color-text-muted);
+}
+
+.auth-guard-blocked__eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.auth-guard-blocked__title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.3;
+  color: var(--color-text-heading);
+}
+
+.auth-guard-blocked__body {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.auth-guard-blocked__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.auth-guard-blocked__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 20px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.auth-guard-blocked__button--primary {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.auth-guard-blocked__button:hover:not(:disabled) {
+  border-color: var(--color-border-selected);
+}
+
+.auth-guard-blocked__button:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}

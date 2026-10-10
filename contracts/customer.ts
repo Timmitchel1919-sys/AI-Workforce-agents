@@ -71,3 +71,4 @@ export interface IncidentCommunication {
   startedAt: Date;
   resolvedAt?: Date;
 }
+

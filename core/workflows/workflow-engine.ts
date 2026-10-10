@@ -57,6 +57,8 @@ export interface WorkflowEngineDeps {
 export interface PlanFromObjectiveInput {
   name: string;
   description: string;
+  organizationId?: string;
+  workspaceId?: string;
   projectId: string;
   participatingAgents: readonly string[];
   objective: string;
@@ -201,6 +203,8 @@ export class WorkflowEngine {
     return this.submit({
       name: input.name,
       description: input.description,
+      organizationId: input.organizationId,
+      workspaceId: input.workspaceId,
       projectId: input.projectId,
       participatingAgents: input.participatingAgents,
       tasks,

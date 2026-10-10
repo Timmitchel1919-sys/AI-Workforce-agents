@@ -88,7 +88,7 @@ export declare function getExecutionSessionDetail(ctx: ControlPlaneContext, prin
             policyId: string;
             version: number;
         };
-        risk: "low" | "high" | "critical" | "medium";
+        risk: "critical" | "low" | "high" | "medium";
         grants: {
             capability: "filesystem.read" | "filesystem.write.workspace" | "filesystem.delete.workspace" | "filesystem.write.protected" | "repository.read" | "repository.write" | "repository.commit" | "repository.push" | "repository.branch.manage" | "process.invoke.bounded" | "network.outbound.allowed-host" | "artifact.write" | "test.invoke" | "build.invoke" | "security.scan.invoke" | "deploy.invoke" | "secret.reference.use";
             expiresAt: string;
@@ -166,7 +166,7 @@ export declare function getExecutionSessionDetail(ctx: ControlPlaneContext, prin
         updatedAt: string;
         baseRevision?: string | undefined;
         changeSetId: string;
-        status: "verified" | "open" | "ready_for_review" | "rolled_back" | "abandoned" | "verifying" | "verification_failed";
+        status: "verified" | "open" | "rolled_back" | "ready_for_review" | "abandoned" | "verifying" | "verification_failed";
     } | undefined;
     verifications: VerificationResult[];
     receipts: {

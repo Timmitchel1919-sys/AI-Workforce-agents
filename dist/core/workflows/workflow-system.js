@@ -52,6 +52,8 @@ export class WorkflowSystem {
         const taskRecords = tasks.map((task) => initialTaskRecord(task.id, timestamp));
         const workflow = {
             id: createId("workflow"),
+            organizationId: draft.organizationId,
+            workspaceId: draft.workspaceId,
             name: draft.name,
             description: draft.description,
             projectId: draft.projectId,

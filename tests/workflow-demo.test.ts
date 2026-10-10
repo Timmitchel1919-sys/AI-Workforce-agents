@@ -316,6 +316,7 @@ test("demonstration: Project Manager -> Research -> Developer -> QA -> Project M
     name: "Add API rate limiting",
     description: "Research, plan, and verify rate limiting for the widgets API",
     projectId: PROJECT_ID,
+    organizationId: "org_test",
     participatingAgents: [RESEARCH_AGENT_ID, DEVELOPER_AGENT_ID, QA_AGENT_ID],
     objective: "Add rate limiting to the widgets API",
     availableAgents: [RESEARCH_AGENT_ID, DEVELOPER_AGENT_ID, QA_AGENT_ID],

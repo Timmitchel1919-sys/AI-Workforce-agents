@@ -1,9 +1,7 @@
-import { assert, test } from "./node-test-assert.js";
-import {
-  CustomerService,
-  SupportService,
-  IncidentService,
-} from "../core/customer/index.js";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
+import { CustomerService, SupportService, IncidentService } from "../core/customer/index.js";
 
 test("Customer: Profile and Health Score", () => {
   const service = new CustomerService();
@@ -28,7 +26,7 @@ test("Customer: Contacts", () => {
     name: "John Doe",
     email: "john@globex.com",
     role: "EXECUTIVE_SPONSOR",
-    isPrimary: true,
+    isPrimary: true
   });
 
   const contacts = service.getContacts(profile.customerId);
@@ -38,16 +36,10 @@ test("Customer: Contacts", () => {
 
 test("Customer: Support Cases", () => {
   const service = new SupportService();
-  const supportCase = service.createCase(
-    "cust_1",
-    "Cannot login",
-    "I am getting a 401 error",
-    "HIGH",
-    "BUG",
-  );
+  const supportCase = service.createCase("cust_1", "Cannot login", "I am getting a 401 error", "HIGH", "BUG");
 
   assert.equal(supportCase.status, "NEW");
-
+  
   service.updateCaseStatus(supportCase.caseId, "OPEN");
   const updated = service.getCase(supportCase.caseId);
   assert.equal(updated?.status, "OPEN");
@@ -64,31 +56,21 @@ test("Customer: Support Cases", () => {
 
 test("Customer: Incident Communication", () => {
   const service = new IncidentService();
-  const incident = service.createIncident("Database Latency", "MAJOR", [
-    "Database",
-    "API",
-  ]);
+  const incident = service.createIncident("Database Latency", "MAJOR", ["Database", "API"]);
 
   assert.equal(incident.status, "INVESTIGATING");
   assert.equal(incident.updates.length, 1);
-
+  
   const active = service.getActiveIncidents();
   assert.equal(active.length, 1);
 
-  service.addUpdate(
-    incident.incidentId,
-    "MONITORING",
-    "A fix has been deployed.",
-  );
+  service.addUpdate(incident.incidentId, "MONITORING", "A fix has been deployed.");
   const updated = service.getActiveIncidents()[0];
   assert.equal(updated.status, "MONITORING");
   assert.equal(updated.updates.length, 2);
 
-  service.addUpdate(
-    incident.incidentId,
-    "RESOLVED",
-    "System is fully operational.",
-  );
+  service.addUpdate(incident.incidentId, "RESOLVED", "System is fully operational.");
   const resolvedList = service.getActiveIncidents();
   assert.equal(resolvedList.length, 0); // No longer active
 });
+

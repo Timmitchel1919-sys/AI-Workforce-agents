@@ -46,3 +46,5 @@ export * from "./release/index.js";
 export * from "./onboarding/index.js";
 export * from "./cost-center/index.js";
 export * from "./routing/index.js";
+export * as procurement from "./procurement/index.js";
+export * as assets from "./assets/index.js";

@@ -65,3 +65,60 @@ export interface DataReadinessAssessment {
 export declare function validateProvenance(value: DataProvenance): void;
 export declare function validateOperationalEvent(event: OperationalEvent): void;
 export declare function validateOperationalOutcome(outcome: OperationalOutcome): void;
+export type OpsHealthStatus = "healthy" | "degraded" | "unhealthy" | "offline" | "recovering" | "unknown";
+export type FreshnessStatus = "current" | "stale" | "expired" | "unknown";
+export type ResourceType = "CONTROL_PLANE_SERVICE" | "FUNCTION" | "HOSTING_SITE" | "DATABASE" | "STORAGE" | "QUEUE" | "ORGANIZATION" | "WORKSPACE" | "PROJECT" | "AGENT" | "MODEL_PROVIDER" | "MODEL" | "ENVIRONMENT" | "RUNNER" | "SANDBOX" | "EXECUTION_WORKSPACE" | "CONNECTOR" | "MCP_SERVER" | "EXTENSION" | "API_GATEWAY" | "WEBHOOK_ENGINE" | "DEPLOYMENT_TARGET" | "RELEASE" | "OTHER";
+export interface PlatformResourceRef {
+    resourceType: ResourceType;
+    resourceId: string;
+    organizationId?: string;
+    projectId?: string;
+    displayName?: string;
+}
+export interface HealthSignal extends Entity {
+    resourceRef: PlatformResourceRef;
+    signalType: string;
+    status: OpsHealthStatus;
+    observedAt: string;
+    source: string;
+    evidence: string;
+    latency?: number;
+    expiresAt?: string;
+}
+export interface ServiceInventoryRecord extends Entity {
+    serviceId: string;
+    displayName: string;
+    type: ResourceType;
+    dependencies: PlatformResourceRef[];
+    critical: boolean;
+}
+export type AlertState = "open" | "acknowledged" | "suppressed" | "resolved";
+export interface Alert extends Entity {
+    resourceRef: PlatformResourceRef;
+    signalId?: string;
+    severity: "info" | "warning" | "error" | "critical";
+    state: AlertState;
+    openedAt: string;
+    lastObservedAt: string;
+    dedupKey: string;
+    evidence: string;
+    incidentRef?: string;
+}
+export interface PlatformConfiguration extends Entity {
+    scope: "global" | "tenant" | "service";
+    key: string;
+    version: number;
+    valueRef: string;
+    status: "stored" | "applied" | "rollback";
+    createdBy: string;
+    approvedBy?: string;
+    createdAt: string;
+    appliedAt?: string;
+}
+export interface FeatureRollout extends Entity {
+    featureId: string;
+    stage: "internal" | "canary" | "limited" | "general" | "paused" | "rolled_back";
+    targetCohort?: string;
+    startedAt: string;
+    health: OpsHealthStatus;
+}

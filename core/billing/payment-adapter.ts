@@ -18,6 +18,28 @@ export interface PaymentProviderAdapter {
   verifyWebhookSignature(payload: string, signature: string): boolean;
 }
 
+export class NotConfiguredPaymentAdapter implements PaymentProviderAdapter {
+  async createCustomer(organizationId: string, email: string): Promise<string> {
+    throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+  }
+
+  async createSubscription(customerId: string, planProviderId: string): Promise<string> {
+    throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+  }
+
+  async cancelSubscription(subscriptionProviderId: string): Promise<void> {
+    throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+  }
+
+  async createPaymentIntent(customerId: string, amountMinorUnits: number, currency: string): Promise<PaymentTransaction> {
+    throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+  }
+
+  verifyWebhookSignature(payload: string, signature: string): boolean {
+    throw new Error("BILLING PROVIDER: NOT CONFIGURED");
+  }
+}
+
 export class TestPaymentAdapter implements PaymentProviderAdapter {
   private webhookSecret = "test_whsec_12345";
 

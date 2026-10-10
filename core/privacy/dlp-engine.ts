@@ -1,4 +1,11 @@
-import type { DlpPolicy } from "../../contracts/privacy.js";
+import type { DlpAction, DlpPolicy } from "../../contracts/privacy.js";
+
+export interface ScanResult {
+  action: DlpAction;
+  matches: string[];
+  redactedText: string;
+  confidence: number;
+}
 
 export class DlpEngine {
   private policies = new Map<string, DlpPolicy[]>();
@@ -13,22 +20,19 @@ export class DlpEngine {
     return this.policies.get(organizationId) || [];
   }
 
-  scanText(
-    organizationId: string,
-    text: string,
-  ): { action: DlpPolicy["action"]; matches: string[]; redactedText: string } {
+  scanText(organizationId: string, text: string): ScanResult {
     const orgPolicies = this.getPolicies(organizationId).filter(
       (p) => p.status === "ACTIVE",
     );
     let redactedText = text;
-    let highestAction: DlpPolicy["action"] = "AUDIT_ONLY";
+    let highestAction: DlpAction = "AUDIT_ONLY";
     const matches: string[] = [];
 
     const actionPriority = { BLOCK: 3, REDACT: 2, WARN: 1, AUDIT_ONLY: 0 };
 
     for (const policy of orgPolicies) {
       for (const rule of policy.rules) {
-        if (rule.type === "REGEX" && rule.pattern) {
+        if ((rule.type === "REGEX" || rule.type === "KEYWORD") && rule.pattern) {
           const regex = new RegExp(rule.pattern, "g");
           let match;
           while ((match = regex.exec(text)) !== null) {
@@ -49,6 +53,11 @@ export class DlpEngine {
       }
     }
 
-    return { action: highestAction, matches, redactedText };
+    return {
+      action: highestAction,
+      matches: Array.from(new Set(matches)),
+      redactedText: highestAction === "BLOCK" ? text : redactedText,
+      confidence: matches.length > 0 ? 1 : 0,
+    };
   }
 }

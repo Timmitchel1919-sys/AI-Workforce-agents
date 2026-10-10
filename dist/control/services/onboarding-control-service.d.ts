@@ -22,7 +22,7 @@ export declare class OnboardingControlService {
      * block onboarding).
      */
     private readonly budgetPolicies?;
-    constructor(service: OnboardingService, audit: AuditLog,
+    constructor(service: OnboardingService, audit: AuditLog, 
     /**
      * EO-6.3 bridge: when a plan is approved with any budget limit actually
      * set, that becomes the project's ENFORCED `BudgetPolicy` too — onboarding

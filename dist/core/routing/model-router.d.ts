@@ -67,7 +67,7 @@ export declare class ModelRouter {
     private readonly ledger;
     constructor(profiles: ModelCapabilityRegistry, providers: {
         has(id: string): boolean;
-    }, governance: Pick<GovernancePolicyEngine, "evaluate">, clock: () => string, store?: ExecutionRecordStore, audit?: AuditLog | undefined,
+    }, governance: Pick<GovernancePolicyEngine, "evaluate">, clock: () => string, store?: ExecutionRecordStore, audit?: AuditLog | undefined, 
     /** Needed only by `routeInternal` — the trusted, principal-less execution path. */
     budgetInternal?: Pick<BudgetEnforcer, "evaluateInternal"> | undefined, governancePoliciesInternal?: Pick<GovernancePolicyStore, "getInternal"> | undefined);
     route(principal: OperatorPrincipal, request: RouteRequest): Promise<RoutingDecision>;

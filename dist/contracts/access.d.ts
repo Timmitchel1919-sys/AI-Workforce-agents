@@ -63,7 +63,7 @@ export interface OperatorAccountView {
     /** The requesting administrator's own account (self-changes are refused). */
     isSelf: boolean;
 }
-export type OperatorAccountChange =
+export type OperatorAccountChange = 
 /** Create a pending account unless one exists (idempotent). */
 {
     kind: "create_pending";

@@ -1,0 +1,81 @@
+export const VENDOR_LIFECYCLE_STATES = [
+    "PROSPECTIVE",
+    "UNDER_REVIEW",
+    "QUALIFIED",
+    "APPROVED",
+    "ACTIVE",
+    "RESTRICTED",
+    "SUSPENDED",
+    "OFFBOARDING",
+    "INACTIVE"
+];
+export const PROCUREMENT_CATEGORIES = [
+    "AI_PROVIDER",
+    "SOFTWARE",
+    "SAAS",
+    "CLOUD",
+    "DEVELOPER_TOOL",
+    "SECURITY_TOOL",
+    "DATA_SERVICE",
+    "INFRASTRUCTURE",
+    "HARDWARE",
+    "PROFESSIONAL_SERVICE",
+    "CONSULTING",
+    "LICENSE",
+    "API_SERVICE",
+    "OTHER"
+];
+export const VENDOR_ONBOARDING_STAGES = [
+    "IDENTIFICATION",
+    "INFORMATION_COLLECTION",
+    "SECURITY_REVIEW",
+    "GRC_RISK_REVIEW",
+    "COMMERCIAL_REVIEW",
+    "APPROVAL",
+    "ACTIVATION"
+];
+export const PROCUREMENT_REQUEST_STATES = [
+    "DRAFT",
+    "SUBMITTED",
+    "TRIAGE",
+    "SOURCING",
+    "UNDER_REVIEW",
+    "PENDING_APPROVAL",
+    "APPROVED",
+    "REJECTED",
+    "ORDERED",
+    "FULFILLED",
+    "CANCELLED"
+];
+export const CONTRACT_STATES = [
+    "DRAFT",
+    "UNDER_REVIEW",
+    "PENDING_APPROVAL",
+    "APPROVED",
+    "EXECUTED",
+    "ACTIVE",
+    "EXPIRING",
+    "EXPIRED",
+    "TERMINATED",
+    "SUPERSEDED"
+];
+export const PO_STATES = [
+    "DRAFT",
+    "PENDING_APPROVAL",
+    "APPROVED",
+    "ISSUED",
+    "PARTIALLY_FULFILLED",
+    "FULFILLED",
+    "CANCELLED",
+    "CLOSED"
+];
+export const VENDOR_SUBSCRIPTION_STATES = [
+    "TRIAL",
+    "ACTIVE",
+    "PAST_DUE",
+    "SUSPENDED",
+    "CANCEL_PENDING",
+    "CANCELLED",
+    "EXPIRED",
+    "UNKNOWN"
+];

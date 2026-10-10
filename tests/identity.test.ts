@@ -1,9 +1,11 @@
-import { assert, test } from "./node-test-assert.js";
+import test from "node:test";
+
+import { assert } from "./helpers/assert.js";
 import { SsoService, ScimService } from "../core/identity/index.js";
 
 test("Identity: SSO Provider Registration and Resolution", () => {
   const service = new SsoService();
-
+  
   service.registerProvider({
     providerId: "idp_okta_1",
     organizationId: "org_1",
@@ -13,7 +15,7 @@ test("Identity: SSO Provider Registration and Resolution", () => {
     configuration: { entryPoint: "https://acme.okta.com/sso" },
     domainMapping: ["acme.com", "acmecorp.com"],
     createdAt: new Date(),
-    updatedAt: new Date(),
+    updatedAt: new Date()
   });
 
   const provider = service.getProviderForDomain("acmecorp.com");
@@ -32,7 +34,7 @@ test("Identity: SSO Provider Registration and Resolution", () => {
       configuration: {},
       domainMapping: ["acme.com"], // Conflict
       createdAt: new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     });
   }, "Domain acme.com is already mapped");
 });
@@ -44,25 +46,18 @@ test("Identity: SCIM Provisioning and Session Management", () => {
   scimService.handleProvisioningEvent("org_1", "USER_CREATED", {
     emails: [{ value: "alice@acme.com" }],
     name: { givenName: "Alice", familyName: "Smith" },
-    roles: ["ADMIN"],
+    roles: ["ADMIN"]
   });
 
   // Verify user was synced
-  const user = (Array.from((ssoService as any).users.values()) as any[]).find(
-    (u) => u.email === "alice@acme.com",
-  );
+  const user = (Array.from((ssoService as any).users.values()) as any[]).find(u => u.email === "alice@acme.com");
   assert.isDefined(user);
   assert.equal(user.name, "Alice Smith");
   assert.include(user.roles, "ADMIN");
   assert.equal(user.status, "ACTIVE");
 
   // Create Session
-  const session = ssoService.createSession(
-    user.userId,
-    "idp_okta_1",
-    "192.168.1.1",
-    "Mozilla",
-  );
+  const session = ssoService.createSession(user.userId, "idp_okta_1", "192.168.1.1", "Mozilla");
   assert.isTrue(session.isValid);
 
   // Validate Session
@@ -74,7 +69,7 @@ test("Identity: SCIM Provisioning and Session Management", () => {
 
   // Delete via SCIM
   scimService.handleProvisioningEvent("org_1", "USER_DELETED", {
-    emails: [{ value: "alice@acme.com" }],
+    emails: [{ value: "alice@acme.com" }]
   });
 
   const suspendedUser = ssoService.getUser(user.userId);
@@ -82,11 +77,7 @@ test("Identity: SCIM Provisioning and Session Management", () => {
 
   // Cannot create session for suspended user
   assert.throws(() => {
-    ssoService.createSession(
-      user.userId,
-      "idp_okta_1",
-      "192.168.1.1",
-      "Mozilla",
-    );
+    ssoService.createSession(user.userId, "idp_okta_1", "192.168.1.1", "Mozilla");
   }, "User account is not active");
 });
+

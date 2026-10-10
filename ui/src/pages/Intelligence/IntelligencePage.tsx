@@ -63,17 +63,65 @@ export default function IntelligencePage() {
         </div>
 
         {/* Content Area */}
-        <GlassCard className="min-h-[400px] flex items-center justify-center">
-          <div className="text-center text-gray-400">
-            <BrainCircuit size={48} className="mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium text-gray-300 mb-2">
-              {tabs.find(t => t.id === activeTab)?.label} Engine
-            </h3>
-            <p className="max-w-md mx-auto">
-              Predictive intelligence module active. Real-time data processing and decision models are running.
-            </p>
-          </div>
-        </GlassCard>
+        {activeTab === "drift" ? (
+          <GlassCard className="min-h-[400px]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-semibold text-white">Model Drift & MLOps</h3>
+              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm">
+                Deploy Model
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-800/50 border border-gray-700/50 rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-medium">ChurnPredictor</span>
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400">v1.0</span>
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-500/20 text-green-400">HEALTHY</span>
+                  </div>
+                  <div className="text-sm text-gray-400 mt-1">
+                    Deployed to: <code className="text-xs bg-gray-900 px-1 rounded">https://models.internal.ai/ChurnPredictor-production</code>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-400">Accuracy</div>
+                  <div className="text-lg font-semibold text-white">95%</div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-medium">LeadScorer</span>
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400">v2.1</span>
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-500/20 text-red-400">DEGRADED</span>
+                  </div>
+                  <div className="text-sm text-gray-400 mt-1 flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-red-400" />
+                    <span className="text-red-400">CRITICAL Drift: data_drift_score deviated by 32%</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-400">Baseline</div>
+                  <div className="text-lg font-semibold text-white">0.10 <span className="text-red-400 text-sm">→ 0.13</span></div>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+        ) : (
+          <GlassCard className="min-h-[400px] flex items-center justify-center">
+            <div className="text-center text-gray-400">
+              <BrainCircuit size={48} className="mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium text-gray-300 mb-2">
+                {tabs.find(t => t.id === activeTab)?.label} Engine
+              </h3>
+              <p className="max-w-md mx-auto">
+                Predictive intelligence module active. Real-time data processing and decision models are running.
+              </p>
+            </div>
+          </GlassCard>
+        )}
       </div>
     </PageContainer>
   );

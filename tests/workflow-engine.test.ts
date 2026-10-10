@@ -148,6 +148,7 @@ function baseDraft(over: Partial<WorkflowDraft> = {}): WorkflowDraft {
     name: "test workflow",
     description: "a workflow used in tests",
     projectId: "proj-x",
+    organizationId: "org_test",
     participatingAgents: ["agent-a"],
     tasks: [
       {
@@ -329,6 +330,7 @@ test("workflow: dependents wait for dependencies, then the workflow completes", 
     name: "research-then-dev-then-qa",
     description: "d",
     projectId: "proj-x",
+    organizationId: "org_test",
     participatingAgents: ["agent-a", "agent-b", "agent-c"],
     tasks: [
       {
@@ -596,6 +598,7 @@ test("failure: continue mode lets an independent branch finish while the other i
     name: "n",
     description: "d",
     projectId: "proj-x",
+    organizationId: "org_test",
     participatingAgents: ["agent-a", "agent-b"],
     failureBehavior: "continue",
     retryPolicy: { maxRetries: 0 },
@@ -676,6 +679,7 @@ test("approval: the workflow pauses and the dependent task never dispatches", as
     name: "n",
     description: "d",
     projectId: "proj-x",
+    organizationId: "org_test",
     participatingAgents: ["agent-a", "agent-b"],
     tasks: [
       { id: "gated", type: "gated", agentId: "agent-a", description: "d" },
@@ -714,6 +718,7 @@ test("approval: approve then resume runs the dependent task to completion", asyn
     name: "n",
     description: "d",
     projectId: "proj-x",
+    organizationId: "org_test",
     participatingAgents: ["agent-a", "agent-b"],
     tasks: [
       { id: "gated", type: "gated", agentId: "agent-a", description: "d" },
@@ -749,6 +754,7 @@ test("approval: rejection fails the gated task and the workflow", async () => {
     name: "n",
     description: "d",
     projectId: "proj-x",
+    organizationId: "org_test",
     participatingAgents: ["agent-a", "agent-b"],
     tasks: [
       { id: "gated", type: "gated", agentId: "agent-a", description: "d" },
@@ -817,6 +823,7 @@ test("limits: maxHandoffs stops a workflow with too many cross-agent edges", asy
     name: "n",
     description: "d",
     projectId: "proj-x",
+    organizationId: "org_test",
     participatingAgents: ["agent-a", "agent-b", "agent-c"],
     limits: { maxHandoffs: 1 },
     tasks: [
@@ -898,6 +905,7 @@ test("limits: planFromObjective rejects a call that would exceed maxDelegationDe
         name: "n",
         description: "d",
         projectId: "proj-x",
+        organizationId: "org_test",
         participatingAgents: ["agent-a"],
         objective: "do a thing",
         limits: { maxDelegationDepth: 1 },
@@ -915,6 +923,7 @@ test("limits: planFromObjective requires the project manager agent to be registe
       name: "n",
       description: "d",
       projectId: "proj-x",
+      organizationId: "org_test",
       participatingAgents: ["agent-a"],
       objective: "do a thing",
     }),
