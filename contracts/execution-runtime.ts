@@ -322,6 +322,8 @@ export interface RuntimeSession extends Entity {
   changes: FileChange[];
   validation: ValidationStageResult[];
   scope?: ScopeReport;
+  /** Governance findings for this execution (review routing, drift). */
+  governance?: { reviewRequired: string[]; drift?: import("./security-governance.js").DriftReport };
   tools: ToolExecutionRecord[];
   gitState?: GitState;
   approval?: { approvalId?: string; reason: string };

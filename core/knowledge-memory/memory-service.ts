@@ -56,7 +56,7 @@ export interface KnowledgeRepos {
  * reads come from memory without defensive copies. Records are treated as
  * immutable by every caller (updates always build a new object).
  */
-class CachedRepository<T extends { id: string }> implements Repository<T> {
+export class SyncCache<T extends { id: string }> implements Repository<T> {
   private readonly items = new Map<string, T>();
   constructor(private readonly inner: Repository<T>) {
     for (const item of inner.list()) this.items.set(item.id, item);
@@ -120,13 +120,13 @@ export class MemoryService {
     private readonly clock: () => number = Date.now,
   ) {
     this.repos = {
-      memories: new CachedRepository(repos.memories),
-      versions: new CachedRepository(repos.versions),
-      entities: new CachedRepository(repos.entities),
-      edges: new CachedRepository(repos.edges),
-      usage: new CachedRepository(repos.usage),
-      resolutions: new CachedRepository(repos.resolutions),
-      sources: new CachedRepository(repos.sources),
+      memories: new SyncCache(repos.memories),
+      versions: new SyncCache(repos.versions),
+      entities: new SyncCache(repos.entities),
+      edges: new SyncCache(repos.edges),
+      usage: new SyncCache(repos.usage),
+      resolutions: new SyncCache(repos.resolutions),
+      sources: new SyncCache(repos.sources),
     };
   }
 

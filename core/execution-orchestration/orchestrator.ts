@@ -78,6 +78,7 @@ import {
   type ModelRouterPort,
   type RuntimeOutcome,
   type TaskExecutionContext,
+  type TaskGovernancePort,
   type TaskRuntimePort,
   type VerifierPort,
 } from "./ports.js";
@@ -94,6 +95,8 @@ export interface OrchestratorDeps {
   verifier?: VerifierPort;
   models?: ModelRouterPort;
   cost?: CostGate;
+  /** Layer 7: policy / risk / environment assessment before a task may start. */
+  governance?: TaskGovernancePort;
   events?: EventPublisher;
   router?: AgentRouter;
   locks?: ResourceLockManager;
@@ -634,6 +637,8 @@ export class ExecutionOrchestrator {
     task: OrchTask,
     actor: string,
   ): Promise<TaskExecutionContext | "changed" | undefined> {
+    // An emergency stop leaves tasks exactly where they are; nothing new starts.
+    if (this.deps.governance?.halted()) return undefined;
     const approved = task.approval?.state === "approved";
     const agents = this.deps.agents.list();
     const independentOf = task.independentOf
@@ -702,6 +707,33 @@ export class ExecutionOrchestrator {
       provider: task.assignedModel.provider,
       reason: task.assignedModel.reason,
     });
+
+    if (this.deps.governance) {
+      const g = await this.deps.governance
+        .assess({
+          run,
+          task,
+          agentId: agent.id,
+          ...(task.assignedModel?.model ? { modelId: `${task.assignedModel.provider ?? "unknown"}/${task.assignedModel.model}` } : {}),
+        })
+        .catch(() => undefined);
+      if (!g) {
+        // Fail closed: a task that cannot be assessed does not start.
+        this.block(run, task, "security", "governance could not assess this task");
+        this.emit("TASK_BLOCKED", run, task, { reason: task.blockedReason });
+        return "changed";
+      }
+      task.governance = g.summary;
+      if (g.effect === "DENY") {
+        this.block(run, task, "security", `governance: ${g.summary.reasons.at(-1) ?? "denied by policy"}`);
+        this.emit("TASK_BLOCKED", run, task, { reason: task.blockedReason, governance: g.summary.summary });
+        return "changed";
+      }
+      if ((g.effect === "REQUIRE_APPROVAL" || g.effect === "REQUIRE_SECURITY_REVIEW") && !task.requiresApproval) {
+        task.requiresApproval = true;
+        this.emit("TASK_BLOCKED", run, task, { reason: "governance requires human approval", governance: g.summary.summary });
+      }
+    }
 
     if (this.deps.cost) {
       const gate = await this.deps.cost
@@ -1110,6 +1142,21 @@ export class ExecutionOrchestrator {
         requestId: run.requestId,
         approvalKind: "orchestration_task",
         ...(task.assignedAgent ? { agentId: task.assignedAgent.agentId } : {}),
+        ...(task.governance
+          ? {
+              governance: {
+                action: task.type,
+                resource: task.governance.resource,
+                risk: task.governance.risk,
+                environment: task.governance.environment,
+                policies: task.governance.policies,
+                impact: task.governance.impact,
+                reversibility: task.governance.reversibility,
+                changes: task.title,
+                summary: task.governance.summary,
+              },
+            }
+          : {}),
       },
     });
     task.approval = {

@@ -215,7 +215,71 @@ export class CommandTimeoutError extends Error {
 /* Tool session                                                       */
 /* ------------------------------------------------------------------ */
 
+/* ---- governance gate (Layer 7) ---- */
+
+export interface GateInput {
+  projectId: string;
+  executionId: string;
+  taskId: string;
+  agentId: string;
+  modelId?: string;
+  taskType?: string;
+  toolId: string;
+  action: string;
+  resource: string;
+  command?: string;
+  content?: string;
+  count?: number;
+  expectedScope?: readonly string[];
+  environment?: string;
+}
+export interface GateVerdict {
+  effect: "ALLOW" | "REQUIRE_REVIEW" | "REQUIRE_SECURITY_REVIEW" | "REQUIRE_APPROVAL" | "DENY";
+  risk: string;
+  reasons: string[];
+  explanation: string;
+  policies: string[];
+  approvalId?: string;
+}
+/** The policy decision point the runtime asks BEFORE every file write, delete, command or git action. */
+export interface ActionGate {
+  check(input: GateInput): Promise<GateVerdict>;
+  noteRefusal?(note: {
+    kind: "command" | "path";
+    detail: string;
+    agentId: string;
+    projectId: string;
+    taskId: string;
+    executionId: string;
+  }): void;
+}
+
+export class PolicyDeniedError extends Error {
+  constructor(
+    message: string,
+    readonly verdict?: GateVerdict,
+  ) {
+    super(message);
+    this.name = "PolicyDeniedError";
+  }
+}
+export class PolicyApprovalRequiredError extends Error {
+  constructor(
+    message: string,
+    readonly approvalId: string | undefined,
+    readonly verdict?: GateVerdict,
+  ) {
+    super(message);
+    this.name = "PolicyApprovalRequiredError";
+  }
+}
+
 export interface ToolSessionDeps {
+  /** Layer 7: the governance gate. Absent only in tests of the bare runtime. */
+  gate?: ActionGate;
+  taskType?: string;
+  expectedScope?: readonly string[];
+  modelId?: string;
   session: RuntimeSession;
   manager: SessionManager;
   workspace: ResolvedWorkspace;
@@ -253,38 +317,51 @@ export class AgentToolSession {
   /* ---- reads ---- */
 
   tree(dir?: string) {
-    return this.guard("repo.read", "tree", () => this.fs.tree(dir));
+    return this.guard("repo.read", "tree", async () => {
+      await this.enforce("repo.read", "READ", `file:${dir ?? "."}`);
+      return this.fs.tree(dir);
+    });
   }
   readFile(path: string) {
-    return this.guard("repo.read", "read", () => this.fs.read(path));
+    return this.guard("repo.read", "read", async () => {
+      await this.enforce("repo.read", "READ", `file:${path}`);
+      return this.fs.read(path);
+    });
   }
 
   /* ---- writes ---- */
 
   createFile(path: string, content: string) {
-    return this.guard("repo.edit", "create", async () =>
-      this.track(await this.fs.create(path, content)),
-    );
+    return this.guard("repo.edit", "create", async () => {
+      await this.enforce("repo.edit", "CREATE", `file:${path}`, { content });
+      return this.track(await this.fs.create(path, content));
+    });
   }
   updateFile(path: string, content: string, expectedHash?: string) {
-    return this.guard("repo.edit", "update", async () =>
-      this.track(await this.fs.update(path, content, expectedHash)),
-    );
+    return this.guard("repo.edit", "update", async () => {
+      await this.enforce("repo.edit", "UPDATE", `file:${path}`, { content });
+      return this.track(await this.fs.update(path, content, expectedHash));
+    });
   }
   renameFile(from: string, to: string) {
-    return this.guard("repo.edit", "rename", async () =>
-      this.track(await this.fs.rename(from, to, "rename")),
-    );
+    return this.guard("repo.edit", "rename", async () => {
+      await this.enforce("repo.edit", "UPDATE", `file:${from}`);
+      await this.enforce("repo.edit", "CREATE", `file:${to}`);
+      return this.track(await this.fs.rename(from, to, "rename"));
+    });
   }
   moveFile(from: string, to: string) {
-    return this.guard("repo.edit", "move", async () =>
-      this.track(await this.fs.rename(from, to, "move")),
-    );
+    return this.guard("repo.edit", "move", async () => {
+      await this.enforce("repo.edit", "UPDATE", `file:${from}`);
+      await this.enforce("repo.edit", "CREATE", `file:${to}`);
+      return this.track(await this.fs.rename(from, to, "move"));
+    });
   }
   deleteFile(path: string) {
-    return this.guard("repo.delete", "delete", async () =>
-      this.track(await this.fs.delete(path, this.deps.approved)),
-    );
+    return this.guard("repo.delete", "delete", async () => {
+      await this.enforce("repo.delete", "DELETE", `file:${path}`);
+      return this.track(await this.fs.delete(path, this.deps.approved));
+    });
   }
 
   /* ---- inspection ---- */
@@ -307,6 +384,7 @@ export class AgentToolSession {
     });
     if (verdict.class !== "SAFE" || !verdict.spec) {
       this.record("command", "classify", "denied", verdict.reason, 0);
+      if (verdict.class === "BLOCKED") this.refusal("command", String(line).slice(0, 120));
       this.deps.manager.emit(this.deps.session, "execution.command.started", {
         command: String(line).slice(0, 120),
         class: verdict.class,
@@ -325,7 +403,75 @@ export class AgentToolSession {
 
   runSpec(spec: CommandSpec): Promise<CommandRecord> {
     const tool = toolFor(spec);
-    return this.guard(tool, "run_script", () => this.execute(spec));
+    return this.guard(tool, "run_script", async () => {
+      await this.enforce(tool, "EXECUTE", `command:${displayOf(spec)}`, {
+        command: displayOf(spec),
+      });
+      return this.execute(spec);
+    });
+  }
+
+  /** Ask the governance gate (if any) and act on its verdict. */
+  async enforce(
+    toolId: string,
+    action: string,
+    resource: string,
+    extra: { content?: string; command?: string; count?: number; environment?: string } = {},
+  ): Promise<GateVerdict | undefined> {
+    const gate = this.deps.gate;
+    if (!gate) return undefined;
+    const { session, manager } = this.deps;
+    const v = await gate.check({
+      projectId: session.projectId,
+      executionId: session.executionId,
+      taskId: session.taskId,
+      agentId: session.agentId,
+      ...(this.deps.modelId ? { modelId: this.deps.modelId } : {}),
+      ...(this.deps.taskType ? { taskType: this.deps.taskType } : {}),
+      ...(this.deps.expectedScope ? { expectedScope: this.deps.expectedScope } : {}),
+      toolId,
+      action,
+      resource,
+      ...extra,
+    });
+    if (v.effect === "ALLOW") return v;
+    if (v.effect === "REQUIRE_REVIEW") {
+      const flags = session.governance?.reviewRequired ?? [];
+      session.governance = {
+        ...(session.governance ?? { reviewRequired: [] }),
+        reviewRequired: [...flags, `${action} ${resource}`].slice(-50),
+      };
+      manager.persist(session);
+      return v;
+    }
+    if (v.effect === "DENY") throw new PolicyDeniedError(v.explanation, v);
+    manager.emit(session, "execution.approval.requested", {
+      approvalId: v.approvalId ?? "",
+      reason: v.explanation.slice(0, 300),
+      action,
+      resource,
+    });
+    throw new PolicyApprovalRequiredError(
+      `approval required: ${v.explanation}`,
+      v.approvalId,
+      v,
+    );
+  }
+
+  private refusal(kind: "command" | "path", detail: string): void {
+    const { session } = this.deps;
+    try {
+      this.deps.gate?.noteRefusal?.({
+        kind,
+        detail,
+        agentId: session.agentId,
+        projectId: session.projectId,
+        taskId: session.taskId,
+        executionId: session.executionId,
+      });
+    } catch {
+      /* reporting must never change the refusal */
+    }
   }
 
   /** Throws when the execution was cancelled or paused; otherwise a heartbeat. */
@@ -459,10 +605,13 @@ export class AgentToolSession {
       return value;
     } catch (error) {
       const message = error instanceof Error ? error.message : "tool error";
+      if (error instanceof PathRefusedError) this.refusal("path", message.slice(0, 120));
       const denied =
         error instanceof PathRefusedError ||
         error instanceof ApprovalRequiredError ||
-        error instanceof ToolDeniedError;
+        error instanceof ToolDeniedError ||
+        error instanceof PolicyDeniedError ||
+        error instanceof PolicyApprovalRequiredError;
       this.record(
         tool,
         operation,

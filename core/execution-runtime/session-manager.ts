@@ -227,6 +227,20 @@ export class SessionManager {
     return event;
   }
 
+  /** Attach governance findings (review routing, drift) to a session and persist it. */
+  annotateGovernance(
+    executionId: string,
+    patch: { reviewRequired?: string[]; drift?: NonNullable<RuntimeSession["governance"]>["drift"] },
+  ): void {
+    const session = this.live(executionId);
+    if (!session) return;
+    session.governance = {
+      reviewRequired: [...(session.governance?.reviewRequired ?? []), ...(patch.reviewRequired ?? [])].slice(-50),
+      ...(patch.drift ? { drift: patch.drift } : session.governance?.drift ? { drift: session.governance.drift } : {}),
+    };
+    this.persist(session);
+  }
+
   persist(session: RuntimeSession): void {
     session.revision += 1;
     session.updatedAt = this.clock();

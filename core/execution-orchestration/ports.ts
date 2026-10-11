@@ -4,6 +4,7 @@
  * Verification, Approval and Audit stay decoupled and independently testable.
  */
 import type {
+  ExecutionRun,
   FailureClass,
   ModelAssignment,
   OrchTask,
@@ -69,6 +70,26 @@ export interface ModelRouterPort {
     agent: Agent;
     need: ModelNeed;
   }): Promise<ModelAssignment>;
+}
+
+/** Layer 7: the governance decision point as the orchestrator sees it. */
+export interface TaskGovernancePort {
+  /** An emergency stop is active: nothing new may start. */
+  halted(): boolean;
+  assess(input: {
+    run: ExecutionRun;
+    task: OrchTask;
+    agentId: string;
+    modelId?: string;
+  }): Promise<{
+    effect:
+      | "ALLOW"
+      | "REQUIRE_REVIEW"
+      | "REQUIRE_SECURITY_REVIEW"
+      | "REQUIRE_APPROVAL"
+      | "DENY";
+    summary: NonNullable<OrchTask["governance"]>;
+  }>;
 }
 
 export interface CostGate {

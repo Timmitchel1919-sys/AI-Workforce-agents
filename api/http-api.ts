@@ -53,6 +53,8 @@ export interface ControlPlaneApiOptions {
   runtime?: import("../control/index.js").RuntimeControlService;
   /** Knowledge, Memory & Context Intelligence (governed memory, retrieval, graph, curation). */
   knowledge?: import("../control/index.js").KnowledgeControlService;
+  /** Governance, trust, security & policy (policies, trust, approvals, alerts, audit, emergency stop). */
+  trustCenter?: import("../control/index.js").TrustControlService;
   /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
   projectSync?: () => Promise<void>;
   operatorDirectory: OperatorDirectory;
@@ -596,6 +598,43 @@ export function createControlPlaneApi(
   ): Promise<void> {
     const [head, id] = segs;
     switch (head) {
+      case "trust": {
+        const security = options.trustCenter;
+        if (!security) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const projectId = params.get("projectId") ?? undefined;
+        const result = await (async () => {
+          switch (area) {
+            case "overview":
+              return security.overview(principal, projectId);
+            case "policies":
+              return itemId
+                ? security.policy(principal, itemId)
+                : security.policies(principal);
+            case "trust":
+              return security.trust(principal);
+            case "approvals":
+              return itemId
+                ? security.approval(principal, itemId)
+                : security.approvals(principal, params);
+            case "alerts":
+              return itemId
+                ? security.alert(principal, itemId)
+                : security.alerts(principal, params);
+            case "ledger":
+              return security.ledger(principal, params);
+            case "simulate":
+              return security.simulate(principal, params);
+            case "secrets":
+              return security.secrets(principal);
+            case "project":
+              return security.projectSecurity(principal, projectId ?? "");
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
       case "knowledge": {
         const knowledge = options.knowledge;
         if (!knowledge) throw new NotFoundError("resource not found");
@@ -1926,6 +1965,31 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
+    if (name.startsWith("security_") && options.trustCenter) {
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const outcome = await options.trustCenter.execute(
+        name,
+        principal,
+        payload,
+        { correlationId },
+      );
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
     if (name.startsWith("knowledge_") && options.knowledge) {
       let payload: Record<string, unknown>;
       try {

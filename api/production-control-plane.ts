@@ -95,6 +95,13 @@ import {
   ExecutionOrchestrator,
   GovernedTaskRuntime,
   LlmAgentExecutor,
+  SecuritySystem,
+  LocalNpmAuditRunner,
+  type ApprovalMeta,
+  type ConfigBaseline,
+  type DependencyScan,
+  type EmergencyRecord,
+  type SecurityRepos,
   KnowledgeSystem,
   GovernedFileSystem,
   LocalGitOps,
@@ -159,6 +166,16 @@ import { PromptIntelligenceControlService } from "../control/services/prompt-int
 import { ExecutionOrchestrationControlService } from "../control/services/execution-orchestration-control-service.js";
 import { RuntimeControlService } from "../control/services/runtime-control-service.js";
 import { KnowledgeControlService } from "../control/services/knowledge-control-service.js";
+import { TrustControlService } from "../control/services/security-control-service.js";
+import { TERMINAL_RUNTIME_STATES } from "../contracts/execution-runtime.js";
+import type {
+  AgentTrustRecord,
+  GovPolicy,
+  LedgerEntry,
+  ModelTrustRecord,
+  SecurityAlert,
+  ToolTrustRecord,
+} from "../contracts/security-governance.js";
 import type {
   ConflictResolutionRecord,
   KnowledgeEdge,
@@ -490,6 +507,29 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<ExecutionRun>("execution_runs");
   const runtimeSessionRepository =
     repositories.repository<RuntimeSession>("runtime_sessions");
+  // Governance, Trust & Security: durable policy, trust, alert, approval-meta, ledger and baseline collections.
+  const securityRepos: SecurityRepos = {
+    policies: repositories.repository<GovPolicy>("governance_policies"),
+    agentTrust: repositories.repository<AgentTrustRecord>(
+      "governance_agent_trust",
+    ),
+    modelTrust: repositories.repository<ModelTrustRecord>(
+      "governance_model_trust",
+    ),
+    toolTrust: repositories.repository<ToolTrustRecord>(
+      "governance_tool_trust",
+    ),
+    alerts: repositories.repository<SecurityAlert>("security_alerts"),
+    ledger: repositories.repository<LedgerEntry>("governance_ledger"),
+    approvalMeta: repositories.repository<ApprovalMeta>("governance_approvals"),
+    emergency: repositories.repository<EmergencyRecord>("governance_emergency"),
+    configBaselines: repositories.repository<ConfigBaseline>(
+      "security_config_baselines",
+    ),
+    dependencyScans: repositories.repository<DependencyScan>(
+      "security_dependency_scans",
+    ),
+  };
   // Knowledge, Memory & Context Intelligence: seven durable collections, allocated before hydrate.
   const knowledgeRepos: KnowledgeRepos = {
     memories: repositories.repository<MemoryRecord>("memories"),
@@ -547,6 +587,33 @@ export async function createProductionControlPlaneRuntime(
   // execution disagree about who exists and who is enabled — which is precisely
   // the failure this layer exists to remove.
   const agentOps = new AgentOperationalStore(agentOpsRepository);
+  // Governance, Trust & Security: the ONE policy decision point. Suspension and the emergency stop
+  // cancel live runtime sessions through the (later-declared) session manager.
+  const cancelSessions = (match: (s: { agentId: string }) => boolean): void => {
+    for (const s of runtimeSessions.list()) {
+      if (!TERMINAL_RUNTIME_STATES.includes(s.status) && match(s)) {
+        try {
+          runtimeSessions.cancel(s.executionId);
+        } catch {
+          /* already finishing */
+        }
+      }
+    }
+  };
+  const trustSys = new SecuritySystem({
+    repos: securityRepos,
+    audit,
+    approvals,
+    agents: {
+      get: (id) => bootstrap.agents.get(id),
+      list: () => bootstrap.agents.list(),
+    },
+    isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+    onSuspend: (agentId) => cancelSessions((s) => s.agentId === agentId),
+    annotateSession: (executionId, patch) =>
+      runtimeSessions.annotateGovernance(executionId, patch),
+  });
+  trustSys.emergency.onEngage(() => cancelSessions(() => true));
   const assignmentRepository = new InMemoryAssignmentRepository();
   const specialistAssignments = new SpecialistAssignmentService(
     assignmentRepository,
@@ -805,7 +872,7 @@ export async function createProductionControlPlaneRuntime(
     new DeveloperAgent({
       audit,
       model: new RoutedModelProvider({
-        inner: new LazyOpenAIModelProvider(),
+        inner: trustSys.governedModel(new LazyOpenAIModelProvider()),
         router: modelRouter,
         agent: bootstrap.agents.require(DEVELOPER_AGENT_ID),
         requirement: specialistRequirement,
@@ -819,7 +886,7 @@ export async function createProductionControlPlaneRuntime(
     new QaAgent({
       audit,
       model: new RoutedModelProvider({
-        inner: new LazyOpenAIModelProvider(),
+        inner: trustSys.governedModel(new LazyOpenAIModelProvider()),
         router: modelRouter,
         agent: bootstrap.agents.require(QA_AGENT_ID),
         requirement: specialistRequirement,
@@ -833,7 +900,7 @@ export async function createProductionControlPlaneRuntime(
     new ProjectManagerAgent({
       audit,
       model: new RoutedModelProvider({
-        inner: new LazyOpenAIModelProvider(),
+        inner: trustSys.governedModel(new LazyOpenAIModelProvider()),
         router: modelRouter,
         agent: bootstrap.agents.require(PROJECT_MANAGER_AGENT_ID),
         requirement: specialistRequirement,
@@ -850,7 +917,7 @@ export async function createProductionControlPlaneRuntime(
         descriptor: agent,
         audit,
         model: new RoutedModelProvider({
-          inner: new LazyOpenAIModelProvider(),
+          inner: trustSys.governedModel(new LazyOpenAIModelProvider()),
           router: modelRouter,
           agent: bootstrap.agents.require(agent.id),
           requirement: specialistRequirement,
@@ -1139,6 +1206,7 @@ export async function createProductionControlPlaneRuntime(
         new OnboardedProjectSource(provisionedProjects),
         new KnowledgeContextSource(promptKnowledgeRepository),
         knowledge.contextSource,
+        trustSys.contextSource,
         new TaskContextSource(tasks),
       ],
       {
@@ -1169,7 +1237,7 @@ export async function createProductionControlPlaneRuntime(
   const agentLoop = new LlmAgentExecutor({
     models: ({ agentId }) =>
       new RoutedModelProvider({
-        inner: new LazyOpenAIModelProvider(),
+        inner: trustSys.governedModel(new LazyOpenAIModelProvider()),
         router: modelRouter,
         agent: bootstrap.agents.require(agentId),
         requirement: specialistRequirement,
@@ -1181,8 +1249,19 @@ export async function createProductionControlPlaneRuntime(
     resolver: workspaceResolver,
     manager: runtimeSessions,
     agentExecutor: agentLoop,
-    // The learning loop: verified execution results become candidate/verified memory.
+    // Layer 7: every write, delete, command, commit and deployment asks the governor first.
+    gate: trustSys.gate(),
     onFinished: ({ session, task, context, outcome }) => {
+      // Post-execution policy check: expected vs actual changes (execution drift).
+      trustSys.governor.postCheck({
+        session,
+        expected: [...task.resources, ...context.relevantFiles],
+        keywords: context.objective
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter((w) => w.length >= 4),
+      });
+      // The learning loop: verified execution results become candidate/verified memory.
       knowledge.learner.learn({ session, task, context, outcome });
     },
   });
@@ -1192,7 +1271,9 @@ export async function createProductionControlPlaneRuntime(
     runs: executionRunRepository,
     projects: bootstrap.projects,
     agents: bootstrap.agents,
-    isAgentEnabled: (agentId) => agentOps.isEnabled(agentId),
+    isAgentEnabled: (agentId) =>
+      agentOps.isEnabled(agentId) && !trustSys.trust.isBlocked(agentId),
+    governance: trustSys.taskGovernance(),
     approvals,
     audit,
     runtime: taskRuntime,
@@ -1210,33 +1291,49 @@ export async function createProductionControlPlaneRuntime(
     executionOrchestrator,
     audit,
   );
+  const projectSource = async (projectId: string) => {
+    // 1. A registered local workspace (read-only governed view, with git history).
+    try {
+      const ws = await workspaceResolver.resolve(projectId);
+      return workspaceFileSource(
+        new GovernedFileSystem(ws.rootReal, ["read", "list"], {
+          taskId: "knowledge",
+          agentId: "knowledge",
+          clock: () => new Date().toISOString(),
+        }),
+        new LocalGitOps(ws.rootReal),
+      );
+    } catch {
+      /* no workspace registered for this project */
+    }
+    // 2. The project's declared GitHub repository (allow-listed files only).
+    const repo = bootstrap.projects.get(projectId)?.metadata?.repository;
+    const ref = repo ? parseProjectRepositoryRef(repo) : undefined;
+    if (!ref) return undefined;
+    return githubFileSource(new GitHubRepositoryReader(), {
+      url: ref.url,
+      branch: ref.defaultBranch,
+    });
+  };
   const knowledgeControl = new KnowledgeControlService({
     knowledge,
     audit,
     projectExists: (projectId) => bootstrap.projects.has(projectId),
-    sourceFor: async (projectId) => {
-      // 1. A registered local workspace (read-only governed view, with git history).
+    sourceFor: projectSource,
+  });
+  const trustControl = new TrustControlService({
+    security: trustSys,
+    audit,
+    knownAgentIds: () => bootstrap.agents.list().map((a) => a.id),
+    projectExists: (projectId) => bootstrap.projects.has(projectId),
+    sourceFor: projectSource,
+    auditRunnerFor: async (projectId) => {
       try {
         const ws = await workspaceResolver.resolve(projectId);
-        return workspaceFileSource(
-          new GovernedFileSystem(ws.rootReal, ["read", "list"], {
-            taskId: "knowledge",
-            agentId: "knowledge",
-            clock: () => new Date().toISOString(),
-          }),
-          new LocalGitOps(ws.rootReal),
-        );
+        return new LocalNpmAuditRunner(ws.rootReal);
       } catch {
-        /* no workspace registered for this project */
+        return undefined;
       }
-      // 2. The project's declared GitHub repository (allow-listed files only).
-      const repo = bootstrap.projects.get(projectId)?.metadata?.repository;
-      const ref = repo ? parseProjectRepositoryRef(repo) : undefined;
-      if (!ref) return undefined;
-      return githubFileSource(new GitHubRepositoryReader(), {
-        url: ref.url,
-        branch: ref.defaultBranch,
-      });
     },
   });
   const query = new WorkforceQueryService(context);
@@ -1248,6 +1345,7 @@ export async function createProductionControlPlaneRuntime(
     orchestration,
     runtime: runtimeControl,
     knowledge: knowledgeControl,
+    trustCenter: trustControl,
     projectSync,
     graphQuery,
     query,

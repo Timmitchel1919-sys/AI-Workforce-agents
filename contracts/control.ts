@@ -85,6 +85,8 @@ export const CONTROL_CAPABILITIES = [
   "orchestrate_execution",
   /* Knowledge, Memory & Context Intelligence (curating project memory). */
   "manage_knowledge",
+  /* Governance & trust: suspend agents, emergency stop, alerts, policies. */
+  "manage_security",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -124,6 +126,8 @@ export const ROLE_CAPABILITIES: Record<
     "orchestrate_execution",
     // Knowledge: curate, confirm, supersede and ingest project memory.
     "manage_knowledge",
+    // Governance: raise the emergency stop, handle alerts, suspend agents (critical changes stay admin-only).
+    "manage_security",
   ],
   admin: [
     "view",
@@ -166,6 +170,7 @@ export const ROLE_CAPABILITIES: Record<
     "orchestrate_execution",
     // Knowledge: curate, confirm, supersede and ingest project memory.
     "manage_knowledge",
+    "manage_security",
   ],
 };
 
@@ -293,6 +298,22 @@ export const CONTROL_COMMANDS = [
   "knowledge_discover_project",
   "knowledge_refresh_project",
   "knowledge_apply_retention",
+  // Governance, Trust & Security.
+  "security_set_agent_trust",
+  "security_set_model_trust",
+  "security_set_tool_trust",
+  "security_create_policy",
+  "security_update_policy",
+  "security_set_policy_status",
+  "security_decide_approval",
+  "security_cancel_approval",
+  "security_alert_transition",
+  "security_emergency_stop",
+  "security_emergency_advance",
+  "security_emergency_resume",
+  "security_scan_config",
+  "security_accept_config",
+  "security_scan_dependencies",
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 

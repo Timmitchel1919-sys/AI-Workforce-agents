@@ -23,6 +23,7 @@ import {
   type ValidationStageResult,
 } from "../../contracts/execution-runtime.js";
 import { maskSecrets } from "../prompt-intelligence/secret-scan.js";
+import { inferEnvironment } from "../security-governance/resources.js";
 import type {
   RuntimeOutcome,
   TaskExecutionContext,
@@ -40,6 +41,9 @@ import {
   ExecutionCancelledError,
   ExecutionPausedError,
   ToolDeniedError,
+  PolicyApprovalRequiredError,
+  PolicyDeniedError,
+  type ActionGate,
   commitPolicy,
   extractErrors,
   runValidation,
@@ -63,6 +67,8 @@ export interface AgentWork {
   tools: AgentToolSession;
   /** Mechanical facts the runtime computed (diff scope, validation so far). */
   facts: {
+    /** Governance flags: changes that need an independent review (REQUIRE_REVIEW, drift). */
+    reviewRequired?: readonly string[];
     scope: ScopeReport;
     changes: readonly FileChange[];
     validation: readonly ValidationStageResult[];
@@ -105,6 +111,8 @@ export interface RuntimeDeps {
   identity?: { name: string; email: string };
   /** Cap on a single command, in milliseconds. */
   maxCommandMs?: number;
+  /** Layer 7: policy decision point consulted before every write, delete, command, commit and deployment. */
+  gate?: ActionGate;
   /** Called after every execution (success or failure): the learning loop's entry point. */
   onFinished?: (input: {
     session: RuntimeSession;
@@ -133,6 +141,10 @@ function mapError(error: unknown): Mapped {
     return { kind: "AGENT_ERROR", failure: "APPROVAL", message };
   if (error instanceof ExecutionPausedError)
     return { kind: "AGENT_ERROR", failure: "APPROVAL", message };
+  if (error instanceof PolicyDeniedError)
+    return { kind: "SECURITY_ERROR", failure: "SECURITY", message };
+  if (error instanceof PolicyApprovalRequiredError)
+    return { kind: "AUTHORIZATION_ERROR", failure: "APPROVAL", message };
   if (error instanceof PathRefusedError)
     return { kind: "SECURITY_ERROR", failure: "SECURITY", message };
   if (error instanceof CommandRefusedError) {
@@ -277,6 +289,12 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
         workspace,
         permittedTools: context.permittedTools,
         approved: task.approval?.state === "approved",
+        ...(this.deps.gate ? { gate: this.deps.gate } : {}),
+        taskType: task.type,
+        expectedScope: [...task.resources, ...context.relevantFiles],
+        ...(context.model?.model
+          ? { modelId: `${context.model.provider ?? "unknown"}/${context.model.model}` }
+          : {}),
         runner: this.runner,
         git:
           this.deps.gitFactory?.(workspace) ??
@@ -392,6 +410,21 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
         const changes = runChanges();
         const scope = scopeOf(changes);
         session.scope = scope;
+        const drift = manager
+          .list({ runId: context.runId })
+          .flatMap((x) => (x.governance?.drift ? [x.governance.drift] : []))
+          .find((d) => d.route === "REVIEW_REQUIRED");
+        if (drift && scope.status !== "FLAGGED_FOR_REVIEW") {
+          return {
+            kind: "success",
+            summary: `Execution drift detected by governance: ${drift.unexpected.slice(0, 8).map((u) => u.path).join(", ")}`,
+            evidence: [
+              `expected: ${drift.expected.join(", ") || "none declared"}`,
+              `unexpected: ${drift.unexpected.map((u) => u.path).join(", ")}`,
+            ],
+            verdict: "changes_requested",
+          };
+        }
         if (scope.status === "FLAGGED_FOR_REVIEW") {
           manager.emit(session, "execution.scope.flagged", {
             unexpected: scope.unexpected.slice(0, 20),
@@ -576,6 +609,9 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
     const git =
       this.deps.gitFactory?.(workspace) ?? new LocalGitOps(workspace.rootReal);
     const before = await git.state();
+    await tools.enforce("git.commit", "PUBLISH", `branch:${before.branch ?? "main"}`, {
+      count: files.length,
+    });
     const message = `${context.objective.replace(/\.$/, "").slice(0, 120)}\n\nTask: ${task.taskId}`;
     const result = await git.commit(
       files,
@@ -604,7 +640,6 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
     scopeOf: (c: readonly FileChange[]) => ScopeReport,
     tools: AgentToolSession,
   ): Promise<RuntimeOutcome> {
-    void tools;
     const handoff = this.deps.deployment ?? new UnavailableDeploymentHandoff();
     if (!handoff.available) {
       return this.failure(
@@ -621,6 +656,13 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
         "deployment refused: the change set is flagged for review",
       );
     }
+    // Deployment is never implicit: the governance gate decides, per environment.
+    const environment =
+      inferEnvironment(`${context.objective} ${task.title} ${task.description} ${task.prompt}`) ??
+      "PRODUCTION";
+    await tools.enforce("deploy.handoff", "DEPLOY", `deploy:${environment.toLowerCase()}`, {
+      environment,
+    });
     const ref = await handoff.handoff({
       projectId: task.projectId,
       runId: context.runId,
@@ -668,6 +710,10 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
       context,
       tools,
       facts: {
+        reviewRequired: this.deps.manager
+          .list({ runId: context.runId })
+          .flatMap((x) => x.governance?.reviewRequired ?? [])
+          .slice(0, 30),
         scope: scopeOf(runChanges()),
         changes: runChanges(),
         validation: this.deps.manager

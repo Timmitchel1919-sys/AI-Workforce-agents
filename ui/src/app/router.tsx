@@ -5,7 +5,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n } from "../i18n";
 import RouteError from "./RouteError";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace, loadKnowledge } from "./routeModules";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace, loadKnowledge, loadSecurityCenter } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -49,6 +49,7 @@ const PromptIntelligencePage = fromChunk(loadPromptIntelligence, "PromptIntellig
 const ExecutionCenterPage = fromChunk(loadExecutionCenter, "ExecutionCenterPage");
 const LiveWorkspacePage = fromChunk(loadLiveWorkspace, "LiveWorkspacePage");
 const KnowledgePage = fromChunk(loadKnowledge, "KnowledgePage");
+const SecurityCenterPage = fromChunk(loadSecurityCenter, "SecurityCenterPage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
 const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
@@ -170,6 +171,9 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "knowledge", element: withSuspense(<KnowledgePage />) },
       { path: "knowledge/:tab", element: withSuspense(<KnowledgePage />) },
       { path: "knowledge/:tab/:memoryId", element: withSuspense(<KnowledgePage />) },
+      { path: "security-center", element: withSuspense(<SecurityCenterPage />) },
+      { path: "security-center/:tab", element: withSuspense(<SecurityCenterPage />) },
+      { path: "security-center/:tab/:itemId", element: withSuspense(<SecurityCenterPage />) },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },

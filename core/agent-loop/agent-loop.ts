@@ -171,7 +171,15 @@ export class LlmAgentExecutor implements AgentExecutorPort {
     }
     const mustChange = role === "author" && task.resources.length > 0;
     const system = systemPrompt(role, caps);
-    const brief = maskSecrets(briefOf(task, context));
+    const flagged = work.facts.reviewRequired ?? [];
+    const brief = maskSecrets(
+      briefOf(task, context) +
+        (flagged.length > 0
+          ? `
+
+GOVERNANCE: these changes were flagged for independent review: ${flagged.slice(0, 15).join("; ")}`
+          : ""),
+    );
     const model = this.deps.models({
       agentId: context.agentId,
       projectId: context.projectId,

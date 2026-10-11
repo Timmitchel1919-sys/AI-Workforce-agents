@@ -220,6 +220,18 @@ export interface OrchTask {
   blockedReason?: string;
   /** Why it is blocked: re-evaluated each advance except `security`. */
   blockKind?: "routing" | "budget" | "security" | "runtime" | "dependency";
+  /** Governance assessment recorded when the task was dispatched (explainable). */
+  governance?: {
+    effect: string;
+    risk: string;
+    environment: string;
+    resource: string;
+    summary: string;
+    reasons: string[];
+    policies: string[];
+    reversibility: string;
+    impact: string;
+  };
   result?: TaskResult;
   failures: TaskFailure[];
   /** Token/context estimate. A dollar figure is only present if priced. */
