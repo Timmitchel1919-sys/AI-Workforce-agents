@@ -3,6 +3,7 @@ import { liveWorkspaceEn } from "./liveWorkspace.en";
 import { knowledgeEn } from "./knowledge.en";
 import { securityCenterEn } from "./securityCenter.en";
 import { integrationCenterEn } from "./integrationCenter.en";
+import { platformCentersEn } from "./platformCenters.en";
 import { promptIntelligenceEn } from "./promptIntelligence.en";
 import { onboardingEn } from "./onboarding.en";
 /**
@@ -2215,6 +2216,7 @@ export const en = {
   knowledge: knowledgeEn,
   securityCenter: securityCenterEn,
   integrationCenter: integrationCenterEn,
+  platformCenters: platformCentersEn,
   integrations: {
     title: "Integrations",
     description: "Manage enterprise integrations, MCP servers, and external tools.",

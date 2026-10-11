@@ -28,6 +28,9 @@ export const loadSecurityCenter = () => import("../pages/SecurityCenter/routes")
 /** Integration Center page (separate lazy chunk). */
 export const loadIntegrationCenter = () => import("../pages/IntegrationCenter/routes");
 
+/** Extension, Business, Portfolio, Operations and Analytics centers (Layers 9-13; one lazy chunk). */
+export const loadPlatformCenters = () => import("../pages/PlatformCenters/routes");
+
 export type RouteChunk = "landing" | "auth" | "controlCenter";
 
 export const routeChunkLoaders: Record<RouteChunk, () => Promise<unknown>> = {

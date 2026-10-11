@@ -5,7 +5,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n } from "../i18n";
 import RouteError from "./RouteError";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace, loadKnowledge, loadSecurityCenter, loadIntegrationCenter } from "./routeModules";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace, loadKnowledge, loadSecurityCenter, loadIntegrationCenter, loadPlatformCenters } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -51,6 +51,11 @@ const LiveWorkspacePage = fromChunk(loadLiveWorkspace, "LiveWorkspacePage");
 const KnowledgePage = fromChunk(loadKnowledge, "KnowledgePage");
 const SecurityCenterPage = fromChunk(loadSecurityCenter, "SecurityCenterPage");
 const IntegrationCenterPage = fromChunk(loadIntegrationCenter, "IntegrationCenterPage");
+const ExtensionPlatformPage = fromChunk(loadPlatformCenters, "ExtensionPlatformPage");
+const BusinessLayerPage = fromChunk(loadPlatformCenters, "BusinessLayerPage");
+const ProjectPortfolioPage = fromChunk(loadPlatformCenters, "ProjectPortfolioPage");
+const OperationsCenterPage = fromChunk(loadPlatformCenters, "OperationsCenterPage");
+const AnalyticsCenterPage = fromChunk(loadPlatformCenters, "AnalyticsCenterPage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
 const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
@@ -178,6 +183,19 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "integration-center", element: withSuspense(<IntegrationCenterPage />) },
       { path: "integration-center/:tab", element: withSuspense(<IntegrationCenterPage />) },
       { path: "integration-center/:tab/:itemId", element: withSuspense(<IntegrationCenterPage />) },
+      { path: "extension-platform", element: withSuspense(<ExtensionPlatformPage />) },
+      { path: "extension-platform/:tab", element: withSuspense(<ExtensionPlatformPage />) },
+      { path: "extension-platform/:tab/:itemId", element: withSuspense(<ExtensionPlatformPage />) },
+      { path: "business-layer", element: withSuspense(<BusinessLayerPage />) },
+      { path: "business-layer/:tab", element: withSuspense(<BusinessLayerPage />) },
+      { path: "business-layer/:tab/:itemId", element: withSuspense(<BusinessLayerPage />) },
+      { path: "project-portfolio", element: withSuspense(<ProjectPortfolioPage />) },
+      { path: "project-portfolio/:tab", element: withSuspense(<ProjectPortfolioPage />) },
+      { path: "operations-center", element: withSuspense(<OperationsCenterPage />) },
+      { path: "operations-center/:tab", element: withSuspense(<OperationsCenterPage />) },
+      { path: "operations-center/:tab/:itemId", element: withSuspense(<OperationsCenterPage />) },
+      { path: "analytics-center", element: withSuspense(<AnalyticsCenterPage />) },
+      { path: "analytics-center/:tab", element: withSuspense(<AnalyticsCenterPage />) },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },
