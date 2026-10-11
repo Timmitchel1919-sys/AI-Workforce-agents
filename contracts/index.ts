@@ -920,6 +920,11 @@ export type {
 export * from "./knowledge-memory.js";
 export * from "./security-governance.js";
 export * from "./integration-gateway.js";
+export * from "./extension-platform.js";
+export * from "./business-layer.js";
+export * from "./portfolio-intelligence.js";
+export * from "./autonomy.js";
+export * from "./analytics-intelligence.js";
 export * from "./storage.js";
 
 export * from "./research.js";

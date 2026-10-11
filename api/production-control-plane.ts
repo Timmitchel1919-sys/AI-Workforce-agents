@@ -5,6 +5,25 @@ import { GrcControlService } from "../control/services/grc-service.js";
 import { AIGovernanceControlService } from "../control/services/ai-governance-service.js";
 import { DataGovernanceService } from "../control/services/data-governance-service.js";
 import { IntegrationControlService } from "../control/services/integration-control-service.js";
+import {
+  AnalyticsControlService,
+  AutonomyControlService,
+  BusinessControlService,
+  ExtensionControlService,
+  PortfolioIntelligenceControlService,
+} from "../control/services/platform-layers-control.js";
+import {
+  AnalyticsIntelligence,
+  AutonomyEngine,
+  BusinessService,
+  ExtensionSystem,
+  PlatformActionExecutor,
+  PortfolioIntelligence,
+  measureMetric,
+  type AlertFact,
+  type ProjectFacts,
+} from "../core/index.js";
+import type * as L from "../contracts/index.js";
 import { SecurityControlService } from "../control/services/security-service.js";
 import { AuditControlService } from "../control/services/audit-service.js";
 import { PortfolioControlService } from "../control/services/portfolio-service.js";
@@ -580,6 +599,49 @@ export async function createProductionControlPlaneRuntime(
     ),
     mcp: repositories.repository<McpServerRecord>("integration_mcp_servers"),
   };
+  // Layers 9–13: durable collections, allocated before the single hydrate pass.
+  const extensionRepos = {
+    extensions:
+      repositories.repository<L.ExtensionRecord>("extension_platform"),
+    audit: repositories.repository<L.ExtensionAuditEvent>(
+      "extension_platform_audit",
+    ),
+  };
+  const businessRepos = {
+    profile: repositories.repository<L.BusinessProfile>("business_profile"),
+    departments: repositories.repository<L.Department>("business_departments"),
+    objectives: repositories.repository<L.BusinessObjective>(
+      "business_objectives",
+    ),
+    initiatives: repositories.repository<L.Initiative>("business_initiatives"),
+    decisions: repositories.repository<L.DecisionRecord>("business_decisions"),
+  };
+  const portfolioRepos = {
+    profiles: repositories.repository<L.ProjectProfile>("portfolio_profiles"),
+    dependencies: repositories.repository<L.ProjectDependency>(
+      "portfolio_dependencies",
+    ),
+    claims: repositories.repository<L.ResourceClaim>(
+      "portfolio_resource_claims",
+    ),
+  };
+  const autonomyRepos = {
+    settings: repositories.repository<L.AutonomySetting>("autonomy_settings"),
+    global: repositories.repository<L.AutonomyGlobal>("autonomy_global"),
+    definitions: repositories.repository<L.AutonomousWorkflowDef>(
+      "autonomy_definitions",
+    ),
+    rules: repositories.repository<L.TriggerRule>("autonomy_rules"),
+    instances:
+      repositories.repository<L.WorkflowInstance>("autonomy_instances"),
+    audit: repositories.repository<L.AutonomyAuditEvent>("autonomy_audit"),
+  };
+  const analyticsRepos = {
+    recommendations: repositories.repository<L.Recommendation>(
+      "analytics_recommendations",
+    ),
+    lessons: repositories.repository<L.Lesson>("analytics_lessons"),
+  };
   await repositories.hydrateAll();
 
   const audit = new AuditLog(undefined, auditRepository);
@@ -652,6 +714,34 @@ export async function createProductionControlPlaneRuntime(
       runtimeSessions.annotateGovernance(executionId, patch),
   });
   trustSys.emergency.onEngage(() => cancelSessions(() => true));
+  // Layer 9: declarative extensions (skills, agents, tools, workflow templates). `integrations` and
+  // `autonomyRef` are declared later; these closures only run after construction.
+  const extensionSystem = new ExtensionSystem({
+    repos: extensionRepos,
+    security: trustSys,
+    external: {
+      check: (kind, id) => {
+        if (kind === "connector") {
+          const c = integrations.registry.get(id);
+          return c?.enabled
+            ? { ok: true, reason: `connector ${id} is enabled` }
+            : { ok: false, reason: `connector "${id}" is not enabled` };
+        }
+        if (kind === "tool") {
+          const known = integrations.registry
+            .allCapabilities()
+            .some((cap) => cap.capability === id);
+          return known
+            ? { ok: true, reason: `capability ${id} exists` }
+            : { ok: false, reason: `capability "${id}" does not exist` };
+        }
+        return {
+          ok: false,
+          reason: `${kind} dependencies cannot be verified in this deployment`,
+        };
+      },
+    },
+  });
   const assignmentRepository = new InMemoryAssignmentRepository();
   const specialistAssignments = new SpecialistAssignmentService(
     assignmentRepository,
@@ -1245,6 +1335,7 @@ export async function createProductionControlPlaneRuntime(
         new KnowledgeContextSource(promptKnowledgeRepository),
         knowledge.contextSource,
         trustSys.contextSource,
+        extensionSystem.skillContext,
         new TaskContextSource(tasks),
       ],
       {
@@ -1284,6 +1375,7 @@ export async function createProductionControlPlaneRuntime(
       }),
   });
   // Layer 8: Integration Hub. Agents reach external services only through its capability port.
+  const autonomyRef: { current?: AutonomyEngine } = {};
   const integrations = new IntegrationSystem({
     repos: integrationRepos,
     security: trustSys,
@@ -1294,21 +1386,38 @@ export async function createProductionControlPlaneRuntime(
     // Provider calls consume quota, not tokens: recorded as unpriced usage, never as an invented cost.
     recordUsage: (draft) =>
       void usageLedger.record(draft).catch(() => undefined),
-    // Event-triggered work is only ever proposed to the user; nothing runs from a webhook on its own.
+    // A webhook never runs work by itself. A matching autonomy trigger rule creates a workflow whose
+    // first state is decided by the project's autonomy level and the action policy.
     trigger: {
-      propose: async () => ({
-        note: "Event recorded. A run must be started by the operator.",
-      }),
+      propose: async ({ subscription, event }) => {
+        const engine = autonomyRef.current;
+        if (!engine)
+          return {
+            note: "Event recorded. A run must be started by the operator.",
+          };
+        const made = await engine.ingestEvent({
+          source: event.provider === "GitHub" ? "github" : "integration",
+          projectId: subscription.projectId,
+          eventType: event.type,
+          summary: `${event.provider} ${event.type}${event.resource ? ` on ${event.resource}` : ""}`,
+          ref: event.eventId,
+          by: "integration-hub",
+        });
+        return {
+          ...(made[0] ? { runId: made[0].instanceId } : {}),
+          note: made.length
+            ? `${made.length} autonomous workflow(s) created under the project's autonomy policy.`
+            : "Event recorded. No autonomy rule matches it; a run must be started by the operator.",
+        };
+      },
     },
   });
   integrations.syncProjectMappings(
     bootstrap.projects.list().map((p) => {
-      const repository = p.metadata?.["repository"];
+      const repository = parseProjectRepositoryRef(p.metadata?.["repository"]);
       return {
         projectId: p.projectId,
-        ...(typeof repository === "string"
-          ? { repositoryUrl: repository }
-          : {}),
+        ...(repository ? { repositoryUrl: repository.url } : {}),
       };
     }),
   );
@@ -1410,6 +1519,366 @@ export async function createProductionControlPlaneRuntime(
     audit,
     projectExists: (projectId) => bootstrap.projects.has(projectId),
   });
+  // ===== Layers 10–13 =====
+  let provisionedSnapshot: Awaited<
+    ReturnType<typeof provisionedProjects.list>
+  > = [];
+  const usageSnapshot = new Map<string, L.UsageRecord[]>();
+  let platformStamp = 0;
+  /** Usage and onboarding records live in async stores; reads are served from a short-lived snapshot. */
+  const refreshPlatformData = async (): Promise<void> => {
+    if (Date.now() - platformStamp < 15_000) return;
+    platformStamp = Date.now();
+    try {
+      provisionedSnapshot = await provisionedProjects.list();
+    } catch {
+      /* keep the last snapshot */
+    }
+    for (const reg of bootstrap.projects.list()) {
+      try {
+        usageSnapshot.set(
+          reg.projectId,
+          await usageLedger.listInternal(reg.projectId, 500),
+        );
+      } catch {
+        /* keep the last snapshot */
+      }
+    }
+  };
+  await refreshPlatformData();
+  const allUsage = (): L.UsageRecord[] => [...usageSnapshot.values()].flat();
+  const allRuns = () => executionRunRepository.list();
+  const deriveRun = (run: L.ExecutionRun) => executionOrchestrator.derive(run);
+  const alertFacts = (): AlertFact[] =>
+    trustSys.alerts.list().map((a) => ({
+      alertId: a.alertId,
+      ...(a.projectId ? { projectId: a.projectId } : {}),
+      severity: a.severity,
+      status: a.status,
+      event: a.event,
+      description: a.description,
+    }));
+  const projectFacts = (): ProjectFacts[] =>
+    bootstrap.projects.list().map((reg) => {
+      const prov = provisionedSnapshot.find((x) => x.id === reg.projectId);
+      const repo = parseProjectRepositoryRef(reg.metadata?.["repository"]);
+      const values = (xs: { value: string }[] | undefined) =>
+        (xs ?? []).map((x) => x.value).slice(0, 8);
+      const tech = prov?.plan.technology;
+      const environment = prov?.plan.environments?.[0]?.environmentType;
+      const target = values(tech?.deploymentTargets)[0];
+      return {
+        projectId: reg.projectId,
+        name: reg.displayName,
+        ...(repo ? { repository: repo.url, branch: repo.defaultBranch } : {}),
+        stack: [...values(tech?.languages), ...values(tech?.frameworks)],
+        ...(environment ? { environment } : {}),
+        ...(target ? { deploymentTarget: target } : {}),
+      };
+    });
+  const agentsOfProject = (projectId: string): string[] => [
+    ...new Set(
+      allRuns()
+        .filter((r) => r.projectId === projectId)
+        .flatMap((r) =>
+          r.tasks
+            .map((t) => t.assignedAgent?.agentId)
+            .filter((a): a is string => !!a),
+        ),
+    ),
+  ];
+  const rememberInKnowledge = (
+    title: string,
+    content: string,
+    projectId: string | undefined,
+    ref: string,
+    tags: string[],
+    type: "EXECUTION" | "ARCHITECTURAL",
+    actor: { id: string; kind: "USER" | "SYSTEM" },
+  ): boolean => {
+    try {
+      knowledge.memory.create(
+        {
+          type,
+          title,
+          content,
+          source: actor.kind === "USER" ? "USER" : "SYSTEM",
+          sourceRef: ref,
+          ...(projectId ? { projectId } : {}),
+          tags,
+        },
+        actor,
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const portfolioIntel: PortfolioIntelligence = new PortfolioIntelligence(
+    portfolioRepos,
+    {
+      projects: projectFacts,
+      runs: allRuns,
+      deriveRunStatus: deriveRun,
+      usage: allUsage,
+      alerts: alertFacts,
+      memories: () => knowledge.memory.all(),
+      reusableExtensions: () =>
+        extensionSystem.platform
+          .list()
+          .filter(
+            (x) =>
+              x.status === "ENABLED" &&
+              (x.type === "SKILL" || x.type === "WORKFLOW"),
+          )
+          .map((x) => ({
+            kind: x.type as "SKILL" | "WORKFLOW",
+            extensionId: x.extensionId,
+            name: x.name,
+          })),
+      agentsFor: agentsOfProject,
+      overdueObjectives: (projectId) =>
+        businessService
+          .listObjectives({ projectId })
+          .filter(
+            (o) =>
+              o.status === "ACTIVE" &&
+              o.targetDate &&
+              o.targetDate < new Date().toISOString(),
+          ).length,
+      ledger: trustSys.ledger,
+      clock: () => new Date().toISOString(),
+    },
+  );
+  const businessService: BusinessService = new BusinessService(businessRepos, {
+    projectExists: (projectId) => bootstrap.projects.has(projectId),
+    agentExists: (agentId) => bootstrap.agents.has(agentId),
+    measure: (metric, projectId) =>
+      measureMetric(metric, projectId, {
+        runs: allRuns(),
+        deriveRunStatus: deriveRun,
+        usage: allUsage(),
+        alerts: alertFacts(),
+      }),
+    workflowTemplates: () =>
+      extensionSystem.platform.enabledWorkflowTemplates(),
+    projectHealth: (projectId) => {
+      try {
+        const h = portfolioIntel.health(projectId, () => true);
+        return { state: h.state, reasons: h.reasons };
+      } catch {
+        return undefined;
+      }
+    },
+    remember: (d) =>
+      void rememberInKnowledge(
+        d.title,
+        `${d.decision}\nRationale: ${d.rationale}\nContext: ${d.context}`,
+        d.links.projectId,
+        d.decisionId,
+        ["decision"],
+        "ARCHITECTURAL",
+        { id: "owner", kind: "USER" },
+      ),
+    ledger: trustSys.ledger,
+    clock: () => new Date().toISOString(),
+  });
+
+  const summarizeActivity = (projectId: string): string => {
+    const entries = trustSys.ledger.query({ projectId, limit: 25 });
+    const hub = integrations.gateway.activityLog({ projectId, limit: 25 });
+    return [
+      `Governance records: ${entries.length}`,
+      ...entries
+        .slice(0, 8)
+        .map((e) => `- ${e.at.slice(0, 19)} ${e.operation} → ${e.result}`),
+      `Integration calls: ${hub.length} (${hub.filter((h) => h.outcome === "FAILED").length} failed, ${hub.filter((h) => h.outcome === "DENIED" || h.outcome === "BLOCKED").length} denied/blocked)`,
+    ].join("\n");
+  };
+  const platformReport = (projectId: string): string => {
+    const s = portfolioIntel.summary(projectId, () => true);
+    return [
+      `Health: ${s.health.state}${s.health.reasons.length ? ` — ${s.health.reasons.slice(0, 4).join("; ")}` : ""}`,
+      `Workflows: ${s.workflows.active} active of ${s.workflows.total}`,
+      `Cost: ${s.cost.spentUsd === null ? "no priced usage" : `$${s.cost.spentUsd.toFixed(4)}`}, ${s.cost.tokens.toLocaleString("en-US")} tokens`,
+      ...s.health.signals.map((g) => `- ${g.name}: ${g.status} — ${g.detail}`),
+    ].join("\n");
+  };
+  const NOT_WIRED =
+    "needs an executor for the governed workspace that is not wired in this deployment";
+  const autonomy = new AutonomyEngine(autonomyRepos, {
+    executor: new PlatformActionExecutor(
+      {
+        inspect_logs: (ctx) => ({
+          ok: true,
+          output: summarizeActivity(ctx.projectId),
+        }),
+        generate_report: (ctx) => ({
+          ok: true,
+          output: platformReport(ctx.projectId),
+        }),
+        read_repository: async (ctx) => {
+          const r = await integrations.gateway.invoke({
+            capability: "repository.read",
+            projectId: ctx.projectId,
+            principalId: "autonomy-engine",
+            parameters: {},
+          });
+          if (r.success)
+            return {
+              ok: true,
+              output: JSON.stringify(r.data ?? {}).slice(0, 1500),
+            };
+          const kind =
+            r.error?.kind === "APPROVAL_REQUIRED" ||
+            r.error?.kind === "POLICY_DENIED"
+              ? "POLICY"
+              : r.error?.retryable
+                ? "TRANSIENT"
+                : "PERMANENT";
+          return {
+            ok: false,
+            error: {
+              kind,
+              message: r.error?.message ?? "the repository could not be read",
+            },
+          };
+        },
+      },
+      Object.fromEntries(
+        [
+          "run_tests",
+          "analyze_dependencies",
+          "create_branch",
+          "prepare_pull_request",
+          "start_orchestrated_run",
+          "commit_to_branch",
+          "push_branch",
+          "deploy_staging",
+          "delete_branch",
+          "revert_commit",
+          "rollback_deployment",
+        ].map((a) => [a, `"${a}" ${NOT_WIRED}`]),
+      ),
+    ),
+    requestApproval: (d) =>
+      approvals.request({
+        action: d.action,
+        requestedBy: d.requestedBy,
+        reason: d.reason,
+        metadata: d.metadata,
+      }).id,
+    approvalState: (id) => {
+      const a = approvals.get(id);
+      return !a ? "unknown" : a.status === "requested" ? "pending" : a.status;
+    },
+    decideApproval: (id, decision, by) => {
+      try {
+        approvals.decide(
+          id,
+          decision === "approve" ? "approved" : "rejected",
+          by,
+        );
+      } catch {
+        /* already decided elsewhere */
+      }
+    },
+    emergencyStopped: () => trustSys.emergency.halted(),
+    raiseAlert: (a) =>
+      void trustSys.alerts.raise({
+        severity: a.severity,
+        source: "POLICY",
+        event: a.event,
+        description: a.description,
+        projectId: a.projectId,
+        dedupeKey: a.dedupeKey,
+      }),
+    projectExists: (projectId) => bootstrap.projects.has(projectId),
+    environmentOf: (projectId) =>
+      projectFacts().find((f) => f.projectId === projectId)?.environment,
+    onboardingLevel: (projectId) =>
+      provisionedSnapshot.find((x) => x.id === projectId)?.plan.autonomy.level,
+    orchestration: () => {
+      const states = allRuns().map(deriveRun);
+      return {
+        active: states.filter((x) => x === "EXECUTING" || x === "REVIEW")
+          .length,
+        queued: states.filter((x) => x === "NOT_STARTED").length,
+        failed: states.filter((x) => x === "FAILED").length,
+        waitingApproval: states.filter((x) => x === "WAITING_APPROVAL").length,
+      };
+    },
+    ledger: trustSys.ledger,
+    clock: () => new Date().toISOString(),
+    now: () => Date.now(),
+  });
+  autonomyRef.current = autonomy;
+
+  const analytics = new AnalyticsIntelligence(analyticsRepos, {
+    runs: allRuns,
+    deriveRunStatus: deriveRun,
+    usage: allUsage,
+    alerts: alertFacts,
+    approvals: () =>
+      approvals
+        .list()
+        .map((a) => ({
+          id: a.id,
+          action: a.action,
+          status: a.status === "requested" ? "pending" : a.status,
+          requestedAt: a.requestedAt,
+          ...(a.decidedAt ? { decidedAt: a.decidedAt } : {}),
+        })),
+    toolActivity: () =>
+      integrations.gateway
+        .activityLog({ limit: 500 })
+        .map((h) => ({
+          ...(h.agentId ? { agentId: h.agentId } : {}),
+          capability: h.capability,
+          ...(h.connectorId ? { connectorId: h.connectorId } : {}),
+          projectId: h.projectId,
+          outcome: h.outcome,
+          at: h.at,
+        })),
+    connectorHealth: () =>
+      integrations.registry
+        .list()
+        .map((c) => ({ connectorId: c.connectorId, status: c.status })),
+    autonomy: () => autonomy.list(),
+    dependentsOf: (projectId) =>
+      portfolioIntel
+        .listDependencies(() => true)
+        .filter((d) => d.to === projectId)
+        .map((d) => d.from),
+    remember: (l) =>
+      rememberInKnowledge(
+        l.title,
+        l.content,
+        l.projectId,
+        l.lessonId,
+        ["lesson", l.kind.toLowerCase()],
+        "EXECUTION",
+        { id: "analytics", kind: "SYSTEM" },
+      ),
+    ledger: trustSys.ledger,
+    clock: () => new Date().toISOString(),
+    now: () => Date.now(),
+  });
+  const extensionControl = new ExtensionControlService(
+    { audit },
+    extensionSystem.platform,
+  );
+  const businessControl = new BusinessControlService(
+    { audit },
+    businessService,
+  );
+  const portfolioControl = new PortfolioIntelligenceControlService(
+    { audit },
+    portfolioIntel,
+  );
+  const operationsControl = new AutonomyControlService({ audit }, autonomy);
+  const analyticsControl = new AnalyticsControlService({ audit }, analytics);
   const query = new WorkforceQueryService(context);
   const command = new WorkforceCommandService(context);
   const graphQuery = new GraphQueryService(context);
@@ -1421,6 +1890,12 @@ export async function createProductionControlPlaneRuntime(
     knowledge: knowledgeControl,
     trustCenter: trustControl,
     integrationCenter: integrationControl,
+    extensionCenter: extensionControl,
+    businessCenter: businessControl,
+    portfolioCenter: portfolioControl,
+    operationsCenter: operationsControl,
+    analyticsCenter: analyticsControl,
+    refreshData: refreshPlatformData,
     projectSync,
     graphQuery,
     query,

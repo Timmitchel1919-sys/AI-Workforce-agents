@@ -18,6 +18,11 @@
  *        CORE  →  Security  →  Audit / State
  */
 import { INTEGRATION_COMMANDS } from "./integration-gateway.js";
+import { EXTENSION_COMMANDS } from "./extension-platform.js";
+import { BUSINESS_COMMANDS } from "./business-layer.js";
+import { PORTFOLIO_COMMANDS } from "./portfolio-intelligence.js";
+import { AUTONOMY_COMMANDS } from "./autonomy.js";
+import { ANALYTICS_COMMANDS } from "./analytics-intelligence.js";
 import {
   requireText,
   ValidationError,
@@ -90,6 +95,12 @@ export const CONTROL_CAPABILITIES = [
   "manage_security",
   /* Integration Hub: connectors, credentials, MCP servers, event subscriptions. */
   "manage_integrations",
+  /* Layers 9–13: extensions, business layer, portfolio, autonomous operations, analytics. */
+  "manage_extensions",
+  "manage_business",
+  "manage_portfolio",
+  "manage_autonomy",
+  "manage_analytics",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -132,6 +143,11 @@ export const ROLE_CAPABILITIES: Record<
     // Governance: raise the emergency stop, handle alerts, suspend agents (critical changes stay admin-only).
     "manage_security",
     "manage_integrations",
+    "manage_extensions",
+    "manage_business",
+    "manage_portfolio",
+    "manage_autonomy",
+    "manage_analytics",
   ],
   admin: [
     "view",
@@ -176,6 +192,11 @@ export const ROLE_CAPABILITIES: Record<
     "manage_knowledge",
     "manage_security",
     "manage_integrations",
+    "manage_extensions",
+    "manage_business",
+    "manage_portfolio",
+    "manage_autonomy",
+    "manage_analytics",
   ],
 };
 
@@ -321,6 +342,12 @@ export const CONTROL_COMMANDS = [
   "security_scan_dependencies",
   // Integration Hub.
   ...INTEGRATION_COMMANDS,
+  // Layers 9–13.
+  ...EXTENSION_COMMANDS,
+  ...BUSINESS_COMMANDS,
+  ...PORTFOLIO_COMMANDS,
+  ...AUTONOMY_COMMANDS,
+  ...ANALYTICS_COMMANDS,
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 

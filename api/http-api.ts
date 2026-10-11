@@ -57,6 +57,14 @@ export interface ControlPlaneApiOptions {
   trustCenter?: import("../control/index.js").TrustControlService;
   /** Integration Hub: connectors, Tool Explorer, events, webhooks, MCP, activity, credentials (metadata only). */
   integrationCenter?: import("../control/services/integration-control-service.js").IntegrationControlService;
+  /** Warms the usage / onboarding snapshots the portfolio, operations and analytics layers read. */
+  refreshData?: () => Promise<void>;
+  /** Layers 9–13. */
+  extensionCenter?: import("../control/services/platform-layers-control.js").ExtensionControlService;
+  businessCenter?: import("../control/services/platform-layers-control.js").BusinessControlService;
+  portfolioCenter?: import("../control/services/platform-layers-control.js").PortfolioIntelligenceControlService;
+  operationsCenter?: import("../control/services/platform-layers-control.js").AutonomyControlService;
+  analyticsCenter?: import("../control/services/platform-layers-control.js").AnalyticsControlService;
   /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
   projectSync?: () => Promise<void>;
   operatorDirectory: OperatorDirectory;
@@ -621,6 +629,16 @@ export function createControlPlaneApi(
     correlationId: string,
   ): Promise<void> {
     const [head, id] = segs;
+    if (
+      head &&
+      [
+        "portfolio-intelligence",
+        "operations-center",
+        "analytics-intelligence",
+        "business-layer",
+      ].includes(head)
+    )
+      await options.refreshData?.();
     switch (head) {
       case "trust": {
         const security = options.trustCenter;
@@ -653,6 +671,145 @@ export function createControlPlaneApi(
               return security.secrets(principal);
             case "project":
               return security.projectSecurity(principal, projectId ?? "");
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "extensions-platform": {
+        const hub = options.extensionCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "overview":
+              return hub.overview(principal);
+            case "extension":
+              return hub.extension(principal, itemId ?? "");
+            case "audit":
+              return hub.audit(
+                principal,
+                params.get("extensionId") ?? undefined,
+              );
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "business-layer": {
+        const hub = options.businessCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "overview":
+              return hub.overview(principal);
+            case "objectives":
+              return hub.objectives(principal, params);
+            case "objective":
+              return hub.objective(principal, itemId ?? "");
+            case "initiatives":
+              return hub.initiatives(
+                principal,
+                params.get("objectiveId") ?? undefined,
+              );
+            case "decisions":
+              return hub.decisions(principal, params);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "portfolio-intelligence": {
+        const hub = options.portfolioCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "dashboard":
+              return hub.dashboard(principal);
+            case "projects":
+              return hub.projects(principal, params.get("archived") === "true");
+            case "project":
+              return hub.project(principal, itemId ?? "");
+            case "health":
+              return hub.health(principal, itemId ?? "");
+            case "priorities":
+              return hub.priorities(principal);
+            case "conflicts":
+              return hub.conflicts(principal);
+            case "dependencies":
+              return hub.dependencies(principal);
+            case "ask":
+              return hub.ask(principal, params.get("q") ?? "");
+            case "knowledge":
+              return hub.knowledge(principal);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "operations-center": {
+        const hub = options.operationsCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "overview":
+              return hub.operations(principal);
+            case "instances":
+              return hub.instances(principal, params);
+            case "instance":
+              return hub.instance(principal, itemId ?? "");
+            case "catalog":
+              return hub.catalog(principal);
+            case "level":
+              return hub.levelFor(principal, params.get("projectId") ?? "");
+            case "audit":
+              return hub.audit(principal, params);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "analytics-intelligence": {
+        const hub = options.analyticsCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const projectId = params.get("projectId") ?? undefined;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "overview":
+              return hub.overview(principal);
+            case "agents":
+              return hub.agents(principal);
+            case "workflows":
+              return hub.workflows(principal, projectId);
+            case "project":
+              return hub.project(principal, itemId ?? "");
+            case "cost":
+              return hub.cost(principal, projectId);
+            case "bottlenecks":
+              return hub.bottlenecks(principal);
+            case "predictions":
+              return hub.predictions(principal);
+            case "recommendations":
+              return hub.recommendations(
+                principal,
+                params.get("status") ?? undefined,
+              );
+            case "lessons":
+              return hub.lessons(principal);
             default:
               throw new NotFoundError("resource not found");
           }
@@ -2026,6 +2183,50 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
+    const layered: [
+      string,
+      (
+        | {
+            execute: (
+              n: string,
+              p: OperatorPrincipal,
+              b: Record<string, unknown>,
+              o?: { correlationId?: string },
+            ) => Promise<import("../contracts/index.js").ControlCommandResult>;
+          }
+        | undefined
+      ),
+    ][] = [
+      ["extension_", options.extensionCenter],
+      ["business_", options.businessCenter],
+      ["portfolio_", options.portfolioCenter],
+      ["autonomy_", options.operationsCenter],
+      ["analytics_", options.analyticsCenter],
+    ];
+    for (const [prefix, service] of layered) {
+      if (!name.startsWith(prefix) || !service) continue;
+      await options.refreshData?.();
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const outcome = await service.execute(name, principal, payload, {
+        correlationId,
+      });
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
     if (name.startsWith("integration_") && options.integrationCenter) {
       let payload: Record<string, unknown>;
       try {
