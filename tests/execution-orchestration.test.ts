@@ -1345,6 +1345,8 @@ test("tool authorization: least privilege per task type; secrets are never grant
   );
   assert.deepEqual(dev.permitted.sort(), [
     "build.run",
+    // The Integration Hub capability tool: a request, not provider access (each call is still governed).
+    "integration.use",
     "repo.edit",
     "repo.read",
     "tests.run",

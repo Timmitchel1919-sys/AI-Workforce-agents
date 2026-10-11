@@ -160,17 +160,23 @@ export function taxonomyFor(productId: string): readonly string[] | undefined {
 
 /** Tools a task of a given type MAY use. Everything else is denied. */
 const TOOLS_BY_TYPE: Readonly<Record<OrchTaskType, readonly string[]>> = {
-  RESEARCH: ["repo.read", "docs.read"],
-  ANALYSIS: ["repo.read", "docs.read"],
-  DESIGN: ["repo.read", "docs.read"],
-  DEVELOPMENT: ["repo.read", "repo.edit", "tests.run", "build.run"],
-  REVIEW: ["repo.read", "diff.read"],
-  TEST: ["repo.read", "tests.run"],
-  SECURITY: ["repo.read", "diff.read", "security.scan"],
-  DOCUMENTATION: ["repo.read", "repo.edit"],
-  INTEGRATION: ["git.status", "git.diff"],
-  DEPLOYMENT: ["build.run"],
-  MAINTENANCE: ["repo.read"],
+  RESEARCH: ["repo.read", "docs.read", "integration.use"],
+  ANALYSIS: ["repo.read", "docs.read", "integration.use"],
+  DESIGN: ["repo.read", "docs.read", "integration.use"],
+  DEVELOPMENT: [
+    "repo.read",
+    "repo.edit",
+    "tests.run",
+    "build.run",
+    "integration.use",
+  ],
+  REVIEW: ["repo.read", "diff.read", "integration.use"],
+  TEST: ["repo.read", "tests.run", "integration.use"],
+  SECURITY: ["repo.read", "diff.read", "security.scan", "integration.use"],
+  DOCUMENTATION: ["repo.read", "repo.edit", "integration.use"],
+  INTEGRATION: ["git.status", "git.diff", "integration.use"],
+  DEPLOYMENT: ["build.run", "integration.use"],
+  MAINTENANCE: ["repo.read", "integration.use"],
 };
 
 /** Tools usable only after an approved human decision for THIS task. */

@@ -16,6 +16,8 @@ export const AGENT_ACTIONS = [
   "rename_file",
   "delete_file",
   "run_command",
+  "list_capabilities",
+  "use_capability",
   "finish",
 ] as const;
 export type AgentActionName = (typeof AGENT_ACTIONS)[number];
@@ -41,6 +43,13 @@ export type AgentAction =
   | { action: "rename_file"; from: string; to: string }
   | { action: "delete_file"; path: string }
   | { action: "run_command"; command: string }
+  | { action: "list_capabilities" }
+  | {
+      action: "use_capability";
+      capability: string;
+      parameters: Record<string, unknown>;
+      resource?: string;
+    }
   | {
       action: "finish";
       status: FinishStatus;
@@ -204,6 +213,38 @@ export function parseAction(reply: string): ParsedAction {
         fail(t.error) ?? {
           ok: true,
           action: { action: "rename_file", from: f.value!, to: t.value! },
+          ...(reason ? { reason } : {}),
+        }
+      );
+    }
+    case "list_capabilities":
+      return {
+        ok: true,
+        action: { action: "list_capabilities" },
+        ...(reason ? { reason } : {}),
+      };
+    case "use_capability": {
+      const cap = text(obj, "capability", 100);
+      const res = text(obj, "resource", 300, { required: false });
+      const params = obj["parameters"] ?? {};
+      if (
+        params === null ||
+        typeof params !== "object" ||
+        Array.isArray(params)
+      )
+        return { ok: false, error: '"parameters" must be an object' };
+      if (JSON.stringify(params).length > 64_000)
+        return { ok: false, error: '"parameters" is too large' };
+      return (
+        fail(cap.error) ??
+        fail(res.error) ?? {
+          ok: true,
+          action: {
+            action: "use_capability",
+            capability: cap.value!,
+            parameters: params as Record<string, unknown>,
+            ...(res.value ? { resource: res.value } : {}),
+          },
           ...(reason ? { reason } : {}),
         }
       );

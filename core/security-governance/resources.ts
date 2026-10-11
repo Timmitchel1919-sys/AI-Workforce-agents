@@ -20,6 +20,8 @@ const PROD = /(^|[^a-z])(prod|production|live)([^a-z]|$)/i;
 const PREFIX_KIND: Record<string, ResourceKind> = {
   secret: "SECRET",
   secrets: "SECRET",
+  credential: "SECRET",
+  cred: "SECRET",
   env: "ENV_FILE",
   repo: "REPOSITORY",
   repository: "REPOSITORY",

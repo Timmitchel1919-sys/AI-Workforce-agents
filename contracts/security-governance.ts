@@ -359,7 +359,8 @@ export interface SecurityAlert extends Entity {
     | "AUDITOR"
     | "DEPENDENCY"
     | "EMERGENCY"
-    | "AGENT_TRUST";
+    | "AGENT_TRUST"
+    | "INTEGRATION";
   projectId?: string;
   executionId?: string;
   taskId?: string;

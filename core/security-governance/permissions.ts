@@ -91,6 +91,29 @@ export function checkPermission(
       reason: "read/execute is within every task profile",
       rule: "ok",
     };
+  // External systems reached through the integration hub: read-only task types may not change them;
+  // everything else is decided by risk, policy and approval (sending and publishing always need a human).
+  if (
+    resource.kind === "INTEGRATION" &&
+    a !== "ADMINISTRATIVE" &&
+    a !== "EXPORT"
+  ) {
+    if (
+      ["REVIEW", "SECURITY", "ANALYSIS", "RESEARCH", "TEST"].includes(
+        req.taskType ?? "",
+      )
+    )
+      return {
+        ok: false,
+        reason: `a ${req.taskType} task may not change external systems (least privilege)`,
+        rule: "task_profile",
+      };
+    return {
+      ok: true,
+      reason: "external side effects are decided by policy and approval",
+      rule: "ok",
+    };
+  }
   if (a === "EXPORT" || a === "SHARE" || a === "ADMINISTRATIVE")
     return {
       ok: false,

@@ -5,7 +5,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n } from "../i18n";
 import RouteError from "./RouteError";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace, loadKnowledge, loadSecurityCenter } from "./routeModules";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace, loadKnowledge, loadSecurityCenter, loadIntegrationCenter } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -50,6 +50,7 @@ const ExecutionCenterPage = fromChunk(loadExecutionCenter, "ExecutionCenterPage"
 const LiveWorkspacePage = fromChunk(loadLiveWorkspace, "LiveWorkspacePage");
 const KnowledgePage = fromChunk(loadKnowledge, "KnowledgePage");
 const SecurityCenterPage = fromChunk(loadSecurityCenter, "SecurityCenterPage");
+const IntegrationCenterPage = fromChunk(loadIntegrationCenter, "IntegrationCenterPage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
 const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
@@ -174,6 +175,9 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "security-center", element: withSuspense(<SecurityCenterPage />) },
       { path: "security-center/:tab", element: withSuspense(<SecurityCenterPage />) },
       { path: "security-center/:tab/:itemId", element: withSuspense(<SecurityCenterPage />) },
+      { path: "integration-center", element: withSuspense(<IntegrationCenterPage />) },
+      { path: "integration-center/:tab", element: withSuspense(<IntegrationCenterPage />) },
+      { path: "integration-center/:tab/:itemId", element: withSuspense(<IntegrationCenterPage />) },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },

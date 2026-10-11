@@ -25,6 +25,9 @@ export const loadKnowledge = () => import("../pages/Knowledge/routes");
 /** Security & Trust Center page (separate lazy chunk). */
 export const loadSecurityCenter = () => import("../pages/SecurityCenter/routes");
 
+/** Integration Center page (separate lazy chunk). */
+export const loadIntegrationCenter = () => import("../pages/IntegrationCenter/routes");
+
 export type RouteChunk = "landing" | "auth" | "controlCenter";
 
 export const routeChunkLoaders: Record<RouteChunk, () => Promise<unknown>> = {

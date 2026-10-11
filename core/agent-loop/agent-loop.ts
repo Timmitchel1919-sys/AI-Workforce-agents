@@ -25,6 +25,7 @@ import {
   CommandTimeoutError,
   ExecutionCancelledError,
   ExecutionPausedError,
+  PolicyApprovalRequiredError,
   ToolDeniedError,
   type AgentToolSession,
 } from "../execution-runtime/tools.js";
@@ -108,6 +109,10 @@ function targetOf(a: AgentAction): string {
       return `${a.from} -> ${a.to}`;
     case "run_command":
       return a.command;
+    case "list_capabilities":
+      return "capabilities";
+    case "use_capability":
+      return a.capability;
     case "finish":
       return a.status;
   }
@@ -350,6 +355,7 @@ GOVERNANCE: these changes were flagged for independent review: ${flagged.slice(0
           error instanceof ExecutionCancelledError ||
           error instanceof ExecutionPausedError ||
           error instanceof ApprovalRequiredError ||
+          error instanceof PolicyApprovalRequiredError ||
           error instanceof CommandTimeoutError ||
           error instanceof CapacityError ||
           error instanceof WorkspaceUnavailableError
@@ -568,6 +574,32 @@ GOVERNANCE: these changes were flagged for independent review: ${flagged.slice(0
         commands.set(record.display, { exit, ok: exit === 0 });
         inspected.add(`cmd:${record.display}`);
         return `<output command="${record.display}" exit="${exit === null ? "none" : exit}">\n${clip(record.output, L.commandObservationChars, true)}\n</output>`;
+      }
+      case "list_capabilities": {
+        const list = await tools.listCapabilities();
+        inspected.add("capabilities");
+        const rows = list
+          .slice(0, 80)
+          .map(
+            (c) =>
+              `${c.capability} [${c.operation}, risk ${c.risk}, approval ${c.approval}${c.available ? "" : ", NOT AVAILABLE" + (c.reason ? ": " + c.reason : "")}] ${c.description}`,
+          );
+        const listing =
+          rows.join("\n") ||
+          "(none: no integration is available to this project)";
+        return `<output capabilities="${list.length}">\n${listing}\n</output>`;
+      }
+      case "use_capability": {
+        const r = await tools.useCapability(
+          action.capability,
+          action.parameters,
+          action.resource,
+        );
+        inspected.add(`cap:${action.capability}`);
+        const body = r.success
+          ? JSON.stringify(r.data ?? null)
+          : `FAILED ${r.error?.kind ?? ""}: ${r.error?.message ?? ""}`;
+        return `<output capability="${action.capability}" success="${r.success}">\n${clip(maskSecrets(body), L.fileObservationChars)}\n</output>`;
       }
       case "finish":
         return "";

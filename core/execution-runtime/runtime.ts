@@ -44,6 +44,7 @@ import {
   PolicyApprovalRequiredError,
   PolicyDeniedError,
   type ActionGate,
+  type CapabilityPort,
   commitPolicy,
   extractErrors,
   runValidation,
@@ -111,6 +112,8 @@ export interface RuntimeDeps {
   identity?: { name: string; email: string };
   /** Cap on a single command, in milliseconds. */
   maxCommandMs?: number;
+  /** Layer 8: the integration hub, exposed to agents as capabilities only. */
+  capabilities?: CapabilityPort;
   /** Layer 7: policy decision point consulted before every write, delete, command, commit and deployment. */
   gate?: ActionGate;
   /** Called after every execution (success or failure): the learning loop's entry point. */
@@ -290,10 +293,15 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
         permittedTools: context.permittedTools,
         approved: task.approval?.state === "approved",
         ...(this.deps.gate ? { gate: this.deps.gate } : {}),
+        ...(this.deps.capabilities
+          ? { capabilities: this.deps.capabilities }
+          : {}),
         taskType: task.type,
         expectedScope: [...task.resources, ...context.relevantFiles],
         ...(context.model?.model
-          ? { modelId: `${context.model.provider ?? "unknown"}/${context.model.model}` }
+          ? {
+              modelId: `${context.model.provider ?? "unknown"}/${context.model.model}`,
+            }
           : {}),
         runner: this.runner,
         git:
@@ -417,7 +425,10 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
         if (drift && scope.status !== "FLAGGED_FOR_REVIEW") {
           return {
             kind: "success",
-            summary: `Execution drift detected by governance: ${drift.unexpected.slice(0, 8).map((u) => u.path).join(", ")}`,
+            summary: `Execution drift detected by governance: ${drift.unexpected
+              .slice(0, 8)
+              .map((u) => u.path)
+              .join(", ")}`,
             evidence: [
               `expected: ${drift.expected.join(", ") || "none declared"}`,
               `unexpected: ${drift.unexpected.map((u) => u.path).join(", ")}`,
@@ -609,9 +620,14 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
     const git =
       this.deps.gitFactory?.(workspace) ?? new LocalGitOps(workspace.rootReal);
     const before = await git.state();
-    await tools.enforce("git.commit", "PUBLISH", `branch:${before.branch ?? "main"}`, {
-      count: files.length,
-    });
+    await tools.enforce(
+      "git.commit",
+      "PUBLISH",
+      `branch:${before.branch ?? "main"}`,
+      {
+        count: files.length,
+      },
+    );
     const message = `${context.objective.replace(/\.$/, "").slice(0, 120)}\n\nTask: ${task.taskId}`;
     const result = await git.commit(
       files,
@@ -658,11 +674,17 @@ export class GovernedTaskRuntime implements TaskRuntimePort {
     }
     // Deployment is never implicit: the governance gate decides, per environment.
     const environment =
-      inferEnvironment(`${context.objective} ${task.title} ${task.description} ${task.prompt}`) ??
-      "PRODUCTION";
-    await tools.enforce("deploy.handoff", "DEPLOY", `deploy:${environment.toLowerCase()}`, {
-      environment,
-    });
+      inferEnvironment(
+        `${context.objective} ${task.title} ${task.description} ${task.prompt}`,
+      ) ?? "PRODUCTION";
+    await tools.enforce(
+      "deploy.handoff",
+      "DEPLOY",
+      `deploy:${environment.toLowerCase()}`,
+      {
+        environment,
+      },
+    );
     const ref = await handoff.handoff({
       projectId: task.projectId,
       runId: context.runId,

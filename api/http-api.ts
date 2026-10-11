@@ -55,6 +55,8 @@ export interface ControlPlaneApiOptions {
   knowledge?: import("../control/index.js").KnowledgeControlService;
   /** Governance, trust, security & policy (policies, trust, approvals, alerts, audit, emergency stop). */
   trustCenter?: import("../control/index.js").TrustControlService;
+  /** Integration Hub: connectors, Tool Explorer, events, webhooks, MCP, activity, credentials (metadata only). */
+  integrationCenter?: import("../control/services/integration-control-service.js").IntegrationControlService;
   /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
   projectSync?: () => Promise<void>;
   operatorDirectory: OperatorDirectory;
@@ -247,6 +249,28 @@ export function createControlPlaneApi(
     // Liveness — no auth.
     if (method === "GET" && segs.length === 1 && segs[0] === "health") {
       return send(res, 200, { status: "ok" }, correlationId);
+    }
+
+    // Signed provider webhooks — no operator token: the HMAC signature IS the authentication.
+    if (
+      method === "POST" &&
+      segs.length === 3 &&
+      segs[0] === "integrations" &&
+      segs[1] === "webhooks" &&
+      options.integrationCenter
+    ) {
+      let raw: string;
+      try {
+        raw = await readRawBody(req, 256_000);
+      } catch {
+        return send(res, 413, { error: "payload too large" }, correlationId);
+      }
+      const out = await options.integrationCenter.receiveWebhook(
+        segs[2]!,
+        req.headers,
+        raw,
+      );
+      return send(res, out.status, out.body, correlationId);
     }
 
     // `GET /me/access` — the signed-in user's own access state. Needs only a
@@ -629,6 +653,43 @@ export function createControlPlaneApi(
               return security.secrets(principal);
             case "project":
               return security.projectSecurity(principal, projectId ?? "");
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "integration-center": {
+        const hub = options.integrationCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const projectId = params.get("projectId") ?? undefined;
+        const result = (() => {
+          switch (area) {
+            case "overview":
+              return hub.overview(principal, projectId);
+            case "connectors":
+              return itemId
+                ? hub.connector(principal, itemId)
+                : hub.overview(principal, projectId).connectors;
+            case "capabilities":
+              return hub.capabilities(principal, params);
+            case "discover":
+              return hub.discover(principal, projectId ?? "");
+            case "events":
+              return hub.events(principal, params);
+            case "activity":
+              return hub.activity(principal, params);
+            case "health":
+              return hub.health(principal);
+            case "mcp":
+              return hub.mcp(principal);
+            case "credentials":
+              return hub.credentials(principal);
+            case "audit":
+              return hub.audit(principal, params);
+            case "mappings":
+              return hub.mappings(principal, projectId);
             default:
               throw new NotFoundError("resource not found");
           }
@@ -1965,6 +2026,31 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
+    if (name.startsWith("integration_") && options.integrationCenter) {
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const outcome = await options.integrationCenter.execute(
+        name,
+        principal,
+        payload,
+        { correlationId },
+      );
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
     if (name.startsWith("security_") && options.trustCenter) {
       let payload: Record<string, unknown>;
       try {
@@ -2239,6 +2325,29 @@ function notNull<T>(value: T | undefined | null): T {
 function statusFilter(params: URLSearchParams): { status?: string } {
   const status = params.get("status");
   return status ? { status } : {};
+}
+
+/** The exact bytes of the request body: a webhook signature is computed over them, never over re-serialised JSON. */
+async function readRawBody(
+  req: IncomingMessage,
+  maxBytes: number,
+): Promise<string> {
+  const raw = (req as IncomingMessage & { rawBody?: Buffer | string }).rawBody;
+  if (raw !== undefined) {
+    const text = typeof raw === "string" ? raw : raw.toString("utf8");
+    if (text.length > maxBytes)
+      throw new ValidationError("request body too large");
+    return text;
+  }
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = chunk as Buffer;
+    total += buf.length;
+    if (total > maxBytes) throw new ValidationError("request body too large");
+    chunks.push(buf);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 async function readJsonBody(

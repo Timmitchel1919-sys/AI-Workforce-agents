@@ -919,6 +919,7 @@ export type {
 } from "./persistence.js";
 export * from "./knowledge-memory.js";
 export * from "./security-governance.js";
+export * from "./integration-gateway.js";
 export * from "./storage.js";
 
 export * from "./research.js";

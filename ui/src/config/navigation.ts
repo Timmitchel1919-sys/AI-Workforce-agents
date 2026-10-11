@@ -68,6 +68,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.intelligence", route: "/intelligence", icon: "intelligence", section: "intelligence" },
   { labelKey: "promptIntelligence.nav", route: "/prompt-intelligence", icon: "intelligence", section: "intelligence" },
   { labelKey: "securityCenter.nav", route: "/security-center", icon: "secops", section: "governance" },
+  { labelKey: "integrationCenter.nav", route: "/integration-center", icon: "integrations", section: "integrations" },
   { labelKey: "nav.governanceControls", route: "/governance", icon: "governance", section: "governance" },
   { labelKey: "nav.continuity", route: "/continuity", icon: "governance", section: "governance" },
   { labelKey: "nav.costCenter", route: "/cost", icon: "cost-center", section: "governance" },

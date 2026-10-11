@@ -129,6 +129,16 @@ export const RUNTIME_TOOLS: readonly RuntimeToolDefinition[] = Object.freeze([
     output: "{ findings }",
   },
   {
+    id: "integration.use",
+    name: "Use an integration capability",
+    capability: "software.general",
+    risk: "medium",
+    operations: ["discover", "invoke"],
+    permissions: [],
+    input: "{ capability, parameters, resource? }",
+    output: "{ success, data?, error? }",
+  },
+  {
     id: "git.status",
     name: "Git status",
     capability: "integration.github",
@@ -234,7 +244,12 @@ export interface GateInput {
   environment?: string;
 }
 export interface GateVerdict {
-  effect: "ALLOW" | "REQUIRE_REVIEW" | "REQUIRE_SECURITY_REVIEW" | "REQUIRE_APPROVAL" | "DENY";
+  effect:
+    | "ALLOW"
+    | "REQUIRE_REVIEW"
+    | "REQUIRE_SECURITY_REVIEW"
+    | "REQUIRE_APPROVAL"
+    | "DENY";
   risk: string;
   reasons: string[];
   explanation: string;
@@ -274,7 +289,42 @@ export class PolicyApprovalRequiredError extends Error {
   }
 }
 
+/** The integration hub as the runtime sees it. Agents get capabilities, never providers or credentials. */
+export interface CapabilityPort {
+  discover(projectId: string): {
+    capability: string;
+    description: string;
+    operation: string;
+    risk: string;
+    approval: string;
+    available: boolean;
+    reason?: string;
+  }[];
+  invoke(request: {
+    capability: string;
+    projectId: string;
+    agentId: string;
+    taskId: string;
+    executionId: string;
+    taskType?: string;
+    resource?: string;
+    parameters: Record<string, unknown>;
+  }): Promise<{
+    success: boolean;
+    data?: unknown;
+    error?: {
+      kind: string;
+      message: string;
+      retryable: boolean;
+      approvalId?: string;
+    };
+    connectorId?: string;
+  }>;
+}
+
 export interface ToolSessionDeps {
+  /** The integration hub (Layer 8). Absent when no hub is composed. */
+  capabilities?: CapabilityPort;
   /** Layer 7: the governance gate. Absent only in tests of the bare runtime. */
   gate?: ActionGate;
   taskType?: string;
@@ -384,7 +434,8 @@ export class AgentToolSession {
     });
     if (verdict.class !== "SAFE" || !verdict.spec) {
       this.record("command", "classify", "denied", verdict.reason, 0);
-      if (verdict.class === "BLOCKED") this.refusal("command", String(line).slice(0, 120));
+      if (verdict.class === "BLOCKED")
+        this.refusal("command", String(line).slice(0, 120));
       this.deps.manager.emit(this.deps.session, "execution.command.started", {
         command: String(line).slice(0, 120),
         class: verdict.class,
@@ -416,7 +467,12 @@ export class AgentToolSession {
     toolId: string,
     action: string,
     resource: string,
-    extra: { content?: string; command?: string; count?: number; environment?: string } = {},
+    extra: {
+      content?: string;
+      command?: string;
+      count?: number;
+      environment?: string;
+    } = {},
   ): Promise<GateVerdict | undefined> {
     const gate = this.deps.gate;
     if (!gate) return undefined;
@@ -428,7 +484,9 @@ export class AgentToolSession {
       agentId: session.agentId,
       ...(this.deps.modelId ? { modelId: this.deps.modelId } : {}),
       ...(this.deps.taskType ? { taskType: this.deps.taskType } : {}),
-      ...(this.deps.expectedScope ? { expectedScope: this.deps.expectedScope } : {}),
+      ...(this.deps.expectedScope
+        ? { expectedScope: this.deps.expectedScope }
+        : {}),
       toolId,
       action,
       resource,
@@ -472,6 +530,56 @@ export class AgentToolSession {
     } catch {
       /* reporting must never change the refusal */
     }
+  }
+
+  /** What can be asked of the integration hub in this project. */
+  listCapabilities() {
+    return this.guard("integration.use", "discover", async () => {
+      const port = this.deps.capabilities;
+      if (!port) return [];
+      return port.discover(this.deps.session.projectId);
+    });
+  }
+
+  /**
+   * Ask the integration hub for a capability. Denials and approvals surface as the same errors as any
+   * other governed tool; other failures come back as a result the agent can read.
+   */
+  useCapability(
+    capability: string,
+    parameters: Record<string, unknown>,
+    resource?: string,
+  ) {
+    return this.guard("integration.use", "invoke", async () => {
+      const port = this.deps.capabilities;
+      if (!port)
+        throw new ToolDeniedError(
+          "integration.use",
+          "no integration hub is configured for this runtime",
+        );
+      const { session } = this.deps;
+      const r = await port.invoke({
+        capability,
+        projectId: session.projectId,
+        agentId: session.agentId,
+        taskId: session.taskId,
+        executionId: session.executionId,
+        ...(this.deps.taskType ? { taskType: this.deps.taskType } : {}),
+        ...(resource ? { resource } : {}),
+        parameters,
+      });
+      if (!r.success && r.error?.kind === "APPROVAL_REQUIRED")
+        throw new PolicyApprovalRequiredError(
+          `approval required: ${r.error.message}`,
+          r.error.approvalId,
+        );
+      if (
+        !r.success &&
+        (r.error?.kind === "POLICY_DENIED" || r.error?.kind === "NOT_MAPPED")
+      )
+        throw new PolicyDeniedError(r.error.message);
+      return r;
+    });
   }
 
   /** Throws when the execution was cancelled or paused; otherwise a heartbeat. */
@@ -605,7 +713,8 @@ export class AgentToolSession {
       return value;
     } catch (error) {
       const message = error instanceof Error ? error.message : "tool error";
-      if (error instanceof PathRefusedError) this.refusal("path", message.slice(0, 120));
+      if (error instanceof PathRefusedError)
+        this.refusal("path", message.slice(0, 120));
       const denied =
         error instanceof PathRefusedError ||
         error instanceof ApprovalRequiredError ||

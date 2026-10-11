@@ -17,6 +17,7 @@
  *         ▼
  *        CORE  →  Security  →  Audit / State
  */
+import { INTEGRATION_COMMANDS } from "./integration-gateway.js";
 import {
   requireText,
   ValidationError,
@@ -87,6 +88,8 @@ export const CONTROL_CAPABILITIES = [
   "manage_knowledge",
   /* Governance & trust: suspend agents, emergency stop, alerts, policies. */
   "manage_security",
+  /* Integration Hub: connectors, credentials, MCP servers, event subscriptions. */
+  "manage_integrations",
 ] as const;
 export type ControlCapability = (typeof CONTROL_CAPABILITIES)[number];
 
@@ -128,6 +131,7 @@ export const ROLE_CAPABILITIES: Record<
     "manage_knowledge",
     // Governance: raise the emergency stop, handle alerts, suspend agents (critical changes stay admin-only).
     "manage_security",
+    "manage_integrations",
   ],
   admin: [
     "view",
@@ -171,6 +175,7 @@ export const ROLE_CAPABILITIES: Record<
     // Knowledge: curate, confirm, supersede and ingest project memory.
     "manage_knowledge",
     "manage_security",
+    "manage_integrations",
   ],
 };
 
@@ -314,6 +319,8 @@ export const CONTROL_COMMANDS = [
   "security_scan_config",
   "security_accept_config",
   "security_scan_dependencies",
+  // Integration Hub.
+  ...INTEGRATION_COMMANDS,
 ] as const;
 export type ControlCommand = (typeof CONTROL_COMMANDS)[number];
 
@@ -528,7 +535,10 @@ export interface SpecialistAgentSummary {
   readonly administrativeStatus: AgentAdministrativeStatus;
   readonly operationalState: AgentInstanceState;
   readonly supportedTaskTypes: readonly string[];
-  readonly projectPolicy: { readonly mode: "allow_list"; readonly projects: readonly string[] };
+  readonly projectPolicy: {
+    readonly mode: "allow_list";
+    readonly projects: readonly string[];
+  };
   readonly toolPolicy: {
     readonly maxExecutionCapabilities: readonly string[];
     readonly deniedExecutionCapabilities: readonly string[];

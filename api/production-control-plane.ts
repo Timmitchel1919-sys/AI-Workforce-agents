@@ -4,6 +4,7 @@ import { OperationsControlService } from "../control/services/operations-service
 import { GrcControlService } from "../control/services/grc-service.js";
 import { AIGovernanceControlService } from "../control/services/ai-governance-service.js";
 import { DataGovernanceService } from "../control/services/data-governance-service.js";
+import { IntegrationControlService } from "../control/services/integration-control-service.js";
 import { SecurityControlService } from "../control/services/security-service.js";
 import { AuditControlService } from "../control/services/audit-service.js";
 import { PortfolioControlService } from "../control/services/portfolio-service.js";
@@ -96,6 +97,12 @@ import {
   GovernedTaskRuntime,
   LlmAgentExecutor,
   SecuritySystem,
+  IntegrationSystem,
+  type IntegrationRepos,
+  type QueuedRequest,
+  type StoredCredential,
+  type OAuthStateRecord,
+  type HubWebhookDelivery,
   LocalNpmAuditRunner,
   type ApprovalMeta,
   type ConfigBaseline,
@@ -176,6 +183,14 @@ import type {
   SecurityAlert,
   ToolTrustRecord,
 } from "../contracts/security-governance.js";
+import type {
+  ActivityRecord,
+  EventSubscription,
+  HubConnector,
+  HubEvent,
+  McpServerRecord,
+  ProjectIntegrationMapping,
+} from "../contracts/integration-gateway.js";
 import type {
   ConflictResolutionRecord,
   KnowledgeEdge,
@@ -541,6 +556,29 @@ export async function createProductionControlPlaneRuntime(
       "memory_conflict_resolutions",
     ),
     sources: repositories.repository<KnowledgeSourceState>("knowledge_sources"),
+  };
+  // Integration Hub: ten durable collections (credentials are stored encrypted), allocated before hydrate.
+  const integrationRepos: IntegrationRepos = {
+    connectors: repositories.repository<HubConnector>("integration_connectors"),
+    mappings: repositories.repository<ProjectIntegrationMapping>(
+      "integration_mappings",
+    ),
+    activity: repositories.repository<ActivityRecord>("integration_activity"),
+    queue: repositories.repository<QueuedRequest>("integration_queue"),
+    credentials: repositories.repository<StoredCredential>(
+      "integration_credentials",
+    ),
+    oauthStates: repositories.repository<OAuthStateRecord>(
+      "integration_oauth_states",
+    ),
+    events: repositories.repository<HubEvent>("integration_events"),
+    subscriptions: repositories.repository<EventSubscription>(
+      "integration_subscriptions",
+    ),
+    deliveries: repositories.repository<HubWebhookDelivery>(
+      "integration_webhook_deliveries",
+    ),
+    mcp: repositories.repository<McpServerRecord>("integration_mcp_servers"),
   };
   await repositories.hydrateAll();
 
@@ -1245,7 +1283,37 @@ export async function createProductionControlPlaneRuntime(
         audit,
       }),
   });
+  // Layer 8: Integration Hub. Agents reach external services only through its capability port.
+  const integrations = new IntegrationSystem({
+    repos: integrationRepos,
+    security: trustSys,
+    ...(process.env["INTEGRATION_VAULT_KEY"]
+      ? { vaultKey: process.env["INTEGRATION_VAULT_KEY"] }
+      : {}),
+    env: process.env,
+    // Provider calls consume quota, not tokens: recorded as unpriced usage, never as an invented cost.
+    recordUsage: (draft) =>
+      void usageLedger.record(draft).catch(() => undefined),
+    // Event-triggered work is only ever proposed to the user; nothing runs from a webhook on its own.
+    trigger: {
+      propose: async () => ({
+        note: "Event recorded. A run must be started by the operator.",
+      }),
+    },
+  });
+  integrations.syncProjectMappings(
+    bootstrap.projects.list().map((p) => {
+      const repository = p.metadata?.["repository"];
+      return {
+        projectId: p.projectId,
+        ...(typeof repository === "string"
+          ? { repositoryUrl: repository }
+          : {}),
+      };
+    }),
+  );
   const taskRuntime = new GovernedTaskRuntime({
+    capabilities: integrations.capabilityPort(),
     resolver: workspaceResolver,
     manager: runtimeSessions,
     agentExecutor: agentLoop,
@@ -1336,6 +1404,12 @@ export async function createProductionControlPlaneRuntime(
       }
     },
   });
+  const integrationControl = new IntegrationControlService({
+    integrations,
+    security: trustSys,
+    audit,
+    projectExists: (projectId) => bootstrap.projects.has(projectId),
+  });
   const query = new WorkforceQueryService(context);
   const command = new WorkforceCommandService(context);
   const graphQuery = new GraphQueryService(context);
@@ -1346,6 +1420,7 @@ export async function createProductionControlPlaneRuntime(
     runtime: runtimeControl,
     knowledge: knowledgeControl,
     trustCenter: trustControl,
+    integrationCenter: integrationControl,
     projectSync,
     graphQuery,
     query,

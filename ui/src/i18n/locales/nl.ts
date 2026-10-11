@@ -2,6 +2,7 @@ import { executionCenterNl } from "./executionCenter.nl";
 import { liveWorkspaceNl } from "./liveWorkspace.nl";
 import { knowledgeNl } from "./knowledge.nl";
 import { securityCenterNl } from "./securityCenter.nl";
+import { integrationCenterNl } from "./integrationCenter.nl";
 import { promptIntelligenceNl } from "./promptIntelligence.nl";
 import { onboardingNl } from "./onboarding.nl";
 import type { Messages } from "../messages";
@@ -2212,6 +2213,7 @@ export const nl: Messages = {
   liveWorkspace: liveWorkspaceNl,
   knowledge: knowledgeNl,
   securityCenter: securityCenterNl,
+  integrationCenter: integrationCenterNl,
   integrations: {
     title: "Integraties",
     description: "Beheer enterprise integraties, MCP-servers en externe tools.",
