@@ -96,6 +96,8 @@ export interface ControlPlaneContext {
      * suspend/reactivate/revoke. Optional; absent → access routes 404.
      */
     access?: AccessService;
+    /** Security Policy Engine (Security Foundation V1 Step 2). */
+    securityPolicy?: import("../core/index.js").SecurityPolicyService;
     /** The planner's technology catalog; defaults to the built-in catalog. */
     technologyCatalog?: TechnologyCatalog;
     /**

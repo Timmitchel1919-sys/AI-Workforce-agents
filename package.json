@@ -18,11 +18,19 @@
     "admin:bootstrap": "npm run build && node scripts/bootstrap-initial-admin.mjs",
     "functions:test": "npm run build && node --test dist/tests/firebase-function-adapter.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "scan:secrets": "node scripts/secret-scanner.mjs",
+    "security:lockfile": "node scripts/check-lockfile.mjs",
+    "security:secrets": "node scripts/secret-scanner.mjs",
+    "security:deps": "node scripts/dependency-scanner.mjs",
+    "security:sast": "node scripts/sast-scanner.mjs",
+    "security:licenses": "node scripts/license-scanner.mjs",
+    "security:sbom": "node scripts/generate-sbom.mjs",
+    "security:pre-commit": "node scripts/pre-commit-check.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run build && node --test \"dist/tests/**/*.test.js\" \"dist/tests/*.test.js\"",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+    "check": "npm run security:lockfile && npm run security:secrets && npm run security:sast && npm run security:deps && npm run security:licenses && npm run typecheck && npm run lint && npm run format:check && npm test"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

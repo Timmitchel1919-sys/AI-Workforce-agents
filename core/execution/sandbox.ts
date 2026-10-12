@@ -16,7 +16,7 @@ import {
   type SecretBroker,
   type SecretDescriptor,
   type SecretHandle,
-  type SecretReference,
+  type SecretUri,
   ExecutionDeniedError,
 } from "../../contracts/index.js";
 
@@ -155,7 +155,7 @@ export function limitEnforcementFor(
  * references until a real broker (e.g. Secret Manager-backed) is wired.
  */
 export class DenyAllSecretBroker implements SecretBroker {
-  async describe(ref: SecretReference): Promise<SecretDescriptor> {
+  async describe(ref: SecretUri): Promise<SecretDescriptor> {
     return { ref, available: false };
   }
 

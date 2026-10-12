@@ -60,7 +60,7 @@ async function importFirebase(subpath) {
     }
 }
 /**
- * Initialise (or reuse) the Firebase app and return the three service seams.
+ * Initialise (or reuse) the Firebase app and return the service seams.
  * Never throws with a credential in the message.
  */
 export async function createFirebaseServices(config = loadFirebaseConfig()) {
@@ -84,10 +84,19 @@ export async function createFirebaseServices(config = loadFirebaseConfig()) {
         importFirebase("auth"),
         importFirebase("storage"),
     ]);
+    let appCheck;
+    try {
+        const appCheckMod = await importFirebase("app-check");
+        appCheck = appCheckMod.getAppCheck(app);
+    }
+    catch {
+        // Optional peer dependency or unconfigured
+    }
     return {
         firestore: firestoreMod.getFirestore(app),
         auth: authMod.getAuth(app),
         storage: storageMod.getStorage(app),
+        ...(appCheck ? { appCheck } : {}),
         config,
     };
 }

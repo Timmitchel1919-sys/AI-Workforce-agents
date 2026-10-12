@@ -1,9 +1,9 @@
-import { type ArtifactRecord, type ArtifactReference, type EnvironmentExecutionAdapter, type EnvironmentFamily, type ExecutionOperationDefinition, type ExecutionReason, type ExecutionRunner, type ExecutionWorkspace, type RunnerClass, type RunnerLease, type SandboxHandle, type SandboxInvocationOutcome, type SandboxInvokeOptions, type SandboxKind, type SandboxProvider, type SandboxProviderCapabilities, type SandboxSpec, type SecretReference, type StructuredInvocation, type ToolchainObservationEvidence } from "../../contracts/index.js";
+import { type ArtifactRecord, type ArtifactReference, type EnvironmentExecutionAdapter, type EnvironmentFamily, type ExecutionOperationDefinition, type ExecutionReason, type ExecutionRunner, type ExecutionWorkspace, type RunnerClass, type RunnerLease, type SandboxHandle, type SandboxInvocationOutcome, type SandboxInvokeOptions, type SandboxKind, type SandboxProvider, type SandboxProviderCapabilities, type SandboxSpec, type SecretUri, type StructuredInvocation, type ToolchainObservationEvidence } from "../../contracts/index.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { EnvironmentRegistry } from "../environments/environment-registry.js";
 /** Server-side resolution of runner credentials (never serialized). */
 export interface RunnerCredentialResolver {
-    resolve(ref: SecretReference, runnerId: string): Promise<string>;
+    resolve(ref: SecretUri, runnerId: string): Promise<string>;
 }
 /** Trusted per-project routing policy (security / residency aware). */
 export interface ProjectRunnerPolicy {

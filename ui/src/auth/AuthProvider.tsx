@@ -15,7 +15,8 @@ import {
   type User,
 } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
-import { apiRequest, setAccessTokenProvider } from "../api/client";
+import { apiRequest, setAccessTokenProvider, setAppCheckTokenProvider } from "../api/client";
+import { initAppCheck, fetchAppCheckToken } from "./appCheck";
 import type {
   AccessDetails,
   AccessState,
@@ -62,6 +63,7 @@ const STATUS_TO_ACCESS: Record<string, AccessState> = {
 
 function getFirebaseAuth(): Auth {
   const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
+  initAppCheck(app);
   return getAuth(app);
 }
 
@@ -126,7 +128,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const current = getFirebaseAuth().currentUser;
       return current ? current.getIdToken(forceRefresh) : null;
     });
-    return () => setAccessTokenProvider(null);
+    setAppCheckTokenProvider(async (forceRefresh) => {
+      return fetchAppCheckToken(forceRefresh);
+    });
+    return () => {
+      setAccessTokenProvider(null);
+      setAppCheckTokenProvider(null);
+    };
   }, []);
 
   useEffect(() => {

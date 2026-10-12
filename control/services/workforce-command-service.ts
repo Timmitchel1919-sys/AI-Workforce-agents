@@ -123,6 +123,52 @@ export class WorkforceCommandService {
     this.maxRetries = ctx.maxOperatorRetries ?? 3;
   }
 
+  private enforceSecurityPolicy(
+    principal: OperatorPrincipal,
+    command: ControlCommand,
+    targetResourceId?: string,
+    projectId?: string,
+    metadata?: Record<string, unknown>
+  ): ControlCommandResult | undefined {
+    if (!this.ctx.securityPolicy) return undefined;
+
+    const decision = this.ctx.securityPolicy.evaluate({
+      action: command,
+      actorId: principal.id,
+      actorType: "human",
+      actorRole: principal.role,
+      projectId: projectId,
+      targetResourceType: "command",
+      targetResourceId,
+      destructive: [
+        "delete",
+        "clear",
+      ].some((p) => command.startsWith(p)),
+      irreversible: false,
+      production: true, // Simplified for foundation
+      requestedAt: new Date().toISOString(),
+      metadata,
+    });
+
+    if (!decision.allowed) {
+      return this.audited(
+        principal,
+        command,
+        "denied",
+        targetResourceId,
+        decision.reason,
+        { ...metadata, securityDecision: decision },
+        { correlationId: metadata?.correlationId as string | undefined ?? "none" },
+      );
+    }
+
+    // In Step 2, we just deny if policy says denied.
+    // If approval required and current workflow supports approval -> route to approval.
+    // For now we don't have the approval gate wired for arbitrary commands.
+
+    return undefined; // Authorized
+  }
+
   /* -------------------------------------------------------------- */
   /* approvals                                                     */
   /* -------------------------------------------------------------- */
@@ -1322,6 +1368,14 @@ export class WorkforceCommandService {
         run,
       );
     }
+
+    const policyDenial = this.enforceSecurityPolicy(principal, command, operatorId, undefined, {
+      action,
+      targetOperatorId: operatorId,
+      role: input?.role,
+      correlationId: run.correlationId
+    });
+    if (policyDenial) return policyDenial;
     const access = this.ctx.access;
     if (!access) {
       return this.audited(
@@ -1885,6 +1939,13 @@ export class WorkforceCommandService {
         run,
       );
     }
+
+    const policyDenial = this.enforceSecurityPolicy(principal, command, agentId, undefined, {
+      correlationId: run.correlationId,
+      agentEnabled: enabled,
+    });
+    if (policyDenial) return policyDenial;
+
 
     if (!this.ctx.agents.has(agentId)) {
       return this.audited(

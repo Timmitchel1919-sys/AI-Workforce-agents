@@ -216,6 +216,7 @@ function ApprovalCard({
       </ul>
       <div className="gov-links">
         {plan ? <Link to={plan}>{t("approvalQueue.planLink", { version: item.planVersion ?? 0 })}</Link> : null}
+        <Link to={`/approvals/${encodeURIComponent(item.approvalId)}`}>{t("approvalQueue.detailLink")}</Link>
         {item.taskId ? <Link to={`/tasks/${encodeURIComponent(item.taskId)}`}>{t("approvalQueue.taskLink", { id: item.taskId })}</Link> : null}
         {item.workflowId ? (
           <Link to={`/workflows/${encodeURIComponent(item.workflowId)}`}>{t("approvalQueue.workflowLink", { id: item.workflowId })}</Link>

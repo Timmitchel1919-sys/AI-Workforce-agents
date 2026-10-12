@@ -8,7 +8,13 @@ import { SecurityControlService } from "../control/services/security-service.js"
 import { AuditControlService } from "../control/services/audit-service.js";
 import { PortfolioControlService } from "../control/services/portfolio-service.js";
 import { ProductManagementService } from "../control/services/product-service.js";
-import { WorkforceManagementService } from "../control/services/workforce-service.js";
+import { KnowledgeControlService } from "../control/services/knowledge-service.js";
+import { SimulationControlService } from "../control/services/simulation-service.js";
+import { TrustControlService } from "../control/services/trust-control-service.js";
+import type { KnowledgeItem } from "../contracts/knowledge.js";
+import type { SimulationSnapshot } from "../contracts/simulation.js";
+import type { TrustEntity, TrustEvent, UnifiedApprovalItem } from "../contracts/trust-governance.js";
+
 /**
  * The single production Control Plane composition root.
  *
@@ -110,6 +116,10 @@ import {
   deriveCostCenterCapabilities,
   deriveReleaseCapabilities,
   now,
+  AlertEngine,
+  InMemoryAlertPublisher,
+  SecurityIncidentService,
+  SecurityCenterService,
 } from "../core/index.js";
 import {
   CONTROL_PLANE_ANALYSIS_AGENT_ID,
@@ -222,6 +232,12 @@ export async function createProductionControlPlaneRuntime(
   const approvalRepository = repositories.repository<Approval>("approvals");
   const handoffRepository = repositories.repository<Handoff>("handoffs");
   const auditRepository = repositories.repository<AuditEvent>("audit_events");
+  const knowledgeRepository = repositories.repository<KnowledgeItem>("knowledge_items");
+  // Layer 15 / 16 durable collections (additive, no migration of existing data).
+  const simulationSnapshotRepository = repositories.repository<SimulationSnapshot>("simulation_snapshots");
+  const trustEntityRepository = repositories.repository<TrustEntity>("trust_entities");
+  const unifiedApprovalRepository = repositories.repository<UnifiedApprovalItem>("unified_approvals");
+  const trustEventRepository = repositories.repository<TrustEvent>("trust_events");
   const agentOpsRepository =
     repositories.repository<AgentOperationalRecord>("agent_operations");
   const workflowControlRepository =
@@ -292,12 +308,6 @@ export async function createProductionControlPlaneRuntime(
   const opportunitiesRepository = repositories.repository<import("../contracts/product.js").ProductOpportunity>("product_opportunities");
   const featuresRepository = repositories.repository<import("../contracts/product.js").ProductFeature>("product_features");
 
-  // Workforce Repositories
-  const departmentsRepository = repositories.repository<import("../contracts/organization.js").OrganizationDepartment>("organization_departments");
-  const teamsRepository = repositories.repository<import("../contracts/organization.js").WorkforceTeam>("workforce_teams");
-  const humanAgentsRepository = repositories.repository<import("../contracts/organization.js").HumanAgent>("human_agents");
-  const skillsRepository = repositories.repository<import("../contracts/organization.js").SkillDefinition>("skill_definitions");
-  const resourceAssignmentsRepository = repositories.repository<import("../contracts/organization.js").ResourceAssignment>("resource_assignments");
 
   // GRC Repositories
   const grcControlsRepository = repositories.repository<any>("grc_controls");
@@ -887,13 +897,15 @@ export async function createProductionControlPlaneRuntime(
     featuresRepository
   );
 
-  const workforce = new WorkforceManagementService(
-    departmentsRepository,
-    teamsRepository,
-    humanAgentsRepository,
-    skillsRepository,
-    resourceAssignmentsRepository
+  const knowledge = new KnowledgeControlService(knowledgeRepository, audit);
+  const simulation = new SimulationControlService(simulationSnapshotRepository, audit);
+  const trust = new TrustControlService(
+    trustEntityRepository,
+    unifiedApprovalRepository,
+    trustEventRepository,
+    audit,
   );
+
 
   const grc = new GrcControlService(
     grcControlsRepository,
@@ -935,6 +947,17 @@ export async function createProductionControlPlaneRuntime(
   const query = new WorkforceQueryService(context);
   const command = new WorkforceCommandService(context);
   const graphQuery = new GraphQueryService(context);
+  const appCheckMode: import("./security/app-check.js").AppCheckEnforcementMode =
+    (process.env.APP_CHECK_ENFORCEMENT_MODE as import("./security/app-check.js").AppCheckEnforcementMode) || "disabled";
+  const appAttestationVerifier = services.appCheck
+    ? new (await import("./security/app-check.js")).FirebaseAppAttestationVerifier(services.appCheck, appCheckMode)
+    : new (await import("./security/app-check.js")).DefaultAppAttestationVerifier();
+
+  const alertPublisher = new InMemoryAlertPublisher();
+  const incidentService = new SecurityIncidentService({ publisher: alertPublisher });
+  const alertEngine = new AlertEngine({ incidentService, publisher: alertPublisher });
+  const securityCenter = new SecurityCenterService({ alertEngine, incidentService });
+
   const handler = createControlPlaneApi({
     onboarding,
     projectSync,
@@ -943,6 +966,8 @@ export async function createProductionControlPlaneRuntime(
     command,
     operatorDirectory,
     identityVerifier: operatorDirectory,
+    appAttestationVerifier,
+    appCheckMode,
     access,
     profile,
     itsm,
@@ -951,10 +976,13 @@ export async function createProductionControlPlaneRuntime(
     aiGov,
     dataGov,
     security,
+    securityCenter,
     audit: auditService,
     portfolio,
     product,
-    workforce,
+    knowledge,
+    simulation,
+    trust,
   });
 
   return Object.freeze({

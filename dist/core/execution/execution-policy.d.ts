@@ -7,7 +7,7 @@
  * `(policyId, version)`; an unbound project falls back to the configured
  * default policy (which, in production, permits nothing).
  */
-import { type ExecutionCapability, type ExecutionOperationDefinition, type ExecutionPolicy, type ExecutionPolicyRule, type ExecutionReason, type ExecutionResourceLimits, type FilesystemScope, type NetworkPolicy, type SecretReference } from "../../contracts/index.js";
+import { type ExecutionCapability, type ExecutionOperationDefinition, type ExecutionPolicy, type ExecutionPolicyRule, type ExecutionReason, type ExecutionResourceLimits, type FilesystemScope, type NetworkPolicy, type SecretUri } from "../../contracts/index.js";
 export declare class ExecutionPolicyRegistry {
     private readonly fallback;
     private readonly policies;
@@ -32,7 +32,7 @@ export interface PolicyEvaluation {
     limits: ExecutionResourceLimits;
     network: NetworkPolicy;
     filesystem: readonly FilesystemScope[];
-    secretRefs: readonly SecretReference[];
+    secretRefs: readonly SecretUri[];
     requiresApproval: boolean;
 }
 /**

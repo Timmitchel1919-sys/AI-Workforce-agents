@@ -11,14 +11,14 @@
  * Git itself is behind a bounded port: there is no raw git, no remote URL,
  * no refspec and no force flag anywhere in this API.
  */
-import { type CommitReceipt, type ExecutionRecordStore, type GovernedGitPort, type OperatorPrincipal, type PullRequestPort, type PullRequestRecord, type PushReceipt, type RepositoryPolicy, type ReviewRecord, type ReviewStatus, type SecretReference, type StageSet, type WorkspaceControl, type WorkspaceFilePolicy } from "../../contracts/index.js";
+import { type CommitReceipt, type ExecutionRecordStore, type GovernedGitPort, type OperatorPrincipal, type PullRequestPort, type PullRequestRecord, type PushReceipt, type RepositoryPolicy, type ReviewRecord, type ReviewStatus, type SecretUri, type StageSet, type WorkspaceControl, type WorkspaceFilePolicy } from "../../contracts/index.js";
 import type { ApprovalSystem } from "../approvals/approval-system.js";
 import type { AuditLog } from "../audit/audit-log.js";
 import type { ExecutionManager } from "../execution/execution-manager.js";
 import type { VerificationService } from "../execution/verification-service.js";
 import { requestBoundApproval } from "./approval-binding.js";
 export interface SecretValueResolver {
-    resolve(ref: SecretReference): Promise<string>;
+    resolve(ref: SecretUri): Promise<string>;
 }
 export interface SourceControlOrchestratorOptions {
     git: GovernedGitPort;

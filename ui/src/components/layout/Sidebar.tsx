@@ -17,18 +17,8 @@ import {
   Wallet,
   BrainCircuit,
   Blocks,
-  Building2,
-  Shield,
-  CreditCard,
-  Landmark,
-  HeartHandshake,
-  AlertTriangle,
-  KeyRound,
-  ShieldCheck,
   Code,
-  ShieldAlert,
   Puzzle,
-  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -58,17 +48,9 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   settings: Settings,
   integrations: Blocks,
   extensions: Puzzle,
-  organization: Building2,
-  billing: CreditCard,
-  sso: KeyRound,
-  admin: Shield,
-  "commercial-admin": Landmark,
-  "customer-ops": HeartHandshake,
-  incidents: AlertTriangle,
-  privacy: ShieldCheck,
+  privacy: Scale,
   developer: Code,
-  secops: ShieldAlert,
-  marketing: Megaphone,
+  secops: Scale,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";

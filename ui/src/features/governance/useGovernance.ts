@@ -1,9 +1,16 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useAuth } from "../../auth/useAuth";
 import {
   GovernanceError,
   decideApproval,
+  getApproval,
   getApprovals,
+  getAuditEvent,
   getAuditEvents,
   type ApprovalDecision,
   type ApprovalFilter,
@@ -14,11 +21,71 @@ import {
 const APPROVALS_KEY = ["workforce", "approvals"] as const;
 const AUDIT_KEY = ["workforce", "audit"] as const;
 
+export type DetailState = "loading" | "ready" | "not_found" | GovernanceFailure;
+
+function detailStateOf(query: {
+  isLoading: boolean;
+  error: unknown;
+  data: unknown;
+}): DetailState {
+  if (query.isLoading && !query.data) return "loading";
+  if (query.error)
+    return query.error instanceof GovernanceError
+      ? query.error.failure
+      : "unavailable";
+  return query.data ? "ready" : "not_found";
+}
+
+/** A single approval for the detail screen; `not_found` for foreign/unknown. */
+export function useApproval(approvalId?: string) {
+  const { accessToken } = useAuth();
+  const query = useQuery({
+    queryKey: [
+      ...APPROVALS_KEY,
+      "detail",
+      approvalId,
+      accessToken ?? "anonymous",
+    ],
+    queryFn: () => getApproval(approvalId as string, accessToken),
+    enabled: Boolean(approvalId),
+    retry: false,
+    staleTime: 10_000,
+  });
+  return {
+    state: approvalId ? detailStateOf(query) : "not_found",
+    item: query.data,
+    refetch: () => void query.refetch(),
+  };
+}
+
+/** A single audit event for the detail screen. */
+export function useAuditEvent(eventId?: string) {
+  const { accessToken } = useAuth();
+  const query = useQuery({
+    queryKey: [...AUDIT_KEY, "detail", eventId, accessToken ?? "anonymous"],
+    queryFn: () => getAuditEvent(eventId as string, accessToken),
+    enabled: Boolean(eventId),
+    retry: false,
+    staleTime: 10_000,
+  });
+  return {
+    state: eventId ? detailStateOf(query) : "not_found",
+    item: query.data,
+    refetch: () => void query.refetch(),
+  };
+}
+
 export type ListState = "loading" | "ready" | "empty" | GovernanceFailure;
 
-function stateOf(query: { isLoading: boolean; error: unknown }, count: number): ListState {
+function stateOf(
+  query: { isLoading: boolean; error: unknown },
+  count: number,
+): ListState {
   if (query.isLoading) return "loading";
-  if (query.error) return query.error instanceof GovernanceError ? query.error.failure : "unavailable";
+  if (query.error)
+    return query.error instanceof GovernanceError
+      ? query.error.failure
+      : "unavailable";
   return count === 0 ? "empty" : "ready";
 }
 
@@ -71,7 +138,8 @@ export function useApprovalDecision() {
   const { accessToken } = useAuth();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (decision: ApprovalDecision) => decideApproval(decision, accessToken),
+    mutationFn: (decision: ApprovalDecision) =>
+      decideApproval(decision, accessToken),
     onSettled: () => {
       void client.invalidateQueries({ queryKey: APPROVALS_KEY });
       void client.invalidateQueries({ queryKey: AUDIT_KEY });

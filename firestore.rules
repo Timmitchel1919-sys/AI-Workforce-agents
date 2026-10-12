@@ -1,19 +1,122 @@
 rules_version = '2';
 
-// AI Workforce — Firestore security rules.
+// AI Workforce — Firestore Security Rules.
 //
-// The Control Plane (Firebase Admin SDK, server-side) is the ONLY reader and
-// writer of this database. Admin-SDK access bypasses these rules by design.
-//
-// No client may touch Firestore directly — not the Control Center UI, not any
-// future external client. Every UI read and write goes through the Control
-// Plane HTTP API, which enforces authentication, authorization, approval,
-// project isolation, and audit. This deny-all rule makes that boundary
-// impossible to bypass from a browser.
+// TRUST BOUNDARY & INVARIANTS:
+// 1. The Control Plane (Firebase Admin SDK, server-side) is the ONLY reader and
+//    writer of this database. Admin-SDK access bypasses these rules by design.
+// 2. DENY BY DEFAULT: No direct browser or client SDK access is allowed to any collection.
+// 3. Authentication alone is NEVER authorization.
+// 4. Operator accounts, role assignments, audit logs, security policies,
+//    approval gates, and destructive action records are authoritative server records
+//    and CANNOT be read or modified by browser clients.
+// 5. All UI operations must travel through the Control Plane HTTP API, which enforces
+//    authentication, authorization, approval, project isolation, and audit logging.
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Default deny-all fallback for all paths and unknown collections
     match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // AUTHORIZATION & OPERATOR DATA (SERVER-ONLY)
+    // ------------------------------------------------------------------
+    match /operators/{operatorId} {
+      allow read, write: if false;
+    }
+    match /access_control/{docId} {
+      allow read, write: if false;
+    }
+    match /operator_profiles/{profileId} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // AUDIT & SECURITY EVENTS (SERVER-ONLY, APPEND-ONLY SERVER-SIDE)
+    // ------------------------------------------------------------------
+    match /audit_events/{eventId} {
+      allow read, write: if false;
+    }
+    match /audit_logs/{logId} {
+      allow read, write: if false;
+    }
+    match /security_events/{eventId} {
+      allow read, write: if false;
+    }
+    match /control_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // SECURITY POLICIES & GOVERNANCE (SERVER-ONLY)
+    // ------------------------------------------------------------------
+    match /security_policies/{policyId} {
+      allow read, write: if false;
+    }
+    match /zero_trust_policies/{policyId} {
+      allow read, write: if false;
+    }
+    match /governance_policies/{policyId} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // APPROVALS & DESTRUCTIVE ACTIONS (SERVER-ONLY)
+    // ------------------------------------------------------------------
+    match /approvals/{approvalId} {
+      allow read, write: if false;
+    }
+    match /destructive_actions/{actionId} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // BACKUPS, RECOVERY & RESTORE RECORDS (SERVER-ONLY)
+    // ------------------------------------------------------------------
+    match /backups/{backupId} {
+      allow read, write: if false;
+    }
+    match /backup_records/{recordId} {
+      allow read, write: if false;
+    }
+    match /backup_policies/{policyId} {
+      allow read, write: if false;
+    }
+    match /recovery_requests/{requestId} {
+      allow read, write: if false;
+    }
+    match /recovery_drills/{drillId} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // PROJECTS, EXECUTION & OPERATIONAL DATA (SERVER-ONLY)
+    // ------------------------------------------------------------------
+    match /projects/{projectId} {
+      allow read, write: if false;
+    }
+    match /provisioned_projects/{projectId} {
+      allow read, write: if false;
+    }
+    match /project_claims/{claimId} {
+      allow read, write: if false;
+    }
+    match /agents/{agentId} {
+      allow read, write: if false;
+    }
+    match /tasks/{taskId} {
+      allow read, write: if false;
+    }
+    match /workflows/{workflowId} {
+      allow read, write: if false;
+    }
+    match /execution_plans/{planId} {
+      allow read, write: if false;
+    }
+    match /execution_sessions/{sessionId} {
       allow read, write: if false;
     }
   }

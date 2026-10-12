@@ -1,4 +1,4 @@
-import type { SecretReference } from "./execution.js";
+import type { SecretUri } from "./execution.js";
 import type { SourceFingerprint } from "./verification.js";
 export declare const WORKSPACE_STATES: readonly ["preparing", "ready", "in_use", "dirty", "cleaning", "closed", "failed"];
 export type WorkspaceState = (typeof WORKSPACE_STATES)[number];
@@ -18,7 +18,7 @@ export interface RepositoryReference {
     remote?: {
         url: string;
         /** Credential reference for a private repository; value never stored. */
-        credentialRef?: SecretReference;
+        credentialRef?: SecretUri;
     };
     defaultBranch?: string;
 }

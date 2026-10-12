@@ -36,10 +36,28 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Verify lockfile integrity
+        run: npm run security:lockfile
+
+      - name: Secret scan
+        run: npm run security:secrets
+
+      - name: SAST scan
+        run: npm run security:sast
+
+      - name: Dependency scan
+        run: npm run security:deps
+
+      - name: License audit
+        run: npm run security:licenses
+
       - name: Test
         run: npm test
 
       - name: Build
         run: npm run build
+
+      - name: Generate SBOM
+        run: npm run security:sbom
 
 # No secrets or AI provider credentials are required or referenced by this workflow.

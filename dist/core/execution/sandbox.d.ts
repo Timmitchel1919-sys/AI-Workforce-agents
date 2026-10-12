@@ -6,7 +6,7 @@
  * provider (local restricted process, Docker, Windows/macOS/cloud runner…)
  * is implemented and registered in a later EO.
  */
-import { type ExecutionResourceLimits, type LimitEnforcementReport, type NetworkPolicy, type SandboxProvider, type SecretBroker, type SecretDescriptor, type SecretHandle, type SecretReference } from "../../contracts/index.js";
+import { type ExecutionResourceLimits, type LimitEnforcementReport, type NetworkPolicy, type SandboxProvider, type SecretBroker, type SecretDescriptor, type SecretHandle, type SecretUri } from "../../contracts/index.js";
 export declare class SandboxRegistry {
     private readonly providers;
     register(provider: SandboxProvider): void;
@@ -47,6 +47,6 @@ export declare function limitEnforcementFor(provider: SandboxProvider | undefine
  * references until a real broker (e.g. Secret Manager-backed) is wired.
  */
 export declare class DenyAllSecretBroker implements SecretBroker {
-    describe(ref: SecretReference): Promise<SecretDescriptor>;
+    describe(ref: SecretUri): Promise<SecretDescriptor>;
     issueHandle(): Promise<SecretHandle>;
 }

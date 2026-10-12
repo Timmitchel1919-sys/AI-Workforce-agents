@@ -8,7 +8,9 @@ import { SecurityControlService } from "../control/services/security-service.js"
 import { AuditControlService } from "../control/services/audit-service.js";
 import { PortfolioControlService } from "../control/services/portfolio-service.js";
 import { ProductManagementService } from "../control/services/product-service.js";
-import { WorkforceManagementService } from "../control/services/workforce-service.js";
+import { KnowledgeControlService } from "../control/services/knowledge-service.js";
+import { SimulationControlService } from "../control/services/simulation-service.js";
+import { TrustControlService } from "../control/services/trust-control-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -20,7 +22,7 @@ import { randomUUID } from "node:crypto";
 import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
-import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
+import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, AlertEngine, InMemoryAlertPublisher, SecurityIncidentService, SecurityCenterService, } from "../core/index.js";
 import { CONTROL_PLANE_ANALYSIS_AGENT_ID, LazyOpenAIModelProvider, createProductionOpenAIAgentExecutor, } from "../agents/control-plane-analysis/index.js";
 import { DEVELOPER_AGENT_ID, DeveloperAgent, } from "../agents/developer/index.js";
 import { QA_AGENT_ID, QaAgent } from "../agents/qa/index.js";
@@ -48,6 +50,12 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const approvalRepository = repositories.repository("approvals");
     const handoffRepository = repositories.repository("handoffs");
     const auditRepository = repositories.repository("audit_events");
+    const knowledgeRepository = repositories.repository("knowledge_items");
+    // Layer 15 / 16 durable collections (additive, no migration of existing data).
+    const simulationSnapshotRepository = repositories.repository("simulation_snapshots");
+    const trustEntityRepository = repositories.repository("trust_entities");
+    const unifiedApprovalRepository = repositories.repository("unified_approvals");
+    const trustEventRepository = repositories.repository("trust_events");
     const agentOpsRepository = repositories.repository("agent_operations");
     const workflowControlRepository = repositories.repository("workflow_control");
     const softwareFactoryProgramRepository = repositories.repository("software_factory_programs");
@@ -99,12 +107,6 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const problemsRepository = repositories.repository("customer_problems");
     const opportunitiesRepository = repositories.repository("product_opportunities");
     const featuresRepository = repositories.repository("product_features");
-    // Workforce Repositories
-    const departmentsRepository = repositories.repository("organization_departments");
-    const teamsRepository = repositories.repository("workforce_teams");
-    const humanAgentsRepository = repositories.repository("human_agents");
-    const skillsRepository = repositories.repository("skill_definitions");
-    const resourceAssignmentsRepository = repositories.repository("resource_assignments");
     // GRC Repositories
     const grcControlsRepository = repositories.repository("grc_controls");
     const grcFrameworksRepository = repositories.repository("grc_frameworks");
@@ -529,7 +531,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const auditService = new AuditControlService(auditLogsRepository, complianceFindingsRepository);
     const portfolio = new PortfolioControlService(strategicObjectivesRepository, enterprisePortfoliosRepository, portfolioProgramsRepository);
     const product = new ProductManagementService(productPortfoliosRepository, productsRepository, problemsRepository, opportunitiesRepository, featuresRepository);
-    const workforce = new WorkforceManagementService(departmentsRepository, teamsRepository, humanAgentsRepository, skillsRepository, resourceAssignmentsRepository);
+    const knowledge = new KnowledgeControlService(knowledgeRepository, audit);
+    const simulation = new SimulationControlService(simulationSnapshotRepository, audit);
+    const trust = new TrustControlService(trustEntityRepository, unifiedApprovalRepository, trustEventRepository, audit);
     const grc = new GrcControlService(grcControlsRepository, grcFrameworksRepository, grcPoliciesRepository, grcControlInstancesRepository, grcRisksRepository, grcExceptionsRepository, grcVendorsRepository, grcPrivacyRequestsRepository, grcRetentionPoliciesRepository, grcDlpPoliciesRepository, grcPosturesRepository, grcAuditsRepository, grcAuditPackagesRepository, grcCertificationsRepository, grcTrustContentRepository, grcFindingsRepository);
     // READY projects become discoverable through the existing Project Registry.
     // Other warm instances pick them up through this throttled sync.
@@ -555,6 +559,14 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const query = new WorkforceQueryService(context);
     const command = new WorkforceCommandService(context);
     const graphQuery = new GraphQueryService(context);
+    const appCheckMode = process.env.APP_CHECK_ENFORCEMENT_MODE || "disabled";
+    const appAttestationVerifier = services.appCheck
+        ? new (await import("./security/app-check.js")).FirebaseAppAttestationVerifier(services.appCheck, appCheckMode)
+        : new (await import("./security/app-check.js")).DefaultAppAttestationVerifier();
+    const alertPublisher = new InMemoryAlertPublisher();
+    const incidentService = new SecurityIncidentService({ publisher: alertPublisher });
+    const alertEngine = new AlertEngine({ incidentService, publisher: alertPublisher });
+    const securityCenter = new SecurityCenterService({ alertEngine, incidentService });
     const handler = createControlPlaneApi({
         onboarding,
         projectSync,
@@ -563,6 +575,8 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         command,
         operatorDirectory,
         identityVerifier: operatorDirectory,
+        appAttestationVerifier,
+        appCheckMode,
         access,
         profile,
         itsm,
@@ -571,10 +585,13 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         aiGov,
         dataGov,
         security,
+        securityCenter,
         audit: auditService,
         portfolio,
         product,
-        workforce,
+        knowledge,
+        simulation,
+        trust,
     });
     return Object.freeze({
         handler,

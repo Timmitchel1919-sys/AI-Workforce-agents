@@ -30,19 +30,21 @@ function errorMessageFromBody(body: unknown): string | undefined {
 
 export interface ApiRequestOptions extends RequestInit {
   accessToken?: string | null;
+  appCheckToken?: string | null;
 }
 
-/**
- * Returns the signed-in user's CURRENT Firebase ID token (refreshed by the
- * SDK when it has expired), or a force-refreshed one. Registered by the
- * AuthProvider; absent when nobody is signed in or Firebase is not set up.
- */
 export type AccessTokenProvider = (forceRefresh: boolean) => Promise<string | null>;
+export type AppCheckTokenProvider = (forceRefresh?: boolean) => Promise<string | null>;
 
 let accessTokenProvider: AccessTokenProvider | null = null;
+let appCheckTokenProvider: AppCheckTokenProvider | null = null;
 
 export function setAccessTokenProvider(provider: AccessTokenProvider | null): void {
   accessTokenProvider = provider;
+}
+
+export function setAppCheckTokenProvider(provider: AppCheckTokenProvider | null): void {
+  appCheckTokenProvider = provider;
 }
 
 async function currentToken(fallback: string | null | undefined, forceRefresh: boolean) {
@@ -55,19 +57,24 @@ async function currentToken(fallback: string | null | undefined, forceRefresh: b
   }
 }
 
-/**
- * Authenticated requests never reuse a stale ID token: the token is read
- * from Firebase at request time (ID tokens expire after an hour, and a
- * sleeping machine or idle tab never refreshes a captured copy). A 401 is
- * retried once with a force-refreshed token before it is surfaced.
- */
+async function currentAppCheckToken(fallback?: string | null): Promise<string | null | undefined> {
+  if (fallback !== undefined) return fallback;
+  if (!appCheckTokenProvider) return undefined;
+  try {
+    return await appCheckTokenProvider();
+  } catch {
+    return undefined;
+  }
+}
+
 export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
   const token = await currentToken(options.accessToken, false);
+  const appCheckToken = await currentAppCheckToken(options.appCheckToken);
   try {
-    return await sendRequest<T>(path, { ...options, accessToken: token });
+    return await sendRequest<T>(path, { ...options, accessToken: token, appCheckToken });
   } catch (error) {
     if (
       error instanceof ApiError &&
@@ -77,7 +84,7 @@ export async function apiRequest<T>(
     ) {
       const refreshed = await currentToken(options.accessToken, true);
       if (refreshed && refreshed !== token) {
-        return sendRequest<T>(path, { ...options, accessToken: refreshed });
+        return sendRequest<T>(path, { ...options, accessToken: refreshed, appCheckToken });
       }
     }
     throw error;
@@ -98,12 +105,14 @@ async function sendRequest<T>(
 
   headers.set("Accept", "application/json");
   headers.set("Content-Type", "application/json");
-  // A caller that supplies its own correlation id (e.g. a command whose audit trail must be
-  // traceable) keeps it; otherwise one is minted per request.
   if (!headers.has("x-correlation-id")) headers.set("x-correlation-id", createCorrelationId());
 
   if (options.accessToken) {
     headers.set("Authorization", `Bearer ${options.accessToken}`);
+  }
+
+  if (options.appCheckToken) {
+    headers.set("X-Firebase-AppCheck", options.appCheckToken);
   }
 
   try {

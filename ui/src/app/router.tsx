@@ -3,7 +3,7 @@ import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n } from "../i18n";
 import RouteError from "./RouteError";
 import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding } from "./routeModules";
 
@@ -35,7 +35,9 @@ const SoftwareFactoryPage = fromChunk(loadControlCenterRoutes, "SoftwareFactoryP
 const SoftwareFactoryProgramPage = fromChunk(loadControlCenterRoutes, "SoftwareFactoryProgramPage");
 const UsersAccessPage = fromChunk(loadControlCenterRoutes, "UsersAccessPage");
 const ApprovalsPage = fromChunk(loadControlCenterRoutes, "ApprovalsPage");
+const ApprovalDetailPage = fromChunk(loadControlCenterRoutes, "ApprovalDetailPage");
 const AuditLogPage = fromChunk(loadControlCenterRoutes, "AuditLogPage");
+const AuditDetailPage = fromChunk(loadControlCenterRoutes, "AuditDetailPage");
 const ProjectsPage = fromChunk(loadControlCenterRoutes, "ProjectsPage");
 const ProjectDetailPage = fromChunk(loadControlCenterRoutes, "ProjectDetailPage");
 const SpatialGraphPage = fromChunk(loadControlCenterRoutes, "SpatialGraphPage");
@@ -46,18 +48,11 @@ const IntegrationsPage = fromChunk(loadControlCenterRoutes, "IntegrationsPage");
 const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
-const OrganizationPage = fromChunk(loadControlCenterRoutes, "OrganizationPage");
-const BillingPage = fromChunk(loadControlCenterRoutes, "BillingPage");
 const PlatformAdminPage = fromChunk(loadControlCenterRoutes, "PlatformAdminPage");
-const CommercialAdminPage = fromChunk(loadControlCenterRoutes, "CommercialAdminPage");
-const CustomerProfilePage = fromChunk(loadControlCenterRoutes, "CustomerProfilePage");
-const IncidentsPage = fromChunk(loadControlCenterRoutes, "IncidentsPage");
 
-const SsoSettingsPage = fromChunk(loadControlCenterRoutes, "SsoSettingsPage");
 const PrivacySettingsPage = fromChunk(loadControlCenterRoutes, "PrivacySettingsPage");
 const DeveloperPlatformPage = fromChunk(loadControlCenterRoutes, "DeveloperPlatformPage");
 const SecOpsPage = fromChunk(loadControlCenterRoutes, "SecOpsPage");
-const MarketingPage = fromChunk(loadControlCenterRoutes, "MarketingPage");
 const ContinuityPage = fromChunk(loadControlCenterRoutes, "ContinuityPage");
 const ITSMPage = fromChunk(loadControlCenterRoutes, "ITSMPage");
 const OperationsPage = fromChunk(loadControlCenterRoutes, "OperationsPage");
@@ -69,6 +64,7 @@ const AuditPage = fromChunk(loadControlCenterRoutes, "AuditPage");
 const PortfolioPage = fromChunk(loadControlCenterRoutes, "PortfolioPage");
 const ProductPage = fromChunk(loadControlCenterRoutes, "ProductPage");
 const WorkforcePage = fromChunk(loadControlCenterRoutes, "WorkforcePage");
+const KnowledgePage = fromChunk(loadControlCenterRoutes, "KnowledgePage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -82,21 +78,6 @@ function RouteFallback() {
 
 function withSuspense(node: ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
-}
-
-function PlaceholderPage({ titleKey }: { titleKey: MessageKey }) {
-  const { t } = useI18n();
-  return (
-    <div className="page">
-      <section className="page-header">
-        <p className="eyebrow">{t("common.brand")}</p>
-        <h1>{t(titleKey)}</h1>
-        <p className="page-description">
-          {t("shell.reservedDescription")}
-        </p>
-      </section>
-    </div>
-  );
 }
 
 /** Every page gets the in-app error state (the shell stays usable). */
@@ -151,7 +132,9 @@ export const router = createBrowserRouter(withErrorElements([
         element: withSuspense(<ProjectDetailPage />),
       },
       { path: "approvals", element: withSuspense(<ApprovalsPage />) },
+      { path: "approvals/:approvalId", element: withSuspense(<ApprovalDetailPage />) },
       { path: "audit-log", element: withSuspense(<AuditLogPage />) },
+      { path: "audit-log/:eventId", element: withSuspense(<AuditDetailPage />) },
       { path: "governance", element: withSuspense(<GovernancePage />) },
       { path: "continuity", element: withSuspense(<ContinuityPage />) },
       { path: "itsm", element: withSuspense(<ITSMPage />) },
@@ -172,23 +155,16 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },
       { path: "software-factory", element: withSuspense(<SoftwareFactoryPage />) },
       { path: "software-factory/:projectId/:programId", element: withSuspense(<SoftwareFactoryProgramPage />) },
-      { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
+      { path: "knowledge", element: withSuspense(<KnowledgePage />) },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },
       { path: "design-system", element: withSuspense(<DesignSystemPage />) },
       { path: "extensions", element: withSuspense(<ExtensionsPage />) },
-      { path: "organizations", element: withSuspense(<OrganizationPage />) },
-      { path: "billing", element: withSuspense(<BillingPage />) },
-      { path: "sso-settings", element: withSuspense(<SsoSettingsPage />) },
       { path: "admin", element: withSuspense(<PlatformAdminPage />) },
-      { path: "commercial-admin", element: withSuspense(<CommercialAdminPage />) },
-      { path: "customer-operations", element: withSuspense(<CustomerProfilePage />) },
-      { path: "incidents", element: withSuspense(<IncidentsPage />) },
       { path: "privacy", element: withSuspense(<PrivacySettingsPage />) },
       { path: "developer-platform", element: withSuspense(<DeveloperPlatformPage />) },
       { path: "secops", element: withSuspense(<SecOpsPage />) },
-      { path: "marketing", element: withSuspense(<MarketingPage />) },
       { path: "trust", element: withSuspense(<TrustCenterPage />) },
     ],
   },

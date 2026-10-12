@@ -84,6 +84,8 @@ export declare class WorkforceQueryService {
      * server-side (a foreign project filter simply yields nothing).
      */
     getApprovalPage(principal: OperatorPrincipal, query?: ApprovalQuery): PageResult<ApprovalView>;
+    /** A single approval by id, project-scoped; `undefined` if foreign/unknown. */
+    getApproval(principal: OperatorPrincipal, approvalId: string): ApprovalView | undefined;
     /**
      * Approval views with their project resolved: orchestrator/tool approvals
      * only carry a `taskId`, so the project comes from the linked task — an
@@ -446,6 +448,8 @@ export declare class WorkforceQueryService {
      */
     getOperatorAccounts(principal: OperatorPrincipal): Promise<OperatorAccountView[] | undefined>;
     getAuditEvents(principal: OperatorPrincipal, query?: AuditEventQuery): PageResult<AuditEventView>;
+    /** A single audit event by id, project-scoped; `undefined` if foreign/unknown. */
+    getAuditEvent(principal: OperatorPrincipal, eventId: string): AuditEventView | undefined;
     getDashboardSnapshot(principal: OperatorPrincipal): Promise<DashboardSnapshot>;
     private canSeeProject;
     private authorizeView;

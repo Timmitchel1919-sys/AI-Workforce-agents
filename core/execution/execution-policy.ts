@@ -20,7 +20,7 @@ import {
   type ExecutionResourceLimits,
   type FilesystemScope,
   type NetworkPolicy,
-  type SecretReference,
+  type SecretUri,
 } from "../../contracts/index.js";
 
 function deepFreeze<T>(value: T): T {
@@ -85,7 +85,7 @@ export interface PolicyEvaluation {
   limits: ExecutionResourceLimits;
   network: NetworkPolicy;
   filesystem: readonly FilesystemScope[];
-  secretRefs: readonly SecretReference[];
+  secretRefs: readonly SecretUri[];
   requiresApproval: boolean;
 }
 

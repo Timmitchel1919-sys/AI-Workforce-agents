@@ -75,6 +75,13 @@ export interface StorageFileLike {
         expires: number;
     }): Promise<[string]>;
 }
+export interface DecodedAppCheckTokenLike {
+    appId: string;
+    [claim: string]: unknown;
+}
+export interface FirebaseAppCheckLike {
+    verifyToken(appCheckToken: string): Promise<DecodedAppCheckTokenLike>;
+}
 export interface StorageBucketLike {
     file(key: string): StorageFileLike;
     getFiles(options: {
@@ -98,10 +105,11 @@ export interface FirebaseServices {
     firestore: FirestoreLike;
     auth: FirebaseAuthLike;
     storage: FirebaseStorageLike;
+    appCheck?: FirebaseAppCheckLike;
     config: FirebaseConfig;
 }
 /**
- * Initialise (or reuse) the Firebase app and return the three service seams.
+ * Initialise (or reuse) the Firebase app and return the service seams.
  * Never throws with a credential in the message.
  */
 export declare function createFirebaseServices(config?: FirebaseConfig): Promise<FirebaseServices>;

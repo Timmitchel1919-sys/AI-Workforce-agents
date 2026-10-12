@@ -52,7 +52,13 @@ export interface Page<T> {
   nextCursor: string | null;
 }
 
-export type GovernanceFailure = "unauthenticated" | "forbidden" | "not_found" | "conflict" | "invalid" | "unavailable";
+export type GovernanceFailure =
+  | "unauthenticated"
+  | "forbidden"
+  | "not_found"
+  | "conflict"
+  | "invalid"
+  | "unavailable";
 
 export class GovernanceError extends Error {
   readonly failure: GovernanceFailure;
@@ -82,9 +88,17 @@ function toError(error: unknown): GovernanceError {
   return new GovernanceError("unavailable", "Control Plane unreachable");
 }
 
-async function call<T>(path: string, token: string | null | undefined, init: RequestInit = {}): Promise<T> {
+async function call<T>(
+  path: string,
+  token: string | null | undefined,
+  init: RequestInit = {},
+): Promise<T> {
   try {
-    return await apiRequest<T>(path, { method: "GET", ...init, accessToken: token });
+    return await apiRequest<T>(path, {
+      method: "GET",
+      ...init,
+      accessToken: token,
+    });
   } catch (error) {
     throw toError(error);
   }
@@ -97,7 +111,11 @@ export interface ApprovalFilter {
   projectId?: string;
 }
 
-export function getApprovals(filter: ApprovalFilter, cursor: string | undefined, token?: string | null) {
+export function getApprovals(
+  filter: ApprovalFilter,
+  cursor: string | undefined,
+  token?: string | null,
+) {
   const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   if (filter.status) params.set("status", filter.status);
   if (filter.projectId) params.set("projectId", filter.projectId);
@@ -115,10 +133,28 @@ export interface AuditFilter {
   until?: string;
 }
 
-export function getAuditEvents(filter: AuditFilter, cursor: string | undefined, token?: string | null) {
+/** A single approval by id (project-scoped server-side). */
+export function getApproval(approvalId: string, token?: string | null) {
+  return call<ApprovalItem>(
+    `/api/approvals/${encodeURIComponent(approvalId)}`,
+    token,
+  );
+}
+
+/** A single audit event by id (redacted server-side). */
+export function getAuditEvent(eventId: string, token?: string | null) {
+  return call<AuditItem>(`/api/audit/${encodeURIComponent(eventId)}`, token);
+}
+
+export function getAuditEvents(
+  filter: AuditFilter,
+  cursor: string | undefined,
+  token?: string | null,
+) {
   const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   for (const [key, value] of Object.entries(filter)) {
-    if (typeof value === "string" && value.trim()) params.set(key, value.trim());
+    if (typeof value === "string" && value.trim())
+      params.set(key, value.trim());
   }
   if (cursor) params.set("cursor", cursor);
   return call<Page<AuditItem>>(`/api/audit?${params}`, token);
@@ -129,10 +165,19 @@ export type ApprovalDecision =
   | { decision: "reject"; approvalId: string; reason: string };
 
 /** Existing approve/reject commands — the backend authorizes and audits. */
-export function decideApproval(decision: ApprovalDecision, token?: string | null) {
+export function decideApproval(
+  decision: ApprovalDecision,
+  token?: string | null,
+) {
   const body =
     decision.decision === "approve"
-      ? { approvalId: decision.approvalId, ...(decision.note ? { note: decision.note } : {}) }
+      ? {
+          approvalId: decision.approvalId,
+          ...(decision.note ? { note: decision.note } : {}),
+        }
       : { approvalId: decision.approvalId, reason: decision.reason };
-  return call(`/api/commands/${decision.decision}`, token, { method: "POST", body: JSON.stringify(body) });
+  return call(`/api/commands/${decision.decision}`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }

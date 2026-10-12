@@ -206,3 +206,65 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Detail screens -------------------------------------------------- */
+
+.gov-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+}
+
+.gov-back:focus-visible,
+.gov-detail-list a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gov-card--detail {
+  max-width: 760px;
+}
+
+.gov-detail-list {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.gov-detail-list dt {
+  color: var(--color-text-muted);
+}
+
+.gov-detail-list dd {
+  margin: 0;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.gov-detail-list code {
+  font-size: var(--text-xs);
+}
+
+.gov-details h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+  color: var(--color-text-heading);
+}
+
+/* Knowledge body preview (read-only, no markdown rendering). */
+.gov-preview {
+  max-height: 420px;
+  margin: var(--space-2) 0 var(--space-4);
+  padding: var(--space-3);
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

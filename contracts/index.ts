@@ -9,6 +9,8 @@
  */
 import { SOFTWARE_FACTORY_ENVIRONMENT_CODES } from "./environment-routing.js";
 
+export * from "./secrets.js";
+
 /* ------------------------------------------------------------------ */
 /* Shared primitives                                                  */
 /* ------------------------------------------------------------------ */
@@ -313,6 +315,7 @@ export const AUDIT_EVENT_TYPES = [
   "agent_executed",
   "handoff_created",
   "permission_decision",
+  "security_policy_decision",
   "approval_requested",
   "approval_decided",
   "task_resumed",
@@ -336,6 +339,9 @@ export const AUDIT_EVENT_TYPES = [
   "access_event",
   "execution_event",
   "onboarding_event",
+  /* Phase 2 — Control Plane knowledge module. */
+  "knowledge_created",
+  "knowledge_updated",
   /* EO-6.2 — AI Cost Center & rule-based Auditor. */
   "usage_recorded",
   "budget_blocked",
@@ -355,6 +361,14 @@ export const AUDIT_EVENT_TYPES = [
   "write_lease_acquired",
   "write_lease_released",
   "write_lease_denied",
+  /* Layer 14 — Knowledge Learning & Organizational Memory. */
+  "knowledge_adr_status_changed",
+  "knowledge_conflict_resolved",
+  /* Layer 15 — Simulation & Decision Intelligence (dry-run only). */
+  "simulation_executed",
+  "simulation_decision_recorded",
+  /* Layer 16 — Trust, Governance & Human Oversight. */
+  "trust_event_recorded",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -944,15 +958,17 @@ export * from "./routing.js";
 export * from "./workforce.js";
 export * from "./capabilities.js";
 export * from "./assignment.js";
-export * from "./tenancy.js";
-export * from "./billing.js";
-export * from "./customer.js";
 export * from "./identity.js";
-export * from "./privacy.js";
 export * from "./api-platform.js";
-export * from "./secops.js";
+export type {
+  SecurityEvent as SecopsSecurityEvent,
+  ThreatRule,
+  SecurityIncident as SecopsIncident,
+  ThreatIntel,
+  Vulnerability,
+  AccessRequest,
+} from "./secops.js";
 export * from "./extensions.js";
-export * from "./mlops.js";
 export * from "./marketing.js";
 
 /* ------------------------------------------------------------------ */
@@ -972,6 +988,12 @@ export * from "./audit.js";
 export * from "./portfolio.js";
 export * from "./product.js";
 export * from "./prompt.js";
-export * from "./organization.js";
-export * from "./procurement.js";
-export * from "./assets.js";
+export * from "./knowledge.js";
+
+export * from "./security-policy.js";
+export * from "./secrets.js";
+export * from "./security-build.js";
+export * from "./recovery.js";
+export * from "./security-center.js";
+export * from "./simulation.js";
+export * from "./trust-governance.js";

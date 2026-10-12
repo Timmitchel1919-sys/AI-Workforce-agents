@@ -346,11 +346,15 @@ export function validateNetworkPolicy(value, field = "network") {
     throw new ValidationError(`${field}.mode must be deny_all or allow_approved_hosts`);
 }
 const SECRET_REF = /^secret:\/\/[a-z0-9][a-z0-9._-]{1,99}$/;
-export function validateSecretReference(value, field = "secretRef") {
+export function validateSecretUri(value, field = "secretUri") {
     if (typeof value !== "string" || !SECRET_REF.test(value)) {
-        throw new ValidationError(`${field} must be a secret reference (secret://name)`);
+        throw new ValidationError(`${field} must be a secret URI (secret://name)`);
     }
     return value;
+}
+/** Legacy alias for validateSecretUri */
+export function validateSecretReference(value, field = "secretRef") {
+    return validateSecretUri(value, field);
 }
 /* ------------------------------------------------------------------ */
 /* Operations (typed, registered, bounded)                            */

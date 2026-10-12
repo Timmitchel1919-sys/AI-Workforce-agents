@@ -33,6 +33,19 @@ The existing roles (`contracts/control.ts`), least → most privileged:
 granted by someone whose role ranks at least as high (`ROLE_RANK`), and only
 `admin` holds `manage_access`.
 
+## Security Capabilities
+
+The system includes a foundation for security operations, enforcing a strict separation of duties:
+
+| Role | Security Capabilities |
+| --- | --- |
+| `viewer` | `view_security` |
+| `operator` | `view_security`, `view_security_events`, **`request_destructive_action`** |
+| `admin` | All operator capabilities + `manage_security_policy`, `manage_security_incidents`, **`approve_destructive_action`**, `manage_secret_references`, `manage_identity_security`, `manage_agent_security`, `contain_security_threat` |
+
+**Separation of Duties:**
+A core security principle is the separation of requesting and approving destructive actions. An `operator` may initiate a request for a destructive action, but only an `admin` (or a designated policy) may approve it. This ensures no single user (below the admin level) can unilaterally execute high-risk operations without oversight. In the intended future flow, destructive actions will trigger an Approval Gate workflow.
+
 ## Operator lifecycle
 
 ```

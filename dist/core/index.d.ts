@@ -1,6 +1,8 @@
 /** Public entry point for the Workforce core. */
 export * from "../contracts/index.js";
 export * from "./shared.js";
+export * from "./logging/index.js";
+export * from "./events/index.js";
 export * from "./persistence/in-memory-repository.js";
 export * from "./persistence/cached-repository.js";
 export * from "./persistence/in-memory-execution-record-store.js";
@@ -44,3 +46,18 @@ export * from "./release/index.js";
 export * from "./onboarding/index.js";
 export * from "./cost-center/index.js";
 export * from "./routing/index.js";
+export * from "./security/security-policy-engine.js";
+export * from "./security/security-policy-service.js";
+export { redactObject } from "./security/secret-redactor.js";
+export * from "./security/security-exception-store.js";
+export * from "./security/package-admission-policy.js";
+export * from "./security/build-security-gate.js";
+export * from "./secrets/index.js";
+export * from "./recovery/index.js";
+export * from "./security/alert-publisher.js";
+export * from "./security/security-incident-service.js";
+export * from "./security/alert-engine.js";
+export * from "./security/security-center-service.js";
+export * from "./knowledge/knowledge-learning-engine.js";
+export * from "./simulation/simulation-engine.js";
+export * from "./trust/index.js";

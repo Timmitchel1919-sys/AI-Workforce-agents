@@ -36,7 +36,7 @@ import {
   type RepositoryPolicy,
   type ReviewRecord,
   type ReviewStatus,
-  type SecretReference,
+  type SecretUri,
   type StageSet,
   type StageSetFile,
   type VerificationResult,
@@ -55,7 +55,7 @@ import {
 import { DurableLedger } from "./durable-ledger.js";
 
 export interface SecretValueResolver {
-  resolve(ref: SecretReference): Promise<string>;
+  resolve(ref: SecretUri): Promise<string>;
 }
 
 export interface SourceControlOrchestratorOptions {

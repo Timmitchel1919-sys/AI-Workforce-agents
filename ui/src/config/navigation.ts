@@ -20,17 +20,9 @@ export type NavigationIconId =
   | "intelligence"
   | "integrations"
   | "extensions"
-  | "organization"
-  | "billing"
-  | "sso"
-  | "admin"
-  | "commercial-admin"
-  | "customer-ops"
-  | "incidents"
   | "privacy"
   | "developer"
   | "secops"
-  | "marketing";
 
 export type NavigationBadge = number | string;
 
@@ -71,16 +63,8 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },
   { labelKey: "nav.integrations", route: "/integrations", icon: "integrations", section: "integrations" },
   { labelKey: "nav.extensions", route: "/extensions", icon: "extensions", section: "integrations" },
-  { labelKey: "nav.organization", route: "/organizations", icon: "organization", section: "main" },
-  { labelKey: "nav.billing", route: "/billing", icon: "billing", section: "main" },
-  { labelKey: "nav.sso", route: "/sso-settings", icon: "sso", section: "main" },
-  { labelKey: "nav.platformAdmin", route: "/admin", icon: "admin", section: "governance" },
-  { labelKey: "nav.commercialAdmin", route: "/commercial-admin", icon: "commercial-admin", section: "governance" },
-  { labelKey: "nav.customerOps", route: "/customer-operations", icon: "customer-ops", section: "main" },
-  { labelKey: "nav.incidents", route: "/incidents", icon: "incidents", section: "governance" },
   { labelKey: "nav.privacy", route: "/privacy", icon: "privacy", section: "governance" },
   { labelKey: "nav.developer", route: "/developer-platform", icon: "developer", section: "main" },
   { labelKey: "nav.secops", route: "/secops", icon: "secops", section: "governance" },
-  { labelKey: "nav.marketing", route: "/marketing", icon: "marketing", section: "main" },
   { labelKey: "nav.trustCenter", route: "/trust", icon: "governance", section: "governance" },{ labelKey: "nav.itsm", route: "/itsm", icon: "infrastructure", section: "governance" },
 ];

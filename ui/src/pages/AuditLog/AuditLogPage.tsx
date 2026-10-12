@@ -1,9 +1,14 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { EmptyState, ErrorState, Skeleton } from "../../components/ui";
 import PageContainer from "../../components/layout/PageContainer";
 import PageHeader from "../../components/layout/PageHeader";
-import { useAuditTrail, type AuditFilter, type AuditItem } from "../../features/governance";
+import {
+  useAuditTrail,
+  type AuditFilter,
+  type AuditItem,
+} from "../../features/governance";
 import { useProjects } from "../../features/executionPlans";
 import { formatDateTime, useI18n } from "../../i18n";
 import "../Approvals/ApprovalsPage.css";
@@ -54,7 +59,15 @@ function toIso(value: string): string | undefined {
 export default function AuditLogPage() {
   const { t } = useI18n();
   const { projects } = useProjects();
-  const [draft, setDraft] = useState({ type: "", outcome: "", actor: "", projectId: "", correlationId: "", since: "", until: "" });
+  const [draft, setDraft] = useState({
+    type: "",
+    outcome: "",
+    actor: "",
+    projectId: "",
+    correlationId: "",
+    since: "",
+    until: "",
+  });
   const [filter, setFilter] = useState<AuditFilter>(EMPTY);
   const trail = useAuditTrail(filter);
   const filtered = Object.values(filter).some(Boolean);
@@ -66,25 +79,44 @@ export default function AuditLogPage() {
       ...(draft.outcome.trim() ? { outcome: draft.outcome.trim() } : {}),
       ...(draft.actor.trim() ? { actor: draft.actor.trim() } : {}),
       ...(draft.projectId ? { projectId: draft.projectId } : {}),
-      ...(draft.correlationId.trim() ? { correlationId: draft.correlationId.trim() } : {}),
+      ...(draft.correlationId.trim()
+        ? { correlationId: draft.correlationId.trim() }
+        : {}),
       ...(toIso(draft.since) ? { since: toIso(draft.since) } : {}),
       ...(toIso(draft.until) ? { until: toIso(draft.until) } : {}),
     });
   };
   const clear = () => {
-    setDraft({ type: "", outcome: "", actor: "", projectId: "", correlationId: "", since: "", until: "" });
+    setDraft({
+      type: "",
+      outcome: "",
+      actor: "",
+      projectId: "",
+      correlationId: "",
+      since: "",
+      until: "",
+    });
     setFilter(EMPTY);
   };
   const field = (key: keyof typeof draft) => ({
     value: draft[key],
-    onChange: (e: { target: { value: string } }) => setDraft((d) => ({ ...d, [key]: e.target.value })),
+    onChange: (e: { target: { value: string } }) =>
+      setDraft((d) => ({ ...d, [key]: e.target.value })),
   });
 
   return (
     <PageContainer>
-      <PageHeader eyebrow={t("common.brand")} title={t("auditLog.title")} description={t("auditLog.description")} />
+      <PageHeader
+        eyebrow={t("common.brand")}
+        title={t("auditLog.title")}
+        description={t("auditLog.description")}
+      />
 
-      <form className="gov-filters gov-filters--wide" aria-label={t("auditLog.filtersLabel")} onSubmit={apply}>
+      <form
+        className="gov-filters gov-filters--wide"
+        aria-label={t("auditLog.filtersLabel")}
+        onSubmit={apply}
+      >
         <label className="gov-field">
           <span>{t("auditLog.type")}</span>
           <select {...field("type")}>
@@ -138,32 +170,68 @@ export default function AuditLogPage() {
       </form>
 
       {trail.state === "loading" ? (
-        <div className="gov-list" role="status" aria-label={t("auditLog.loading")}>
+        <div
+          className="gov-list"
+          role="status"
+          aria-label={t("auditLog.loading")}
+        >
           <Skeleton height={64} width="100%" />
           <Skeleton height={64} width="100%" />
         </div>
       ) : trail.state === "forbidden" || trail.state === "unauthenticated" ? (
         <ErrorState
           icon={<Lock size={28} />}
-          title={t(trail.state === "forbidden" ? "auditLog.forbiddenTitle" : "auditLog.unauthenticatedTitle")}
-          description={t(trail.state === "forbidden" ? "auditLog.forbiddenDescription" : "auditLog.unauthenticatedDescription")}
+          title={t(
+            trail.state === "forbidden"
+              ? "auditLog.forbiddenTitle"
+              : "auditLog.unauthenticatedTitle",
+          )}
+          description={t(
+            trail.state === "forbidden"
+              ? "auditLog.forbiddenDescription"
+              : "auditLog.unauthenticatedDescription",
+          )}
         />
       ) : trail.state === "empty" ? (
-        <EmptyState title={t("auditLog.emptyTitle")} description={filtered ? t("auditLog.emptyFiltered") : undefined} />
+        <EmptyState
+          title={t("auditLog.emptyTitle")}
+          description={filtered ? t("auditLog.emptyFiltered") : undefined}
+        />
       ) : trail.state !== "ready" ? (
-        <ErrorState title={t("auditLog.errorTitle")} description={t("auditLog.errorDescription")} onRetry={trail.refetch} retryLabel={t("common.retry")} />
+        <ErrorState
+          title={t("auditLog.errorTitle")}
+          description={t("auditLog.errorDescription")}
+          onRetry={trail.refetch}
+          retryLabel={t("common.retry")}
+        />
       ) : (
         <>
           <p className="gov-muted">
-            {t("auditLog.showing", { shown: trail.items.length, total: trail.total })} · {t("auditLog.redactedNote")}
+            {t("auditLog.showing", {
+              shown: trail.items.length,
+              total: trail.total,
+            })}{" "}
+            · {t("auditLog.redactedNote")}
           </p>
           <ol className="gov-list gov-audit">
             {trail.items.map((event) => (
-              <AuditRow key={event.id} event={event} projectName={projects.find((p) => p.projectId === event.projectId)?.displayName} />
+              <AuditRow
+                key={event.id}
+                event={event}
+                projectName={
+                  projects.find((p) => p.projectId === event.projectId)
+                    ?.displayName
+                }
+              />
             ))}
           </ol>
           {trail.hasMore ? (
-            <button type="button" className="ui-button" onClick={trail.loadMore} disabled={trail.loadingMore}>
+            <button
+              type="button"
+              className="ui-button"
+              onClick={trail.loadMore}
+              disabled={trail.loadingMore}
+            >
               {t("auditLog.loadMore")}
             </button>
           ) : null}
@@ -173,7 +241,13 @@ export default function AuditLogPage() {
   );
 }
 
-function AuditRow({ event, projectName }: { event: AuditItem; projectName?: string }) {
+function AuditRow({
+  event,
+  projectName,
+}: {
+  event: AuditItem;
+  projectName?: string;
+}) {
   const { t, language } = useI18n();
   const context = [
     event.projectId ? (projectName ?? event.projectId) : undefined,
@@ -191,17 +265,32 @@ function AuditRow({ event, projectName }: { event: AuditItem; projectName?: stri
           {formatDateTime(event.timestamp, language)}
         </time>
         <code className="gov-action">{event.type}</code>
-        {event.outcome ? <span className="gov-pill gov-pill--neutral">{event.outcome}</span> : null}
-        {event.actor ? <span className="gov-muted">{t("auditLog.byActor", { actor: event.actor })}</span> : null}
+        {event.outcome ? (
+          <span className="gov-pill gov-pill--neutral">{event.outcome}</span>
+        ) : null}
+        {event.actor ? (
+          <span className="gov-muted">
+            {t("auditLog.byActor", { actor: event.actor })}
+          </span>
+        ) : null}
       </div>
       {context.length > 0 ? (
         <p className="gov-muted">
           {t("auditLog.context")}: {context.join(" · ")}
         </p>
       ) : null}
+      <div className="gov-links">
+        <Link to={`/audit-log/${encodeURIComponent(event.id)}`}>
+          {t("auditLog.detailLink")}
+        </Link>
+      </div>
       <details className="gov-details">
         <summary>{t("auditLog.details")}</summary>
-        {hasData ? <pre>{JSON.stringify(event.data, null, 2)}</pre> : <p className="gov-muted">{t("auditLog.noDetails")}</p>}
+        {hasData ? (
+          <pre>{JSON.stringify(event.data, null, 2)}</pre>
+        ) : (
+          <p className="gov-muted">{t("auditLog.noDetails")}</p>
+        )}
       </details>
     </li>
   );

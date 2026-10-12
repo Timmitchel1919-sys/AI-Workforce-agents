@@ -31,4 +31,7 @@ export * from "./services/security-service.js";
 export * from "./services/audit-service.js";
 export * from "./services/portfolio-service.js";
 export * from "./services/product-service.js";
-export * from "./services/workforce-service.js";
+export * from "./services/knowledge-service.js";
+export * from "./services/secret-control-service.js";
+export * from "./services/simulation-service.js";
+export * from "./services/trust-control-service.js";

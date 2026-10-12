@@ -492,25 +492,33 @@ export function validateNetworkPolicy(
 /* ------------------------------------------------------------------ */
 
 /** `secret://<name>` — a name only. There is no value field anywhere. */
-export type SecretReference = `secret://${string}`;
+export type SecretUri = `secret://${string}`;
 
 const SECRET_REF = /^secret:\/\/[a-z0-9][a-z0-9._-]{1,99}$/;
 
+export function validateSecretUri(
+  value: unknown,
+  field = "secretUri",
+): SecretUri {
+  if (typeof value !== "string" || !SECRET_REF.test(value)) {
+    throw new ValidationError(
+      `${field} must be a secret URI (secret://name)`,
+    );
+  }
+  return value as SecretUri;
+}
+
+/** Legacy alias for validateSecretUri */
 export function validateSecretReference(
   value: unknown,
   field = "secretRef",
-): SecretReference {
-  if (typeof value !== "string" || !SECRET_REF.test(value)) {
-    throw new ValidationError(
-      `${field} must be a secret reference (secret://name)`,
-    );
-  }
-  return value as SecretReference;
+): SecretUri {
+  return validateSecretUri(value, field);
 }
 
 /** Metadata about a secret reference. Never the value. */
 export interface SecretDescriptor {
-  ref: SecretReference;
+  ref: SecretUri;
   available: boolean;
 }
 
@@ -520,7 +528,7 @@ export interface SecretDescriptor {
  */
 export interface SecretHandle {
   handleId: string;
-  ref: SecretReference;
+  ref: SecretUri;
   grantId: string;
   expiresAt: string;
 }
@@ -530,9 +538,9 @@ export interface SecretHandle {
  * capability grant; it never receives or serializes a raw secret.
  */
 export interface SecretBroker {
-  describe(ref: SecretReference): Promise<SecretDescriptor>;
+  describe(ref: SecretUri): Promise<SecretDescriptor>;
   issueHandle(
-    ref: SecretReference,
+    ref: SecretUri,
     grant: CapabilityGrant,
   ): Promise<SecretHandle>;
 }
@@ -807,7 +815,7 @@ export interface ExecutionPolicyRule {
   requiredEnvironmentCapabilities: readonly CapabilityId[];
   network?: NetworkPolicy;
   /** Secret references this rule may request handles for. */
-  secretRefs?: readonly SecretReference[];
+  secretRefs?: readonly SecretUri[];
   /** Can only TIGHTEN the policy defaults. */
   limits?: Partial<ExecutionResourceLimits>;
   /**

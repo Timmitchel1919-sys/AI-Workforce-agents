@@ -120,6 +120,15 @@ export interface StorageFileLike {
   getSignedUrl(options: { action: "read"; expires: number }): Promise<[string]>;
 }
 
+export interface DecodedAppCheckTokenLike {
+  appId: string;
+  [claim: string]: unknown;
+}
+
+export interface FirebaseAppCheckLike {
+  verifyToken(appCheckToken: string): Promise<DecodedAppCheckTokenLike>;
+}
+
 export interface StorageBucketLike {
   file(key: string): StorageFileLike;
   getFiles(options: { prefix: string }): Promise<[readonly StorageFileLike[]]>;
@@ -195,6 +204,7 @@ export interface FirebaseServices {
   firestore: FirestoreLike;
   auth: FirebaseAuthLike;
   storage: FirebaseStorageLike;
+  appCheck?: FirebaseAppCheckLike;
   config: FirebaseConfig;
 }
 
@@ -213,9 +223,12 @@ interface AuthModuleLike {
 interface StorageModuleLike {
   getStorage(app: unknown): FirebaseStorageLike;
 }
+interface AppCheckModuleLike {
+  getAppCheck(app: unknown): FirebaseAppCheckLike;
+}
 
 /**
- * Initialise (or reuse) the Firebase app and return the three service seams.
+ * Initialise (or reuse) the Firebase app and return the service seams.
  * Never throws with a credential in the message.
  */
 export async function createFirebaseServices(
@@ -244,10 +257,19 @@ export async function createFirebaseServices(
     importFirebase<StorageModuleLike>("storage"),
   ]);
 
+  let appCheck: FirebaseAppCheckLike | undefined;
+  try {
+    const appCheckMod = await importFirebase<AppCheckModuleLike>("app-check");
+    appCheck = appCheckMod.getAppCheck(app);
+  } catch {
+    // Optional peer dependency or unconfigured
+  }
+
   return {
     firestore: firestoreMod.getFirestore(app),
     auth: authMod.getAuth(app),
     storage: storageMod.getStorage(app),
+    ...(appCheck ? { appCheck } : {}),
     config,
   };
 }

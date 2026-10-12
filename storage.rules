@@ -1,14 +1,45 @@
 rules_version = '2';
 
-// AI Workforce — Firebase Storage security rules.
+// AI Workforce — Firebase Storage Security Rules.
 //
-// Same posture as Firestore: the Control Plane (Admin SDK, server-side) is the
-// only client. The UI never reads Storage directly — it receives time-limited
-// signed URLs from the Control Plane API. Deny all direct client access.
+// TRUST BOUNDARY & INVARIANTS:
+// 1. The Control Plane (Admin SDK, server-side) is the ONLY direct client of Storage.
+// 2. Direct client read/write access to Storage buckets is DENIED by default.
+// 3. User avatars, project assets, security evidence, and backups are accessed
+//    via time-limited signed URLs generated server-side by the Control Plane API.
+// 4. Client direct writes (including profile images, evidence, backups, or export files)
+//    are DENIED.
 
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Default deny-all fallback for all storage objects
     match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Explicitly protected storage paths
+    match /avatars/{uid} {
+      allow read, write: if false;
+    }
+
+    match /project-assets/{projectId}/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /uploads/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /security-evidence/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /backups/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /exports/{allPaths=**} {
       allow read, write: if false;
     }
   }

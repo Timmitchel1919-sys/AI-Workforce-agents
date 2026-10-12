@@ -40,7 +40,7 @@ import {
   type SandboxProvider,
   type SandboxProviderCapabilities,
   type SandboxSpec,
-  type SecretReference,
+  type SecretUri,
   type StructuredInvocation,
   type ToolchainObservationEvidence,
 } from "../../contracts/index.js";
@@ -50,7 +50,7 @@ import { createId, now } from "../shared.js";
 
 /** Server-side resolution of runner credentials (never serialized). */
 export interface RunnerCredentialResolver {
-  resolve(ref: SecretReference, runnerId: string): Promise<string>;
+  resolve(ref: SecretUri, runnerId: string): Promise<string>;
 }
 
 /** Trusted per-project routing policy (security / residency aware). */

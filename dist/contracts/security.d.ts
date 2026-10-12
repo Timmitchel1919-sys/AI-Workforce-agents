@@ -3,7 +3,7 @@ export declare const SECURITY_SEVERITY_LEVELS: readonly ["INFO", "LOW", "MEDIUM"
 export type SecuritySeverity = typeof SECURITY_SEVERITY_LEVELS[number];
 export interface ZTNSecurityEvent extends Entity {
     eventId: string;
-    eventType: "AUTH_FAILURE" | "POLICY_VIOLATION" | "DATA_EXFILTRATION_ATTEMPT" | "PROMPT_INJECTION" | "ANOMALOUS_ACCESS";
+    eventType: "AUTH_FAILURE" | "POLICY_VIOLATION" | "DATA_EXFILTRATION_ATTEMPT" | "PROMPT_INJECTION" | "ANOMALOUS_ACCESS" | "BACKUP_SECURITY_EVENT" | "RECOVERY_SECURITY_EVENT" | "INTEGRITY_VIOLATION";
     severity: SecuritySeverity;
     sourceIp?: string;
     principalRef?: string;
@@ -15,6 +15,7 @@ export interface ZTNSecurityEvent extends Entity {
 }
 export interface ZeroTrustPolicy extends Entity {
     policyId: string;
+    organizationId: string;
     name: string;
     description: string;
     targetScope: string;

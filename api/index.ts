@@ -14,5 +14,6 @@ export * from "./production-workforce-bootstrap.js";
 export * from "./production-workforce-config.js";
 export * from "./production-control-plane.js";
 export * from "./bootstrap-initial-admin.js";
+export * from "./security/index.js";
 export * from "../adapters/models/openai-model-provider.js";
 export * from "../agents/control-plane-analysis/index.js";

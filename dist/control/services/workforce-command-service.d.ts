@@ -21,6 +21,7 @@ export declare class WorkforceCommandService {
     private readonly ctx;
     private readonly maxRetries;
     constructor(ctx: ControlPlaneContext);
+    private enforceSecurityPolicy;
     approve(principal: OperatorPrincipal, input: ApprovalCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     reject(principal: OperatorPrincipal, input: RejectCommandInput, options?: CommandOptions): Promise<ControlCommandResult>;
     private decideApproval;

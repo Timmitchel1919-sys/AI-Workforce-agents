@@ -58,10 +58,24 @@ export const CONTROL_CAPABILITIES = [
     "manage_budget_policy",
     /* EO-6.3 — Governance Policy Engine: the allow-list/threshold policy is administrator-only. */
     "manage_governance_policy",
+    /* SECURITY-0 — Security Foundation */
+    "view_security",
+    "manage_security_policy",
+    "view_security_events",
+    "manage_security_incidents",
+    "request_destructive_action",
+    "approve_destructive_action",
+    "manage_secret_references",
+    "manage_identity_security",
+    "manage_agent_security",
+    "contain_security_threat",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
-    viewer: ["view"],
+    viewer: [
+        "view",
+        "view_security",
+    ],
     operator: [
         "view",
         "approve",
@@ -86,6 +100,9 @@ export const ROLE_CAPABILITIES = {
         "create_workstream",
         "add_task_to_workstream",
         "tick_software_factory",
+        "view_security",
+        "view_security_events",
+        "request_destructive_action",
     ],
     admin: [
         "view",
@@ -123,6 +140,16 @@ export const ROLE_CAPABILITIES = {
         "manage_budget_policy",
         // EO-6.3: setting the governance allow-list/threshold policy is administrator-only.
         "manage_governance_policy",
+        "view_security",
+        "manage_security_policy",
+        "view_security_events",
+        "manage_security_incidents",
+        "request_destructive_action",
+        "approve_destructive_action",
+        "manage_secret_references",
+        "manage_identity_security",
+        "manage_agent_security",
+        "contain_security_threat",
     ],
 };
 export function validateOperatorPrincipal(principal) {

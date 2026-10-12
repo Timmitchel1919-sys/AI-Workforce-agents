@@ -1,5 +1,5 @@
 import type { EnvironmentInstance, HostInstance, ToolchainKind, ToolchainRequirement, VersionInfo } from "./environments.js";
-import type { ExecutionReason, ResourceLimitKey, NetworkPolicy, SandboxInvocationOutcome, SecretReference, StructuredInvocation } from "./execution.js";
+import type { ExecutionReason, ResourceLimitKey, NetworkPolicy, SandboxInvocationOutcome, SecretUri, StructuredInvocation } from "./execution.js";
 /**
  * Execution families. An IDE is NOT a family: Visual Studio, VS Code and
  * Android Studio projects route to the underlying toolchain family.
@@ -119,7 +119,7 @@ export interface RunnerDescriptor {
         supportsKill: boolean;
     };
     /** Runner authentication: a reference resolved server-side only. */
-    credentialRef?: SecretReference;
+    credentialRef?: SecretUri;
     /** Routing metadata for cost/security/residency — never prices. */
     routing?: {
         provider?: string;

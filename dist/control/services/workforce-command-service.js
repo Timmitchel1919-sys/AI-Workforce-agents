@@ -66,6 +66,34 @@ export class WorkforceCommandService {
         this.ctx = ctx;
         this.maxRetries = ctx.maxOperatorRetries ?? 3;
     }
+    enforceSecurityPolicy(principal, command, targetResourceId, projectId, metadata) {
+        if (!this.ctx.securityPolicy)
+            return undefined;
+        const decision = this.ctx.securityPolicy.evaluate({
+            action: command,
+            actorId: principal.id,
+            actorType: "human",
+            actorRole: principal.role,
+            projectId: projectId,
+            targetResourceType: "command",
+            targetResourceId,
+            destructive: [
+                "delete",
+                "clear",
+            ].some((p) => command.startsWith(p)),
+            irreversible: false,
+            production: true, // Simplified for foundation
+            requestedAt: new Date().toISOString(),
+            metadata,
+        });
+        if (!decision.allowed) {
+            return this.audited(principal, command, "denied", targetResourceId, decision.reason, { ...metadata, securityDecision: decision }, { correlationId: metadata?.correlationId ?? "none" });
+        }
+        // In Step 2, we just deny if policy says denied.
+        // If approval required and current workflow supports approval -> route to approval.
+        // For now we don't have the approval gate wired for arbitrary commands.
+        return undefined; // Authorized
+    }
     /* -------------------------------------------------------------- */
     /* approvals                                                     */
     /* -------------------------------------------------------------- */
@@ -577,6 +605,14 @@ export class WorkforceCommandService {
         if (!operatorCan(principal, "manage_access")) {
             return this.audited(principal, command, "denied", operatorId, `role "${principal.role}" may not manage access`, {}, run);
         }
+        const policyDenial = this.enforceSecurityPolicy(principal, command, operatorId, undefined, {
+            action,
+            targetOperatorId: operatorId,
+            role: input?.role,
+            correlationId: run.correlationId
+        });
+        if (policyDenial)
+            return policyDenial;
         const access = this.ctx.access;
         if (!access) {
             return this.audited(principal, command, "rejected", operatorId, "access management is not configured", {}, run, "invalid_state");
@@ -796,6 +832,12 @@ export class WorkforceCommandService {
         if (!operatorCan(principal, command)) {
             return this.audited(principal, command, "denied", agentId, `role "${principal.role}" may not ${command.replace("_", " ")}`, {}, run);
         }
+        const policyDenial = this.enforceSecurityPolicy(principal, command, agentId, undefined, {
+            correlationId: run.correlationId,
+            agentEnabled: enabled,
+        });
+        if (policyDenial)
+            return policyDenial;
         if (!this.ctx.agents.has(agentId)) {
             return this.audited(principal, command, "rejected", agentId, "unknown agent", {}, run, "not_found");
         }

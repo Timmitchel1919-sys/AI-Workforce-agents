@@ -1,4 +1,6 @@
-import { NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, WorkforceError, } from "../contracts/index.js";
+import { processSecurityLayer } from "./security/middleware.js";
+import { ApiSecurityError } from "./security/errors.js";
+import { NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, WorkforceError, ROLE_CAPABILITIES, } from "../contracts/index.js";
 import { sanitizeCorrelationId } from "../control/correlation.js";
 import { parseGraphQueryParams } from "../control/services/graph-query-service.js";
 const ONBOARDING_METHODS = {
@@ -79,16 +81,36 @@ export function createControlPlaneApi(options) {
     const maxBody = options.maxBodyBytes ?? 1_048_576;
     const { query, command, operatorDirectory } = options;
     return (req, res) => {
-        void handle(req, res).catch((error) => {
-            send(res, 500, { error: { message: errorMessage(error) } }, "");
-        });
+        void (async () => {
+            let correlationId = "";
+            try {
+                correlationId = sanitizeCorrelationId(headerValue(req, corrHeader)) ?? newCorrelationId();
+                const ctx = await processSecurityLayer(req, res, {
+                    identityVerifier: options.identityVerifier,
+                    operatorDirectory: options.operatorDirectory,
+                    appAttestationVerifier: options.appAttestationVerifier,
+                    appCheckMode: options.appCheckMode,
+                    correlationId
+                });
+                req._secureCtx = ctx;
+                await handle(req, res, ctx, correlationId);
+            }
+            catch (error) {
+                if (error === "PREFLIGHT_HANDLED")
+                    return;
+                if (error instanceof ApiSecurityError) {
+                    send(res, error.status, { error: { code: error.code, message: error.message, correlationId } }, correlationId);
+                }
+                else {
+                    send(res, 500, { error: { message: errorMessage(error) } }, correlationId);
+                }
+            }
+        })();
     };
-    async function handle(req, res) {
-        // The inbound id reaches audit records and the response header: only a well-formed one is kept.
-        const correlationId = sanitizeCorrelationId(headerValue(req, corrHeader)) ?? newCorrelationId();
+    async function handle(req, res, ctx, correlationId) {
+        const path = ctx.path;
+        const method = ctx.method;
         const url = new URL(req.url ?? "/", "http://localhost");
-        const path = url.pathname.replace(/\/$/, "");
-        const method = (req.method ?? "GET").toUpperCase();
         if (!path.startsWith(base + "/") && path !== base) {
             return send(res, 404, { error: { message: "not found" } }, correlationId);
         }
@@ -103,7 +125,7 @@ export function createControlPlaneApi(options) {
         // a pending user learns they are pending. Creates a PENDING request on
         // first contact; grants nothing.
         if (method === "GET" && route === "/me/access") {
-            const identity = await verifyIdentity(req);
+            const identity = ctx.identity;
             if (!identity) {
                 return send(res, 401, { error: { message: "authentication required" } }, correlationId);
             }
@@ -118,7 +140,7 @@ export function createControlPlaneApi(options) {
             }
         }
         // Authenticate every other route.
-        const principal = await authenticate(req);
+        const principal = ctx.principal;
         if (!principal) {
             return send(res, 401, { error: { message: "authentication required" } }, correlationId);
         }
@@ -152,8 +174,14 @@ export function createControlPlaneApi(options) {
             if (route.startsWith("/product/")) {
                 return await handleProduct(route, segs, method, req, res, principal, correlationId);
             }
-            if (route.startsWith("/workforce/")) {
-                return await handleWorkforce(route, segs, method, req, res, principal, correlationId);
+            if (route === "/knowledge" || route.startsWith("/knowledge/")) {
+                return await handleKnowledge(req, res, segs, method, url.searchParams, principal, correlationId);
+            }
+            if (route === "/simulation" || route.startsWith("/simulation/")) {
+                return await handleSimulation(req, res, segs, method, url.searchParams, principal, correlationId);
+            }
+            if (route === "/trust" || route.startsWith("/trust/")) {
+                return await handleTrust(req, res, segs, method, url.searchParams, principal, correlationId);
             }
             if (route === "/me/profile" || route === "/me/profile/photo") {
                 return await handleProfile(req, res, route, method, principal, correlationId);
@@ -339,6 +367,10 @@ export function createControlPlaneApi(options) {
                     ? notNull(query.getWorkflow(principal, id))
                     : query.getWorkflows(principal, parseWorkflowQuery(params)), correlationId);
             case "approvals":
+                // GET /api/approvals (page) · GET /api/approvals/:approvalId (detail)
+                if (id) {
+                    return send(res, 200, notNull(query.getApproval(principal, id)), correlationId);
+                }
                 return send(res, 200, query.getApprovalPage(principal, {
                     ...statusFilter(params),
                     ...parsePageQuery(params),
@@ -500,6 +532,10 @@ export function createControlPlaneApi(options) {
                 }
                 return send(res, 200, notNull(await query.getOperatorAccounts(principal)), correlationId);
             case "audit":
+                // GET /api/audit (trail) · GET /api/audit/:eventId (detail)
+                if (id) {
+                    return send(res, 200, notNull(query.getAuditEvent(principal, id)), correlationId);
+                }
                 return send(res, 200, query.getAuditEvents(principal, parseAuditQuery(params)), correlationId);
             case "software-factory":
                 // GET /api/software-factory, GET /api/software-factory/programs/:programId
@@ -636,15 +672,109 @@ export function createControlPlaneApi(options) {
             return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
         }
     }
+    function requireCapability(principal, capability) {
+        const allowed = ROLE_CAPABILITIES[principal.role]?.includes(capability);
+        if (!allowed) {
+            throw new PermissionDeniedError(`Operator '${principal.id}' lacks required capability '${capability}'`);
+        }
+    }
     async function handleSecurity(route, segs, method, req, res, principal, correlationId) {
-        if (!options.security)
+        if (!options.security && !options.securityCenter) {
             return send(res, 404, { error: { message: "security not available" } }, correlationId);
+        }
         try {
-            if (segs[1] === "events" && method === "GET") {
-                return send(res, 200, await options.security.listEvents(), correlationId);
+            const url = new URL(req.url ?? "/", "http://localhost");
+            // ---- Security Center API Endpoints ----
+            if (options.securityCenter) {
+                if (segs[1] === "summary" && method === "GET") {
+                    requireCapability(principal, "view_security");
+                    const projectId = url.searchParams.get("projectId") || undefined;
+                    return send(res, 200, await options.securityCenter.getSummary(principal, projectId), correlationId);
+                }
+                if (segs[1] === "domains" && method === "GET") {
+                    requireCapability(principal, "view_security");
+                    const summary = await options.securityCenter.getSummary(principal);
+                    return send(res, 200, summary.domains, correlationId);
+                }
+                if (segs[1] === "recommendations" && method === "GET") {
+                    requireCapability(principal, "view_security");
+                    return send(res, 200, await options.securityCenter.getRecommendations(), correlationId);
+                }
+                if (segs[1] === "alerts" && method === "GET" && segs.length === 2) {
+                    requireCapability(principal, "view_security_events");
+                    const severity = url.searchParams.get("severity") || undefined;
+                    const status = url.searchParams.get("status") || undefined;
+                    const domain = url.searchParams.get("domain") || undefined;
+                    const projectId = url.searchParams.get("projectId") || undefined;
+                    return send(res, 200, options.securityCenter.listAlerts({ severity: severity, status: status, domain: domain }, principal, projectId), correlationId);
+                }
+                if (segs[1] === "alerts" && method === "GET" && segs.length === 3) {
+                    requireCapability(principal, "view_security_events");
+                    const alert = options.securityCenter.getAlert(segs[2], principal);
+                    if (!alert)
+                        throw new NotFoundError("alert not found");
+                    return send(res, 200, alert, correlationId);
+                }
+                if (segs[1] === "alerts" && segs[3] === "acknowledge" && method === "POST") {
+                    requireCapability(principal, "manage_security_incidents");
+                    return send(res, 200, await options.securityCenter.acknowledgeAlert(segs[2], principal.id), correlationId);
+                }
+                if (segs[1] === "alerts" && segs[3] === "dismiss" && method === "POST") {
+                    requireCapability(principal, "manage_security_incidents");
+                    const body = (await readJsonBody(req, maxBody));
+                    return send(res, 200, await options.securityCenter.dismissAlert(segs[2], principal.id, String(body.reason || "")), correlationId);
+                }
+                if (segs[1] === "incidents" && method === "GET" && segs.length === 2) {
+                    requireCapability(principal, "view_security");
+                    const severity = url.searchParams.get("severity") || undefined;
+                    const status = url.searchParams.get("status") || undefined;
+                    const domain = url.searchParams.get("domain") || undefined;
+                    const projectId = url.searchParams.get("projectId") || undefined;
+                    return send(res, 200, options.securityCenter.listIncidents({ severity: severity, status: status, domain: domain }, principal, projectId), correlationId);
+                }
+                if (segs[1] === "incidents" && method === "GET" && segs.length === 3) {
+                    requireCapability(principal, "view_security");
+                    const incident = options.securityCenter.getIncident(segs[2], principal);
+                    if (!incident)
+                        throw new NotFoundError("incident not found");
+                    return send(res, 200, incident, correlationId);
+                }
+                if (segs[1] === "incidents" && segs[3] === "assign" && method === "POST") {
+                    requireCapability(principal, "manage_security_incidents");
+                    const body = (await readJsonBody(req, maxBody));
+                    return send(res, 200, await options.securityCenter.assignIncident(segs[2], String(body.owner || ""), principal.id), correlationId);
+                }
+                if (segs[1] === "incidents" && segs[3] === "status" && method === "POST") {
+                    requireCapability(principal, "manage_security_incidents");
+                    const body = (await readJsonBody(req, maxBody));
+                    return send(res, 200, await options.securityCenter.updateIncidentStatus(segs[2], body.status, principal.id, body.note ? String(body.note) : undefined), correlationId);
+                }
+                if (segs[1] === "incidents" && segs[3] === "resolve" && method === "POST") {
+                    requireCapability(principal, "manage_security_incidents");
+                    const body = (await readJsonBody(req, maxBody));
+                    return send(res, 200, await options.securityCenter.resolveIncident(segs[2], principal.id, String(body.summary || ""), body.rootCause ? String(body.rootCause) : undefined), correlationId);
+                }
+                if (segs[1] === "incidents" && segs[3] === "reopen" && method === "POST") {
+                    requireCapability(principal, "manage_security_incidents");
+                    const body = (await readJsonBody(req, maxBody));
+                    return send(res, 200, await options.securityCenter.reopenIncident(segs[2], principal.id, String(body.reason || "")), correlationId);
+                }
+                if (segs[1] === "incidents" && segs[3] === "notes" && method === "POST") {
+                    requireCapability(principal, "manage_security_incidents");
+                    const body = (await readJsonBody(req, maxBody));
+                    return send(res, 200, await options.securityCenter.addIncidentNote(segs[2], principal.id, String(body.note || "")), correlationId);
+                }
             }
-            if (segs[1] === "policies" && method === "GET") {
-                return send(res, 200, await options.security.listPolicies(), correlationId);
+            // ---- Legacy Security Endpoints ----
+            if (options.security) {
+                if (segs[1] === "events" && method === "GET") {
+                    requireCapability(principal, "view_security_events");
+                    return send(res, 200, await options.security.listEvents(), correlationId);
+                }
+                if (segs[1] === "policies" && method === "GET") {
+                    requireCapability(principal, "view_security");
+                    return send(res, 200, await options.security.listPolicies(), correlationId);
+                }
             }
             return send(res, 404, { error: { message: "not found" } }, correlationId);
         }
@@ -706,18 +836,253 @@ export function createControlPlaneApi(options) {
             return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
         }
     }
-    async function handleWorkforce(route, segs, method, req, res, principal, correlationId) {
-        if (!options.workforce)
-            return send(res, 404, { error: { message: "workforce not available" } }, correlationId);
+    /**
+     * Knowledge module (Phase 2 — Control Plane §17).
+     *
+     *   GET  /api/knowledge?projectId=&type=&search=
+     *   GET  /api/knowledge/:knowledgeId
+     *   POST /api/knowledge              (create; admin only)
+     *   PUT  /api/knowledge/:knowledgeId (update; admin only)
+     *
+     * Authorization and validation live in the service; the API only maps errors.
+     */
+    /**
+     * Knowledge module (Phase 2 — Control Plane §17 & Layer 14 Knowledge Learning).
+     *
+     *   GET  /api/knowledge?projectId=&type=&search=
+     *   GET  /api/knowledge/:knowledgeId
+     *   POST /api/knowledge              (create; admin only)
+     *   PUT  /api/knowledge/:knowledgeId (update; admin only)
+     *   GET  /api/knowledge/adrs
+     *   POST /api/knowledge/adrs
+     *   PUT  /api/knowledge/adrs/:adrId/status
+     *   GET  /api/knowledge/lessons
+     *   POST /api/knowledge/lessons
+     *   GET  /api/knowledge/conflicts
+     *   POST /api/knowledge/conflicts/:conflictId/resolve
+     *   GET  /api/knowledge/quality
+     *   POST /api/knowledge/retrieve
+     */
+    async function handleKnowledge(req, res, segs, method, params, principal, correlationId) {
+        const knowledge = options.knowledge;
+        if (!knowledge) {
+            return send(res, 404, { error: { message: "knowledge not available" } }, correlationId);
+        }
         try {
-            if (segs[1] === "departments" && method === "GET") {
-                return send(res, 200, await options.workforce.listDepartments(), correlationId);
+            const sub = segs[1];
+            // ADR Sub-resource
+            if (sub === "adrs") {
+                if (method === "GET" && segs.length === 2) {
+                    const items = knowledge.list(principal, {
+                        ...(params.get("projectId") ? { projectId: params.get("projectId") } : {}),
+                        type: "architecture_decision",
+                    });
+                    return send(res, 200, { items, total: items.length }, correlationId);
+                }
+                if (method === "POST" && segs.length === 2) {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 201, knowledge.proposeADR(principal, body), correlationId);
+                }
+                if (method === "PUT" && segs.length === 4 && segs[3] === "status") {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 200, knowledge.updateADRStatus(principal, segs[2], body.status, body.notes), correlationId);
+                }
             }
-            if (segs[1] === "teams" && method === "GET") {
-                return send(res, 200, await options.workforce.listTeams(), correlationId);
+            // Lessons Learned Sub-resource
+            if (sub === "lessons") {
+                if (method === "GET" && segs.length === 2) {
+                    const items = knowledge.list(principal, {
+                        ...(params.get("projectId") ? { projectId: params.get("projectId") } : {}),
+                        type: "lesson",
+                    });
+                    return send(res, 200, { items, total: items.length }, correlationId);
+                }
+                if (method === "POST" && segs.length === 2) {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 201, knowledge.recordLesson(principal, body), correlationId);
+                }
             }
-            if (segs[1] === "agents" && method === "GET") {
-                return send(res, 200, await options.workforce.listAgents(), correlationId);
+            // Conflicts Sub-resource
+            if (sub === "conflicts") {
+                if (method === "GET" && segs.length === 2) {
+                    const conflicts = knowledge.getConflicts(principal, params.get("projectId") ?? undefined);
+                    return send(res, 200, { conflicts, total: conflicts.length }, correlationId);
+                }
+                if (method === "POST" && segs.length === 4 && segs[3] === "resolve") {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 200, knowledge.resolveConflict(principal, segs[2], body.winnerId, body.resolutionNotes), correlationId);
+                }
+            }
+            // Quality Audit Report Sub-resource
+            if (sub === "quality" && method === "GET" && segs.length === 2) {
+                const report = knowledge.getQualityReport(principal, params.get("projectId") ?? undefined);
+                return send(res, 200, report, correlationId);
+            }
+            // Scoped Context Retrieval Sub-resource
+            if (sub === "retrieve" && method === "POST" && segs.length === 2) {
+                const body = await readJsonBody(req, maxBody);
+                const results = knowledge.retrieveContextKnowledge(principal, body);
+                return send(res, 200, { items: results, total: results.length }, correlationId);
+            }
+            // Standard Knowledge CRUD
+            const id = segs[1];
+            if (method === "GET" && segs.length === 1) {
+                const type = params.get("type");
+                const items = knowledge.list(principal, {
+                    ...(params.get("projectId")
+                        ? { projectId: params.get("projectId") }
+                        : {}),
+                    ...(type ? { type: type } : {}),
+                    ...(params.get("search")
+                        ? { search: params.get("search") }
+                        : {}),
+                });
+                return send(res, 200, { items, total: items.length }, correlationId);
+            }
+            if (method === "GET" && id && segs.length === 2) {
+                return send(res, 200, notNull(knowledge.get(principal, id)), correlationId);
+            }
+            if (method === "POST" && segs.length === 1) {
+                const body = await readJsonBody(req, maxBody);
+                return send(res, 201, knowledge.create(principal, body), correlationId);
+            }
+            if (method === "PUT" && id && segs.length === 2) {
+                const body = await readJsonBody(req, maxBody);
+                return send(res, 200, knowledge.update(principal, id, body), correlationId);
+            }
+            return send(res, 404, { error: { message: "not found" } }, correlationId);
+        }
+        catch (e) {
+            return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+        }
+    }
+    /**
+     * Layer 15 — Simulation & Decision Intelligence API
+     *
+     *   POST /api/simulation/run
+     *   GET  /api/simulation/snapshots
+     *   GET  /api/simulation/snapshots/:id
+     *   POST /api/simulation/snapshots/:id/decide
+     */
+    async function handleSimulation(req, res, segs, method, params, principal, correlationId) {
+        const simulation = options.simulation;
+        if (!simulation) {
+            return send(res, 404, { error: { message: "simulation not available" } }, correlationId);
+        }
+        try {
+            const sub = segs[1];
+            if (sub === "run" && method === "POST" && segs.length === 2) {
+                const body = await readJsonBody(req, maxBody);
+                const snapshot = simulation.runSimulation(principal, body);
+                return send(res, 201, snapshot, correlationId);
+            }
+            if (sub === "snapshots") {
+                if (method === "GET" && segs.length === 2) {
+                    const snapshots = simulation.listSnapshots(principal, params.get("projectId") ?? undefined);
+                    return send(res, 200, { snapshots, total: snapshots.length }, correlationId);
+                }
+                if (method === "GET" && segs.length === 3) {
+                    const snapshot = simulation.getSnapshot(principal, segs[2]);
+                    return send(res, 200, notNull(snapshot), correlationId);
+                }
+                if (method === "POST" && segs.length === 4 && segs[3] === "decide") {
+                    const body = await readJsonBody(req, maxBody);
+                    const decided = simulation.decideOption(principal, segs[2], body.optionId, body.notes);
+                    return send(res, 200, decided, correlationId);
+                }
+            }
+            return send(res, 404, { error: { message: "not found" } }, correlationId);
+        }
+        catch (e) {
+            return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+        }
+    }
+    /**
+     * Layer 16 — Trust, Governance & Human Oversight Center API
+     *
+     *   GET  /api/trust/overview
+     *   GET  /api/trust/entities
+     *   GET  /api/trust/entities/:id
+     *   POST /api/trust/entities
+     *   POST /api/trust/evaluate
+     *   GET  /api/trust/approvals
+     *   POST /api/trust/approvals
+     *   POST /api/trust/approvals/:id/decide
+     *   GET  /api/trust/emergency
+     *   POST /api/trust/emergency/lock
+     *   POST /api/trust/emergency/release
+     *   GET  /api/trust/events
+     */
+    async function handleTrust(req, res, segs, method, params, principal, correlationId) {
+        const trust = options.trust;
+        if (!trust) {
+            return send(res, 404, { error: { message: "trust governance not available" } }, correlationId);
+        }
+        try {
+            const sub = segs[1];
+            // Trust Center Overview
+            if (sub === "overview" && method === "GET" && segs.length === 2) {
+                const summary = trust.getTrustCenterSummary(principal, params.get("projectId") ?? undefined);
+                return send(res, 200, summary, correlationId);
+            }
+            // Trust Entities
+            if (sub === "entities") {
+                if (method === "GET" && segs.length === 2) {
+                    const entities = trust.listTrustEntities(principal, params.get("type") ?? undefined);
+                    return send(res, 200, { entities, total: entities.length }, correlationId);
+                }
+                if (method === "GET" && segs.length === 3) {
+                    return send(res, 200, notNull(trust.getTrustEntity(principal, segs[2])), correlationId);
+                }
+                if (method === "POST" && segs.length === 2) {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 200, trust.upsertTrustEntity(principal, body), correlationId);
+                }
+            }
+            // Policy Evaluation & Governance Gateway
+            if (sub === "evaluate" && method === "POST" && segs.length === 2) {
+                const body = await readJsonBody(req, maxBody);
+                return send(res, 200, trust.evaluateAndGovernAction(principal, body), correlationId);
+            }
+            // Unified Approvals Center
+            if (sub === "approvals") {
+                if (method === "GET" && segs.length === 2) {
+                    const approvals = trust.listApprovals(principal, {
+                        projectId: params.get("projectId") ?? undefined,
+                        status: params.get("status") ?? undefined,
+                    });
+                    return send(res, 200, { approvals, total: approvals.length }, correlationId);
+                }
+                if (method === "POST" && segs.length === 2) {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 201, trust.createApprovalRequest(principal, body), correlationId);
+                }
+                if (method === "POST" && segs.length === 4 && segs[3] === "decide") {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 200, trust.decideApproval(principal, segs[2], body.decision, body.notes, body.modifiedPayload), correlationId);
+                }
+            }
+            // Emergency Controls
+            if (sub === "emergency") {
+                if (method === "GET" && segs.length === 2) {
+                    return send(res, 200, trust.getEmergencyControlState(principal), correlationId);
+                }
+                if (method === "POST" && segs.length === 3 && segs[2] === "lock") {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 200, trust.executeEmergencyControl(principal, body), correlationId);
+                }
+                if (method === "POST" && segs.length === 3 && segs[2] === "release") {
+                    const body = await readJsonBody(req, maxBody);
+                    return send(res, 200, trust.releaseEmergencyControl(principal, body.lockId), correlationId);
+                }
+            }
+            // Immutable Trust Audit Events
+            if (sub === "events" && method === "GET" && segs.length === 2) {
+                const events = trust.listTrustEvents(principal, {
+                    projectId: params.get("projectId") ?? undefined,
+                    limit: Number(params.get("limit")) || 50,
+                });
+                return send(res, 200, { events, total: events.length }, correlationId);
             }
             return send(res, 404, { error: { message: "not found" } }, correlationId);
         }
@@ -817,7 +1182,12 @@ function statusFilter(params) {
     return status ? { status } : {};
 }
 async function readJsonBody(req, maxBytes) {
-    // Firebase HTTPS Functions uses Express and may have parsed the JSON body
+    // Security Foundation V1 Step 5: Content-Type enforcement
+    const contentType = req.headers["content-type"] || "";
+    if (!contentType.includes("application/json")) {
+        throw new ValidationError("Expected Content-Type: application/json");
+    }
+    // Firebase HTTPS Functions uses Express and may have parsed the JSON body and may have parsed the JSON body
     // before this Node-compatible handler runs. Reuse that parsed value instead
     // of attempting to consume the stream twice. Plain Node HTTP requests do
     // not expose `body`, so they keep the existing streamed parsing path.

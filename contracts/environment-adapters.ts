@@ -31,7 +31,7 @@ import type {
   ResourceLimitKey,
   NetworkPolicy,
   SandboxInvocationOutcome,
-  SecretReference,
+  SecretUri,
   StructuredInvocation,
 } from "./execution.js";
 import { requireExecutionId } from "./execution.js";
@@ -248,7 +248,7 @@ export interface RunnerDescriptor {
     supportsKill: boolean;
   };
   /** Runner authentication: a reference resolved server-side only. */
-  credentialRef?: SecretReference;
+  credentialRef?: SecretUri;
   /** Routing metadata for cost/security/residency — never prices. */
   routing?: {
     provider?: string;

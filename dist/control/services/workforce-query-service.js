@@ -442,6 +442,14 @@ export class WorkforceQueryService {
             b.approvalId.localeCompare(a.approvalId));
         return paginate(views, query.limit, query.cursor);
     }
+    /** A single approval by id, project-scoped; `undefined` if foreign/unknown. */
+    getApproval(principal, approvalId) {
+        this.authorizeView(principal);
+        const view = this.approvalViews().find((v) => v.approvalId === approvalId);
+        if (!view)
+            return undefined;
+        return this.approvalVisible(principal, view.projectId) ? view : undefined;
+    }
     /**
      * Approval views with their project resolved: orchestrator/tool approvals
      * only carry a `taskId`, so the project comes from the linked task — an
@@ -798,6 +806,17 @@ export class WorkforceQueryService {
             total: page.total,
             nextCursor: page.nextCursor,
         };
+    }
+    /** A single audit event by id, project-scoped; `undefined` if foreign/unknown. */
+    getAuditEvent(principal, eventId) {
+        this.authorizeView(principal);
+        const view = this.ctx.audit
+            .list()
+            .map(deriveAuditEventView)
+            .find((v) => v.id === eventId);
+        if (!view)
+            return undefined;
+        return this.auditVisible(principal, view.projectId) ? view : undefined;
     }
     /* -------------------------------------------------------------- */
     /* dashboard bundle                                              */

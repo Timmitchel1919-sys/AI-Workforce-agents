@@ -9,8 +9,8 @@
  * appear in any agent-facing, API or receipt type here.
  */
 import { ValidationError } from "./index.js";
-import { requireExecutionId, validateSecretReference } from "./execution.js";
-import type { SecretReference } from "./execution.js";
+import { requireExecutionId, validateSecretReference, validateSecretUri } from "./execution.js";
+import type { SecretUri } from "./execution.js";
 import type { SourceFingerprint } from "./verification.js";
 
 /* ------------------------------------------------------------------ */
@@ -65,7 +65,7 @@ export interface RepositoryReference {
   remote?: {
     url: string;
     /** Credential reference for a private repository; value never stored. */
-    credentialRef?: SecretReference;
+    credentialRef?: SecretUri;
   };
   defaultBranch?: string;
 }

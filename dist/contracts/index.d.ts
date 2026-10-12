@@ -1,3 +1,4 @@
+export * from "./secrets.js";
 export type Priority = "low" | "normal" | "high" | "critical";
 export declare const ENVIRONMENTS: readonly ["local", "test", "staging", "production"];
 export type Environment = (typeof ENVIRONMENTS)[number];
@@ -221,7 +222,7 @@ export interface AgentContext {
     values: Record<string, unknown>;
 }
 export type Context = TaskContext | ProjectContext | AgentContext;
-export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event", "execution_event", "onboarding_event", "usage_recorded", "budget_blocked", "budget_policy_set", "audit_finding_raised", "governance_decision", "governance_policy_set", "routing_decision_made", "routing_no_candidate", "assignment_created", "assignment_transitioned", "assignment_reassigned", "assignment_blocked", "write_lease_acquired", "write_lease_released", "write_lease_denied"];
+export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "security_policy_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event", "execution_event", "onboarding_event", "knowledge_created", "knowledge_updated", "usage_recorded", "budget_blocked", "budget_policy_set", "audit_finding_raised", "governance_decision", "governance_policy_set", "routing_decision_made", "routing_no_candidate", "assignment_created", "assignment_transitioned", "assignment_reassigned", "assignment_blocked", "write_lease_acquired", "write_lease_released", "write_lease_denied", "knowledge_adr_status_changed", "knowledge_conflict_resolved", "simulation_executed", "simulation_decision_recorded", "trust_event_recorded"];
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
 export interface AuditEvent {
     id: string;
@@ -467,15 +468,10 @@ export * from "./routing.js";
 export * from "./workforce.js";
 export * from "./capabilities.js";
 export * from "./assignment.js";
-export * from "./tenancy.js";
-export * from "./billing.js";
-export * from "./customer.js";
 export * from "./identity.js";
-export * from "./privacy.js";
 export * from "./api-platform.js";
-export * from "./secops.js";
+export type { SecurityEvent as SecopsSecurityEvent, ThreatRule, SecurityIncident as SecopsIncident, ThreatIntel, Vulnerability, AccessRequest, } from "./secops.js";
 export * from "./extensions.js";
-export * from "./mlops.js";
 export * from "./marketing.js";
 export * from "./compliance.js";
 export * from "./risk.js";
@@ -490,4 +486,12 @@ export * from "./security.js";
 export * from "./audit.js";
 export * from "./portfolio.js";
 export * from "./product.js";
-export * from "./organization.js";
+export * from "./prompt.js";
+export * from "./knowledge.js";
+export * from "./security-policy.js";
+export * from "./secrets.js";
+export * from "./security-build.js";
+export * from "./recovery.js";
+export * from "./security-center.js";
+export * from "./simulation.js";
+export * from "./trust-governance.js";

@@ -41,10 +41,18 @@ export interface ControlPlaneApiOptions {
     aiGov?: import("../control/services/ai-governance-service.js").AIGovernanceControlService;
     dataGov?: import("../control/services/data-governance-service.js").DataGovernanceService;
     security?: import("../control/services/security-service.js").SecurityControlService;
+    securityCenter?: import("../core/security/security-center-service.js").SecurityCenterService;
     audit?: import("../control/services/audit-service.js").AuditControlService;
+    /** Phase 2 — Knowledge module (list/get + create/update). */
+    knowledge?: import("../control/services/knowledge-service.js").KnowledgeControlService;
+    /** Layer 15 — Simulation & Decision Intelligence */
+    simulation?: import("../control/services/simulation-service.js").SimulationControlService;
+    /** Layer 16 — Trust, Governance & Human Oversight */
+    trust?: import("../control/services/trust-control-service.js").TrustControlService;
     portfolio?: import("../control/services/portfolio-service.js").PortfolioControlService;
     product?: import("../control/services/product-service.js").ProductManagementService;
-    workforce?: import("../control/services/workforce-service.js").WorkforceManagementService;
+    appAttestationVerifier?: import("./security/app-check.js").AppAttestationVerifier;
+    appCheckMode?: import("./security/app-check.js").AppCheckEnforcementMode;
     /** Path prefix for every route. Default `/api`. */
     basePath?: string;
     /** Request header carrying an inbound correlation id. Default `x-correlation-id`. */

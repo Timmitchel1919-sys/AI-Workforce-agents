@@ -7,21 +7,13 @@
  * durable provider is injected. It is pure (no `fs`, no `node:` I/O) and lives
  * in `core/` deliberately.
  */
-import { TenantIsolationContext } from "../tenancy/tenant-context.js";
 export class InMemoryRepository {
     entities = new Map();
-    tenantContext = TenantIsolationContext.getInstance();
     constructor(seed = []) {
         for (const entity of seed)
             this.upsert(entity);
     }
     isAllowed(entity) {
-        const orgId = entity.organizationId;
-        if (!orgId)
-            return true; // Legacy entities
-        // In a real environment, we'd extract executionId from async local storage or parameter.
-        // For now, we assume if tenant context exists for a global execution, we check it.
-        // However, since we don't have executionId passed here, we might just expose a filter.
         return true;
     }
     upsert(entity) {
