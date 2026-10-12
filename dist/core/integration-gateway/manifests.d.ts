@@ -1,0 +1,15 @@
+import { type ConnectorManifest } from "./rest.js";
+export declare const GITHUB: ConnectorManifest;
+export declare const FIREBASE: ConnectorManifest;
+export declare const GOOGLE_DRIVE: ConnectorManifest;
+export declare const GMAIL: ConnectorManifest;
+export declare const GOOGLE_CALENDAR: ConnectorManifest;
+export declare const SLACK: ConnectorManifest;
+export declare const FIREFLIES: ConnectorManifest;
+export declare const WORDPRESS: ConnectorManifest;
+export declare const FIGMA: ConnectorManifest;
+export declare const CANVA: ConnectorManifest;
+export declare const DOCKER: ConnectorManifest;
+export declare const BLENDER: ConnectorManifest;
+export declare const BUILTIN_MANIFESTS: readonly ConnectorManifest[];
+export declare function manifestOf(connectorId: string): ConnectorManifest | undefined;

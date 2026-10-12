@@ -17,7 +17,7 @@ export interface CreateApprovalItemRequest {
     proposedChange: Record<string, unknown>;
     rollbackAvailable?: boolean;
 }
-export declare class TrustControlService {
+export declare class TrustOversightControlService {
     private readonly trustEntities;
     private readonly approvals;
     private readonly trustEvents;

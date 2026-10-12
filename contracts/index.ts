@@ -342,6 +342,10 @@ export const AUDIT_EVENT_TYPES = [
   /* Phase 2 — Control Plane knowledge module. */
   "knowledge_created",
   "knowledge_updated",
+  /* Knowledge, Memory & Context Intelligence (memory.created, knowledge.ingested …). */
+  "knowledge_event",
+  /* Governance, Trust, Security & Policy Intelligence (policy.evaluated, approval.requested …). */
+  "governance_event",
   /* EO-6.2 — AI Cost Center & rule-based Auditor. */
   "usage_recorded",
   "budget_blocked",
@@ -927,6 +931,14 @@ export type {
   AsyncRepository,
   PersistenceProvider,
 } from "./persistence.js";
+export * from "./knowledge-memory.js";
+export * from "./security-governance.js";
+export * from "./integration-gateway.js";
+export * from "./extension-platform.js";
+export * from "./business-layer.js";
+export * from "./portfolio-intelligence.js";
+export * from "./autonomy.js";
+export * from "./analytics-intelligence.js";
 export * from "./storage.js";
 
 export * from "./research.js";
@@ -952,6 +964,9 @@ export * from "./orchestration.js";
 export * from "./environment-routing.js";
 export * from "./graph.js";
 export * from "./onboarding.js";
+export * from "./prompt-intelligence.js";
+export * from "./execution-orchestration.js";
+export * from "./execution-runtime.js";
 export * from "./cost-center.js";
 export * from "./governance.js";
 export * from "./routing.js";

@@ -1,0 +1,115 @@
+export const OPS_AUTONOMY_LEVELS = [0, 1, 2, 3, 4, 5];
+export const AUTONOMY_LEVEL_INFO = {
+    0: {
+        name: "Manual",
+        description: "Nothing runs on its own. Every step needs the owner's approval.",
+    },
+    1: {
+        name: "Assistive",
+        description: "May run read-only inspection by itself; everything else needs approval.",
+    },
+    2: {
+        name: "Suggested",
+        description: "Plans and suggests. LOW-risk steps run by themselves once the owner starts the workflow; everything else needs approval.",
+    },
+    3: {
+        name: "Approved Autonomous",
+        description: "After the owner approves the plan, LOW and MEDIUM steps run without asking.",
+    },
+    4: {
+        name: "Bounded Autonomous",
+        description: "LOW and MEDIUM steps inside the workflow's boundaries run without asking.",
+    },
+    5: {
+        name: "Highly Autonomous",
+        description: "LOW and MEDIUM workflows may start and run on a trigger. HIGH, CRITICAL and restricted actions still always need approval.",
+    },
+};
+/** What the action does to the world. */
+export const ACTION_KINDS = [
+    "READ",
+    "ANALYZE",
+    "REPORT",
+    "TEST",
+    "BRANCH",
+    "PULL_REQUEST",
+    "COMMIT",
+    "PUSH",
+    "MERGE",
+    "DEPLOY",
+    "DELETE",
+    "SECRETS",
+    "EXTERNAL_COMMUNICATION",
+    "DEVICE",
+    "INFRASTRUCTURE",
+    "ORCHESTRATE",
+];
+export const TRIGGER_SOURCES = [
+    "github",
+    "deployment",
+    "test_failure",
+    "security_finding",
+    "data_change",
+    "schedule",
+    "integration",
+    "user_command",
+    "project_state",
+    "monitoring",
+];
+export const STEP_STATES = [
+    "PENDING",
+    "WAITING_APPROVAL",
+    "APPROVED",
+    "RUNNING",
+    "RETRY_WAIT",
+    "SUCCEEDED",
+    "FAILED",
+    "REJECTED",
+    "SKIPPED",
+    "BLOCKED",
+    "ROLLED_BACK",
+];
+export const INSTANCE_STATES = [
+    "TRIGGERED",
+    "PLANNED",
+    "AWAITING_PLAN_APPROVAL",
+    "EXECUTING",
+    "AWAITING_APPROVAL",
+    "RECOVERING",
+    "BLOCKED",
+    "PAUSED",
+    "COMPLETED",
+    "FAILED",
+    "ESCALATED",
+    "REJECTED",
+    "CANCELLED",
+];
+export const AUDIT_KINDS = [
+    "TRIGGER",
+    "PLAN",
+    "AGENT",
+    "MODEL",
+    "TOOL",
+    "ACTION",
+    "APPROVAL",
+    "RESULT",
+    "FAILURE",
+    "RECOVERY",
+    "POLICY",
+    "CONTROL",
+];
+export const AUTONOMY_COMMANDS = [
+    "autonomy_set_level",
+    "autonomy_pause_all",
+    "autonomy_resume_all",
+    "autonomy_create_definition",
+    "autonomy_add_rule",
+    "autonomy_set_rule_enabled",
+    "autonomy_trigger",
+    "autonomy_approve_plan",
+    "autonomy_start",
+    "autonomy_decide_step",
+    "autonomy_cancel",
+    "autonomy_rollback",
+    "autonomy_tick",
+];

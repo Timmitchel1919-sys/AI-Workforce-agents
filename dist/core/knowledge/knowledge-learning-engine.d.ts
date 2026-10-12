@@ -1,4 +1,4 @@
-import type { KnowledgeConflict, KnowledgeItem, KnowledgeQualityReport, KnowledgeScope, CreateKnowledgeInput } from "../../contracts/knowledge.js";
+import type { KnowledgeItemConflict, KnowledgeItem, KnowledgeQualityReport, KnowledgeScope, CreateKnowledgeInput } from "../../contracts/knowledge.js";
 /**
  * AI Workforce OS — Layer 14: Knowledge Learning & Organizational Memory Engine
  *
@@ -30,7 +30,7 @@ export declare class KnowledgeLearningEngine {
      * Detects conflicting knowledge statements between items in the same scope or project.
      * Does NOT overwrite either record; flags for human or policy review.
      */
-    detectConflicts(items: readonly KnowledgeItem[]): KnowledgeConflict[];
+    detectConflicts(items: readonly KnowledgeItem[]): KnowledgeItemConflict[];
     private evaluateItemPair;
     /**
      * Resolves an identified conflict. Updates the preferred item to validated,
@@ -39,7 +39,7 @@ export declare class KnowledgeLearningEngine {
     resolveConflict(conflictId: string, winnerItem: KnowledgeItem, loserItem: KnowledgeItem, resolutionNotes: string, resolvedBy: string): {
         updatedWinner: KnowledgeItem;
         updatedLoser: KnowledgeItem;
-        resolvedConflict: KnowledgeConflict;
+        resolvedConflict: KnowledgeItemConflict;
     };
     /**
      * Performs an evidence-based quality audit across the knowledge repository.

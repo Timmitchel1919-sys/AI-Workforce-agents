@@ -1,5 +1,5 @@
 /**
- * KnowledgeControlService — the authorized read/write surface for the Knowledge
+ * KnowledgeCrudControlService — the authorized read/write surface for the Knowledge
  * module (Phase 2 — Control Plane §17 & Layer 14 Knowledge Learning).
  *
  * Repository-backed, authorized server-side, audit-logged on every change.
@@ -21,7 +21,7 @@ import {
   type KnowledgeQuery,
   type KnowledgeItemType,
   type UpdateKnowledgeInput,
-  type KnowledgeConflict,
+  type KnowledgeItemConflict,
   type KnowledgeQualityReport,
   type AdrStatus,
   type ArchitectureDecisionRecord,
@@ -80,7 +80,7 @@ function normalizeTags(value: unknown): string[] {
   });
 }
 
-export class KnowledgeControlService {
+export class KnowledgeCrudControlService {
   private readonly engine: KnowledgeLearningEngine;
 
   constructor(
@@ -381,7 +381,7 @@ export class KnowledgeControlService {
   }
 
   /** Scans knowledge base for contradictory assertions and returns active conflicts. */
-  getConflicts(principal: OperatorPrincipal, projectId?: string): KnowledgeConflict[] {
+  getConflicts(principal: OperatorPrincipal, projectId?: string): KnowledgeItemConflict[] {
     this.requireReader(principal);
     this.requireProjectAccess(principal, projectId);
     const visibleItems = this.list(principal, { projectId });
@@ -394,7 +394,7 @@ export class KnowledgeControlService {
     conflictId: string,
     winnerId: string,
     resolutionNotes: string,
-  ): { winner: KnowledgeItem; loser: KnowledgeItem; conflict: KnowledgeConflict } {
+  ): { winner: KnowledgeItem; loser: KnowledgeItem; conflict: KnowledgeItemConflict } {
     this.requireWriter(principal);
     const itemA = this.items.findById(winnerId);
     if (!itemA) throw new NotFoundError("winner knowledge item not found");

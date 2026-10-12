@@ -116,14 +116,14 @@ export function getKnowledgeItems(
   if (filter.search?.trim()) params.set("search", filter.search.trim());
   const qs = params.toString();
   return call<{ items: KnowledgeItem[]; total: number }>(
-    `/api/knowledge${qs ? `?${qs}` : ""}`,
+    `/api/knowledge-items${qs ? `?${qs}` : ""}`,
     token,
   );
 }
 
 export function getKnowledgeItem(knowledgeId: string, token?: string | null) {
   return call<KnowledgeItem>(
-    `/api/knowledge/${encodeURIComponent(knowledgeId)}`,
+    `/api/knowledge-items/${encodeURIComponent(knowledgeId)}`,
     token,
   );
 }
@@ -132,7 +132,7 @@ export function createKnowledge(
   input: CreateKnowledgeInput,
   token?: string | null,
 ) {
-  return call<KnowledgeItem>("/api/knowledge", token, {
+  return call<KnowledgeItem>("/api/knowledge-items", token, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -144,7 +144,7 @@ export function updateKnowledge(
   token?: string | null,
 ) {
   return call<KnowledgeItem>(
-    `/api/knowledge/${encodeURIComponent(knowledgeId)}`,
+    `/api/knowledge-items/${encodeURIComponent(knowledgeId)}`,
     token,
     {
       method: "PUT",

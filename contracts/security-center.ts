@@ -104,7 +104,7 @@ export interface SecurityPostureSummary {
 /**
  * Normalized Security Alert representing an actionable condition derived from SecurityEvents.
  */
-export interface SecurityAlert {
+export interface SecurityCenterAlert {
   id: string;
   title: string;
   description: string;
@@ -223,7 +223,7 @@ export interface NotificationEvent {
 /* Pure Validators                                                    */
 /* ------------------------------------------------------------------ */
 
-export function validateSecurityAlert(alert: SecurityAlert): void {
+export function validateSecurityAlert(alert: SecurityCenterAlert): void {
   requireText(alert.id, "alert.id");
   requireText(alert.title, "alert.title");
   if (!SECURITY_ALERT_SEVERITIES.includes(alert.severity)) {

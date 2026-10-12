@@ -5,7 +5,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { Spinner } from "../components/ui";
 import { useI18n } from "../i18n";
 import RouteError from "./RouteError";
-import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding } from "./routeModules";
+import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding, loadPromptIntelligence, loadExecutionCenter, loadLiveWorkspace, loadKnowledge, loadSecurityCenter, loadIntegrationCenter, loadPlatformCenters } from "./routeModules";
 
 type ChunkExports<T> = { [K in keyof T]: T[K] };
 
@@ -47,6 +47,17 @@ const IntelligencePage = fromChunk(loadControlCenterRoutes, "IntelligencePage");
 const IntegrationsPage = fromChunk(loadControlCenterRoutes, "IntegrationsPage");
 const NewProjectPage = fromChunk(loadProjectOnboarding, "NewProjectPage");
 const OnboardingPage = fromChunk(loadProjectOnboarding, "OnboardingPage");
+const PromptIntelligencePage = fromChunk(loadPromptIntelligence, "PromptIntelligencePage");
+const ExecutionCenterPage = fromChunk(loadExecutionCenter, "ExecutionCenterPage");
+const LiveWorkspacePage = fromChunk(loadLiveWorkspace, "LiveWorkspacePage");
+const KnowledgePage = fromChunk(loadKnowledge, "KnowledgePage");
+const SecurityCenterPage = fromChunk(loadSecurityCenter, "SecurityCenterPage");
+const IntegrationCenterPage = fromChunk(loadIntegrationCenter, "IntegrationCenterPage");
+const ExtensionPlatformPage = fromChunk(loadPlatformCenters, "ExtensionPlatformPage");
+const BusinessLayerPage = fromChunk(loadPlatformCenters, "BusinessLayerPage");
+const ProjectPortfolioPage = fromChunk(loadPlatformCenters, "ProjectPortfolioPage");
+const OperationsCenterPage = fromChunk(loadPlatformCenters, "OperationsCenterPage");
+const AnalyticsCenterPage = fromChunk(loadPlatformCenters, "AnalyticsCenterPage");
 const ExtensionsPage = fromChunk(loadControlCenterRoutes, "ExtensionsPage");
 const PlatformAdminPage = fromChunk(loadControlCenterRoutes, "PlatformAdminPage");
 
@@ -64,7 +75,6 @@ const AuditPage = fromChunk(loadControlCenterRoutes, "AuditPage");
 const PortfolioPage = fromChunk(loadControlCenterRoutes, "PortfolioPage");
 const ProductPage = fromChunk(loadControlCenterRoutes, "ProductPage");
 const WorkforcePage = fromChunk(loadControlCenterRoutes, "WorkforcePage");
-const KnowledgePage = fromChunk(loadControlCenterRoutes, "KnowledgePage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -121,6 +131,12 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "projects", element: withSuspense(<ProjectsPage />) },
       { path: "projects/new", element: withSuspense(<NewProjectPage />) },
       { path: "projects/onboarding/:onboardingId", element: withSuspense(<OnboardingPage />) },
+      { path: "prompt-intelligence", element: withSuspense(<PromptIntelligencePage />) },
+      { path: "prompt-intelligence/:requestId", element: withSuspense(<PromptIntelligencePage />) },
+      { path: "execution-center", element: withSuspense(<ExecutionCenterPage />) },
+      { path: "execution-center/:runId", element: withSuspense(<ExecutionCenterPage />) },
+      { path: "workspace", element: withSuspense(<LiveWorkspacePage />) },
+      { path: "workspace/:executionId", element: withSuspense(<LiveWorkspacePage />) },
       { path: "projects/:projectId", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations", element: withSuspense(<ProjectDetailPage />) },
       { path: "projects/:projectId/operations/:sessionId", element: withSuspense(<ProjectDetailPage />) },
@@ -156,6 +172,27 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "software-factory", element: withSuspense(<SoftwareFactoryPage />) },
       { path: "software-factory/:projectId/:programId", element: withSuspense(<SoftwareFactoryProgramPage />) },
       { path: "knowledge", element: withSuspense(<KnowledgePage />) },
+      { path: "knowledge/:tab", element: withSuspense(<KnowledgePage />) },
+      { path: "knowledge/:tab/:memoryId", element: withSuspense(<KnowledgePage />) },
+      { path: "security-center", element: withSuspense(<SecurityCenterPage />) },
+      { path: "security-center/:tab", element: withSuspense(<SecurityCenterPage />) },
+      { path: "security-center/:tab/:itemId", element: withSuspense(<SecurityCenterPage />) },
+      { path: "integration-center", element: withSuspense(<IntegrationCenterPage />) },
+      { path: "integration-center/:tab", element: withSuspense(<IntegrationCenterPage />) },
+      { path: "integration-center/:tab/:itemId", element: withSuspense(<IntegrationCenterPage />) },
+      { path: "extension-platform", element: withSuspense(<ExtensionPlatformPage />) },
+      { path: "extension-platform/:tab", element: withSuspense(<ExtensionPlatformPage />) },
+      { path: "extension-platform/:tab/:itemId", element: withSuspense(<ExtensionPlatformPage />) },
+      { path: "business-layer", element: withSuspense(<BusinessLayerPage />) },
+      { path: "business-layer/:tab", element: withSuspense(<BusinessLayerPage />) },
+      { path: "business-layer/:tab/:itemId", element: withSuspense(<BusinessLayerPage />) },
+      { path: "project-portfolio", element: withSuspense(<ProjectPortfolioPage />) },
+      { path: "project-portfolio/:tab", element: withSuspense(<ProjectPortfolioPage />) },
+      { path: "operations-center", element: withSuspense(<OperationsCenterPage />) },
+      { path: "operations-center/:tab", element: withSuspense(<OperationsCenterPage />) },
+      { path: "operations-center/:tab/:itemId", element: withSuspense(<OperationsCenterPage />) },
+      { path: "analytics-center", element: withSuspense(<AnalyticsCenterPage />) },
+      { path: "analytics-center/:tab", element: withSuspense(<AnalyticsCenterPage />) },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: withSuspense(<UsersAccessPage />) },

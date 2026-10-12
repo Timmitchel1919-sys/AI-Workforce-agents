@@ -125,7 +125,7 @@ export interface KnowledgeQuery {
     /** Case-insensitive substring match over title, body and tags. */
     search?: string;
 }
-export interface KnowledgeConflict {
+export interface KnowledgeItemConflict {
     conflictId: string;
     itemAId: string;
     itemBId: string;
@@ -150,6 +150,6 @@ export interface KnowledgeQualityReport {
     openConflictsCount: number;
     staleItemIds: readonly string[];
     lowConfidenceItemIds: readonly string[];
-    conflicts: readonly KnowledgeConflict[];
+    conflicts: readonly KnowledgeItemConflict[];
     recommendations: readonly string[];
 }

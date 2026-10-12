@@ -11,7 +11,7 @@
  */
 import crypto from "node:crypto";
 import type {
-  SecurityAlert,
+  SecurityCenterAlert,
   SecurityDomain,
   SecurityIncident,
   SecurityIncidentSeverity,
@@ -118,7 +118,7 @@ export class SecurityIncidentService {
   /**
    * Deterministically creates an incident from an elevated alert (Step 11).
    */
-  async createIncidentFromAlert(alert: SecurityAlert): Promise<SecurityIncident> {
+  async createIncidentFromAlert(alert: SecurityCenterAlert): Promise<SecurityIncident> {
     const severity: SecurityIncidentSeverity = alert.severity === "info" ? "low" : alert.severity;
 
     return this.createIncident(

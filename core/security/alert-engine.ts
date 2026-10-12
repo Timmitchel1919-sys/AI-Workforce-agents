@@ -8,7 +8,7 @@
  */
 import crypto from "node:crypto";
 import type {
-  SecurityAlert,
+  SecurityCenterAlert,
   SecurityAlertSeverity,
   SecurityAlertStatus,
   SecurityDomain,
@@ -30,7 +30,7 @@ export interface AlertEngineOptions {
 }
 
 export class AlertEngine {
-  private readonly alerts = new Map<string, SecurityAlert>();
+  private readonly alerts = new Map<string, SecurityCenterAlert>();
   private readonly incidentService?: SecurityIncidentService;
   private readonly publisher?: SecurityAlertPublisher;
   private readonly dedupWindowMs: number;
@@ -47,7 +47,7 @@ export class AlertEngine {
    * Consumes a ZTNSecurityEvent, evaluates alert criteria, deduplicates repeated events,
    * redacts secrets, and triggers incident creation when required.
    */
-  async ingestEvent(event: ZTNSecurityEvent): Promise<SecurityAlert | undefined> {
+  async ingestEvent(event: ZTNSecurityEvent): Promise<SecurityCenterAlert | undefined> {
     const classification = this.classifyEvent(event);
     if (!classification.shouldAlert) {
       return undefined;
@@ -87,7 +87,7 @@ export class AlertEngine {
       return { ...existing };
     }
 
-    // Create new SecurityAlert
+    // Create new SecurityCenterAlert
     const projectId =
       (event as any).projectId ||
       (event.targetResourceRef?.startsWith("projects/")
@@ -95,7 +95,7 @@ export class AlertEngine {
         : undefined);
     const id = `alt-${crypto.randomUUID()}`;
 
-    const alert: SecurityAlert = {
+    const alert: SecurityCenterAlert = {
       id,
       title: classification.title,
       description: safeDescription,
@@ -155,7 +155,7 @@ export class AlertEngine {
   /**
    * Retrieves an alert by ID.
    */
-  getAlert(id: string): SecurityAlert | undefined {
+  getAlert(id: string): SecurityCenterAlert | undefined {
     const alert = this.alerts.get(id);
     return alert ? { ...alert } : undefined;
   }
@@ -168,7 +168,7 @@ export class AlertEngine {
     severity?: SecurityAlertSeverity;
     domain?: SecurityDomain;
     projectId?: string;
-  } = {}): SecurityAlert[] {
+  } = {}): SecurityCenterAlert[] {
     let result = Array.from(this.alerts.values());
 
     if (filters.status) {
@@ -191,7 +191,7 @@ export class AlertEngine {
   /**
    * Acknowledges an active alert.
    */
-  async acknowledgeAlert(id: string, actor: string): Promise<SecurityAlert> {
+  async acknowledgeAlert(id: string, actor: string): Promise<SecurityCenterAlert> {
     const alert = this.alerts.get(id);
     if (!alert) throw new Error(`Alert '${id}' not found`);
 
@@ -208,7 +208,7 @@ export class AlertEngine {
    * Dismisses an alert with an audited rationale.
    * Does NOT delete the underlying security events!
    */
-  async dismissAlert(id: string, actor: string, reason: string): Promise<SecurityAlert> {
+  async dismissAlert(id: string, actor: string, reason: string): Promise<SecurityCenterAlert> {
     const alert = this.alerts.get(id);
     if (!alert) throw new Error(`Alert '${id}' not found`);
 
@@ -229,7 +229,7 @@ export class AlertEngine {
   /**
    * Marks an alert as resolved.
    */
-  async resolveAlert(id: string, actor: string): Promise<SecurityAlert> {
+  async resolveAlert(id: string, actor: string): Promise<SecurityCenterAlert> {
     const alert = this.alerts.get(id);
     if (!alert) throw new Error(`Alert '${id}' not found`);
 
@@ -405,7 +405,7 @@ export class AlertEngine {
     return `${event.eventType}:${domain}:${rawTarget}:${rawPrincipal}`;
   }
 
-  private findDeduplicatedAlert(dedupKey: string, eventTimeMs: number): SecurityAlert | undefined {
+  private findDeduplicatedAlert(dedupKey: string, eventTimeMs: number): SecurityCenterAlert | undefined {
     for (const alert of this.alerts.values()) {
       if (alert.status === "resolved" || alert.status === "dismissed") {
         continue;

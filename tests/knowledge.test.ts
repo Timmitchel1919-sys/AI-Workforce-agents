@@ -7,7 +7,7 @@ import {
   type AuditEvent,
   type OperatorPrincipal,
 } from "../core/index.js";
-import { KnowledgeControlService } from "../control/index.js";
+import { KnowledgeCrudControlService } from "../control/index.js";
 import type { KnowledgeItem } from "../contracts/knowledge.js";
 import { PermissionDeniedError, ValidationError } from "../contracts/index.js";
 
@@ -36,7 +36,7 @@ function makeService() {
   const auditRepository = new InMemoryRepository<AuditEvent>();
   const audit = new AuditLog(undefined, auditRepository);
   return {
-    service: new KnowledgeControlService(items, audit),
+    service: new KnowledgeCrudControlService(items, audit),
     auditRepository,
   };
 }
@@ -103,7 +103,7 @@ test("knowledge: writes require the administrator role", () => {
 test("knowledge: a scoped admin cannot read another project's item", () => {
   const items = new InMemoryRepository<KnowledgeItem>();
   const audit = new AuditLog(undefined, new InMemoryRepository<AuditEvent>());
-  const service = new KnowledgeControlService(items, audit);
+  const service = new KnowledgeCrudControlService(items, audit);
   const item = service.create(ADMIN, {
     projectId: "aims",
     type: "note",

@@ -1,4 +1,4 @@
-import type { SecurityAlert, SecurityDomain, SecurityIncident, SecurityIncidentSeverity, SecurityIncidentStatus } from "../../contracts/security-center.js";
+import type { SecurityCenterAlert, SecurityDomain, SecurityIncident, SecurityIncidentSeverity, SecurityIncidentStatus } from "../../contracts/security-center.js";
 import { type SecurityAlertPublisher } from "./alert-publisher.js";
 export interface CreateIncidentInput {
     title: string;
@@ -33,7 +33,7 @@ export declare class SecurityIncidentService {
     /**
      * Deterministically creates an incident from an elevated alert (Step 11).
      */
-    createIncidentFromAlert(alert: SecurityAlert): Promise<SecurityIncident>;
+    createIncidentFromAlert(alert: SecurityCenterAlert): Promise<SecurityIncident>;
     /**
      * Retrieves an incident by ID.
      */

@@ -1,3 +1,10 @@
+import { executionCenterEn } from "./executionCenter.en";
+import { liveWorkspaceEn } from "./liveWorkspace.en";
+import { knowledgeEn } from "./knowledge.en";
+import { securityCenterEn } from "./securityCenter.en";
+import { integrationCenterEn } from "./integrationCenter.en";
+import { platformCentersEn } from "./platformCenters.en";
+import { promptIntelligenceEn } from "./promptIntelligence.en";
 import { onboardingEn } from "./onboarding.en";
 /**
  * English — the source catalogue. Every other locale must match this shape.
@@ -2272,6 +2279,13 @@ export const en = {
     unavailable: "The Control Plane is unavailable. Try again.",
   },
   onboarding: onboardingEn,
+  promptIntelligence: promptIntelligenceEn,
+  executionCenter: executionCenterEn,
+  liveWorkspace: liveWorkspaceEn,
+  knowledge: knowledgeEn,
+  securityCenter: securityCenterEn,
+  integrationCenter: integrationCenterEn,
+  platformCenters: platformCentersEn,
   integrations: {
     title: "Integrations",
     description: "Manage enterprise integrations, MCP servers, and external tools.",

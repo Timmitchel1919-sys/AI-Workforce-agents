@@ -1,5 +1,5 @@
 /**
- * KnowledgeControlService — the authorized read/write surface for the Knowledge
+ * KnowledgeCrudControlService — the authorized read/write surface for the Knowledge
  * module (Phase 2 — Control Plane §17 & Layer 14 Knowledge Learning).
  *
  * Repository-backed, authorized server-side, audit-logged on every change.
@@ -7,11 +7,11 @@
  * quality analysis, lessons learned, and scoped context retrieval.
  */
 import { type OperatorPrincipal } from "../../contracts/index.js";
-import { type CreateKnowledgeInput, type KnowledgeItem, type KnowledgeQuery, type UpdateKnowledgeInput, type KnowledgeConflict, type KnowledgeQualityReport, type AdrStatus } from "../../contracts/knowledge.js";
+import { type CreateKnowledgeInput, type KnowledgeItem, type KnowledgeQuery, type UpdateKnowledgeInput, type KnowledgeItemConflict, type KnowledgeQualityReport, type AdrStatus } from "../../contracts/knowledge.js";
 import type { Repository } from "../../contracts/persistence.js";
 import type { AuditLog } from "../../core/index.js";
 import { KnowledgeLearningEngine, type ScopedRetrievalQuery } from "../../core/knowledge/knowledge-learning-engine.js";
-export declare class KnowledgeControlService {
+export declare class KnowledgeCrudControlService {
     private readonly items;
     private readonly audit?;
     private readonly engine;
@@ -53,12 +53,12 @@ export declare class KnowledgeControlService {
         tags?: string[];
     }): KnowledgeItem;
     /** Scans knowledge base for contradictory assertions and returns active conflicts. */
-    getConflicts(principal: OperatorPrincipal, projectId?: string): KnowledgeConflict[];
+    getConflicts(principal: OperatorPrincipal, projectId?: string): KnowledgeItemConflict[];
     /** Resolves an active knowledge conflict between two items. */
     resolveConflict(principal: OperatorPrincipal, conflictId: string, winnerId: string, resolutionNotes: string): {
         winner: KnowledgeItem;
         loser: KnowledgeItem;
-        conflict: KnowledgeConflict;
+        conflict: KnowledgeItemConflict;
     };
     /** Generates an organizational memory quality & staleness audit report. */
     getQualityReport(principal: OperatorPrincipal, projectId?: string): KnowledgeQualityReport;

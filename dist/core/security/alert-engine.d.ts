@@ -1,4 +1,4 @@
-import type { SecurityAlert, SecurityAlertSeverity, SecurityAlertStatus, SecurityDomain } from "../../contracts/security-center.js";
+import type { SecurityCenterAlert, SecurityAlertSeverity, SecurityAlertStatus, SecurityDomain } from "../../contracts/security-center.js";
 import type { ZTNSecurityEvent } from "../../contracts/security.js";
 import { type SecurityAlertPublisher } from "./alert-publisher.js";
 import type { SecurityIncidentService } from "./security-incident-service.js";
@@ -21,11 +21,11 @@ export declare class AlertEngine {
      * Consumes a ZTNSecurityEvent, evaluates alert criteria, deduplicates repeated events,
      * redacts secrets, and triggers incident creation when required.
      */
-    ingestEvent(event: ZTNSecurityEvent): Promise<SecurityAlert | undefined>;
+    ingestEvent(event: ZTNSecurityEvent): Promise<SecurityCenterAlert | undefined>;
     /**
      * Retrieves an alert by ID.
      */
-    getAlert(id: string): SecurityAlert | undefined;
+    getAlert(id: string): SecurityCenterAlert | undefined;
     /**
      * Lists alerts with optional filters.
      */
@@ -34,20 +34,20 @@ export declare class AlertEngine {
         severity?: SecurityAlertSeverity;
         domain?: SecurityDomain;
         projectId?: string;
-    }): SecurityAlert[];
+    }): SecurityCenterAlert[];
     /**
      * Acknowledges an active alert.
      */
-    acknowledgeAlert(id: string, actor: string): Promise<SecurityAlert>;
+    acknowledgeAlert(id: string, actor: string): Promise<SecurityCenterAlert>;
     /**
      * Dismisses an alert with an audited rationale.
      * Does NOT delete the underlying security events!
      */
-    dismissAlert(id: string, actor: string, reason: string): Promise<SecurityAlert>;
+    dismissAlert(id: string, actor: string, reason: string): Promise<SecurityCenterAlert>;
     /**
      * Marks an alert as resolved.
      */
-    resolveAlert(id: string, actor: string): Promise<SecurityAlert>;
+    resolveAlert(id: string, actor: string): Promise<SecurityCenterAlert>;
     private classifyEvent;
     private buildDedupKey;
     private findDeduplicatedAlert;

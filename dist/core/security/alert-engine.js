@@ -59,7 +59,7 @@ export class AlertEngine {
             });
             return { ...existing };
         }
-        // Create new SecurityAlert
+        // Create new SecurityCenterAlert
         const projectId = event.projectId ||
             (event.targetResourceRef?.startsWith("projects/")
                 ? event.targetResourceRef.split("/")[1]

@@ -1,3 +1,10 @@
+import { executionCenterNl } from "./executionCenter.nl";
+import { liveWorkspaceNl } from "./liveWorkspace.nl";
+import { knowledgeNl } from "./knowledge.nl";
+import { securityCenterNl } from "./securityCenter.nl";
+import { integrationCenterNl } from "./integrationCenter.nl";
+import { platformCentersNl } from "./platformCenters.nl";
+import { promptIntelligenceNl } from "./promptIntelligence.nl";
 import { onboardingNl } from "./onboarding.nl";
 import type { Messages } from "../messages";
 
@@ -2271,6 +2278,13 @@ export const nl: Messages = {
     unavailable: "Het Control Plane is niet beschikbaar. Probeer het opnieuw.",
   },
   onboarding: onboardingNl,
+  promptIntelligence: promptIntelligenceNl,
+  executionCenter: executionCenterNl,
+  liveWorkspace: liveWorkspaceNl,
+  knowledge: knowledgeNl,
+  securityCenter: securityCenterNl,
+  integrationCenter: integrationCenterNl,
+  platformCenters: platformCentersNl,
   integrations: {
     title: "Integraties",
     description: "Beheer enterprise integraties, MCP-servers en externe tools.",

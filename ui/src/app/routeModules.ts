@@ -10,6 +10,27 @@ export const loadControlCenterRoutes = () => import("./routes/controlCenterRoute
 /** Project onboarding wizard (separate lazy chunk; routes are added in router.tsx). */
 export const loadProjectOnboarding = () => import("../pages/ProjectOnboarding/routes");
 
+/** Prompt Intelligence (Phase 3) page (separate lazy chunk). */
+export const loadPromptIntelligence = () => import("../pages/PromptIntelligence/routes");
+
+/** Execution Center (Layer 4) page (separate lazy chunk). */
+export const loadExecutionCenter = () => import("../pages/ExecutionCenter/routes");
+
+/** Live Development Workspace (Layer 5) page (separate lazy chunk). */
+export const loadLiveWorkspace = () => import("../pages/LiveWorkspace/routes");
+
+/** Knowledge Center page (separate lazy chunk). */
+export const loadKnowledge = () => import("../pages/Knowledge/routes");
+
+/** Security & Trust Center page (separate lazy chunk). */
+export const loadSecurityCenter = () => import("../pages/SecurityCenter/routes");
+
+/** Integration Center page (separate lazy chunk). */
+export const loadIntegrationCenter = () => import("../pages/IntegrationCenter/routes");
+
+/** Extension, Business, Portfolio, Operations and Analytics centers (Layers 9-13; one lazy chunk). */
+export const loadPlatformCenters = () => import("../pages/PlatformCenters/routes");
+
 export type RouteChunk = "landing" | "auth" | "controlCenter";
 
 export const routeChunkLoaders: Record<RouteChunk, () => Promise<unknown>> = {

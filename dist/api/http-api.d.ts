@@ -23,6 +23,26 @@ export interface ControlPlaneApiOptions {
     command: WorkforceCommandService;
     /** PROJECT-2: project onboarding & provisioning (admin-only, governed). */
     onboarding?: import("../control/index.js").OnboardingControlService;
+    /** Phase 3: Context Engine + Prompt Intelligence (prepares prompts; never executes). */
+    promptIntelligence?: import("../control/index.js").PromptIntelligenceControlService;
+    /** Layer 4: Execution Orchestration (plans, routes and gates; runs only through the runtime port). */
+    orchestration?: import("../control/index.js").ExecutionOrchestrationControlService;
+    /** Layer 5: Execution Runtime + Live Development Workspace (sessions, events, inspection). */
+    runtime?: import("../control/index.js").RuntimeControlService;
+    /** Knowledge, Memory & Context Intelligence (governed memory, retrieval, graph, curation). */
+    knowledgeMemory?: import("../control/services/knowledge-control-service.js").KnowledgeControlService;
+    /** Governance, trust, security & policy (policies, trust, approvals, alerts, audit, emergency stop). */
+    trustCenter?: import("../control/services/security-control-service.js").TrustControlService;
+    /** Integration Hub: connectors, Tool Explorer, events, webhooks, MCP, activity, credentials (metadata only). */
+    integrationCenter?: import("../control/services/integration-control-service.js").IntegrationControlService;
+    /** Warms the usage / onboarding snapshots the portfolio, operations and analytics layers read. */
+    refreshData?: () => Promise<void>;
+    /** Layers 9–13. */
+    extensionCenter?: import("../control/services/platform-layers-control.js").ExtensionControlService;
+    businessCenter?: import("../control/services/platform-layers-control.js").BusinessControlService;
+    portfolioCenter?: import("../control/services/platform-layers-control.js").PortfolioIntelligenceControlService;
+    operationsCenter?: import("../control/services/platform-layers-control.js").AutonomyControlService;
+    analyticsCenter?: import("../control/services/platform-layers-control.js").AnalyticsControlService;
     /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
     projectSync?: () => Promise<void>;
     operatorDirectory: OperatorDirectory;
@@ -43,12 +63,12 @@ export interface ControlPlaneApiOptions {
     security?: import("../control/services/security-service.js").SecurityControlService;
     securityCenter?: import("../core/security/security-center-service.js").SecurityCenterService;
     audit?: import("../control/services/audit-service.js").AuditControlService;
-    /** Phase 2 — Knowledge module (list/get + create/update). */
-    knowledge?: import("../control/services/knowledge-service.js").KnowledgeControlService;
+    /** Phase 2 — Knowledge module (list/get + create/update; ADRs, lessons, conflicts, quality, retrieval). */
+    knowledge?: import("../control/services/knowledge-service.js").KnowledgeCrudControlService;
     /** Layer 15 — Simulation & Decision Intelligence */
     simulation?: import("../control/services/simulation-service.js").SimulationControlService;
     /** Layer 16 — Trust, Governance & Human Oversight */
-    trust?: import("../control/services/trust-control-service.js").TrustControlService;
+    trust?: import("../control/services/trust-control-service.js").TrustOversightControlService;
     portfolio?: import("../control/services/portfolio-service.js").PortfolioControlService;
     product?: import("../control/services/product-service.js").ProductManagementService;
     appAttestationVerifier?: import("./security/app-check.js").AppAttestationVerifier;

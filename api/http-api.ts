@@ -57,6 +57,26 @@ export interface ControlPlaneApiOptions {
   command: WorkforceCommandService;
   /** PROJECT-2: project onboarding & provisioning (admin-only, governed). */
   onboarding?: import("../control/index.js").OnboardingControlService;
+  /** Phase 3: Context Engine + Prompt Intelligence (prepares prompts; never executes). */
+  promptIntelligence?: import("../control/index.js").PromptIntelligenceControlService;
+  /** Layer 4: Execution Orchestration (plans, routes and gates; runs only through the runtime port). */
+  orchestration?: import("../control/index.js").ExecutionOrchestrationControlService;
+  /** Layer 5: Execution Runtime + Live Development Workspace (sessions, events, inspection). */
+  runtime?: import("../control/index.js").RuntimeControlService;
+  /** Knowledge, Memory & Context Intelligence (governed memory, retrieval, graph, curation). */
+  knowledgeMemory?: import("../control/services/knowledge-control-service.js").KnowledgeControlService;
+  /** Governance, trust, security & policy (policies, trust, approvals, alerts, audit, emergency stop). */
+  trustCenter?: import("../control/services/security-control-service.js").TrustControlService;
+  /** Integration Hub: connectors, Tool Explorer, events, webhooks, MCP, activity, credentials (metadata only). */
+  integrationCenter?: import("../control/services/integration-control-service.js").IntegrationControlService;
+  /** Warms the usage / onboarding snapshots the portfolio, operations and analytics layers read. */
+  refreshData?: () => Promise<void>;
+  /** Layers 9–13. */
+  extensionCenter?: import("../control/services/platform-layers-control.js").ExtensionControlService;
+  businessCenter?: import("../control/services/platform-layers-control.js").BusinessControlService;
+  portfolioCenter?: import("../control/services/platform-layers-control.js").PortfolioIntelligenceControlService;
+  operationsCenter?: import("../control/services/platform-layers-control.js").AutonomyControlService;
+  analyticsCenter?: import("../control/services/platform-layers-control.js").AnalyticsControlService;
   /** PROJECT-2: refreshes provisioned projects into the registry (self-throttled). */
   projectSync?: () => Promise<void>;
   operatorDirectory: OperatorDirectory;
@@ -77,12 +97,12 @@ export interface ControlPlaneApiOptions {
   security?: import("../control/services/security-service.js").SecurityControlService;
   securityCenter?: import("../core/security/security-center-service.js").SecurityCenterService;
   audit?: import("../control/services/audit-service.js").AuditControlService;
-  /** Phase 2 — Knowledge module (list/get + create/update). */
-  knowledge?: import("../control/services/knowledge-service.js").KnowledgeControlService;
+  /** Phase 2 — Knowledge module (list/get + create/update; ADRs, lessons, conflicts, quality, retrieval). */
+  knowledge?: import("../control/services/knowledge-service.js").KnowledgeCrudControlService;
   /** Layer 15 — Simulation & Decision Intelligence */
   simulation?: import("../control/services/simulation-service.js").SimulationControlService;
   /** Layer 16 — Trust, Governance & Human Oversight */
-  trust?: import("../control/services/trust-control-service.js").TrustControlService;
+  trust?: import("../control/services/trust-control-service.js").TrustOversightControlService;
   portfolio?: import("../control/services/portfolio-service.js").PortfolioControlService;
   product?: import("../control/services/product-service.js").ProductManagementService;
   appAttestationVerifier?: import("./security/app-check.js").AppAttestationVerifier;
@@ -97,6 +117,42 @@ export interface ControlPlaneApiOptions {
 }
 
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
+
+const RUNTIME_METHODS: Record<
+  string,
+  "runtimeCancelSession" | "runtimePauseSession" | "runtimeResumeSession"
+> = {
+  runtime_cancel_session: "runtimeCancelSession",
+  runtime_pause_session: "runtimePauseSession",
+  runtime_resume_session: "runtimeResumeSession",
+};
+
+const ORCHESTRATION_METHODS: Record<
+  string,
+  | "orchestrationCreate"
+  | "orchestrationStart"
+  | "orchestrationAdvance"
+  | "orchestrationPause"
+  | "orchestrationResume"
+  | "orchestrationCancel"
+  | "orchestrationRetryTask"
+> = {
+  orchestration_create: "orchestrationCreate",
+  orchestration_start: "orchestrationStart",
+  orchestration_advance: "orchestrationAdvance",
+  orchestration_pause: "orchestrationPause",
+  orchestration_resume: "orchestrationResume",
+  orchestration_cancel: "orchestrationCancel",
+  orchestration_retry_task: "orchestrationRetryTask",
+};
+
+const PROMPT_METHODS: Record<
+  string,
+  "promptPrepare" | "promptRequestApproval"
+> = {
+  prompt_prepare: "promptPrepare",
+  prompt_request_approval: "promptRequestApproval",
+};
 
 const ONBOARDING_METHODS: Record<
   string,
@@ -240,6 +296,28 @@ export function createControlPlaneApi(
       return send(res, 200, { status: "ok" }, correlationId);
     }
 
+    // Signed provider webhooks — no operator token: the HMAC signature IS the authentication.
+    if (
+      method === "POST" &&
+      segs.length === 3 &&
+      segs[0] === "integrations" &&
+      segs[1] === "webhooks" &&
+      options.integrationCenter
+    ) {
+      let raw: string;
+      try {
+        raw = await readRawBody(req, 256_000);
+      } catch {
+        return send(res, 413, { error: "payload too large" }, correlationId);
+      }
+      const out = await options.integrationCenter.receiveWebhook(
+        segs[2]!,
+        req.headers,
+        raw,
+      );
+      return send(res, out.status, out.body, correlationId);
+    }
+
     // `GET /me/access` — the signed-in user's own access state. Needs only a
     // verified identity (authentication), never an active role: this is how
     // a pending user learns they are pending. Creates a PENDING request on
@@ -293,33 +371,105 @@ export function createControlPlaneApi(
     try {
       if (options.projectSync) await options.projectSync();
       if (route.startsWith("/itsm/")) {
-        return await handleItsm(route, segs, method, req, res, principal, correlationId);
+        return await handleItsm(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/ops/")) {
-        return await handleOperations(route, segs, method, req, res, principal, correlationId);
+        return await handleOperations(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/grc/")) {
-        return await handleGrc(route, segs, method, req, res, principal, correlationId);
+        return await handleGrc(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/aigov/")) {
-        return await handleAIGovernance(route, segs, method, req, res, principal, correlationId);
+        return await handleAIGovernance(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/datagov/")) {
-        return await handleDataGovernance(route, segs, method, req, res, principal, correlationId);
+        return await handleDataGovernance(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/security/")) {
-        return await handleSecurity(route, segs, method, req, res, principal, correlationId);
+        return await handleSecurity(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/audit/")) {
-        return await handleAudit(route, segs, method, req, res, principal, correlationId);
+        return await handleAudit(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/portfolio/")) {
-        return await handlePortfolio(route, segs, method, req, res, principal, correlationId);
+        return await handlePortfolio(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
       if (route.startsWith("/product/")) {
-        return await handleProduct(route, segs, method, req, res, principal, correlationId);
+        return await handleProduct(
+          route,
+          segs,
+          method,
+          req,
+          res,
+          principal,
+          correlationId,
+        );
       }
-      if (route === "/knowledge" || route.startsWith("/knowledge/")) {
+      if (route === "/knowledge-items" || route.startsWith("/knowledge-items/")) {
         return await handleKnowledge(
           req,
           res,
@@ -341,7 +491,7 @@ export function createControlPlaneApi(
           correlationId,
         );
       }
-      if (route === "/trust" || route.startsWith("/trust/")) {
+      if (route === "/trust-oversight" || route.startsWith("/trust-oversight/")) {
         return await handleTrust(
           req,
           res,
@@ -407,7 +557,8 @@ export function createControlPlaneApi(
             correlationId,
           );
         }
-        const projectId = typeof body.projectId === "string" ? body.projectId : "";
+        const projectId =
+          typeof body.projectId === "string" ? body.projectId : "";
         if (!projectId) {
           return send(
             res,
@@ -432,7 +583,11 @@ export function createControlPlaneApi(
         let tasks: { taskId: string; requirements: TaskRequirements }[];
         try {
           tasks = rawTasks.map((entry, index) => {
-            if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+            if (
+              typeof entry !== "object" ||
+              entry === null ||
+              Array.isArray(entry)
+            ) {
               throw new ValidationError(`tasks[${index}] must be an object`);
             }
             const record = entry as Record<string, unknown>;
@@ -444,7 +599,9 @@ export function createControlPlaneApi(
               record.requirements === null ||
               Array.isArray(record.requirements)
             ) {
-              throw new ValidationError(`tasks[${index}].requirements is required`);
+              throw new ValidationError(
+                `tasks[${index}].requirements is required`,
+              );
             }
             return {
               taskId: record.taskId,
@@ -459,7 +616,11 @@ export function createControlPlaneApi(
             correlationId,
           );
         }
-        const workload = await query.getProjectWorkforce(principal, projectId, tasks);
+        const workload = await query.getProjectWorkforce(
+          principal,
+          projectId,
+          tasks,
+        );
         if (!workload) {
           return send(
             res,
@@ -527,7 +688,405 @@ export function createControlPlaneApi(
     correlationId: string,
   ): Promise<void> {
     const [head, id] = segs;
+    if (
+      head &&
+      [
+        "portfolio-intelligence",
+        "operations-center",
+        "analytics-intelligence",
+        "business-layer",
+      ].includes(head)
+    )
+      await options.refreshData?.();
     switch (head) {
+      case "trust": {
+        const security = options.trustCenter;
+        if (!security) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const projectId = params.get("projectId") ?? undefined;
+        const result = await (async () => {
+          switch (area) {
+            case "overview":
+              return security.overview(principal, projectId);
+            case "policies":
+              return itemId
+                ? security.policy(principal, itemId)
+                : security.policies(principal);
+            case "trust":
+              return security.trust(principal);
+            case "approvals":
+              return itemId
+                ? security.approval(principal, itemId)
+                : security.approvals(principal, params);
+            case "alerts":
+              return itemId
+                ? security.alert(principal, itemId)
+                : security.alerts(principal, params);
+            case "ledger":
+              return security.ledger(principal, params);
+            case "simulate":
+              return security.simulate(principal, params);
+            case "secrets":
+              return security.secrets(principal);
+            case "project":
+              return security.projectSecurity(principal, projectId ?? "");
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "extensions-platform": {
+        const hub = options.extensionCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "overview":
+              return hub.overview(principal);
+            case "extension":
+              return hub.extension(principal, itemId ?? "");
+            case "audit":
+              return hub.audit(
+                principal,
+                params.get("extensionId") ?? undefined,
+              );
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "business-layer": {
+        const hub = options.businessCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "overview":
+              return hub.overview(principal);
+            case "objectives":
+              return hub.objectives(principal, params);
+            case "objective":
+              return hub.objective(principal, itemId ?? "");
+            case "initiatives":
+              return hub.initiatives(
+                principal,
+                params.get("objectiveId") ?? undefined,
+              );
+            case "decisions":
+              return hub.decisions(principal, params);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "portfolio-intelligence": {
+        const hub = options.portfolioCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "dashboard":
+              return hub.dashboard(principal);
+            case "projects":
+              return hub.projects(principal, params.get("archived") === "true");
+            case "project":
+              return hub.project(principal, itemId ?? "");
+            case "health":
+              return hub.health(principal, itemId ?? "");
+            case "priorities":
+              return hub.priorities(principal);
+            case "conflicts":
+              return hub.conflicts(principal);
+            case "dependencies":
+              return hub.dependencies(principal);
+            case "ask":
+              return hub.ask(principal, params.get("q") ?? "");
+            case "knowledge":
+              return hub.knowledge(principal);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "operations-center": {
+        const hub = options.operationsCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "overview":
+              return hub.operations(principal);
+            case "instances":
+              return hub.instances(principal, params);
+            case "instance":
+              return hub.instance(principal, itemId ?? "");
+            case "catalog":
+              return hub.catalog(principal);
+            case "level":
+              return hub.levelFor(principal, params.get("projectId") ?? "");
+            case "audit":
+              return hub.audit(principal, params);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "analytics-intelligence": {
+        const hub = options.analyticsCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const projectId = params.get("projectId") ?? undefined;
+        const result = (() => {
+          switch (area) {
+            case undefined:
+            case "overview":
+              return hub.overview(principal);
+            case "agents":
+              return hub.agents(principal);
+            case "workflows":
+              return hub.workflows(principal, projectId);
+            case "project":
+              return hub.project(principal, itemId ?? "");
+            case "cost":
+              return hub.cost(principal, projectId);
+            case "bottlenecks":
+              return hub.bottlenecks(principal);
+            case "predictions":
+              return hub.predictions(principal);
+            case "recommendations":
+              return hub.recommendations(
+                principal,
+                params.get("status") ?? undefined,
+              );
+            case "lessons":
+              return hub.lessons(principal);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "integration-center": {
+        const hub = options.integrationCenter;
+        if (!hub) throw new NotFoundError("resource not found");
+        const [, area, itemId] = segs;
+        const projectId = params.get("projectId") ?? undefined;
+        const result = (() => {
+          switch (area) {
+            case "overview":
+              return hub.overview(principal, projectId);
+            case "connectors":
+              return itemId
+                ? hub.connector(principal, itemId)
+                : hub.overview(principal, projectId).connectors;
+            case "capabilities":
+              return hub.capabilities(principal, params);
+            case "discover":
+              return hub.discover(principal, projectId ?? "");
+            case "events":
+              return hub.events(principal, params);
+            case "activity":
+              return hub.activity(principal, params);
+            case "health":
+              return hub.health(principal);
+            case "mcp":
+              return hub.mcp(principal);
+            case "credentials":
+              return hub.credentials(principal);
+            case "audit":
+              return hub.audit(principal, params);
+            case "mappings":
+              return hub.mappings(principal, projectId);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "knowledge": {
+        const knowledge = options.knowledgeMemory;
+        if (!knowledge) throw new NotFoundError("resource not found");
+        const [, area, memoryId] = segs;
+        const projectId = params.get("projectId") ?? undefined;
+        const result = (() => {
+          switch (area) {
+            case "overview":
+              return knowledge.overview(principal, projectId);
+            case "memories":
+              return memoryId
+                ? knowledge.detail(principal, memoryId)
+                : knowledge.list(principal, params);
+            case "search":
+              return knowledge.search(principal, params);
+            case "graph":
+              return knowledge.graph(principal, params);
+            case "conflicts":
+              return knowledge.conflicts(principal, projectId);
+            case "documents":
+              return knowledge.documents(principal, projectId);
+            case "decisions":
+              return knowledge.decisions(principal, projectId);
+            case "candidates":
+              return knowledge.candidates(principal, projectId);
+            case "health":
+              return knowledge.health(principal, projectId);
+            case "findings":
+              return knowledge.findings(principal, projectId);
+            case "context":
+              return knowledge.context(principal, params);
+            default:
+              throw new NotFoundError("resource not found");
+          }
+        })();
+        return send(res, 200, result, correlationId);
+      }
+      case "runtime": {
+        const runtime = options.runtime;
+        if (!runtime) throw new NotFoundError("resource not found");
+        const [, area, executionId, sub] = segs;
+        if (area === "overview" && segs.length === 2) {
+          return send(res, 200, runtime.overview(principal), correlationId);
+        }
+        if (area !== "sessions") throw new NotFoundError("resource not found");
+        if (!executionId) {
+          const limit = Number(params.get("limit") ?? "50");
+          return send(
+            res,
+            200,
+            {
+              sessions: runtime.list(principal, {
+                ...(params.get("projectId")
+                  ? { projectId: params.get("projectId")! }
+                  : {}),
+                ...(params.get("runId") ? { runId: params.get("runId")! } : {}),
+                ...(Number.isInteger(limit) ? { limit } : {}),
+              }),
+            },
+            correlationId,
+          );
+        }
+        if (!sub)
+          return send(
+            res,
+            200,
+            runtime.get(principal, executionId),
+            correlationId,
+          );
+        if (sub === "events") {
+          const after = Number(params.get("after") ?? "0");
+          const wait = Number(params.get("wait") ?? "0");
+          return send(
+            res,
+            200,
+            await runtime.events(
+              principal,
+              executionId,
+              after,
+              Number.isFinite(wait) ? wait : 0,
+            ),
+            correlationId,
+          );
+        }
+        if (sub === "workspace")
+          return send(
+            res,
+            200,
+            await runtime.workspace(principal, executionId),
+            correlationId,
+          );
+        if (sub === "tree") {
+          return send(
+            res,
+            200,
+            await runtime.tree(
+              principal,
+              executionId,
+              params.get("dir") ?? undefined,
+            ),
+            correlationId,
+          );
+        }
+        if (sub === "file") {
+          return send(
+            res,
+            200,
+            await runtime.file(
+              principal,
+              executionId,
+              params.get("path") ?? "",
+            ),
+            correlationId,
+          );
+        }
+        throw new NotFoundError("resource not found");
+      }
+      case "execution-runs": {
+        const orchestration = options.orchestration;
+        if (!orchestration) throw new NotFoundError("resource not found");
+        if (!id) {
+          const limit = Number(params.get("limit") ?? "50");
+          return send(
+            res,
+            200,
+            {
+              runs: orchestration.list(principal, {
+                ...(params.get("projectId")
+                  ? { projectId: params.get("projectId")! }
+                  : {}),
+                ...(Number.isInteger(limit) ? { limit } : {}),
+              }),
+            },
+            correlationId,
+          );
+        }
+        if (segs.length === 2) {
+          return send(
+            res,
+            200,
+            await orchestration.get(principal, id),
+            correlationId,
+          );
+        }
+        throw new NotFoundError("resource not found");
+      }
+      case "prompt-intelligence": {
+        const promptIntelligence = options.promptIntelligence;
+        if (!promptIntelligence) throw new NotFoundError("resource not found");
+        if (!id) {
+          const limit = Number(params.get("limit") ?? "50");
+          return send(
+            res,
+            200,
+            {
+              requests: promptIntelligence.list(principal, {
+                ...(params.get("projectId")
+                  ? { projectId: params.get("projectId")! }
+                  : {}),
+                ...(Number.isInteger(limit) ? { limit } : {}),
+              }),
+            },
+            correlationId,
+          );
+        }
+        if (segs.length === 2) {
+          return send(
+            res,
+            200,
+            promptIntelligence.get(principal, id),
+            correlationId,
+          );
+        }
+        throw new NotFoundError("resource not found");
+      }
       case "onboarding": {
         const onboarding = options.onboarding;
         if (!onboarding) throw new NotFoundError("resource not found");
@@ -610,7 +1169,11 @@ export function createControlPlaneApi(
         // silently 404d for every task. The id is therefore taken as its own
         // segment, which also rejects ids containing a slash instead of
         // guessing where the boundary was.
-        if (segs.length === 4 && segs[1] === "assignments" && segs[3] === "history") {
+        if (
+          segs.length === 4 &&
+          segs[1] === "assignments" &&
+          segs[3] === "history"
+        ) {
           const taskId = segs[2]!;
           const history = query.getAssignmentHistory(principal, taskId);
           if (!history) {
@@ -643,7 +1206,12 @@ export function createControlPlaneApi(
           }
           return send(res, 200, handoffs, correlationId);
         }
-        return send(res, 404, { error: { message: "not found" } }, correlationId);
+        return send(
+          res,
+          404,
+          { error: { message: "not found" } },
+          correlationId,
+        );
       }
       case "tasks":
         return send(
@@ -1107,40 +1675,87 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.itsm) return send(res, 404, { error: { message: "itsm not found" } }, correlationId);
-    
+    if (!options.itsm)
+      return send(
+        res,
+        404,
+        { error: { message: "itsm not found" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "services") {
         if (method === "GET") {
-          return send(res, 200, await options.itsm.listServices(principal.id), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.listServices(principal.id),
+            correlationId,
+          );
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createService(body as any), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.createService(body as any),
+            correlationId,
+          );
         }
       }
-      
+
       if (segs[1] === "incidents") {
         if (method === "GET") {
-          const serviceId = new URL(req.url ?? "/", "http://localhost").searchParams.get("serviceId");
-          return send(res, 200, await options.itsm.listIncidents(principal.id, serviceId || undefined), correlationId);
+          const serviceId = new URL(
+            req.url ?? "/",
+            "http://localhost",
+          ).searchParams.get("serviceId");
+          return send(
+            res,
+            200,
+            await options.itsm.listIncidents(
+              principal.id,
+              serviceId || undefined,
+            ),
+            correlationId,
+          );
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createIncident(body as any), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.createIncident(body as any),
+            correlationId,
+          );
         }
       }
-      
+
       if (segs[1] === "changes") {
         if (method === "GET") {
-          return send(res, 200, await options.itsm.listChangeRequests(principal.id), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.listChangeRequests(principal.id),
+            correlationId,
+          );
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.itsm.createChangeRequest(body as any), correlationId);
+          return send(
+            res,
+            200,
+            await options.itsm.createChangeRequest(body as any),
+            correlationId,
+          );
         }
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1153,15 +1768,31 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.ops) return send(res, 404, { error: { message: "ops not available" } }, correlationId);
-    
+    if (!options.ops)
+      return send(
+        res,
+        404,
+        { error: { message: "ops not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "health") {
         if (method === "GET") {
-          return send(res, 200, await options.ops.getGlobalHealth(), correlationId);
+          return send(
+            res,
+            200,
+            await options.ops.getGlobalHealth(),
+            correlationId,
+          );
         } else if (method === "POST") {
           const body = await readJsonBody(req, maxBody);
-          return send(res, 200, await options.ops.reportHealth(principal, body as any), correlationId);
+          return send(
+            res,
+            200,
+            await options.ops.reportHealth(principal, body as any),
+            correlationId,
+          );
         }
       }
 
@@ -1173,7 +1804,12 @@ export function createControlPlaneApi(
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1186,22 +1822,48 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.grc) return send(res, 404, { error: { message: "grc not available" } }, correlationId);
-    
+    if (!options.grc)
+      return send(
+        res,
+        404,
+        { error: { message: "grc not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "frameworks" && method === "GET") {
-        return send(res, 200, await options.grc.listFrameworks(), correlationId);
+        return send(
+          res,
+          200,
+          await options.grc.listFrameworks(),
+          correlationId,
+        );
       }
       if (segs[1] === "risks" && method === "GET") {
-        return send(res, 200, await options.grc.listRisks("global"), correlationId);
+        return send(
+          res,
+          200,
+          await options.grc.listRisks("global"),
+          correlationId,
+        );
       }
       if (segs[1] === "trust-content" && method === "GET") {
-        return send(res, 200, await options.grc.listTrustCenterContent(), correlationId);
+        return send(
+          res,
+          200,
+          await options.grc.listTrustCenterContent(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1214,20 +1876,36 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.aiGov) return send(res, 404, { error: { message: "ai governance not available" } }, correlationId);
-    
+    if (!options.aiGov)
+      return send(
+        res,
+        404,
+        { error: { message: "ai governance not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "models" && method === "GET") {
         return send(res, 200, await options.aiGov.listModels(), correlationId);
       }
       if (segs[1] === "use-cases" && method === "GET") {
         // Simple global fetch for prototype
-        return send(res, 200, await options.aiGov.listUseCases("global"), correlationId);
+        return send(
+          res,
+          200,
+          await options.aiGov.listUseCases("global"),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1240,19 +1918,40 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.dataGov) return send(res, 404, { error: { message: "data governance not available" } }, correlationId);
-    
+    if (!options.dataGov)
+      return send(
+        res,
+        404,
+        { error: { message: "data governance not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "assets" && method === "GET") {
-        return send(res, 200, await options.dataGov.listAssets(), correlationId);
+        return send(
+          res,
+          200,
+          await options.dataGov.listAssets(),
+          correlationId,
+        );
       }
       if (segs[1] === "retention-policies" && method === "GET") {
-        return send(res, 200, await options.dataGov.listRetentionPolicies(), correlationId);
+        return send(
+          res,
+          200,
+          await options.dataGov.listRetentionPolicies(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1451,7 +2150,12 @@ export function createControlPlaneApi(
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1464,19 +2168,40 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.audit) return send(res, 404, { error: { message: "audit not available" } }, correlationId);
-    
+    if (!options.audit)
+      return send(
+        res,
+        404,
+        { error: { message: "audit not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "logs" && method === "GET") {
-        return send(res, 200, await options.audit.listAuditLogs(), correlationId);
+        return send(
+          res,
+          200,
+          await options.audit.listAuditLogs(),
+          correlationId,
+        );
       }
       if (segs[1] === "findings" && method === "GET") {
-        return send(res, 200, await options.audit.listFindings(), correlationId);
+        return send(
+          res,
+          200,
+          await options.audit.listFindings(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1489,22 +2214,48 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.portfolio) return send(res, 404, { error: { message: "portfolio not available" } }, correlationId);
-    
+    if (!options.portfolio)
+      return send(
+        res,
+        404,
+        { error: { message: "portfolio not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "portfolios" && method === "GET") {
-        return send(res, 200, await options.portfolio.listPortfolios(), correlationId);
+        return send(
+          res,
+          200,
+          await options.portfolio.listPortfolios(),
+          correlationId,
+        );
       }
       if (segs[1] === "programs" && method === "GET") {
-        return send(res, 200, await options.portfolio.listPrograms(), correlationId);
+        return send(
+          res,
+          200,
+          await options.portfolio.listPrograms(),
+          correlationId,
+        );
       }
       if (segs[1] === "objectives" && method === "GET") {
-        return send(res, 200, await options.portfolio.listObjectives(), correlationId);
+        return send(
+          res,
+          200,
+          await options.portfolio.listObjectives(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1517,22 +2268,48 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
-    if (!options.product) return send(res, 404, { error: { message: "product not available" } }, correlationId);
-    
+    if (!options.product)
+      return send(
+        res,
+        404,
+        { error: { message: "product not available" } },
+        correlationId,
+      );
+
     try {
       if (segs[1] === "products" && method === "GET") {
-        return send(res, 200, await options.product.listProducts(), correlationId);
+        return send(
+          res,
+          200,
+          await options.product.listProducts(),
+          correlationId,
+        );
       }
       if (segs[1] === "problems" && method === "GET") {
-        return send(res, 200, await options.product.listProblems(), correlationId);
+        return send(
+          res,
+          200,
+          await options.product.listProblems(),
+          correlationId,
+        );
       }
       if (segs[1] === "features" && method === "GET") {
-        return send(res, 200, await options.product.listFeatures(), correlationId);
+        return send(
+          res,
+          200,
+          await options.product.listFeatures(),
+          correlationId,
+        );
       }
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1540,29 +2317,28 @@ export function createControlPlaneApi(
   /**
    * Knowledge module (Phase 2 — Control Plane §17).
    *
-   *   GET  /api/knowledge?projectId=&type=&search=
-   *   GET  /api/knowledge/:knowledgeId
-   *   POST /api/knowledge              (create; admin only)
-   *   PUT  /api/knowledge/:knowledgeId (update; admin only)
-   *
-   * Authorization and validation live in the service; the API only maps errors.
-   */
-  /**
    * Knowledge module (Phase 2 — Control Plane §17 & Layer 14 Knowledge Learning).
    *
-   *   GET  /api/knowledge?projectId=&type=&search=
-   *   GET  /api/knowledge/:knowledgeId
-   *   POST /api/knowledge              (create; admin only)
-   *   PUT  /api/knowledge/:knowledgeId (update; admin only)
-   *   GET  /api/knowledge/adrs
-   *   POST /api/knowledge/adrs
-   *   PUT  /api/knowledge/adrs/:adrId/status
-   *   GET  /api/knowledge/lessons
-   *   POST /api/knowledge/lessons
-   *   GET  /api/knowledge/conflicts
-   *   POST /api/knowledge/conflicts/:conflictId/resolve
-   *   GET  /api/knowledge/quality
-   *   POST /api/knowledge/retrieve
+   * Namespaced under /knowledge-items (rather than /knowledge) because
+   * /knowledge/* is owned by the separate Knowledge, Memory & Context
+   * Intelligence center (see `options.knowledgeMemory` / `case "knowledge"`
+   * in `handleGet`, and the `knowledge_*` command family).
+   *
+   *   GET  /api/knowledge-items?projectId=&type=&search=
+   *   GET  /api/knowledge-items/:knowledgeId
+   *   POST /api/knowledge-items              (create; admin only)
+   *   PUT  /api/knowledge-items/:knowledgeId (update; admin only)
+   *   GET  /api/knowledge-items/adrs
+   *   POST /api/knowledge-items/adrs
+   *   PUT  /api/knowledge-items/adrs/:adrId/status
+   *   GET  /api/knowledge-items/lessons
+   *   POST /api/knowledge-items/lessons
+   *   GET  /api/knowledge-items/conflicts
+   *   POST /api/knowledge-items/conflicts/:conflictId/resolve
+   *   GET  /api/knowledge-items/quality
+   *   POST /api/knowledge-items/retrieve
+   *
+   * Authorization and validation live in the service; the API only maps errors.
    */
   async function handleKnowledge(
     req: IncomingMessage,
@@ -1753,18 +2529,22 @@ export function createControlPlaneApi(
   /**
    * Layer 16 — Trust, Governance & Human Oversight Center API
    *
-   *   GET  /api/trust/overview
-   *   GET  /api/trust/entities
-   *   GET  /api/trust/entities/:id
-   *   POST /api/trust/entities
-   *   POST /api/trust/evaluate
-   *   GET  /api/trust/approvals
-   *   POST /api/trust/approvals
-   *   POST /api/trust/approvals/:id/decide
-   *   GET  /api/trust/emergency
-   *   POST /api/trust/emergency/lock
-   *   POST /api/trust/emergency/release
-   *   GET  /api/trust/events
+   * Namespaced under /trust-oversight (rather than /trust) because /trust/*
+   * is owned by the separate Governance, Trust & Security policy center
+   * (see `options.trustCenter` and the `security_*` command family).
+   *
+   *   GET  /api/trust-oversight/overview
+   *   GET  /api/trust-oversight/entities
+   *   GET  /api/trust-oversight/entities/:id
+   *   POST /api/trust-oversight/entities
+   *   POST /api/trust-oversight/evaluate
+   *   GET  /api/trust-oversight/approvals
+   *   POST /api/trust-oversight/approvals
+   *   POST /api/trust-oversight/approvals/:id/decide
+   *   GET  /api/trust-oversight/emergency
+   *   POST /api/trust-oversight/emergency/lock
+   *   POST /api/trust-oversight/emergency/release
+   *   GET  /api/trust-oversight/events
    */
   async function handleTrust(
     req: IncomingMessage,
@@ -1870,7 +2650,12 @@ export function createControlPlaneApi(
 
       return send(res, 404, { error: { message: "not found" } }, correlationId);
     } catch (e) {
-      return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+      return send(
+        res,
+        statusForError(e),
+        { error: { message: errorMessage(e) } },
+        correlationId,
+      );
     }
   }
 
@@ -1926,6 +2711,240 @@ export function createControlPlaneApi(
     principal: OperatorPrincipal,
     correlationId: string,
   ): Promise<void> {
+    const layered: [
+      string,
+      (
+        | {
+            execute: (
+              n: string,
+              p: OperatorPrincipal,
+              b: Record<string, unknown>,
+              o?: { correlationId?: string },
+            ) => Promise<import("../contracts/index.js").ControlCommandResult>;
+          }
+        | undefined
+      ),
+    ][] = [
+      ["extension_", options.extensionCenter],
+      ["business_", options.businessCenter],
+      ["portfolio_", options.portfolioCenter],
+      ["autonomy_", options.operationsCenter],
+      ["analytics_", options.analyticsCenter],
+    ];
+    for (const [prefix, service] of layered) {
+      if (!name.startsWith(prefix) || !service) continue;
+      await options.refreshData?.();
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const outcome = await service.execute(name, principal, payload, {
+        correlationId,
+      });
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
+    if (name.startsWith("integration_") && options.integrationCenter) {
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const outcome = await options.integrationCenter.execute(
+        name,
+        principal,
+        payload,
+        { correlationId },
+      );
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
+    if (name.startsWith("security_") && options.trustCenter) {
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const outcome = await options.trustCenter.execute(
+        name,
+        principal,
+        payload,
+        { correlationId },
+      );
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
+    if (name.startsWith("knowledge_") && options.knowledgeMemory) {
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const outcome = await options.knowledgeMemory.execute(
+        name,
+        principal,
+        payload,
+        { correlationId },
+      );
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
+    if (name.startsWith("runtime_") && options.runtime) {
+      const runtime = options.runtime;
+      const method = Object.hasOwn(RUNTIME_METHODS, name)
+        ? RUNTIME_METHODS[name]
+        : undefined;
+      if (!method) {
+        return send(
+          res,
+          404,
+          { error: { message: `unknown command: ${name}` } },
+          correlationId,
+        );
+      }
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const fn = runtime[method] as (
+        p: OperatorPrincipal,
+        input: Record<string, unknown>,
+        opts: { correlationId: string },
+      ) => { errorKind?: ControlErrorKind };
+      const outcome = fn.call(runtime, principal, payload, { correlationId });
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
+    if (name.startsWith("orchestration_") && options.orchestration) {
+      const orchestration = options.orchestration;
+      const method = Object.hasOwn(ORCHESTRATION_METHODS, name)
+        ? ORCHESTRATION_METHODS[name]
+        : undefined;
+      if (!method) {
+        return send(
+          res,
+          404,
+          { error: { message: `unknown command: ${name}` } },
+          correlationId,
+        );
+      }
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const fn = orchestration[method] as (
+        p: OperatorPrincipal,
+        input: Record<string, unknown>,
+        opts: { correlationId: string },
+      ) => Promise<{ errorKind?: ControlErrorKind }>;
+      const outcome = await fn.call(orchestration, principal, payload, {
+        correlationId,
+      });
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
+    if (name.startsWith("prompt_") && options.promptIntelligence) {
+      const promptIntelligence = options.promptIntelligence;
+      const method = Object.hasOwn(PROMPT_METHODS, name)
+        ? PROMPT_METHODS[name]
+        : undefined;
+      if (!method) {
+        return send(
+          res,
+          404,
+          { error: { message: `unknown command: ${name}` } },
+          correlationId,
+        );
+      }
+      let payload: Record<string, unknown>;
+      try {
+        payload = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const fn = promptIntelligence[method] as (
+        p: OperatorPrincipal,
+        input: Record<string, unknown>,
+        opts: { correlationId: string },
+      ) => Promise<{ errorKind?: ControlErrorKind }>;
+      const outcome = await fn.call(promptIntelligence, principal, payload, {
+        correlationId,
+      });
+      return send(
+        res,
+        outcome.errorKind ? ERROR_KIND_STATUS[outcome.errorKind] : 200,
+        outcome,
+        correlationId,
+      );
+    }
     if (name.startsWith("onboarding_") && options.onboarding) {
       const onboarding = options.onboarding;
       const method = Object.hasOwn(ONBOARDING_METHODS, name)
@@ -2035,6 +3054,29 @@ function notNull<T>(value: T | undefined | null): T {
 function statusFilter(params: URLSearchParams): { status?: string } {
   const status = params.get("status");
   return status ? { status } : {};
+}
+
+/** The exact bytes of the request body: a webhook signature is computed over them, never over re-serialised JSON. */
+async function readRawBody(
+  req: IncomingMessage,
+  maxBytes: number,
+): Promise<string> {
+  const raw = (req as IncomingMessage & { rawBody?: Buffer | string }).rawBody;
+  if (raw !== undefined) {
+    const text = typeof raw === "string" ? raw : raw.toString("utf8");
+    if (text.length > maxBytes)
+      throw new ValidationError("request body too large");
+    return text;
+  }
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = chunk as Buffer;
+    total += buf.length;
+    if (total > maxBytes) throw new ValidationError("request body too large");
+    chunks.push(buf);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 async function readJsonBody(

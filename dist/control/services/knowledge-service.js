@@ -1,5 +1,5 @@
 /**
- * KnowledgeControlService — the authorized read/write surface for the Knowledge
+ * KnowledgeCrudControlService — the authorized read/write surface for the Knowledge
  * module (Phase 2 — Control Plane §17 & Layer 14 Knowledge Learning).
  *
  * Repository-backed, authorized server-side, audit-logged on every change.
@@ -47,7 +47,7 @@ function normalizeTags(value) {
         return tag.trim();
     });
 }
-export class KnowledgeControlService {
+export class KnowledgeCrudControlService {
     items;
     audit;
     engine;

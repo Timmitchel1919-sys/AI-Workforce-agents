@@ -9,7 +9,7 @@
  */
 import type { OperatorPrincipal } from "../../contracts/control.js";
 import type {
-  SecurityAlert,
+  SecurityCenterAlert,
   SecurityDomain,
   SecurityDomainPosture,
   SecurityIncident,
@@ -145,10 +145,10 @@ export class SecurityCenterService {
    * Lists alerts enforcing capability and project isolation (Step 15, 16).
    */
   listAlerts(
-    filters: { severity?: SecurityAlert["severity"]; status?: SecurityAlert["status"]; domain?: SecurityDomain } = {},
+    filters: { severity?: SecurityCenterAlert["severity"]; status?: SecurityCenterAlert["status"]; domain?: SecurityDomain } = {},
     principal?: OperatorPrincipal,
     projectId?: string,
-  ): SecurityAlert[] {
+  ): SecurityCenterAlert[] {
     const allAlerts = this.alertEngine.listAlerts({
       severity: filters.severity,
       status: filters.status,
@@ -163,7 +163,7 @@ export class SecurityCenterService {
     });
   }
 
-  getAlert(id: string, principal?: OperatorPrincipal): SecurityAlert | undefined {
+  getAlert(id: string, principal?: OperatorPrincipal): SecurityCenterAlert | undefined {
     const alert = this.alertEngine.getAlert(id);
     if (!alert) return undefined;
 
@@ -219,15 +219,15 @@ export class SecurityCenterService {
     return principal.allowedProjects.includes(itemProjectId);
   }
 
-  async acknowledgeAlert(id: string, actor: string): Promise<SecurityAlert> {
+  async acknowledgeAlert(id: string, actor: string): Promise<SecurityCenterAlert> {
     return this.alertEngine.acknowledgeAlert(id, actor);
   }
 
-  async dismissAlert(id: string, actor: string, reason: string): Promise<SecurityAlert> {
+  async dismissAlert(id: string, actor: string, reason: string): Promise<SecurityCenterAlert> {
     return this.alertEngine.dismissAlert(id, actor, reason);
   }
 
-  async resolveAlert(id: string, actor: string): Promise<SecurityAlert> {
+  async resolveAlert(id: string, actor: string): Promise<SecurityCenterAlert> {
     return this.alertEngine.resolveAlert(id, actor);
   }
 
@@ -335,7 +335,7 @@ export class SecurityCenterService {
   /* Internal Domain Evaluation                                         */
   /* ------------------------------------------------------------------ */
 
-  private async evaluateDomains(openAlerts: readonly SecurityAlert[]): Promise<SecurityDomainPosture[]> {
+  private async evaluateDomains(openAlerts: readonly SecurityCenterAlert[]): Promise<SecurityDomainPosture[]> {
     const now = new Date().toISOString();
     const result: SecurityDomainPosture[] = [];
 

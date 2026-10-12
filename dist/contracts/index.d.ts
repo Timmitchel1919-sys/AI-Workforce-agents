@@ -222,7 +222,7 @@ export interface AgentContext {
     values: Record<string, unknown>;
 }
 export type Context = TaskContext | ProjectContext | AgentContext;
-export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "security_policy_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event", "execution_event", "onboarding_event", "knowledge_created", "knowledge_updated", "usage_recorded", "budget_blocked", "budget_policy_set", "audit_finding_raised", "governance_decision", "governance_policy_set", "routing_decision_made", "routing_no_candidate", "assignment_created", "assignment_transitioned", "assignment_reassigned", "assignment_blocked", "write_lease_acquired", "write_lease_released", "write_lease_denied", "knowledge_adr_status_changed", "knowledge_conflict_resolved", "simulation_executed", "simulation_decision_recorded", "trust_event_recorded"];
+export declare const AUDIT_EVENT_TYPES: readonly ["task_created", "task_assigned", "agent_executed", "handoff_created", "permission_decision", "security_policy_decision", "approval_requested", "approval_decided", "task_resumed", "task_completed", "task_failed", "model_provider_requested", "model_execution_started", "model_execution_completed", "model_execution_failed", "agent_activity", "tool_registered", "tool_execution", "workflow_event", "project_adapter_event", "control_command", "host_registered", "environment_discovered", "environment_refreshed", "environment_unavailable", "execution_plan_event", "access_event", "execution_event", "onboarding_event", "knowledge_created", "knowledge_updated", "knowledge_event", "governance_event", "usage_recorded", "budget_blocked", "budget_policy_set", "audit_finding_raised", "governance_decision", "governance_policy_set", "routing_decision_made", "routing_no_candidate", "assignment_created", "assignment_transitioned", "assignment_reassigned", "assignment_blocked", "write_lease_acquired", "write_lease_released", "write_lease_denied", "knowledge_adr_status_changed", "knowledge_conflict_resolved", "simulation_executed", "simulation_decision_recorded", "trust_event_recorded"];
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
 export interface AuditEvent {
     id: string;
@@ -438,6 +438,14 @@ export declare function validateTaskDraft(draft: TaskDraft): void;
 export declare function validateHandoffDraft(draft: HandoffDraft): void;
 export declare function validateApprovalRequest(draft: ApprovalRequestDraft): void;
 export type { Entity, Repository, AsyncRepository, PersistenceProvider, } from "./persistence.js";
+export * from "./knowledge-memory.js";
+export * from "./security-governance.js";
+export * from "./integration-gateway.js";
+export * from "./extension-platform.js";
+export * from "./business-layer.js";
+export * from "./portfolio-intelligence.js";
+export * from "./autonomy.js";
+export * from "./analytics-intelligence.js";
 export * from "./storage.js";
 export * from "./research.js";
 export * from "./tools.js";
@@ -462,6 +470,9 @@ export * from "./orchestration.js";
 export * from "./environment-routing.js";
 export * from "./graph.js";
 export * from "./onboarding.js";
+export * from "./prompt-intelligence.js";
+export * from "./execution-orchestration.js";
+export * from "./execution-runtime.js";
 export * from "./cost-center.js";
 export * from "./governance.js";
 export * from "./routing.js";

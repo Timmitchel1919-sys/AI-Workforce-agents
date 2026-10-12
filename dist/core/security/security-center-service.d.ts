@@ -8,7 +8,7 @@
  * - Aggregated alerts, incidents, and deterministic recommendations
  */
 import type { OperatorPrincipal } from "../../contracts/control.js";
-import type { SecurityAlert, SecurityDomain, SecurityIncident, SecurityPostureSummary, SecurityRecommendation } from "../../contracts/security-center.js";
+import type { SecurityCenterAlert, SecurityDomain, SecurityIncident, SecurityPostureSummary, SecurityRecommendation } from "../../contracts/security-center.js";
 import type { BackupCatalogService } from "../recovery/backup-catalog.js";
 import type { AlertEngine } from "./alert-engine.js";
 import type { SecurityIncidentService } from "./security-incident-service.js";
@@ -33,11 +33,11 @@ export declare class SecurityCenterService {
      * Lists alerts enforcing capability and project isolation (Step 15, 16).
      */
     listAlerts(filters?: {
-        severity?: SecurityAlert["severity"];
-        status?: SecurityAlert["status"];
+        severity?: SecurityCenterAlert["severity"];
+        status?: SecurityCenterAlert["status"];
         domain?: SecurityDomain;
-    }, principal?: OperatorPrincipal, projectId?: string): SecurityAlert[];
-    getAlert(id: string, principal?: OperatorPrincipal): SecurityAlert | undefined;
+    }, principal?: OperatorPrincipal, projectId?: string): SecurityCenterAlert[];
+    getAlert(id: string, principal?: OperatorPrincipal): SecurityCenterAlert | undefined;
     /**
      * Lists incidents with capability and project boundary enforcement.
      */
@@ -49,9 +49,9 @@ export declare class SecurityCenterService {
     getIncident(id: string, principal?: OperatorPrincipal): SecurityIncident | undefined;
     private isGlobalViewer;
     private canAccessProject;
-    acknowledgeAlert(id: string, actor: string): Promise<SecurityAlert>;
-    dismissAlert(id: string, actor: string, reason: string): Promise<SecurityAlert>;
-    resolveAlert(id: string, actor: string): Promise<SecurityAlert>;
+    acknowledgeAlert(id: string, actor: string): Promise<SecurityCenterAlert>;
+    dismissAlert(id: string, actor: string, reason: string): Promise<SecurityCenterAlert>;
+    resolveAlert(id: string, actor: string): Promise<SecurityCenterAlert>;
     assignIncident(id: string, owner: string, assignedBy: string): Promise<SecurityIncident>;
     updateIncidentStatus(id: string, status: SecurityIncident["status"], actor: string, note?: string): Promise<SecurityIncident>;
     resolveIncident(id: string, resolvedBy: string, summary: string, rootCause?: string): Promise<SecurityIncident>;

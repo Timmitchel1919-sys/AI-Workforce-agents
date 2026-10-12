@@ -51,7 +51,7 @@ export interface SecurityPostureSummary {
 /**
  * Normalized Security Alert representing an actionable condition derived from SecurityEvents.
  */
-export interface SecurityAlert {
+export interface SecurityCenterAlert {
     id: string;
     title: string;
     description: string;
@@ -153,5 +153,5 @@ export interface NotificationEvent {
     correlationId?: string;
     metadata?: Record<string, unknown>;
 }
-export declare function validateSecurityAlert(alert: SecurityAlert): void;
+export declare function validateSecurityAlert(alert: SecurityCenterAlert): void;
 export declare function validateSecurityIncident(incident: SecurityIncident): void;

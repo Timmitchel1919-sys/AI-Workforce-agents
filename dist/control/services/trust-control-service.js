@@ -1,7 +1,7 @@
 import { NotFoundError, PermissionDeniedError, ValidationError, operatorCan, operatorCanAccessProject, } from "../../contracts/index.js";
 import { createId, now } from "../../core/index.js";
 import { TrustEngine, } from "../../core/trust/trust-engine.js";
-export class TrustControlService {
+export class TrustOversightControlService {
     trustEntities;
     approvals;
     trustEvents;

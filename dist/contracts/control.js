@@ -17,6 +17,12 @@
  *         ▼
  *        CORE  →  Security  →  Audit / State
  */
+import { INTEGRATION_COMMANDS } from "./integration-gateway.js";
+import { EXTENSION_COMMANDS } from "./extension-platform.js";
+import { BUSINESS_COMMANDS } from "./business-layer.js";
+import { PORTFOLIO_COMMANDS } from "./portfolio-intelligence.js";
+import { AUTONOMY_COMMANDS } from "./autonomy.js";
+import { ANALYTICS_COMMANDS } from "./analytics-intelligence.js";
 import { requireText, ValidationError, } from "./index.js";
 /* ------------------------------------------------------------------ */
 /* Operator authorization                                             */
@@ -69,6 +75,22 @@ export const CONTROL_CAPABILITIES = [
     "manage_identity_security",
     "manage_agent_security",
     "contain_security_threat",
+    /* Phase 3 — Context Engine + Prompt Intelligence (prepares, never executes). */
+    "prepare_prompt",
+    /* Layer 4 — Execution Orchestration (plans and coordinates; gated by approvals). */
+    "orchestrate_execution",
+    /* Knowledge, Memory & Context Intelligence (curating project memory). */
+    "manage_knowledge",
+    /* Governance & trust: suspend agents, emergency stop, alerts, policies. */
+    "manage_security",
+    /* Integration Hub: connectors, credentials, MCP servers, event subscriptions. */
+    "manage_integrations",
+    /* Layers 9–13: extensions, business layer, portfolio, autonomous operations, analytics. */
+    "manage_extensions",
+    "manage_business",
+    "manage_portfolio",
+    "manage_autonomy",
+    "manage_analytics",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
@@ -103,6 +125,20 @@ export const ROLE_CAPABILITIES = {
         "view_security",
         "view_security_events",
         "request_destructive_action",
+        // Phase 3: operators may prepare (analyse/validate) execution prompts.
+        "prepare_prompt",
+        // Layer 4: operators may plan and advance execution runs.
+        "orchestrate_execution",
+        // Knowledge: curate, confirm, supersede and ingest project memory.
+        "manage_knowledge",
+        // Governance: raise the emergency stop, handle alerts, suspend agents (critical changes stay admin-only).
+        "manage_security",
+        "manage_integrations",
+        "manage_extensions",
+        "manage_business",
+        "manage_portfolio",
+        "manage_autonomy",
+        "manage_analytics",
     ],
     admin: [
         "view",
@@ -150,6 +186,18 @@ export const ROLE_CAPABILITIES = {
         "manage_identity_security",
         "manage_agent_security",
         "contain_security_threat",
+        // Phase 3: preparing execution prompts.
+        "prepare_prompt",
+        "orchestrate_execution",
+        // Knowledge: curate, confirm, supersede and ingest project memory.
+        "manage_knowledge",
+        "manage_security",
+        "manage_integrations",
+        "manage_extensions",
+        "manage_business",
+        "manage_portfolio",
+        "manage_autonomy",
+        "manage_analytics",
     ],
 };
 export function validateOperatorPrincipal(principal) {
@@ -215,6 +263,60 @@ export const CONTROL_COMMANDS = [
     "set_budget_policy",
     "set_governance_policy",
     "evaluate_governance",
+    // Phase 3 — Context Engine + Prompt Intelligence.
+    "prompt_prepare",
+    "prompt_request_approval",
+    // Layer 4 — Execution Orchestration.
+    "orchestration_create",
+    "orchestration_start",
+    "orchestration_advance",
+    "orchestration_pause",
+    "orchestration_resume",
+    "orchestration_cancel",
+    "orchestration_retry_task",
+    // Layer 5 — Execution Runtime.
+    "runtime_cancel_session",
+    "runtime_pause_session",
+    "runtime_resume_session",
+    // Knowledge, Memory & Context Intelligence.
+    "knowledge_create_memory",
+    "knowledge_update_memory",
+    "knowledge_confirm_memory",
+    "knowledge_archive_memory",
+    "knowledge_restore_memory",
+    "knowledge_supersede_memory",
+    "knowledge_revoke_memory",
+    "knowledge_delete_memory",
+    "knowledge_link",
+    "knowledge_resolve_conflict",
+    "knowledge_ingest_document",
+    "knowledge_discover_project",
+    "knowledge_refresh_project",
+    "knowledge_apply_retention",
+    // Governance, Trust & Security.
+    "security_set_agent_trust",
+    "security_set_model_trust",
+    "security_set_tool_trust",
+    "security_create_policy",
+    "security_update_policy",
+    "security_set_policy_status",
+    "security_decide_approval",
+    "security_cancel_approval",
+    "security_alert_transition",
+    "security_emergency_stop",
+    "security_emergency_advance",
+    "security_emergency_resume",
+    "security_scan_config",
+    "security_accept_config",
+    "security_scan_dependencies",
+    // Integration Hub.
+    ...INTEGRATION_COMMANDS,
+    // Layers 9–13.
+    ...EXTENSION_COMMANDS,
+    ...BUSINESS_COMMANDS,
+    ...PORTFOLIO_COMMANDS,
+    ...AUTONOMY_COMMANDS,
+    ...ANALYTICS_COMMANDS,
 ];
 /**
  * A refinement of a non-`executed` outcome, aligned with the `WorkforceError`

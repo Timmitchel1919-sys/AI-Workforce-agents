@@ -41,7 +41,7 @@ export interface CreateApprovalItemRequest {
   rollbackAvailable?: boolean;
 }
 
-export class TrustControlService {
+export class TrustOversightControlService {
   private readonly engine: TrustEngine;
   private emergencyState: EmergencyControlState = {
     automationLockedDown: false,

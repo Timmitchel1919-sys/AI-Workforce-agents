@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type {
-  KnowledgeConflict,
+  KnowledgeItemConflict,
   KnowledgeItem,
   KnowledgeQualityReport,
   KnowledgeScope,
@@ -36,18 +36,18 @@ export interface OperationalExecutionRecord {
 }
 
 export class KnowledgeLearningEngine {
-  private readonly conflicts = new Map<string, KnowledgeConflict>();
+  private readonly conflicts = new Map<string, KnowledgeItemConflict>();
 
   /**
    * Detects conflicting knowledge statements between items in the same scope or project.
    * Does NOT overwrite either record; flags for human or policy review.
    */
-  detectConflicts(items: readonly KnowledgeItem[]): KnowledgeConflict[] {
+  detectConflicts(items: readonly KnowledgeItem[]): KnowledgeItemConflict[] {
     const activeItems = items.filter(
       (item) => item.lifecycleState !== "archived" && item.lifecycleState !== "superseded",
     );
 
-    const detected: KnowledgeConflict[] = [];
+    const detected: KnowledgeItemConflict[] = [];
 
     for (let i = 0; i < activeItems.length; i++) {
       for (let j = i + 1; j < activeItems.length; j++) {
@@ -73,7 +73,7 @@ export class KnowledgeLearningEngine {
     return detected;
   }
 
-  private evaluateItemPair(a: KnowledgeItem, b: KnowledgeItem): KnowledgeConflict | undefined {
+  private evaluateItemPair(a: KnowledgeItem, b: KnowledgeItem): KnowledgeItemConflict | undefined {
     // 1. Explicit conflict marker
     if (a.conflictingItemIds?.includes(b.knowledgeId) || b.conflictingItemIds?.includes(a.knowledgeId)) {
       const conflictId = `conf-${[a.knowledgeId, b.knowledgeId].sort().join("-")}`;
@@ -154,7 +154,7 @@ export class KnowledgeLearningEngine {
     loserItem: KnowledgeItem,
     resolutionNotes: string,
     resolvedBy: string,
-  ): { updatedWinner: KnowledgeItem; updatedLoser: KnowledgeItem; resolvedConflict: KnowledgeConflict } {
+  ): { updatedWinner: KnowledgeItem; updatedLoser: KnowledgeItem; resolvedConflict: KnowledgeItemConflict } {
     const conflict = this.conflicts.get(conflictId) || {
       conflictId,
       itemAId: winnerItem.knowledgeId,
@@ -168,7 +168,7 @@ export class KnowledgeLearningEngine {
 
     const now = new Date().toISOString();
 
-    const resolvedConflict: KnowledgeConflict = {
+    const resolvedConflict: KnowledgeItemConflict = {
       ...conflict,
       status: "resolved",
       resolutionNotes,
