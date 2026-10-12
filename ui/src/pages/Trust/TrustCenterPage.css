@@ -1,0 +1,332 @@
+.trust-center {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.trust-center__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.trust-center__header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.trust-center__header p {
+  margin: 0;
+  opacity: 0.75;
+  max-width: 60ch;
+}
+
+.trust-center__error {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--color-danger, #c0392b);
+  border-radius: 10px;
+  background: rgba(192, 57, 43, 0.08);
+}
+
+.trust-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.trust-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.trust-status--ok {
+  color: var(--color-success, #27ae60);
+}
+.trust-status--warn {
+  color: var(--color-warning, #e67e22);
+}
+.trust-status--critical {
+  color: var(--color-danger, #c0392b);
+}
+
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.trust-card {
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.trust-card--warn {
+  border-color: rgba(230, 126, 34, 0.4);
+}
+.trust-card--critical {
+  border-color: rgba(192, 57, 43, 0.5);
+  background: rgba(192, 57, 43, 0.06);
+}
+
+.trust-card__label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+}
+
+.trust-card__value {
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.1;
+  margin-top: 0.3rem;
+}
+
+.trust-card__sub {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-top: 0.3rem;
+}
+
+.trust-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .trust-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trust-panel {
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trust-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.trust-panel__header h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.trust-panel__count {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.trust-panel__empty {
+  opacity: 0.6;
+  font-size: 0.9rem;
+}
+
+.trust-approvals,
+.trust-events,
+.trust-locks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.trust-approvals__row,
+.trust-events__row {
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.trust-approvals__action,
+.trust-events__summary {
+  font-weight: 600;
+}
+
+.trust-approvals__meta,
+.trust-events__meta,
+.trust-events__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin: 0.4rem 0;
+  flex-wrap: wrap;
+}
+
+.trust-approvals__reason {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.trust-chip {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.trust-chip--low,
+.trust-chip--info {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+}
+
+.trust-chip--medium {
+  background: rgba(241, 196, 15, 0.18);
+  color: #f1c40f;
+}
+
+.trust-chip--high {
+  background: rgba(230, 126, 34, 0.2);
+  color: #e67e22;
+}
+
+.trust-chip--critical {
+  background: rgba(192, 57, 43, 0.22);
+  color: #e74c3c;
+}
+
+.trust-emergency {
+  border-color: rgba(192, 57, 43, 0.25);
+}
+
+.trust-emergency__description {
+  margin: 0 0 1rem;
+  opacity: 0.8;
+  max-width: 70ch;
+}
+
+.trust-emergency__action {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 50ch;
+  margin-bottom: 1rem;
+}
+
+.trust-emergency__label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.trust-emergency__input {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.trust-emergency__confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.trust-btn {
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.trust-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.trust-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.trust-btn--critical {
+  background: rgba(192, 57, 43, 0.2);
+  border-color: rgba(192, 57, 43, 0.45);
+  color: #e74c3c;
+}
+
+.trust-btn--critical:hover:not(:disabled) {
+  background: rgba(192, 57, 43, 0.3);
+}
+
+.trust-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.trust-badge--critical {
+  background: rgba(192, 57, 43, 0.2);
+  color: #e74c3c;
+}
+
+.trust-locks__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.trust-locks__action {
+  font-weight: 600;
+}
+
+.trust-locks__meta {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin: 0.25rem 0;
+}
+
+.trust-locks__reason {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
