@@ -2214,7 +2214,7 @@ export const en = {
   intelligence: {
     pageDescription: "Predictive decision and optimization engine. Monitors drift, anomalies, and performs forecasting."
   },
-  knowledge: {
+  knowledgeItems: {
     title: "Knowledge",
     description: "Project knowledge, documentation, architecture notes and decisions. The Control Plane authorizes and audits every change.",
     filtersLabel: "Knowledge filters",

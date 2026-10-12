@@ -21,7 +21,7 @@ export { default as ApprovalDetailPage } from "../../pages/Approvals/ApprovalDet
 export { default as AuditLogPage } from "../../pages/AuditLog/AuditLogPage";
 export { default as AuditDetailPage } from "../../pages/AuditLog/AuditDetailPage";
 export { default as SpatialGraphPage } from "../../pages/SpatialGraph/SpatialGraphPage";
-export { default as KnowledgePage } from "../../pages/Knowledge/KnowledgePage";
+export { default as KnowledgeItemsPage } from "../../pages/Knowledge/KnowledgePage";
 export { ExecutionFabricPage } from '../../pages/ExecutionFabric/ExecutionFabricPage';
 export { default as GovernancePage } from "../../pages/Governance/GovernancePage";
 export { default as CostCenterPage } from "../../pages/CostCenter/CostCenterPage";

@@ -32,17 +32,17 @@ import "../Approvals/ApprovalsPage.css";
 const TYPE: Record<KnowledgeItemType, { label: MessageKey; icon: LucideIcon }> =
   {
     project_knowledge: {
-      label: "knowledge.typeProjectKnowledge",
+      label: "knowledgeItems.typeProjectKnowledge",
       icon: BookOpen,
     },
     technical_documentation: {
-      label: "knowledge.typeTechnicalDocumentation",
+      label: "knowledgeItems.typeTechnicalDocumentation",
       icon: FileText,
     },
-    architecture: { label: "knowledge.typeArchitecture", icon: ScrollText },
-    decision: { label: "knowledge.typeDecision", icon: Lightbulb },
-    requirement: { label: "knowledge.typeRequirement", icon: ListChecks },
-    note: { label: "knowledge.typeNote", icon: Sparkles },
+    architecture: { label: "knowledgeItems.typeArchitecture", icon: ScrollText },
+    decision: { label: "knowledgeItems.typeDecision", icon: Lightbulb },
+    requirement: { label: "knowledgeItems.typeRequirement", icon: ListChecks },
+    note: { label: "knowledgeItems.typeNote", icon: Sparkles },
   };
 
 const EMPTY_FILTER: KnowledgeFilter = {};
@@ -96,28 +96,28 @@ export default function KnowledgePage() {
     projectId
       ? (projects.find((p) => p.projectId === projectId)?.displayName ??
         projectId)
-      : t("knowledge.systemWide");
+      : t("knowledgeItems.systemWide");
 
   return (
     <PageContainer>
       <PageHeader
         eyebrow={t("common.brand")}
-        title={t("knowledge.title")}
-        description={t("knowledge.description")}
+        title={t("knowledgeItems.title")}
+        description={t("knowledgeItems.description")}
       />
 
       <form
         className="gov-filters"
-        aria-label={t("knowledge.filtersLabel")}
+        aria-label={t("knowledgeItems.filtersLabel")}
         onSubmit={apply}
       >
         <label className="gov-field">
-          <span>{t("knowledge.filterType")}</span>
+          <span>{t("knowledgeItems.filterType")}</span>
           <select
             value={draft.type}
             onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}
           >
-            <option value="">{t("knowledge.allTypes")}</option>
+            <option value="">{t("knowledgeItems.allTypes")}</option>
             {KNOWLEDGE_ITEM_TYPES.map((type) => (
               <option key={type} value={type}>
                 {t(TYPE[type].label)}
@@ -126,14 +126,14 @@ export default function KnowledgePage() {
           </select>
         </label>
         <label className="gov-field">
-          <span>{t("knowledge.filterProject")}</span>
+          <span>{t("knowledgeItems.filterProject")}</span>
           <select
             value={draft.projectId}
             onChange={(e) =>
               setDraft((d) => ({ ...d, projectId: e.target.value }))
             }
           >
-            <option value="">{t("knowledge.allProjects")}</option>
+            <option value="">{t("knowledgeItems.allProjects")}</option>
             {projects.map((p) => (
               <option key={p.projectId} value={p.projectId}>
                 {p.displayName}
@@ -142,10 +142,10 @@ export default function KnowledgePage() {
           </select>
         </label>
         <label className="gov-field">
-          <span>{t("knowledge.search")}</span>
+          <span>{t("knowledgeItems.search")}</span>
           <input
             maxLength={200}
-            placeholder={t("knowledge.searchPlaceholder")}
+            placeholder={t("knowledgeItems.searchPlaceholder")}
             value={draft.search}
             onChange={(e) =>
               setDraft((d) => ({ ...d, search: e.target.value }))
@@ -154,10 +154,10 @@ export default function KnowledgePage() {
         </label>
         <div className="gov-form__actions">
           <button type="button" className="ui-button" onClick={clear}>
-            {t("knowledge.clear")}
+            {t("knowledgeItems.clear")}
           </button>
           <button type="submit" className="ui-button primary">
-            {t("knowledge.apply")}
+            {t("knowledgeItems.apply")}
           </button>
         </div>
       </form>
@@ -169,7 +169,7 @@ export default function KnowledgePage() {
             className="ui-button primary"
             onClick={() => setEditing({})}
           >
-            <Plus size={16} aria-hidden /> {t("knowledge.newItem")}
+            <Plus size={16} aria-hidden /> {t("knowledgeItems.newItem")}
           </button>
         </p>
       ) : null}
@@ -187,7 +187,7 @@ export default function KnowledgePage() {
         <div
           className="gov-list"
           role="status"
-          aria-label={t("knowledge.loading")}
+          aria-label={t("knowledgeItems.loading")}
         >
           <Skeleton height={96} width="100%" />
           <Skeleton height={96} width="100%" />
@@ -198,33 +198,33 @@ export default function KnowledgePage() {
           icon={<Lock size={28} />}
           title={t(
             library.state === "forbidden"
-              ? "knowledge.forbiddenTitle"
-              : "knowledge.unauthenticatedTitle",
+              ? "knowledgeItems.forbiddenTitle"
+              : "knowledgeItems.unauthenticatedTitle",
           )}
           description={t(
             library.state === "forbidden"
-              ? "knowledge.forbiddenDescription"
-              : "knowledge.unauthenticatedDescription",
+              ? "knowledgeItems.forbiddenDescription"
+              : "knowledgeItems.unauthenticatedDescription",
           )}
         />
       ) : library.state === "empty" ? (
         <EmptyState
-          title={t("knowledge.emptyTitle")}
+          title={t("knowledgeItems.emptyTitle")}
           description={t(
-            filtered ? "knowledge.emptyFiltered" : "knowledge.emptyNone",
+            filtered ? "knowledgeItems.emptyFiltered" : "knowledgeItems.emptyNone",
           )}
         />
       ) : library.state !== "ready" ? (
         <ErrorState
-          title={t("knowledge.errorTitle")}
-          description={t("knowledge.errorDescription")}
+          title={t("knowledgeItems.errorTitle")}
+          description={t("knowledgeItems.errorDescription")}
           onRetry={library.refetch}
           retryLabel={t("common.retry")}
         />
       ) : (
         <>
           <p className="gov-muted">
-            {t("knowledge.showing", {
+            {t("knowledgeItems.showing", {
               shown: library.items.length,
               total: library.total,
             })}
@@ -304,23 +304,23 @@ function KnowledgeCard({
       <p className="gov-reason">{preview(item.body)}</p>
       <ul className="gov-meta">
         <li>{projectLabel}</li>
-        <li>{t("knowledge.createdBy", { actor: item.createdBy })}</li>
+        <li>{t("knowledgeItems.createdBy", { actor: item.createdBy })}</li>
         <li>
-          {t("knowledge.updatedAt", {
+          {t("knowledgeItems.updatedAt", {
             date: formatDateTime(item.updatedAt, language) ?? "",
           })}
         </li>
         {item.source ? (
-          <li>{t("knowledge.source", { source: item.source })}</li>
+          <li>{t("knowledgeItems.source", { source: item.source })}</li>
         ) : null}
       </ul>
       <div className="gov-actions">
         <button type="button" className="ui-button" onClick={onView}>
-          {t("knowledge.view")}
+          {t("knowledgeItems.view")}
         </button>
         {canWrite ? (
           <button type="button" className="ui-button" onClick={onEdit}>
-            <Pencil size={16} aria-hidden /> {t("knowledge.edit")}
+            <Pencil size={16} aria-hidden /> {t("knowledgeItems.edit")}
           </button>
         ) : null}
       </div>
@@ -344,35 +344,35 @@ function ViewerDialog({
       open
       onClose={onClose}
       title={item.title}
-      description={t("knowledge.detailDescription")}
+      description={t("knowledgeItems.detailDescription")}
     >
       <dl className="gov-detail-list">
-        <dt>{t("knowledge.type")}</dt>
+        <dt>{t("knowledgeItems.type")}</dt>
         <dd>{t(type.label)}</dd>
-        <dt>{t("knowledge.filterProject")}</dt>
+        <dt>{t("knowledgeItems.filterProject")}</dt>
         <dd>{projectLabel}</dd>
-        <dt>{t("knowledge.createdBy", { actor: item.createdBy })}</dt>
+        <dt>{t("knowledgeItems.createdBy", { actor: item.createdBy })}</dt>
         <dd>{formatDateTime(item.createdAt, language) ?? ""}</dd>
-        <dt>{t("knowledge.updatedLabel")}</dt>
+        <dt>{t("knowledgeItems.updatedLabel")}</dt>
         <dd>{formatDateTime(item.updatedAt, language) ?? ""}</dd>
         {item.source ? (
           <>
-            <dt>{t("knowledge.itemSource")}</dt>
+            <dt>{t("knowledgeItems.itemSource")}</dt>
             <dd>{item.source}</dd>
           </>
         ) : null}
         {item.tags.length > 0 ? (
           <>
-            <dt>{t("knowledge.itemTags")}</dt>
+            <dt>{t("knowledgeItems.itemTags")}</dt>
             <dd>{item.tags.join(", ")}</dd>
           </>
         ) : null}
       </dl>
-      <h3>{t("knowledge.bodySection")}</h3>
+      <h3>{t("knowledgeItems.bodySection")}</h3>
       <pre className="gov-preview">{item.body}</pre>
       <div className="gov-form__actions">
         <button type="button" className="ui-button" onClick={onClose}>
-          {t("knowledge.close")}
+          {t("knowledgeItems.close")}
         </button>
       </div>
     </Dialog>
@@ -425,22 +425,22 @@ function EditorDialog({
         error instanceof KnowledgeError ? error.failure : "unavailable";
       const key: MessageKey =
         failure === "forbidden" || failure === "unauthenticated"
-          ? "knowledge.forbiddenAction"
+          ? "knowledgeItems.forbiddenAction"
           : failure === "invalid"
-            ? "knowledge.invalid"
-            : "knowledge.saveFailed";
+            ? "knowledgeItems.invalid"
+            : "knowledgeItems.saveFailed";
       onDone(t(key), "error");
     };
 
     if (item) {
       update.mutate(
         { id: item.knowledgeId, input: fields },
-        { onSuccess: () => onDone(t("knowledge.updated"), "ok"), onError },
+        { onSuccess: () => onDone(t("knowledgeItems.updated"), "ok"), onError },
       );
     } else {
       create.mutate(
         { ...fields, ...(projectId ? { projectId } : {}) },
-        { onSuccess: () => onDone(t("knowledge.created"), "ok"), onError },
+        { onSuccess: () => onDone(t("knowledgeItems.created"), "ok"), onError },
       );
     }
   };
@@ -449,8 +449,8 @@ function EditorDialog({
     <Dialog
       open
       onClose={onClose}
-      title={t(editing ? "knowledge.editTitle" : "knowledge.createTitle")}
-      description={t("knowledge.formDescription")}
+      title={t(editing ? "knowledgeItems.editTitle" : "knowledgeItems.createTitle")}
+      description={t("knowledgeItems.formDescription")}
     >
       <form
         className="gov-form"
@@ -461,7 +461,7 @@ function EditorDialog({
       >
         <div className="gov-filters">
           <label className="gov-field">
-            <span>{t("knowledge.type")}</span>
+            <span>{t("knowledgeItems.type")}</span>
             <select
               value={type}
               onChange={(e) => setType(e.target.value as KnowledgeItemType)}
@@ -474,13 +474,13 @@ function EditorDialog({
             </select>
           </label>
           <label className="gov-field">
-            <span>{t("knowledge.project")}</span>
+            <span>{t("knowledgeItems.project")}</span>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               disabled={editing}
             >
-              <option value="">{t("knowledge.systemWide")}</option>
+              <option value="">{t("knowledgeItems.systemWide")}</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -490,7 +490,7 @@ function EditorDialog({
           </label>
         </div>
         <label className="gov-field">
-          <span>{t("knowledge.itemTitle")}</span>
+          <span>{t("knowledgeItems.itemTitle")}</span>
           <input
             required
             maxLength={200}
@@ -499,7 +499,7 @@ function EditorDialog({
           />
         </label>
         <label className="gov-field">
-          <span>{t("knowledge.itemBody")}</span>
+          <span>{t("knowledgeItems.itemBody")}</span>
           <textarea
             required
             maxLength={20000}
@@ -507,25 +507,25 @@ function EditorDialog({
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
-          <span className="gov-muted">{t("knowledge.itemBodyHint")}</span>
+          <span className="gov-muted">{t("knowledgeItems.itemBodyHint")}</span>
         </label>
         <label className="gov-field">
-          <span>{t("knowledge.itemTags")}</span>
+          <span>{t("knowledgeItems.itemTags")}</span>
           <input value={tags} onChange={(e) => setTags(e.target.value)} />
-          <span className="gov-muted">{t("knowledge.itemTagsHint")}</span>
+          <span className="gov-muted">{t("knowledgeItems.itemTagsHint")}</span>
         </label>
         <label className="gov-field">
-          <span>{t("knowledge.itemSource")}</span>
+          <span>{t("knowledgeItems.itemSource")}</span>
           <input
             maxLength={300}
-            placeholder={t("knowledge.itemSourcePlaceholder")}
+            placeholder={t("knowledgeItems.itemSourcePlaceholder")}
             value={source}
             onChange={(e) => setSource(e.target.value)}
           />
         </label>
         <div className="gov-form__actions">
           <button type="button" className="ui-button" onClick={onClose}>
-            {t("knowledge.cancel")}
+            {t("knowledgeItems.cancel")}
           </button>
           <button
             type="submit"
@@ -534,8 +534,8 @@ function EditorDialog({
             aria-busy={pending}
           >
             {pending
-              ? t("knowledge.working")
-              : t(editing ? "knowledge.save" : "knowledge.create")}
+              ? t("knowledgeItems.working")
+              : t(editing ? "knowledgeItems.save" : "knowledgeItems.create")}
           </button>
         </div>
       </form>

@@ -2213,7 +2213,7 @@ export const nl: Messages = {
   intelligence: {
     pageDescription: "Voorspellende beslissings- en optimalisatie-engine. Bewaakt afwijkingen, anomalieën en voert voorspellingen uit."
   },
-  knowledge: {
+  knowledgeItems: {
     title: "Kennis",
     description: "Projectkennis, documentatie, architectuurnotities en beslissingen. Het Control Plane autoriseert en audit elke wijziging.",
     filtersLabel: "Kennis-filters",

@@ -23,6 +23,7 @@ export type NavigationIconId =
   | "privacy"
   | "developer"
   | "secops"
+  | "organization"
 
 export type NavigationBadge = number | string;
 

@@ -19,6 +19,7 @@ import {
   Blocks,
   Code,
   Puzzle,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -51,6 +52,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   privacy: Scale,
   developer: Code,
   secops: Scale,
+  organization: Building2,
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";

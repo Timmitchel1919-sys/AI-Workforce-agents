@@ -75,6 +75,7 @@ const AuditPage = fromChunk(loadControlCenterRoutes, "AuditPage");
 const PortfolioPage = fromChunk(loadControlCenterRoutes, "PortfolioPage");
 const ProductPage = fromChunk(loadControlCenterRoutes, "ProductPage");
 const WorkforcePage = fromChunk(loadControlCenterRoutes, "WorkforcePage");
+const KnowledgeItemsPage = fromChunk(loadControlCenterRoutes, "KnowledgeItemsPage");
 
 function RouteFallback() {
   const { t } = useI18n();
@@ -174,6 +175,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "knowledge", element: withSuspense(<KnowledgePage />) },
       { path: "knowledge/:tab", element: withSuspense(<KnowledgePage />) },
       { path: "knowledge/:tab/:memoryId", element: withSuspense(<KnowledgePage />) },
+      { path: "knowledge-items", element: withSuspense(<KnowledgeItemsPage />) },
+      { path: "knowledge-items/:knowledgeId", element: withSuspense(<KnowledgeItemsPage />) },
       { path: "security-center", element: withSuspense(<SecurityCenterPage />) },
       { path: "security-center/:tab", element: withSuspense(<SecurityCenterPage />) },
       { path: "security-center/:tab/:itemId", element: withSuspense(<SecurityCenterPage />) },
