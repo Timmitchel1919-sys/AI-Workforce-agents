@@ -79,6 +79,16 @@ export interface DestructiveActionRequest extends Entity {
     justification: DestructiveActionJustification;
     policyDecision: SecurityPolicyDecision;
     status: DestructiveActionStatus;
+    /**
+     * Monotonic version of the authoritative request state. Starts at 1
+     * and increments every time a MATERIAL field (see
+     * {@link MATERIAL_JUSTIFICATION_FIELDS} and the material-identity
+     * fields on the request itself) changes. Every approval binds to a
+     * specific `(destructiveActionId, revision)`. On revision bump,
+     * previous approvals are RETAINED in history but never again count
+     * toward execution authorization.
+     */
+    revision: number;
     approvalId?: string;
     /**
      * When `policyDecision.requiresTwoPersonApproval` is true, this holds
@@ -87,9 +97,18 @@ export interface DestructiveActionRequest extends Entity {
      * one-person approval.
      */
     secondaryApprovalId?: string;
+    /**
+     * Append-only register of (revision → [primary approvalId, secondary
+     * approvalId]). Previous revisions' entries are preserved so audit
+     * can replay who approved which revision, but the executor only
+     * trusts the entry whose revision matches the current `revision`.
+     */
+    approvalHistory: readonly RevisionApprovalEntry[];
     history: readonly DestructiveActionHistoryEntry[];
-    /** The exact context the engine evaluated — pinned for TOCTOU revalidation. */
+    /** SHA-256 hex digest pinning the material target + revision. */
     pinnedTargetHash: string;
+    /** SHA-256 hex digest over the policy decision bound at (re)approval. */
+    pinnedPolicyFingerprint: string;
     requestedAt: string;
     updatedAt: string;
     expiresAt?: string;
@@ -97,6 +116,60 @@ export interface DestructiveActionRequest extends Entity {
     /** Only set on `executed`. The verified post-execution evidence. */
     executionEvidence?: Readonly<Record<string, unknown>>;
 }
+/**
+ * One row of the per-revision approval register. The entry is only
+ * authoritative while `revision === request.revision`; older rows stay
+ * for audit replay.
+ */
+export interface RevisionApprovalEntry {
+    revision: number;
+    primaryApprovalId?: string;
+    secondaryApprovalId?: string;
+    invalidatedAt?: string;
+    invalidatedReason?: string;
+}
+/**
+ * The complete set of justification fields that count as MATERIAL. A
+ * change to any of them triggers a revision bump and invalidates all
+ * approvals already attached. A change to a non-material field (e.g.
+ * a trailing note the service may add in future) does not.
+ */
+export declare const MATERIAL_JUSTIFICATION_FIELDS: readonly ["summary", "reason", "expectedImpact", "affectedResources", "affectedUsers", "affectedWorkflows", "affectedIntegrations", "saferAlternatives", "reversible", "backupAvailable", "recoveryPlan", "recoveryPoint", "rollbackAvailable", "dataRetentionImpact", "complianceImpact", "risk"];
+/**
+ * The complete set of request-level fields that count as MATERIAL
+ * (orthogonal to the justification material fields above). Any change
+ * forces a revision bump.
+ */
+export declare const MATERIAL_REQUEST_FIELDS: readonly ["action", "actionType", "projectId", "targetResourceType", "targetResourceId", "environment", "production", "irreversible"];
+/**
+ * Trusted boundary evidence that the executor passes to
+ * `assertDestructiveActionApproved(...)`. Layer 3 **validates** the
+ * shape and freshness but does NOT itself verify MFA or reauth — the
+ * authoritative verification lives in Layer 5 middleware. Raw client
+ * input must never flow into this field: the API layer constructs the
+ * evidence from a trusted verifier and hands the result to the
+ * executor.
+ */
+export interface SecurityReauthenticationEvidence {
+    verified: boolean;
+    verifiedAt: string;
+    method: string;
+}
+export interface SecurityMfaEvidence {
+    verified: boolean;
+    verifiedAt: string;
+    method: string;
+}
+/**
+ * Freshness window applied to MFA / reauth evidence at execution
+ * time. Values older than the window are rejected as stale. The
+ * window is intentionally short — long-lived evidence weakens the
+ * TOCTOU guarantee.
+ */
+export declare const SECURITY_EVIDENCE_FRESHNESS: {
+    readonly reauthWindowMs: number;
+    readonly mfaWindowMs: number;
+};
 /**
  * Draft used by `DestructiveActionService.request()`. The service
  * builds the full {@link DestructiveActionRequest} from this plus the
@@ -114,6 +187,26 @@ export interface DestructiveActionRequestDraft {
     justification: DestructiveActionJustification;
 }
 export type DestructiveApprovalDecision = "approve" | "reject" | "request_changes" | "prefer_safer_alternative";
+/**
+ * Partial update applied to an existing destructive request. Only
+ * fields the caller explicitly provides are considered — unset fields
+ * keep their current value. The service runs material-change
+ * detection and bumps `revision` when any of
+ * {@link MATERIAL_REQUEST_FIELDS} or
+ * {@link MATERIAL_JUSTIFICATION_FIELDS} changed, invalidating any
+ * approvals already attached to the OLD revision.
+ */
+export interface DestructiveActionRequestRevision {
+    action?: string;
+    actionType?: DestructiveActionType;
+    targetResourceType?: string;
+    targetResourceId?: string;
+    environment?: "local" | "test" | "staging" | "production";
+    production?: boolean;
+    irreversible?: boolean;
+    projectId?: string;
+    justification?: DestructiveActionJustification;
+}
 /**
  * Terminal statuses — any further transition is a state-machine error.
  */

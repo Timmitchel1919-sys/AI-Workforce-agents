@@ -1,20 +1,27 @@
-/**
- * Security Foundation V1 — Layer 3
- *
- * Destructive Action Approval Gate.
- *
- * The service does NOT execute any destructive operation. It records
- * the authoritative state of a destructive request (who, what, why,
- * safer alternatives considered, recovery evidence) and enforces the
- * approval lifecycle. Executors call {@link assertDestructiveActionApproved}
- * immediately before the real I/O; the method revalidates every
- * precondition (TOCTOU) and refuses if any evidence changed between
- * approval and execution.
- */
 import { type Approval, type OperatorPrincipal, type Repository } from "../../contracts/index.js";
-import { type DestructiveActionRequest, type DestructiveActionRequestDraft, type DestructiveApprovalDecision } from "../../contracts/destructive-action.js";
+import { type DestructiveActionRequest, type DestructiveActionRequestDraft, type DestructiveActionRequestRevision, type DestructiveApprovalDecision, type SecurityMfaEvidence, type SecurityReauthenticationEvidence } from "../../contracts/destructive-action.js";
+import { type SecurityPolicyDecision } from "../../contracts/security-policy.js";
 import { ApprovalSystem } from "../approvals/approval-system.js";
 import type { SecurityPolicyEngine } from "./security-policy-engine.js";
+/**
+ * Narrow interface the service uses to re-resolve historical approvers
+ * at execution time. The implementation should reuse the authoritative
+ * `OperatorAccount` / access-control repository — this must NOT become
+ * a second identity system. Only ACTIVE operator principals may be
+ * returned; otherwise `undefined`.
+ */
+export interface DestructiveApproverResolver {
+    resolve(operatorId: string): OperatorPrincipal | undefined;
+}
+/**
+ * Trusted MFA / reauth evidence passed to the executor by the API
+ * middleware (Layer 5). The service never fabricates this; raw client
+ * flags must not flow through.
+ */
+export interface SecurityExecutionEvidence {
+    mfa?: SecurityMfaEvidence;
+    reauth?: SecurityReauthenticationEvidence;
+}
 export interface AssertApprovedInput {
     requestId: string;
     principal: OperatorPrincipal;
@@ -23,45 +30,114 @@ export interface AssertApprovedInput {
     targetResourceId: string;
     environment: "local" | "test" | "staging" | "production";
     projectId?: string;
+    /**
+     * Trusted boundary evidence. Layer 3 validates shape + freshness; the
+     * authoritative verifier lives in Layer 5. Required when the current
+     * (or historical, strongest-wins merged) policy demands them.
+     */
+    evidence?: SecurityExecutionEvidence;
 }
+/**
+ * Target fingerprint. Covers the full material-identity tuple PLUS
+ * `revision`, so an approval bound to revision 1 cannot authorize
+ * revision 2 even if every other field happened to match.
+ */
+export declare function computeTargetFingerprint(input: {
+    action: string;
+    actionType: string;
+    targetResourceType: string;
+    targetResourceId: string;
+    environment: string;
+    projectId?: string;
+    production: boolean;
+    irreversible: boolean;
+    revision: number;
+}): string;
+/**
+ * Policy fingerprint. Captures the EFFECT-level shape of the decision
+ * (allowed / risk / requirements / matched ids), not the surrounding
+ * reason text. Two decisions with the same fingerprint are "materially
+ * equivalent" even if their internal reason strings differ.
+ */
+export declare function computePolicyFingerprint(decision: SecurityPolicyDecision): string;
+/**
+ * Combine two policy decisions so the strongest requirement in either
+ * one carries. Used at execution time to prevent a WEAKENED current
+ * policy from silently removing requirements that applied when the
+ * approvers decided. A STRICTER current policy is handled separately
+ * (we re-require reapproval under those).
+ */
+export declare function strongestOf(a: SecurityPolicyDecision, b: SecurityPolicyDecision): SecurityPolicyDecision;
+/**
+ * Returns true iff `current` is materially STRICTER than `approved`
+ * (new risk tier higher, newly requires approval / MFA / reauth /
+ * two-person, or newly disallowed). We then force reapproval instead
+ * of merging silently.
+ */
+export declare function policyIsStricter(approved: SecurityPolicyDecision, current: SecurityPolicyDecision): boolean;
+/**
+ * Observer hook so the composition root can emit canonical security
+ * events for drift / block decisions without this file depending on
+ * the canonical event store.
+ */
+export interface DestructiveActionObserver {
+    onSecurityEvent?(event: DestructiveSecurityEvent): void;
+}
+export type DestructiveSecurityEvent = {
+    kind: "destructive_action_revision_created";
+    requestId: string;
+    revision: number;
+    correlationId: string;
+} | {
+    kind: "destructive_action_approvals_invalidated";
+    requestId: string;
+    previousRevision: number;
+    correlationId: string;
+} | {
+    kind: "destructive_action_approver_no_longer_authorized";
+    requestId: string;
+    operatorId: string;
+    correlationId: string;
+    reason: string;
+} | {
+    kind: "destructive_action_policy_drift_detected";
+    requestId: string;
+    correlationId: string;
+    stricter: boolean;
+} | {
+    kind: "destructive_action_reapproval_required";
+    requestId: string;
+    correlationId: string;
+    reason: string;
+} | {
+    kind: "destructive_action_mfa_required";
+    requestId: string;
+    correlationId: string;
+} | {
+    kind: "destructive_action_reauthentication_required";
+    requestId: string;
+    correlationId: string;
+} | {
+    kind: "destructive_action_execution_revalidated";
+    requestId: string;
+    correlationId: string;
+} | {
+    kind: "destructive_action_execution_blocked";
+    requestId: string;
+    correlationId: string;
+    reason: string;
+};
 export declare class DestructiveActionService {
     private readonly engine;
     private readonly approvals;
     private readonly repo;
-    constructor(engine: SecurityPolicyEngine, approvals?: ApprovalSystem, repo?: Repository<DestructiveActionRequest>);
-    /**
-     * Create a destructive-action request. The caller must hold the
-     * `request_destructive_action` capability and have project access.
-     * The request is placed in `awaiting_approval` if the policy
-     * requires approval, else `requested`. We NEVER mark it `approved`
-     * from here, even if the policy decided `allow` — a destructive
-     * action still goes through the Approval Gate so there is one
-     * canonical lifecycle.
-     */
+    private readonly approverResolver?;
+    private readonly observer?;
+    constructor(engine: SecurityPolicyEngine, approvals?: ApprovalSystem, repo?: Repository<DestructiveActionRequest>, approverResolver?: DestructiveApproverResolver | undefined, observer?: DestructiveActionObserver | undefined);
     request(principal: OperatorPrincipal, draft: DestructiveActionRequestDraft, correlationId: string): DestructiveActionRequest;
-    /**
-     * Record an approver decision. Enforces separation of duties: the
-     * requester may never approve their own destructive request when the
-     * policy demands independent approval (every destructive request, by
-     * default). Two-person approval requires a second, distinct approver
-     * — the service never collapses this to a single approval.
-     */
+    revise(principal: OperatorPrincipal, requestId: string, update: DestructiveActionRequestRevision): DestructiveActionRequest;
     decide(principal: OperatorPrincipal, requestId: string, decision: DestructiveApprovalDecision, notes?: string): DestructiveActionRequest;
-    /**
-     * TOCTOU revalidation. The executor calls this immediately before
-     * performing the real I/O. Any drift in the target, the operator's
-     * capability, the project scope, or the policy decision invalidates
-     * the stored approval and the method throws.
-     *
-     * This is the ONLY sanctioned path to execute a destructive action.
-     * Returns the (now `executing`) record on success.
-     */
     assertApproved(input: AssertApprovedInput): DestructiveActionRequest;
-    /**
-     * Mark the request as completed. Only called AFTER the executor has
-     * verified the real-world result; a failed execution must call
-     * {@link markFailed} instead. The service does not infer success.
-     */
     markExecuted(requestId: string, actorId: string, executionEvidence: Readonly<Record<string, unknown>>): DestructiveActionRequest;
     markFailed(requestId: string, actorId: string, reason: string): DestructiveActionRequest;
     cancel(principal: OperatorPrincipal, requestId: string, reason: string): DestructiveActionRequest;
@@ -70,6 +146,12 @@ export declare class DestructiveActionService {
     listForApproval(principal: OperatorPrincipal): DestructiveActionRequest[];
     private require;
     private transition;
+    private evaluatePolicy;
+    private bindingMetadata;
+    private validateApprovalBinding;
+    private validateMfaEvidence;
+    private validateReauthEvidence;
+    private emitBlock;
 }
 /**
  * Thin top-level helper mirroring the API in the spec. Delegates to

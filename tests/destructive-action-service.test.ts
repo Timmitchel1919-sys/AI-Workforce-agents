@@ -18,7 +18,24 @@ import type {
   DestructiveActionJustification,
   DestructiveActionRequestDraft,
   OperatorPrincipal,
+  SecurityMfaEvidence,
+  SecurityReauthenticationEvidence,
 } from "../contracts/index.js";
+
+function freshReauth(): SecurityReauthenticationEvidence {
+  return {
+    verified: true,
+    verifiedAt: new Date().toISOString(),
+    method: "password",
+  };
+}
+function _freshMfa(): SecurityMfaEvidence {
+  return {
+    verified: true,
+    verifiedAt: new Date().toISOString(),
+    method: "totp",
+  };
+}
 
 const CLOCK = () => "2026-10-12T00:00:00.000Z";
 
@@ -260,6 +277,7 @@ test("destructive: approved → executing → executed only after verified markE
     targetResourceId: "orders_v1",
     environment: "staging",
     projectId: "p1",
+    evidence: { reauth: freshReauth() },
   });
   assert.equal(executing.status, "executing");
   const done = s.markExecuted(req.id, APPROVER.id, { rowsDeleted: 42 });
@@ -274,6 +292,7 @@ test("destructive: approved → executing → executed only after verified markE
       targetResourceId: "orders_v1",
       environment: "staging",
       projectId: "p1",
+      evidence: { reauth: freshReauth() },
     }),
   );
 });
@@ -290,6 +309,7 @@ test("destructive: markFailed on execution error leaves a failed record", () => 
     targetResourceId: "orders_v1",
     environment: "staging",
     projectId: "p1",
+    evidence: { reauth: freshReauth() },
   });
   const failed = s.markFailed(req.id, APPROVER.id, "disk IO error");
   assert.equal(failed.status, "failed");
