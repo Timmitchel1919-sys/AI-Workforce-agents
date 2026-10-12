@@ -6,6 +6,17 @@ function select(events, query = {}) {
         .filter((event) => !query.category || event.category === query.category)
         .filter((event) => !query.severity || event.severity === query.severity)
         .filter((event) => !query.outcome || event.outcome === query.outcome)
+        .filter((event) => !query.type || event.type === query.type)
+        .filter((event) => !query.actorId || event.actor?.id === query.actorId)
+        .filter((event) => !query.agentId ||
+        (event.actor?.kind === "agent" && event.actor?.id === query.agentId))
+        .filter((event) => !query.correlationId || event.correlationId === query.correlationId)
+        .filter((event) => !query.approvalId || event.approvalId === query.approvalId)
+        .filter((event) => !query.destructiveActionId ||
+        event.evidence?.["destructiveActionId"] === query.destructiveActionId)
+        .filter((event) => !query.incidentId ||
+        event.evidence?.["incidentId"] === query.incidentId)
+        .filter((event) => !query.targetId || event.target?.id === query.targetId)
         .filter((event) => !query.after || event.occurredAt > query.after)
         .filter((event) => !query.before || event.occurredAt < query.before)
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
