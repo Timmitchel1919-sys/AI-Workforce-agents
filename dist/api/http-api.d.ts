@@ -17,6 +17,7 @@ import { type IncomingMessage, type ServerResponse } from "node:http";
 import { type IdentityVerifier, type OperatorDirectory } from "../contracts/index.js";
 import { type WorkforceCommandService, type WorkforceQueryService } from "../control/index.js";
 import type { AccessService, ProfileService } from "../core/index.js";
+import { type AppAttestationVerifier, type AppCheckMode, type CorsPolicy, type RateLimiter } from "./security/index.js";
 export interface ControlPlaneApiOptions {
     query: WorkforceQueryService;
     graphQuery?: import("../control/index.js").GraphQueryService;
@@ -52,6 +53,23 @@ export interface ControlPlaneApiOptions {
     generateCorrelationId?: () => string;
     /** Max JSON request body size in bytes. Default 1 MiB. */
     maxBodyBytes?: number;
+    /**
+     * Layer-5 API Security options. All fields are optional so existing
+     * tests and dev harnesses continue to work; production composition
+     * supplies the real verifier + CORS policy + rate limiter.
+     */
+    apiSecurity?: {
+        cors?: CorsPolicy;
+        rateLimiter?: RateLimiter;
+        appCheck?: {
+            mode?: AppCheckMode;
+            verifier?: AppAttestationVerifier;
+            /** Route paths (within basePath) that require App Check in enforced mode. */
+            requiredPaths?: readonly RegExp[];
+        };
+        /** Emit production HTTPS headers (HSTS). Opt-in. */
+        production?: boolean;
+    };
 }
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
 export declare function createControlPlaneApi(options: ControlPlaneApiOptions): ApiHandler;

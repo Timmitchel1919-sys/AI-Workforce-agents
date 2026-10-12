@@ -1,6 +1,7 @@
 import { NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, WorkforceError, } from "../contracts/index.js";
 import { sanitizeCorrelationId } from "../control/correlation.js";
 import { parseGraphQueryParams } from "../control/services/graph-query-service.js";
+import { APP_CHECK_HEADER, DEFAULT_CORS, applyCors, applySecurityHeaders, apiError, appCheckBlocks, createInMemoryRateLimiter, evaluateAppCheck, resolveAppCheckMode, } from "./security/index.js";
 const ONBOARDING_METHODS = {
     onboarding_create: "onboardingCreate",
     onboarding_update: "onboardingUpdate",
@@ -78,17 +79,72 @@ export function createControlPlaneApi(options) {
     const newCorrelationId = options.generateCorrelationId ?? defaultCorrelationId;
     const maxBody = options.maxBodyBytes ?? 1_048_576;
     const { query, command, operatorDirectory } = options;
+    // Layer-5 middleware primitives — instantiated once per API composition
+    // so rate-limit buckets, App Check config and CORS policy stay stable
+    // across the handler's lifetime and never leak between tests.
+    const apiSecurity = options.apiSecurity;
+    const corsPolicy = apiSecurity?.cors ?? DEFAULT_CORS;
+    const rateLimiter = apiSecurity?.rateLimiter ?? createInMemoryRateLimiter();
+    const appCheckMode = apiSecurity?.appCheck?.mode ?? resolveAppCheckMode();
+    const appCheckVerifier = apiSecurity?.appCheck?.verifier;
+    const appCheckRequiredPaths = apiSecurity?.appCheck?.requiredPaths ?? [];
+    const productionHeaders = apiSecurity?.production === true;
     return (req, res) => {
         void handle(req, res).catch((error) => {
             send(res, 500, { error: { message: errorMessage(error) } }, "");
         });
     };
     async function handle(req, res) {
+        // Centralized response-security headers for every API response.
+        applySecurityHeaders(res, { production: productionHeaders });
+        // CORS: short-circuit the preflight before any auth logic.
+        const corsOutcome = applyCors(req, res, corsPolicy);
+        if (corsOutcome === "preflight_ok" || corsOutcome === "preflight_denied")
+            return;
         // The inbound id reaches audit records and the response header: only a well-formed one is kept.
         const correlationId = sanitizeCorrelationId(headerValue(req, corrHeader)) ?? newCorrelationId();
         const url = new URL(req.url ?? "/", "http://localhost");
         const path = url.pathname.replace(/\/$/, "");
         const method = (req.method ?? "GET").toUpperCase();
+        // Rate limit, keyed by route + remote ip (pre-auth signal). Health
+        // probes are intentionally exempt — load balancers depend on them.
+        if (!(method === "GET" && path === base + "/health")) {
+            const ipHeader = headerValue(req, "x-forwarded-for")
+                ?.split(",")[0]
+                ?.trim();
+            const rateKey = `${method}:${path}:${ipHeader ?? req.socket.remoteAddress ?? "unknown"}`;
+            const decision = rateLimiter.check({
+                profile: "authenticated_default",
+                key: rateKey,
+            });
+            if (!decision.allowed) {
+                if (decision.retryAfterSeconds !== undefined) {
+                    res.setHeader("retry-after", String(decision.retryAfterSeconds));
+                }
+                const { status, body } = apiError("rate_limited", "too many requests", correlationId);
+                return send(res, status, body, correlationId);
+            }
+        }
+        // App Check — pre-auth. In `disabled` mode this is a no-op; in
+        // `monitor` it never blocks; in `enforced` it blocks protected
+        // routes with missing/invalid/unavailable attestation.
+        const token = headerValue(req, APP_CHECK_HEADER);
+        const routeRequiresAppCheck = appCheckRequiredPaths.some((re) => re.test(path));
+        const appCheck = await evaluateAppCheck({
+            mode: appCheckMode,
+            token: token ?? undefined,
+            verifier: appCheckVerifier,
+            routeRequiresAppCheck,
+        });
+        if (appCheckBlocks(appCheck)) {
+            const code = appCheck.outcome === "missing"
+                ? "app_check_missing"
+                : appCheck.outcome === "unavailable"
+                    ? "security_dependency_unavailable"
+                    : "app_check_invalid";
+            const { status, body } = apiError(code, "App Check verification required", correlationId);
+            return send(res, status, body, correlationId);
+        }
         if (!path.startsWith(base + "/") && path !== base) {
             return send(res, 404, { error: { message: "not found" } }, correlationId);
         }
