@@ -1,29 +1,30 @@
-import { UnauthorizedError } from "./errors.js";
 function headerValue(req, name) {
     const raw = req.headers[name];
     return Array.isArray(raw) ? raw[0] : raw;
 }
+/**
+ * Best-effort authentication: resolves `ctx.identity` / `ctx.principal` when
+ * a bearer token is present and valid, otherwise leaves the request
+ * unauthenticated. Deliberately never throws — some routes are reachable
+ * without a token (signed provider webhooks, `/me/access`), and for every
+ * other route `handle()` already issues its own route-aware 401 once it
+ * sees `ctx.principal` / `ctx.identity` are unset. Throwing here for a
+ * missing or invalid token would short-circuit those checks and incorrectly
+ * 401 routes that are supposed to stay public.
+ */
 export async function authenticateRequest(req, ctx, identityVerifier, operatorDirectory) {
     const header = headerValue(req, "authorization") ?? "";
     const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-    // If authorization header is completely missing on a route that requires auth,
-    // we could throw, but we should let the authorization step throw if missing.
-    // Actually, wait, some routes might not require auth (like health).
-    // The middleware already skipped health. So here we expect a token.
-    if (!match) {
-        throw new UnauthorizedError("missing or malformed authorization header");
-    }
+    if (!match)
+        return;
     const token = match[1].trim();
-    // 1. Verify token
     if (identityVerifier) {
         const identity = await identityVerifier.verify(token);
-        if (!identity) {
-            throw new UnauthorizedError("invalid or expired token");
+        if (identity) {
+            ctx.identity = identity;
+            ctx.authenticated = true;
         }
-        ctx.identity = identity;
-        ctx.authenticated = true;
     }
-    // 2. Resolve principal
     if (operatorDirectory) {
         const principal = await operatorDirectory.resolve(token);
         if (principal) {
@@ -31,9 +32,5 @@ export async function authenticateRequest(req, ctx, identityVerifier, operatorDi
             ctx.authorized = true;
             ctx.authenticated = true;
         }
-    }
-    if (!ctx.authenticated) {
-        // If we had no verifier and no directory, or directory returned null without verifier
-        throw new UnauthorizedError("invalid or expired token");
     }
 }

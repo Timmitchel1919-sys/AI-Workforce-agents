@@ -16,6 +16,7 @@
 import { type IncomingMessage, type ServerResponse } from "node:http";
 
 import { processSecurityLayer } from "./security/middleware.js";
+import { createRateLimiter } from "./security/rate-limit.js";
 import { ApiSecurityError } from "./security/errors.js";
 import { requireAuthenticatedRequest } from "./security/authorization.js";
 
@@ -250,6 +251,7 @@ export function createControlPlaneApi(
     options.generateCorrelationId ?? defaultCorrelationId;
   const maxBody = options.maxBodyBytes ?? 1_048_576;
   const { query, command, operatorDirectory } = options;
+  const rateLimiter = createRateLimiter();
 
   return (req, res) => {
       void (async () => {
@@ -261,7 +263,8 @@ export function createControlPlaneApi(
             operatorDirectory: options.operatorDirectory,
             appAttestationVerifier: options.appAttestationVerifier,
             appCheckMode: options.appCheckMode,
-            correlationId
+            correlationId,
+            rateLimiter,
           });
           (req as any)._secureCtx = ctx;
           await handle(req, res, ctx, correlationId);
@@ -3083,13 +3086,7 @@ async function readJsonBody(
   req: IncomingMessage,
   maxBytes: number,
 ): Promise<Record<string, unknown>> {
-  // Security Foundation V1 Step 5: Content-Type enforcement
-  const contentType = req.headers["content-type"] || "";
-  if (!contentType.includes("application/json")) {
-    throw new ValidationError("Expected Content-Type: application/json");
-  }
-
-  // Firebase HTTPS Functions uses Express and may have parsed the JSON body and may have parsed the JSON body
+  // Firebase HTTPS Functions uses Express and may have parsed the JSON body
   // before this Node-compatible handler runs. Reuse that parsed value instead
   // of attempting to consume the stream twice. Plain Node HTTP requests do
   // not expose `body`, so they keep the existing streamed parsing path.

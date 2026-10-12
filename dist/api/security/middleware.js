@@ -1,5 +1,4 @@
 import { authenticateRequest } from "./authentication.js";
-import { checkRateLimit } from "./rate-limit.js";
 import { setSecurityHeaders, setCorsHeaders } from "./security-headers.js";
 import { ApiSecurityError } from "./errors.js";
 function createCorrelationId() {
@@ -43,7 +42,7 @@ export async function processSecurityLayer(req, res, options) {
     if (method !== "GET" && method !== "OPTIONS") {
         rateLimitProfile = "PRIVILEGED_MUTATIONS";
     }
-    checkRateLimit(ctx, rateLimitProfile);
+    options.rateLimiter.check(ctx, rateLimitProfile);
     if (method === "GET" && path.endsWith("/health")) {
         return ctx;
     }

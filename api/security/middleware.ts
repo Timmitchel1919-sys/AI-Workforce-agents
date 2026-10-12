@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { IdentityVerifier, OperatorDirectory } from "../../contracts/index.js";
 import { SecureRequestContext } from "./request-context.js";
 import { authenticateRequest } from "./authentication.js";
-import { checkRateLimit } from "./rate-limit.js";
+import type { RateLimiter } from "./rate-limit.js";
 import { setSecurityHeaders, setCorsHeaders } from "./security-headers.js";
 import { ApiSecurityError } from "./errors.js";
 import type { AppAttestationVerifier, AppCheckEnforcementMode } from "./app-check.js";
@@ -23,6 +23,7 @@ export async function processSecurityLayer(
     appAttestationVerifier?: AppAttestationVerifier;
     appCheckMode?: AppCheckEnforcementMode;
     correlationId?: string;
+    rateLimiter: RateLimiter;
   }
 ): Promise<SecureRequestContext> {
   setSecurityHeaders(res);
@@ -66,7 +67,7 @@ export async function processSecurityLayer(
     rateLimitProfile = "PRIVILEGED_MUTATIONS";
   }
 
-  checkRateLimit(ctx, rateLimitProfile);
+  options.rateLimiter.check(ctx, rateLimitProfile);
 
   if (method === "GET" && path.endsWith("/health")) {
     return ctx;

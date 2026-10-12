@@ -1,4 +1,5 @@
 import { processSecurityLayer } from "./security/middleware.js";
+import { createRateLimiter } from "./security/rate-limit.js";
 import { ApiSecurityError } from "./security/errors.js";
 import { NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, WorkforceError, ROLE_CAPABILITIES, } from "../contracts/index.js";
 import { sanitizeCorrelationId } from "../control/correlation.js";
@@ -98,6 +99,7 @@ export function createControlPlaneApi(options) {
     const newCorrelationId = options.generateCorrelationId ?? defaultCorrelationId;
     const maxBody = options.maxBodyBytes ?? 1_048_576;
     const { query, command, operatorDirectory } = options;
+    const rateLimiter = createRateLimiter();
     return (req, res) => {
         void (async () => {
             let correlationId = "";
@@ -108,7 +110,8 @@ export function createControlPlaneApi(options) {
                     operatorDirectory: options.operatorDirectory,
                     appAttestationVerifier: options.appAttestationVerifier,
                     appCheckMode: options.appCheckMode,
-                    correlationId
+                    correlationId,
+                    rateLimiter,
                 });
                 req._secureCtx = ctx;
                 await handle(req, res, ctx, correlationId);
@@ -214,7 +217,7 @@ export function createControlPlaneApi(options) {
             if (route === "/simulation" || route.startsWith("/simulation/")) {
                 return await handleSimulation(req, res, segs, method, url.searchParams, principal, correlationId);
             }
-            if (route === "/trust" || route.startsWith("/trust/")) {
+            if (route === "/trust-oversight" || route.startsWith("/trust-oversight/")) {
                 return await handleTrust(req, res, segs, method, url.searchParams, principal, correlationId);
             }
             if (route === "/me/profile" || route === "/me/profile/photo") {
@@ -1373,18 +1376,22 @@ export function createControlPlaneApi(options) {
     /**
      * Layer 16 — Trust, Governance & Human Oversight Center API
      *
-     *   GET  /api/trust/overview
-     *   GET  /api/trust/entities
-     *   GET  /api/trust/entities/:id
-     *   POST /api/trust/entities
-     *   POST /api/trust/evaluate
-     *   GET  /api/trust/approvals
-     *   POST /api/trust/approvals
-     *   POST /api/trust/approvals/:id/decide
-     *   GET  /api/trust/emergency
-     *   POST /api/trust/emergency/lock
-     *   POST /api/trust/emergency/release
-     *   GET  /api/trust/events
+     * Namespaced under /trust-oversight (rather than /trust) because /trust/*
+     * is owned by the separate Governance, Trust & Security policy center
+     * (see `options.trustCenter` and the `security_*` command family).
+     *
+     *   GET  /api/trust-oversight/overview
+     *   GET  /api/trust-oversight/entities
+     *   GET  /api/trust-oversight/entities/:id
+     *   POST /api/trust-oversight/entities
+     *   POST /api/trust-oversight/evaluate
+     *   GET  /api/trust-oversight/approvals
+     *   POST /api/trust-oversight/approvals
+     *   POST /api/trust-oversight/approvals/:id/decide
+     *   GET  /api/trust-oversight/emergency
+     *   POST /api/trust-oversight/emergency/lock
+     *   POST /api/trust-oversight/emergency/release
+     *   GET  /api/trust-oversight/events
      */
     async function handleTrust(req, res, segs, method, params, principal, correlationId) {
         const trust = options.trust;
@@ -1692,12 +1699,7 @@ async function readRawBody(req, maxBytes) {
     return Buffer.concat(chunks).toString("utf8");
 }
 async function readJsonBody(req, maxBytes) {
-    // Security Foundation V1 Step 5: Content-Type enforcement
-    const contentType = req.headers["content-type"] || "";
-    if (!contentType.includes("application/json")) {
-        throw new ValidationError("Expected Content-Type: application/json");
-    }
-    // Firebase HTTPS Functions uses Express and may have parsed the JSON body and may have parsed the JSON body
+    // Firebase HTTPS Functions uses Express and may have parsed the JSON body
     // before this Node-compatible handler runs. Reuse that parsed value instead
     // of attempting to consume the stream twice. Plain Node HTTP requests do
     // not expose `body`, so they keep the existing streamed parsing path.

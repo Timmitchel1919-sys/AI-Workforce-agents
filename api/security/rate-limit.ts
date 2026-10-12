@@ -14,34 +14,48 @@ export const RATE_LIMIT_PROFILES: Record<string, RateLimitProfile> = {
   "DESTRUCTIVE_ACTIONS": { windowMs: 300000, maxRequests: 10, keyStrategy: "authenticated" },
 };
 
-// In-memory store for rate limits (in a real production system this would use Redis or similar)
-const rateLimitStore = new Map<string, { count: number; expiresAt: number }>();
+export interface RateLimiter {
+  check(ctx: SecureRequestContext, profileName: string): void;
+}
 
-export function checkRateLimit(ctx: SecureRequestContext, profileName: string): void {
-  const profile = RATE_LIMIT_PROFILES[profileName];
-  if (!profile) return; // No profile, no limit
+/**
+ * Creates an independent in-memory rate limiter (in a real production
+ * system this would use Redis or similar). One instance is created per
+ * `createControlPlaneApi()` call rather than shared at module scope, so
+ * concurrent API instances — notably in tests, which each spin up their
+ * own server — never accumulate counts against each other.
+ */
+export function createRateLimiter(): RateLimiter {
+  const store = new Map<string, { count: number; expiresAt: number }>();
 
-  let keyPart = "";
-  if (profile.keyStrategy === "ip") {
-    keyPart = ctx.client.ipHash || "unknown-ip";
-  } else if (profile.keyStrategy === "authenticated") {
-    keyPart = ctx.identity?.uid || ctx.client.ipHash || "unauth";
-  } else {
-    keyPart = ctx.identity?.uid || ctx.client.ipHash || "unknown";
-  }
+  return {
+    check(ctx: SecureRequestContext, profileName: string): void {
+      const profile = RATE_LIMIT_PROFILES[profileName];
+      if (!profile) return; // No profile, no limit
 
-  const key = `ratelimit:${profileName}:${keyPart}`;
-  const now = Date.now();
+      let keyPart = "";
+      if (profile.keyStrategy === "ip") {
+        keyPart = ctx.client.ipHash || "unknown-ip";
+      } else if (profile.keyStrategy === "authenticated") {
+        keyPart = ctx.identity?.uid || ctx.client.ipHash || "unauth";
+      } else {
+        keyPart = ctx.identity?.uid || ctx.client.ipHash || "unknown";
+      }
 
-  let record = rateLimitStore.get(key);
-  if (!record || record.expiresAt < now) {
-    record = { count: 0, expiresAt: now + profile.windowMs };
-  }
+      const key = `ratelimit:${profileName}:${keyPart}`;
+      const now = Date.now();
 
-  record.count += 1;
-  rateLimitStore.set(key, record);
+      let record = store.get(key);
+      if (!record || record.expiresAt < now) {
+        record = { count: 0, expiresAt: now + profile.windowMs };
+      }
 
-  if (record.count > profile.maxRequests) {
-    throw new RateLimitError("Too Many Requests");
-  }
+      record.count += 1;
+      store.set(key, record);
+
+      if (record.count > profile.maxRequests) {
+        throw new RateLimitError("Too Many Requests");
+      }
+    },
+  };
 }
