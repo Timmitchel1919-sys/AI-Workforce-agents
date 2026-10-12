@@ -1,1 +1,7 @@
-export const SECURITY_SEVERITY_LEVELS = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
+export const SECURITY_SEVERITY_LEVELS = [
+    "INFO",
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "CRITICAL",
+];

@@ -1,4 +1,8 @@
-import { EnterpriseAsset, AssetLifecycleEvent, AssetState } from "../../contracts/assets.js";
+import {
+  EnterpriseAsset,
+  AssetLifecycleEvent,
+  AssetState,
+} from "../../contracts/assets.js";
 
 export class AssetService {
   private assets = new Map<string, EnterpriseAsset>();
@@ -12,14 +16,26 @@ export class AssetService {
     return asset;
   }
 
-  async getAsset(organizationId: string, assetId: string): Promise<EnterpriseAsset> {
+  async getAsset(
+    organizationId: string,
+    assetId: string,
+  ): Promise<EnterpriseAsset> {
     const asset = this.assets.get(assetId);
     if (!asset) throw new Error("Asset not found");
-    if (asset.organizationId !== organizationId) throw new Error("Tenant isolation violation: Cannot access asset across organizations.");
+    if (asset.organizationId !== organizationId)
+      throw new Error(
+        "Tenant isolation violation: Cannot access asset across organizations.",
+      );
     return asset;
   }
 
-  async updateAssetStatus(organizationId: string, assetId: string, newStatus: AssetState, actorRef: string, notes: string): Promise<EnterpriseAsset> {
+  async updateAssetStatus(
+    organizationId: string,
+    assetId: string,
+    newStatus: AssetState,
+    actorRef: string,
+    notes: string,
+  ): Promise<EnterpriseAsset> {
     const asset = await this.getAsset(organizationId, assetId);
     const oldStatus = asset.status;
     asset.status = newStatus;
@@ -36,17 +52,25 @@ export class AssetService {
       previousState: oldStatus,
       newState: newStatus,
       notes,
-      timestamp: asset.updatedAt
+      timestamp: asset.updatedAt,
     });
 
     return asset;
   }
 
-  async getAssetLifecycle(organizationId: string, assetId: string): Promise<AssetLifecycleEvent[]> {
+  async getAssetLifecycle(
+    organizationId: string,
+    assetId: string,
+  ): Promise<AssetLifecycleEvent[]> {
     // Verifies tenant access
     await this.getAsset(organizationId, assetId);
     return Array.from(this.lifecycleEvents.values())
-      .filter(e => e.assetId === assetId && e.organizationId === organizationId)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .filter(
+        (e) => e.assetId === assetId && e.organizationId === organizationId,
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      );
   }
 }

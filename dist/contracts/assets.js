@@ -6,7 +6,7 @@ export const ASSET_CATEGORIES = [
     "AI_AGENT",
     "NETWORK",
     "DATA",
-    "PERIPHERAL"
+    "PERIPHERAL",
 ];
 export const ASSET_STATES = [
     "REQUESTED",
@@ -17,5 +17,5 @@ export const ASSET_STATES = [
     "DEPRECATED",
     "RETIRED",
     "DISPOSED",
-    "LOST"
+    "LOST",
 ];

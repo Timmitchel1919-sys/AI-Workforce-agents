@@ -194,8 +194,7 @@ export class WebhookService {
           },
         });
 
-        const delivered =
-          result.statusCode >= 200 && result.statusCode < 300;
+        const delivered = result.statusCode >= 200 && result.statusCode < 300;
 
         produced.push(
           this.record(endpoint, eventId, eventType, {
@@ -206,9 +205,7 @@ export class WebhookService {
             ...(delivered
               ? {}
               : {
-                  error: truncate(
-                    `endpoint responded ${result.statusCode}`,
-                  ),
+                  error: truncate(`endpoint responded ${result.statusCode}`),
                 }),
           }),
         );

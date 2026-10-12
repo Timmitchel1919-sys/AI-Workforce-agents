@@ -32,7 +32,7 @@ export class AssetService {
             previousState: oldStatus,
             newState: newStatus,
             notes,
-            timestamp: asset.updatedAt
+            timestamp: asset.updatedAt,
         });
         return asset;
     }
@@ -40,7 +40,7 @@ export class AssetService {
         // Verifies tenant access
         await this.getAsset(organizationId, assetId);
         return Array.from(this.lifecycleEvents.values())
-            .filter(e => e.assetId === assetId && e.organizationId === organizationId)
+            .filter((e) => e.assetId === assetId && e.organizationId === organizationId)
             .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }
 }

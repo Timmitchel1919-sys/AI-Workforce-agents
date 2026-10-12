@@ -5,10 +5,13 @@ import { MarketingEngine } from "../core/marketing/index.js";
 
 test("Marketing: Campaign and Lead tracking", () => {
   const engine = new MarketingEngine();
-  
-  const cmp = engine.createCampaign("org_1", "Q4 Launch", 5000, ["Enterprise", "SaaS"]);
+
+  const cmp = engine.createCampaign("org_1", "Q4 Launch", 5000, [
+    "Enterprise",
+    "SaaS",
+  ]);
   assert.equal(cmp.status, "DRAFT");
-  
+
   engine.activateCampaign(cmp.campaignId);
   assert.equal(cmp.status, "ACTIVE");
 

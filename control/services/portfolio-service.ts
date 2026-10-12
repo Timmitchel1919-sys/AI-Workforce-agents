@@ -11,12 +11,14 @@ export class PortfolioControlService {
   constructor(
     private readonly objectives: Repository<StrategicObjective>,
     private readonly portfolios: Repository<EnterprisePortfolio>,
-    private readonly programs: Repository<PortfolioProgram>
+    private readonly programs: Repository<PortfolioProgram>,
   ) {}
 
   private enforceAdmin(operator: OperatorPrincipal) {
     if (operator.role !== "admin") {
-      throw new ValidationError("Unauthorized. Requires admin role for Portfolio operations.");
+      throw new ValidationError(
+        "Unauthorized. Requires admin role for Portfolio operations.",
+      );
     }
   }
 

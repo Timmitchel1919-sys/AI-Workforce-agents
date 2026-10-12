@@ -1,7 +1,14 @@
 /**
  * Policy Management
  */
-export const POLICY_STATES = ["DRAFT", "UNDER_REVIEW", "APPROVED", "ACTIVE", "SUPERSEDED", "RETIRED"] as const;
+export const POLICY_STATES = [
+  "DRAFT",
+  "UNDER_REVIEW",
+  "APPROVED",
+  "ACTIVE",
+  "SUPERSEDED",
+  "RETIRED",
+] as const;
 export type PolicyState = (typeof POLICY_STATES)[number];
 
 export interface PolicyDefinition {

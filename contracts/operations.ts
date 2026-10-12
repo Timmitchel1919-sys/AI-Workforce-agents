@@ -162,12 +162,7 @@ export function validateOperationalOutcome(outcome: OperationalOutcome): void {
 }
 
 export type OpsHealthStatus =
-  | "healthy"
-  | "degraded"
-  | "unhealthy"
-  | "offline"
-  | "recovering"
-  | "unknown";
+  "healthy" | "degraded" | "unhealthy" | "offline" | "recovering" | "unknown";
 export type FreshnessStatus = "current" | "stale" | "expired" | "unknown";
 export type ResourceType =
   | "CONTROL_PLANE_SERVICE"
@@ -251,12 +246,7 @@ export interface PlatformConfiguration extends Entity {
 export interface FeatureRollout extends Entity {
   featureId: string;
   stage:
-    | "internal"
-    | "canary"
-    | "limited"
-    | "general"
-    | "paused"
-    | "rolled_back";
+    "internal" | "canary" | "limited" | "general" | "paused" | "rolled_back";
   targetCohort?: string;
   startedAt: string;
   health: OpsHealthStatus;

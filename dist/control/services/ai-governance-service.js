@@ -35,7 +35,7 @@ export class AIGovernanceControlService {
     }
     async approveUseCase(operator, useCaseId) {
         this.enforceGovernanceAdmin(operator);
-        const existing = (await this.useCases.list()).find(u => u.useCaseId === useCaseId);
+        const existing = (await this.useCases.list()).find((u) => u.useCaseId === useCaseId);
         if (!existing)
             throw new ValidationError("Use case not found");
         existing.status = "APPROVED";

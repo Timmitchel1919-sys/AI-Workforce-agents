@@ -1,8 +1,8 @@
 import type { Entity } from "./persistence.js";
 export declare const AI_RISK_LEVELS: readonly ["UNACCEPTABLE", "HIGH", "LIMITED", "MINIMAL", "UNKNOWN"];
-export type AIRiskLevel = typeof AI_RISK_LEVELS[number];
+export type AIRiskLevel = (typeof AI_RISK_LEVELS)[number];
 export declare const AI_GOV_MODEL_CAPABILITIES: readonly ["TEXT_GENERATION", "CODE_GENERATION", "IMAGE_GENERATION", "AUDIO_GENERATION", "EMBEDDING", "REASONING", "TOOL_USE", "VISION"];
-export type AIGovModelCapability = typeof AI_GOV_MODEL_CAPABILITIES[number];
+export type AIGovModelCapability = (typeof AI_GOV_MODEL_CAPABILITIES)[number];
 export interface AIModelRecord extends Entity {
     modelId: string;
     organizationId?: string;

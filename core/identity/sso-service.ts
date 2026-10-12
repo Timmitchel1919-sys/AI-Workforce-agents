@@ -122,4 +122,3 @@ export class SsoService {
     return true;
   }
 }
-

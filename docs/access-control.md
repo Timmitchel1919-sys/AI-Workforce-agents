@@ -33,6 +33,61 @@ The existing roles (`contracts/control.ts`), least → most privileged:
 granted by someone whose role ranks at least as high (`ROLE_RANK`), and only
 `admin` holds `manage_access`.
 
+## Security capability matrix (Security Foundation V1 — Layer 1)
+
+Security authorization is **capability-based**, not role-based. The authority
+is still the three operator roles (`viewer`, `operator`, `admin`): no fourth
+"security_admin" / "super_admin" / "owner" role exists. Each capability is a
+specific primitive; a role's capability set is the exact deny-by-default list
+in `ROLE_CAPABILITIES`.
+
+Four distinct concerns stay separate:
+
+- **Authentication** — WHO (Firebase ID token → UID).
+- **Authorization** — WHAT (`operatorCan(principal, capability)` against the
+  role's explicit capability list).
+- **Project scope** — WHICH (`operatorCanAccessProject(principal, projectId)`:
+  `"*"` wildcard or an explicit allow-list).
+- **Security policy** — a Layer-2 concern, not implemented in Layer 1. The
+  capabilities below are authorization primitives only.
+
+| Capability                   | Viewer | Operator | Admin | Meaning                                                                  |
+| ---------------------------- | :----: | :------: | :---: | ------------------------------------------------------------------------ |
+| `view_security`              |   ✅   |    ✅    |  ✅   | Read high-level security posture (summary tiles, counts).                |
+| `view_security_events`       |   ❌   |    ✅    |  ✅   | Read detailed canonical event evidence (project-scope still enforced).   |
+| `manage_security_policy`     |   ❌   |    ❌    |  ✅   | Mutate security policy (allow-lists, thresholds, risk tiers).            |
+| `manage_security_incidents`  |   ❌   |    ❌    |  ✅   | Manage incident lifecycle (assign, status, resolve, notes).              |
+| `request_destructive_action` |   ❌   |    ✅    |  ✅   | Submit a destructive-action request for approval. Does NOT execute.      |
+| `approve_destructive_action` |   ❌   |    ❌    |  ✅   | Approve a submitted destructive request. Does NOT execute.               |
+| `manage_secret_references`   |   ❌   |    ❌    |  ✅   | Manage secret references / metadata. Does NOT read or export raw values. |
+| `manage_identity_security`   |   ❌   |    ❌    |  ✅   | Privileged identity-security administration (operator-lifecycle writes). |
+| `manage_agent_security`      |   ❌   |    ❌    |  ✅   | Agent-security administration (trust level, quarantine, revoke).         |
+| `contain_security_threat`    |   ❌   |    ❌    |  ✅   | Governed containment response (block agent, quarantine resource).        |
+
+Boundaries that these capabilities do **not** change:
+
+- **Project scope is independent.** Holding `view_security_events` never
+  implies global visibility. A query without `projectId` from a project-scoped
+  operator returns no data; a query with a `projectId` outside the operator's
+  allow-list returns no data. Only `allowedProjects === "*"` may issue an
+  unfiltered read.
+- **Account status is independent.** Only `active` operator accounts produce
+  an `OperatorPrincipal`. `pending` / `suspended` / `rejected` / `revoked`
+  never acquire any capability.
+- **Last-administrator rule is independent.** The authoritative
+  `access_control/summary.activeAdmins` counter still prevents removing /
+  demoting the last admin, regardless of capability.
+- **No raw secret export.** `manage_secret_references` is deliberately
+  metadata-only. Reading / exporting raw secret values is reserved for a
+  separate Vault-backed layer and never falls back to this capability.
+- **No autonomous containment.** `contain_security_threat` is an
+  authorization primitive. A later layer must implement the governed
+  containment route and audit it; Layer 1 ships none.
+- **No destructive-action execution.** `request_destructive_action` and
+  `approve_destructive_action` grant submission / approval authority only.
+  The Layer-3 Destructive Action Approval Gate (not implemented here) is what
+  actually binds an approval to an execution.
+
 ## Operator lifecycle
 
 ```

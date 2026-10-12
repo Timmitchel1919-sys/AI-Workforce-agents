@@ -1,4 +1,4 @@
-export type CriticalityTier = 'MISSION_CRITICAL' | 'BUSINESS_CRITICAL' | 'IMPORTANT' | 'SUPPORTING';
+export type CriticalityTier = "MISSION_CRITICAL" | "BUSINESS_CRITICAL" | "IMPORTANT" | "SUPPORTING";
 export interface ServiceInventory {
     id: string;
     name: string;
@@ -24,7 +24,7 @@ export interface BackupInventory {
     timestamp: Date;
     sizeBytes: number;
     location: string;
-    status: 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
+    status: "COMPLETED" | "FAILED" | "IN_PROGRESS";
     checksum: string;
 }
 export interface RestoreTestResult {
@@ -41,7 +41,7 @@ export interface RestoreTestResult {
 export interface GeoResilienceModel {
     primaryRegion: string;
     secondaryRegions: string[];
-    routingStrategy: 'ACTIVE_ACTIVE' | 'ACTIVE_PASSIVE' | 'GEOLOCATION';
+    routingStrategy: "ACTIVE_ACTIVE" | "ACTIVE_PASSIVE" | "GEOLOCATION";
     dataReplicationLagSeconds: number;
 }
 export interface FailoverStrategy {
@@ -54,7 +54,7 @@ export interface FailoverStrategy {
 export interface ChaosSimulationConfig {
     simulationId: string;
     targetServiceId: string;
-    faultType: 'NETWORK_PARTITION' | 'LATENCY_INJECTION' | 'POD_FAILURE' | 'REGION_OUTAGE' | 'DATA_CORRUPTION';
+    faultType: "NETWORK_PARTITION" | "LATENCY_INJECTION" | "POD_FAILURE" | "REGION_OUTAGE" | "DATA_CORRUPTION";
     durationMinutes: number;
     blastRadius: string;
 }
@@ -67,7 +67,7 @@ export interface ChaosSimulationResult {
 }
 export interface ContinuityReadinessReport {
     timestamp: Date;
-    overallStatus: 'READY' | 'AT_RISK' | 'UNPREPARED';
+    overallStatus: "READY" | "AT_RISK" | "UNPREPARED";
     servicesTracked: number;
     biaCoveragePercent: number;
     backupCompliancePercent: number;

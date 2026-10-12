@@ -4,7 +4,9 @@ export interface ExtensionDefinition {
   version: string;
   publisher: string;
   description: string;
-  capabilities: ("READ_DATA" | "WRITE_DATA" | "EXECUTE_TASKS" | "INTERCEPT_EVENTS")[];
+  capabilities: (
+    "READ_DATA" | "WRITE_DATA" | "EXECUTE_TASKS" | "INTERCEPT_EVENTS"
+  )[];
   manifestUrl: string;
   status: "PUBLISHED" | "DEPRECATED" | "UNPUBLISHED";
   createdAt: Date;

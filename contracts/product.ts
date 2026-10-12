@@ -15,7 +15,14 @@ export interface ProductDefinition extends Entity {
   name: string;
   vision: string;
   strategy: string;
-  lifecycleStage: "DISCOVERY" | "VALIDATION" | "BUILD" | "LAUNCH" | "SCALE" | "MATURE" | "SUNSET";
+  lifecycleStage:
+    | "DISCOVERY"
+    | "VALIDATION"
+    | "BUILD"
+    | "LAUNCH"
+    | "SCALE"
+    | "MATURE"
+    | "SUNSET";
   ownerRef: string;
 }
 

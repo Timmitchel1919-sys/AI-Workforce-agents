@@ -11,12 +11,14 @@ export class DataGovernanceService {
   constructor(
     private readonly assets: Repository<DataAsset>,
     private readonly retentionPolicies: Repository<DataRetentionPolicy>,
-    private readonly dsrs: Repository<DataSubjectRequestRecord>
+    private readonly dsrs: Repository<DataSubjectRequestRecord>,
   ) {}
 
   private enforceAdmin(operator: OperatorPrincipal) {
     if (operator.role !== "admin") {
-      throw new ValidationError("Unauthorized. Requires admin role for Data Governance operations.");
+      throw new ValidationError(
+        "Unauthorized. Requires admin role for Data Governance operations.",
+      );
     }
   }
 
@@ -26,10 +28,13 @@ export class DataGovernanceService {
 
   async registerAsset(
     operator: OperatorPrincipal,
-    asset: Omit<DataAsset, "id" | "assetId" | "status" | "createdAt" | "updatedAt">
+    asset: Omit<
+      DataAsset,
+      "id" | "assetId" | "status" | "createdAt" | "updatedAt"
+    >,
   ): Promise<DataAsset> {
     this.enforceAdmin(operator);
-    
+
     const newAsset: DataAsset = {
       ...asset,
       id: `data_asset_${Date.now()}`,
@@ -38,7 +43,7 @@ export class DataGovernanceService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    
+
     this.assets.upsert(newAsset);
     return newAsset;
   }

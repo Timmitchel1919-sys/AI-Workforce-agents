@@ -9,9 +9,9 @@ export const VENDOR_LIFECYCLE_STATES = [
   "RESTRICTED",
   "SUSPENDED",
   "OFFBOARDING",
-  "INACTIVE"
+  "INACTIVE",
 ] as const;
-export type VendorLifecycleState = typeof VENDOR_LIFECYCLE_STATES[number];
+export type VendorLifecycleState = (typeof VENDOR_LIFECYCLE_STATES)[number];
 
 export const PROCUREMENT_CATEGORIES = [
   "AI_PROVIDER",
@@ -27,9 +27,9 @@ export const PROCUREMENT_CATEGORIES = [
   "CONSULTING",
   "LICENSE",
   "API_SERVICE",
-  "OTHER"
+  "OTHER",
 ] as const;
-export type ProcurementCategory = typeof PROCUREMENT_CATEGORIES[number];
+export type ProcurementCategory = (typeof PROCUREMENT_CATEGORIES)[number];
 
 export interface Vendor extends Entity {
   vendorId: string;
@@ -55,9 +55,9 @@ export const VENDOR_ONBOARDING_STAGES = [
   "GRC_RISK_REVIEW",
   "COMMERCIAL_REVIEW",
   "APPROVAL",
-  "ACTIVATION"
+  "ACTIVATION",
 ] as const;
-export type VendorOnboardingStage = typeof VENDOR_ONBOARDING_STAGES[number];
+export type VendorOnboardingStage = (typeof VENDOR_ONBOARDING_STAGES)[number];
 
 export interface VendorOnboardingCase extends Entity {
   caseId: string;
@@ -86,7 +86,15 @@ export interface VendorQualification extends Entity {
 export interface ProcurementDemand extends Entity {
   demandId: string;
   organizationId: string;
-  sourceType: "PROJECT" | "PRODUCT" | "SERVICE" | "TEAM" | "AGENT_GAP" | "SECURITY" | "FINOPS" | "ITSM";
+  sourceType:
+    | "PROJECT"
+    | "PRODUCT"
+    | "SERVICE"
+    | "TEAM"
+    | "AGENT_GAP"
+    | "SECURITY"
+    | "FINOPS"
+    | "ITSM";
   sourceRef: string;
   description: string;
   status: "OPEN" | "EVALUATING" | "SATISFIED" | "CANCELLED";
@@ -105,9 +113,10 @@ export const PROCUREMENT_REQUEST_STATES = [
   "REJECTED",
   "ORDERED",
   "FULFILLED",
-  "CANCELLED"
+  "CANCELLED",
 ] as const;
-export type ProcurementRequestState = typeof PROCUREMENT_REQUEST_STATES[number];
+export type ProcurementRequestState =
+  (typeof PROCUREMENT_REQUEST_STATES)[number];
 
 export interface ProcurementRequest extends Entity {
   requestId: string;
@@ -133,7 +142,12 @@ export interface SourcingCase extends Entity {
   sourcingId: string;
   organizationId: string;
   requestId: string;
-  method: "EXISTING_VENDOR" | "DIRECT_SOURCE" | "MULTI_VENDOR_COMPARISON" | "RFP_FOUNDATION" | "INTERNAL_CAPABILITY";
+  method:
+    | "EXISTING_VENDOR"
+    | "DIRECT_SOURCE"
+    | "MULTI_VENDOR_COMPARISON"
+    | "RFP_FOUNDATION"
+    | "INTERNAL_CAPABILITY";
   candidateVendorIds: readonly string[];
   evaluationCriteria: readonly string[];
   recommendationVendorId?: string;
@@ -171,9 +185,9 @@ export const CONTRACT_STATES = [
   "EXPIRING",
   "EXPIRED",
   "TERMINATED",
-  "SUPERSEDED"
+  "SUPERSEDED",
 ] as const;
-export type ContractState = typeof CONTRACT_STATES[number];
+export type ContractState = (typeof CONTRACT_STATES)[number];
 
 export interface ContractRecord extends Entity {
   contractId: string;
@@ -214,7 +228,14 @@ export interface ContractObligation extends Entity {
   dueDate?: string;
   recurrence?: string;
   evidenceRequirement?: string;
-  status: "OPEN" | "UPCOMING" | "DUE" | "SATISFIED" | "OVERDUE" | "WAIVED" | "UNKNOWN";
+  status:
+    | "OPEN"
+    | "UPCOMING"
+    | "DUE"
+    | "SATISFIED"
+    | "OVERDUE"
+    | "WAIVED"
+    | "UNKNOWN";
   createdAt: string;
 }
 
@@ -226,9 +247,9 @@ export const PO_STATES = [
   "PARTIALLY_FULFILLED",
   "FULFILLED",
   "CANCELLED",
-  "CLOSED"
+  "CLOSED",
 ] as const;
-export type PurchaseOrderState = typeof PO_STATES[number];
+export type PurchaseOrderState = (typeof PO_STATES)[number];
 
 export interface PurchaseOrder extends Entity {
   poId: string;
@@ -270,9 +291,10 @@ export const VENDOR_SUBSCRIPTION_STATES = [
   "CANCEL_PENDING",
   "CANCELLED",
   "EXPIRED",
-  "UNKNOWN"
+  "UNKNOWN",
 ] as const;
-export type VendorSubscriptionState = typeof VENDOR_SUBSCRIPTION_STATES[number];
+export type VendorSubscriptionState =
+  (typeof VENDOR_SUBSCRIPTION_STATES)[number];
 
 export interface VendorSubscription extends Entity {
   subscriptionId: string;
@@ -297,7 +319,16 @@ export interface RenewalCase extends Entity {
   usageEvidenceRef?: string;
   performanceEvidenceRef?: string;
   riskEvidenceRef?: string;
-  recommendation?: "RENEW" | "RENEW_WITH_CHANGES" | "RENEGOTIATE" | "REDUCE" | "CONSOLIDATE" | "REPLACE" | "TERMINATE" | "REVIEW_REQUIRED" | "UNKNOWN";
+  recommendation?:
+    | "RENEW"
+    | "RENEW_WITH_CHANGES"
+    | "RENEGOTIATE"
+    | "REDUCE"
+    | "CONSOLIDATE"
+    | "REPLACE"
+    | "TERMINATE"
+    | "REVIEW_REQUIRED"
+    | "UNKNOWN";
   decision?: string;
   approvalRef?: string;
   status: "OPEN" | "REVIEWING" | "DECIDED" | "ACTIONED";

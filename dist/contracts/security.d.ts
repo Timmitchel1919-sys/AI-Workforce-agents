@@ -1,6 +1,6 @@
 import type { Entity } from "./persistence.js";
 export declare const SECURITY_SEVERITY_LEVELS: readonly ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
-export type SecuritySeverity = typeof SECURITY_SEVERITY_LEVELS[number];
+export type SecuritySeverity = (typeof SECURITY_SEVERITY_LEVELS)[number];
 export interface ZTNSecurityEvent extends Entity {
     eventId: string;
     eventType: "AUTH_FAILURE" | "POLICY_VIOLATION" | "DATA_EXFILTRATION_ATTEMPT" | "PROMPT_INJECTION" | "ANOMALOUS_ACCESS";

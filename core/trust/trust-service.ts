@@ -16,7 +16,9 @@ export class TrustService {
   private trustContent = new Map<string, TrustCenterContent>();
   private findings = new Map<string, ControlFinding>();
 
-  createPosture(p: Omit<CompliancePosture, "postureId" | "updatedAt">): CompliancePosture {
+  createPosture(
+    p: Omit<CompliancePosture, "postureId" | "updatedAt">,
+  ): CompliancePosture {
     const posture: CompliancePosture = {
       ...p,
       postureId: createId("post"),
@@ -27,10 +29,15 @@ export class TrustService {
   }
 
   getPostures(orgId: string): CompliancePosture[] {
-    return Array.from(this.postures.values()).filter(p => p.organizationId === orgId);
+    return Array.from(this.postures.values()).filter(
+      (p) => p.organizationId === orgId,
+    );
   }
 
-  updatePosture(postureId: string, updates: Partial<CompliancePosture>): CompliancePosture {
+  updatePosture(
+    postureId: string,
+    updates: Partial<CompliancePosture>,
+  ): CompliancePosture {
     const p = this.postures.get(postureId);
     if (!p) throw new Error("Posture not found");
     Object.assign(p, updates);
@@ -38,7 +45,9 @@ export class TrustService {
     return p;
   }
 
-  setAuditReadiness(ar: Omit<AuditReadiness, "auditId" | "updatedAt">): AuditReadiness {
+  setAuditReadiness(
+    ar: Omit<AuditReadiness, "auditId" | "updatedAt">,
+  ): AuditReadiness {
     const ready: AuditReadiness = {
       ...ar,
       auditId: createId("audit"),
@@ -57,7 +66,9 @@ export class TrustService {
     return pkg;
   }
 
-  addCertification(c: Omit<CertificationRecord, "certificationId">): CertificationRecord {
+  addCertification(
+    c: Omit<CertificationRecord, "certificationId">,
+  ): CertificationRecord {
     const cert: CertificationRecord = {
       ...c,
       certificationId: createId("cert"),
@@ -67,10 +78,14 @@ export class TrustService {
   }
 
   getCertifications(orgId: string): CertificationRecord[] {
-    return Array.from(this.certifications.values()).filter(c => c.organizationId === orgId);
+    return Array.from(this.certifications.values()).filter(
+      (c) => c.organizationId === orgId,
+    );
   }
 
-  addTrustContent(tc: Omit<TrustCenterContent, "contentId" | "updatedAt">): TrustCenterContent {
+  addTrustContent(
+    tc: Omit<TrustCenterContent, "contentId" | "updatedAt">,
+  ): TrustCenterContent {
     const content: TrustCenterContent = {
       ...tc,
       contentId: createId("tc"),
@@ -80,7 +95,9 @@ export class TrustService {
     return content;
   }
 
-  createFinding(f: Omit<ControlFinding, "findingId" | "createdAt">): ControlFinding {
+  createFinding(
+    f: Omit<ControlFinding, "findingId" | "createdAt">,
+  ): ControlFinding {
     const finding: ControlFinding = {
       ...f,
       findingId: createId("find"),
@@ -90,13 +107,17 @@ export class TrustService {
     return finding;
   }
 
-  updateFinding(findingId: string, updates: Partial<ControlFinding>): ControlFinding {
+  updateFinding(
+    findingId: string,
+    updates: Partial<ControlFinding>,
+  ): ControlFinding {
     const f = this.findings.get(findingId);
     if (!f) throw new Error("Finding not found");
     Object.assign(f, updates);
     if (updates.status === "RESOLVED" && !f.resolvedAt) f.resolvedAt = now();
     if (updates.status === "ACCEPTED" && !f.acceptedAt) f.acceptedAt = now();
-    if (updates.status === "FALSE_POSITIVE" && !f.falsePositiveAt) f.falsePositiveAt = now();
+    if (updates.status === "FALSE_POSITIVE" && !f.falsePositiveAt)
+      f.falsePositiveAt = now();
     return f;
   }
 }

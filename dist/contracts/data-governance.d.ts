@@ -1,6 +1,6 @@
 import type { Entity } from "./persistence.js";
 export declare const DATA_CLASSIFICATION_LEVELS: readonly ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"];
-export type DataClassificationLevel = typeof DATA_CLASSIFICATION_LEVELS[number];
+export type DataClassificationLevel = (typeof DATA_CLASSIFICATION_LEVELS)[number];
 export interface DataAsset extends Entity {
     assetId: string;
     name: string;

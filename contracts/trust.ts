@@ -93,10 +93,23 @@ export interface TrustCenterContent {
   updatedBy: string;
 }
 
-export const FINDING_SEVERITIES = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"] as const;
+export const FINDING_SEVERITIES = [
+  "BLOCKER",
+  "CRITICAL",
+  "MAJOR",
+  "MINOR",
+  "INFO",
+] as const;
 export type FindingSeverity = (typeof FINDING_SEVERITIES)[number];
 
-export const FINDING_STATES = ["OPEN", "ACKNOWLEDGED", "REMEDIATING", "RESOLVED", "ACCEPTED", "FALSE_POSITIVE"] as const;
+export const FINDING_STATES = [
+  "OPEN",
+  "ACKNOWLEDGED",
+  "REMEDIATING",
+  "RESOLVED",
+  "ACCEPTED",
+  "FALSE_POSITIVE",
+] as const;
 export type FindingState = (typeof FINDING_STATES)[number];
 
 export interface ControlFinding {

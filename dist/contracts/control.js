@@ -58,10 +58,45 @@ export const CONTROL_CAPABILITIES = [
     "manage_budget_policy",
     /* EO-6.3 — Governance Policy Engine: the allow-list/threshold policy is administrator-only. */
     "manage_governance_policy",
+    /* SECURITY FOUNDATION V1 — Layer 1: Security Capability Model (deny-by-default).
+     *
+     * These capabilities are AUTHORIZATION PRIMITIVES. They establish the role
+     * boundaries later layers (Policy Engine, Destructive Action Approval Gate,
+     * Secret Vault, Security Center, Threat Containment) will consume. Adding a
+     * capability here does NOT, on its own, enable the capability's action —
+     * each later layer must still implement the governed route and audit it.
+     */
+    /** Read high-level security posture (summary tiles, counts). */
+    "view_security",
+    /** Mutate security policy (allow-lists, thresholds, risk tiers). */
+    "manage_security_policy",
+    /** Read detailed canonical security events / incident evidence. */
+    "view_security_events",
+    /** Manage security incident lifecycle (assign, status, resolve, notes). */
+    "manage_security_incidents",
+    /** Submit a destructive-action request for approval (does NOT execute it). */
+    "request_destructive_action",
+    /** Approve a submitted destructive-action request (does NOT execute it). */
+    "approve_destructive_action",
+    /** Manage secret references / metadata — never raw secret values. */
+    "manage_secret_references",
+    /** Privileged identity-security administration (operator lifecycle writes). */
+    "manage_identity_security",
+    /** Agent-security administration (trust level, quarantine, revoke). */
+    "manage_agent_security",
+    /** Governed containment response (block agent, quarantine resource). */
+    "contain_security_threat",
 ];
 /** Deny-by-default: a role has exactly the capabilities listed here. */
 export const ROLE_CAPABILITIES = {
-    viewer: ["view"],
+    viewer: [
+        "view",
+        // SECURITY V1 Layer 1: viewers may see high-level security posture only.
+        // Detailed events, policy mutation, incidents, destructive actions,
+        // secrets, identity/agent-security admin, and containment are deliberately
+        // withheld from viewers.
+        "view_security",
+    ],
     operator: [
         "view",
         "approve",
@@ -86,6 +121,13 @@ export const ROLE_CAPABILITIES = {
         "create_workstream",
         "add_task_to_workstream",
         "tick_software_factory",
+        // SECURITY V1 Layer 1: operators may read posture + detailed events, and
+        // submit (but not approve) destructive-action requests. Policy mutation,
+        // incident lifecycle, approvals, secrets, identity/agent-security admin,
+        // and containment remain administrator-only.
+        "view_security",
+        "view_security_events",
+        "request_destructive_action",
     ],
     admin: [
         "view",
@@ -123,6 +165,17 @@ export const ROLE_CAPABILITIES = {
         "manage_budget_policy",
         // EO-6.3: setting the governance allow-list/threshold policy is administrator-only.
         "manage_governance_policy",
+        // SECURITY V1 Layer 1: administrators receive every new security capability.
+        "view_security",
+        "view_security_events",
+        "manage_security_policy",
+        "manage_security_incidents",
+        "request_destructive_action",
+        "approve_destructive_action",
+        "manage_secret_references",
+        "manage_identity_security",
+        "manage_agent_security",
+        "contain_security_threat",
     ],
 };
 export function validateOperatorPrincipal(principal) {

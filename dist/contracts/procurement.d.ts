@@ -1,8 +1,8 @@
 import { Entity } from "./persistence.js";
 export declare const VENDOR_LIFECYCLE_STATES: readonly ["PROSPECTIVE", "UNDER_REVIEW", "QUALIFIED", "APPROVED", "ACTIVE", "RESTRICTED", "SUSPENDED", "OFFBOARDING", "INACTIVE"];
-export type VendorLifecycleState = typeof VENDOR_LIFECYCLE_STATES[number];
+export type VendorLifecycleState = (typeof VENDOR_LIFECYCLE_STATES)[number];
 export declare const PROCUREMENT_CATEGORIES: readonly ["AI_PROVIDER", "SOFTWARE", "SAAS", "CLOUD", "DEVELOPER_TOOL", "SECURITY_TOOL", "DATA_SERVICE", "INFRASTRUCTURE", "HARDWARE", "PROFESSIONAL_SERVICE", "CONSULTING", "LICENSE", "API_SERVICE", "OTHER"];
-export type ProcurementCategory = typeof PROCUREMENT_CATEGORIES[number];
+export type ProcurementCategory = (typeof PROCUREMENT_CATEGORIES)[number];
 export interface Vendor extends Entity {
     vendorId: string;
     organizationId: string;
@@ -20,7 +20,7 @@ export interface Vendor extends Entity {
     updatedAt: string;
 }
 export declare const VENDOR_ONBOARDING_STAGES: readonly ["IDENTIFICATION", "INFORMATION_COLLECTION", "SECURITY_REVIEW", "GRC_RISK_REVIEW", "COMMERCIAL_REVIEW", "APPROVAL", "ACTIVATION"];
-export type VendorOnboardingStage = typeof VENDOR_ONBOARDING_STAGES[number];
+export type VendorOnboardingStage = (typeof VENDOR_ONBOARDING_STAGES)[number];
 export interface VendorOnboardingCase extends Entity {
     caseId: string;
     organizationId: string;
@@ -54,7 +54,7 @@ export interface ProcurementDemand extends Entity {
     createdAt: string;
 }
 export declare const PROCUREMENT_REQUEST_STATES: readonly ["DRAFT", "SUBMITTED", "TRIAGE", "SOURCING", "UNDER_REVIEW", "PENDING_APPROVAL", "APPROVED", "REJECTED", "ORDERED", "FULFILLED", "CANCELLED"];
-export type ProcurementRequestState = typeof PROCUREMENT_REQUEST_STATES[number];
+export type ProcurementRequestState = (typeof PROCUREMENT_REQUEST_STATES)[number];
 export interface ProcurementRequest extends Entity {
     requestId: string;
     organizationId: string;
@@ -105,7 +105,7 @@ export interface VendorEvaluation extends Entity {
     createdAt: string;
 }
 export declare const CONTRACT_STATES: readonly ["DRAFT", "UNDER_REVIEW", "PENDING_APPROVAL", "APPROVED", "EXECUTED", "ACTIVE", "EXPIRING", "EXPIRED", "TERMINATED", "SUPERSEDED"];
-export type ContractState = typeof CONTRACT_STATES[number];
+export type ContractState = (typeof CONTRACT_STATES)[number];
 export interface ContractRecord extends Entity {
     contractId: string;
     organizationId: string;
@@ -148,7 +148,7 @@ export interface ContractObligation extends Entity {
     createdAt: string;
 }
 export declare const PO_STATES: readonly ["DRAFT", "PENDING_APPROVAL", "APPROVED", "ISSUED", "PARTIALLY_FULFILLED", "FULFILLED", "CANCELLED", "CLOSED"];
-export type PurchaseOrderState = typeof PO_STATES[number];
+export type PurchaseOrderState = (typeof PO_STATES)[number];
 export interface PurchaseOrder extends Entity {
     poId: string;
     organizationId: string;
@@ -180,7 +180,7 @@ export interface SoftwareLicense extends Entity {
     createdAt: string;
 }
 export declare const VENDOR_SUBSCRIPTION_STATES: readonly ["TRIAL", "ACTIVE", "PAST_DUE", "SUSPENDED", "CANCEL_PENDING", "CANCELLED", "EXPIRED", "UNKNOWN"];
-export type VendorSubscriptionState = typeof VENDOR_SUBSCRIPTION_STATES[number];
+export type VendorSubscriptionState = (typeof VENDOR_SUBSCRIPTION_STATES)[number];
 export interface VendorSubscription extends Entity {
     subscriptionId: string;
     organizationId: string;

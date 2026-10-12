@@ -16,7 +16,7 @@ export class TrustService {
         return posture;
     }
     getPostures(orgId) {
-        return Array.from(this.postures.values()).filter(p => p.organizationId === orgId);
+        return Array.from(this.postures.values()).filter((p) => p.organizationId === orgId);
     }
     updatePosture(postureId, updates) {
         const p = this.postures.get(postureId);
@@ -52,7 +52,7 @@ export class TrustService {
         return cert;
     }
     getCertifications(orgId) {
-        return Array.from(this.certifications.values()).filter(c => c.organizationId === orgId);
+        return Array.from(this.certifications.values()).filter((c) => c.organizationId === orgId);
     }
     addTrustContent(tc) {
         const content = {

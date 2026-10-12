@@ -15,12 +15,14 @@ export class ProductManagementService {
     private readonly products: Repository<ProductDefinition>,
     private readonly problems: Repository<CustomerProblem>,
     private readonly opportunities: Repository<ProductOpportunity>,
-    private readonly features: Repository<ProductFeature>
+    private readonly features: Repository<ProductFeature>,
   ) {}
 
   private enforceAdmin(operator: OperatorPrincipal) {
     if (operator.role !== "admin") {
-      throw new ValidationError("Unauthorized. Requires admin role for Product operations.");
+      throw new ValidationError(
+        "Unauthorized. Requires admin role for Product operations.",
+      );
     }
   }
 

@@ -7,7 +7,7 @@ export const VENDOR_LIFECYCLE_STATES = [
     "RESTRICTED",
     "SUSPENDED",
     "OFFBOARDING",
-    "INACTIVE"
+    "INACTIVE",
 ];
 export const PROCUREMENT_CATEGORIES = [
     "AI_PROVIDER",
@@ -23,7 +23,7 @@ export const PROCUREMENT_CATEGORIES = [
     "CONSULTING",
     "LICENSE",
     "API_SERVICE",
-    "OTHER"
+    "OTHER",
 ];
 export const VENDOR_ONBOARDING_STAGES = [
     "IDENTIFICATION",
@@ -32,7 +32,7 @@ export const VENDOR_ONBOARDING_STAGES = [
     "GRC_RISK_REVIEW",
     "COMMERCIAL_REVIEW",
     "APPROVAL",
-    "ACTIVATION"
+    "ACTIVATION",
 ];
 export const PROCUREMENT_REQUEST_STATES = [
     "DRAFT",
@@ -45,7 +45,7 @@ export const PROCUREMENT_REQUEST_STATES = [
     "REJECTED",
     "ORDERED",
     "FULFILLED",
-    "CANCELLED"
+    "CANCELLED",
 ];
 export const CONTRACT_STATES = [
     "DRAFT",
@@ -57,7 +57,7 @@ export const CONTRACT_STATES = [
     "EXPIRING",
     "EXPIRED",
     "TERMINATED",
-    "SUPERSEDED"
+    "SUPERSEDED",
 ];
 export const PO_STATES = [
     "DRAFT",
@@ -67,7 +67,7 @@ export const PO_STATES = [
     "PARTIALLY_FULFILLED",
     "FULFILLED",
     "CANCELLED",
-    "CLOSED"
+    "CLOSED",
 ];
 export const VENDOR_SUBSCRIPTION_STATES = [
     "TRIAL",
@@ -77,5 +77,5 @@ export const VENDOR_SUBSCRIPTION_STATES = [
     "CANCEL_PENDING",
     "CANCELLED",
     "EXPIRED",
-    "UNKNOWN"
+    "UNKNOWN",
 ];

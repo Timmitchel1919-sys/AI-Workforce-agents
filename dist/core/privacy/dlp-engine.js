@@ -16,7 +16,8 @@ export class DlpEngine {
         const actionPriority = { BLOCK: 3, REDACT: 2, WARN: 1, AUDIT_ONLY: 0 };
         for (const policy of orgPolicies) {
             for (const rule of policy.rules) {
-                if ((rule.type === "REGEX" || rule.type === "KEYWORD") && rule.pattern) {
+                if ((rule.type === "REGEX" || rule.type === "KEYWORD") &&
+                    rule.pattern) {
                     const regex = new RegExp(rule.pattern, "g");
                     let match;
                     while ((match = regex.exec(text)) !== null) {

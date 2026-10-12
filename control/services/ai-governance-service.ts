@@ -13,12 +13,14 @@ export class AIGovernanceControlService {
     private readonly models: Repository<AIModelRecord>,
     private readonly useCases: Repository<AIUseCase>,
     private readonly evaluations: Repository<ModelEvaluation>,
-    private readonly incidents: Repository<AIIncident>
+    private readonly incidents: Repository<AIIncident>,
   ) {}
 
   private enforceGovernanceAdmin(operator: OperatorPrincipal) {
     if (operator.role !== "admin") {
-      throw new ValidationError("Unauthorized. Requires admin role for AI Governance operations.");
+      throw new ValidationError(
+        "Unauthorized. Requires admin role for AI Governance operations.",
+      );
     }
   }
 
@@ -27,15 +29,17 @@ export class AIGovernanceControlService {
   }
 
   async listUseCases(organizationId: string): Promise<AIUseCase[]> {
-    return (await this.useCases.list()).filter((uc) => uc.organizationId === organizationId);
+    return (await this.useCases.list()).filter(
+      (uc) => uc.organizationId === organizationId,
+    );
   }
 
   async registerUseCase(
     operator: OperatorPrincipal,
-    useCase: Omit<AIUseCase, "id" | "useCaseId" | "status" | "createdAt">
+    useCase: Omit<AIUseCase, "id" | "useCaseId" | "status" | "createdAt">,
   ): Promise<AIUseCase> {
     this.enforceGovernanceAdmin(operator);
-    
+
     const newUseCase: AIUseCase = {
       ...useCase,
       id: `ai_uc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
@@ -43,23 +47,28 @@ export class AIGovernanceControlService {
       status: "PROPOSED",
       createdAt: new Date().toISOString(),
     };
-    
+
     this.useCases.upsert(newUseCase);
     return newUseCase;
   }
 
-  async approveUseCase(operator: OperatorPrincipal, useCaseId: string): Promise<void> {
+  async approveUseCase(
+    operator: OperatorPrincipal,
+    useCaseId: string,
+  ): Promise<void> {
     this.enforceGovernanceAdmin(operator);
-    const existing = (await this.useCases.list()).find(u => u.useCaseId === useCaseId);
+    const existing = (await this.useCases.list()).find(
+      (u) => u.useCaseId === useCaseId,
+    );
     if (!existing) throw new ValidationError("Use case not found");
-    
+
     existing.status = "APPROVED";
     this.useCases.upsert(existing);
   }
 
   async reportIncident(
     operator: OperatorPrincipal,
-    incident: Omit<AIIncident, "id" | "incidentId" | "status" | "createdAt">
+    incident: Omit<AIIncident, "id" | "incidentId" | "status" | "createdAt">,
   ): Promise<AIIncident> {
     const newIncident: AIIncident = {
       ...incident,

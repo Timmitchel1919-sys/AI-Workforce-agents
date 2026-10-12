@@ -8,9 +8,9 @@ export const ASSET_CATEGORIES = [
   "AI_AGENT",
   "NETWORK",
   "DATA",
-  "PERIPHERAL"
+  "PERIPHERAL",
 ] as const;
-export type AssetCategory = typeof ASSET_CATEGORIES[number];
+export type AssetCategory = (typeof ASSET_CATEGORIES)[number];
 
 export const ASSET_STATES = [
   "REQUESTED",
@@ -21,9 +21,9 @@ export const ASSET_STATES = [
   "DEPRECATED",
   "RETIRED",
   "DISPOSED",
-  "LOST"
+  "LOST",
 ] as const;
-export type AssetState = typeof ASSET_STATES[number];
+export type AssetState = (typeof ASSET_STATES)[number];
 
 export interface EnterpriseAsset extends Entity {
   assetId: string;
@@ -51,7 +51,12 @@ export interface AssetLifecycleEvent extends Entity {
   eventId: string;
   organizationId: string;
   assetId: string;
-  eventType: "PROVISIONED" | "ASSIGNED" | "MAINTENANCE_PERFORMED" | "STATUS_CHANGED" | "DISPOSED";
+  eventType:
+    | "PROVISIONED"
+    | "ASSIGNED"
+    | "MAINTENANCE_PERFORMED"
+    | "STATUS_CHANGED"
+    | "DISPOSED";
   actorRef: string;
   previousState?: string;
   newState?: string;

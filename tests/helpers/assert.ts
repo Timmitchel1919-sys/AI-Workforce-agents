@@ -22,7 +22,11 @@ export interface ChaiCompatAssert {
   notDeepEqual(actual: unknown, expected: unknown, message?: string): void;
   ok(value: unknown, message?: string): void;
   throws(fn: () => unknown, expected?: unknown, message?: string): void;
-  rejects(fn: Promise<unknown> | (() => Promise<unknown>), expected?: unknown, message?: string): void;
+  rejects(
+    fn: Promise<unknown> | (() => Promise<unknown>),
+    expected?: unknown,
+    message?: string,
+  ): void;
   doesNotThrow(fn: () => unknown, message?: string): void;
   match(actual: string, pattern: RegExp, message?: string): void;
   doesNotMatch(actual: string, pattern: RegExp, message?: string): void;
@@ -35,19 +39,32 @@ export interface ChaiCompatAssert {
 }
 
 function buildAssert(): ChaiCompatAssert {
-  const equal = (actual: unknown, expected: unknown, message?: string): void => {
+  const equal = (
+    actual: unknown,
+    expected: unknown,
+    message?: string,
+  ): void => {
     nodeAssert.strictEqual(actual, expected, message);
   };
 
-  const deepEqual = (actual: unknown, expected: unknown, message?: string): void => {
+  const deepEqual = (
+    actual: unknown,
+    expected: unknown,
+    message?: string,
+  ): void => {
     nodeAssert.deepStrictEqual(actual, expected, message);
   };
 
-  const include = (haystack: unknown, needle: unknown, message?: string): void => {
+  const include = (
+    haystack: unknown,
+    needle: unknown,
+    message?: string,
+  ): void => {
     if (typeof haystack === "string") {
       nodeAssert.ok(
         haystack.includes(String(needle)),
-        message ?? `expected ${JSON.stringify(haystack)} to include ${String(needle)}`,
+        message ??
+          `expected ${JSON.stringify(haystack)} to include ${String(needle)}`,
       );
       return;
     }
@@ -106,7 +123,11 @@ function buildAssert(): ChaiCompatAssert {
       nodeAssert.strictEqual(value, false, message);
     },
     isDefined: (value, message) => {
-      nodeAssert.notStrictEqual(value, undefined, message ?? "expected value to be defined");
+      nodeAssert.notStrictEqual(
+        value,
+        undefined,
+        message ?? "expected value to be defined",
+      );
     },
     isUndefined: (value, message) => {
       nodeAssert.strictEqual(value, undefined, message);

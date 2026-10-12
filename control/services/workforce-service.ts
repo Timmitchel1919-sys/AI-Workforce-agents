@@ -15,12 +15,14 @@ export class WorkforceManagementService {
     private readonly teams: Repository<WorkforceTeam>,
     private readonly agents: Repository<HumanAgent>,
     private readonly skills: Repository<SkillDefinition>,
-    private readonly assignments: Repository<ResourceAssignment>
+    private readonly assignments: Repository<ResourceAssignment>,
   ) {}
 
   private enforceAdmin(operator: OperatorPrincipal) {
     if (operator.role !== "admin") {
-      throw new ValidationError("Unauthorized. Requires admin role for Workforce operations.");
+      throw new ValidationError(
+        "Unauthorized. Requires admin role for Workforce operations.",
+      );
     }
   }
 

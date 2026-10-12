@@ -83,8 +83,10 @@ export interface WebhookEndpoint {
 }
 
 /** An endpoint as returned to its owner: carries no usable secret. */
-export interface RedactedWebhookEndpoint
-  extends Omit<WebhookEndpoint, "secretDigest"> {
+export interface RedactedWebhookEndpoint extends Omit<
+  WebhookEndpoint,
+  "secretDigest"
+> {
   /** Display-only hint, e.g. `whsec_ab12…9f3a`. */
   secretHint: string;
 }
@@ -97,9 +99,7 @@ export interface RegisteredWebhookEndpoint {
 }
 
 export type WebhookDeliveryStatus =
-  | "DELIVERED"
-  | "FAILED"
-  | "SKIPPED_ENDPOINT_INACTIVE";
+  "DELIVERED" | "FAILED" | "SKIPPED_ENDPOINT_INACTIVE";
 
 export interface WebhookDelivery {
   deliveryId: string;

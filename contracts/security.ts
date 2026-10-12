@@ -1,11 +1,22 @@
 import type { Entity } from "./persistence.js";
 
-export const SECURITY_SEVERITY_LEVELS = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
-export type SecuritySeverity = typeof SECURITY_SEVERITY_LEVELS[number];
+export const SECURITY_SEVERITY_LEVELS = [
+  "INFO",
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+  "CRITICAL",
+] as const;
+export type SecuritySeverity = (typeof SECURITY_SEVERITY_LEVELS)[number];
 
 export interface ZTNSecurityEvent extends Entity {
   eventId: string;
-  eventType: "AUTH_FAILURE" | "POLICY_VIOLATION" | "DATA_EXFILTRATION_ATTEMPT" | "PROMPT_INJECTION" | "ANOMALOUS_ACCESS";
+  eventType:
+    | "AUTH_FAILURE"
+    | "POLICY_VIOLATION"
+    | "DATA_EXFILTRATION_ATTEMPT"
+    | "PROMPT_INJECTION"
+    | "ANOMALOUS_ACCESS";
   severity: SecuritySeverity;
   sourceIp?: string;
   principalRef?: string;

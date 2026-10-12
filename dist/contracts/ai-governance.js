@@ -1,4 +1,10 @@
-export const AI_RISK_LEVELS = ["UNACCEPTABLE", "HIGH", "LIMITED", "MINIMAL", "UNKNOWN"];
+export const AI_RISK_LEVELS = [
+    "UNACCEPTABLE",
+    "HIGH",
+    "LIMITED",
+    "MINIMAL",
+    "UNKNOWN",
+];
 export const AI_GOV_MODEL_CAPABILITIES = [
     "TEXT_GENERATION",
     "CODE_GENERATION",

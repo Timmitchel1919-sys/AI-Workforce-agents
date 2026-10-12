@@ -1,8 +1,8 @@
 import { Entity } from "./persistence.js";
 export declare const ASSET_CATEGORIES: readonly ["HARDWARE", "SOFTWARE", "CLOUD_RESOURCE", "AI_MODEL", "AI_AGENT", "NETWORK", "DATA", "PERIPHERAL"];
-export type AssetCategory = typeof ASSET_CATEGORIES[number];
+export type AssetCategory = (typeof ASSET_CATEGORIES)[number];
 export declare const ASSET_STATES: readonly ["REQUESTED", "PROCURED", "IN_STOCK", "DEPLOYED", "IN_MAINTENANCE", "DEPRECATED", "RETIRED", "DISPOSED", "LOST"];
-export type AssetState = typeof ASSET_STATES[number];
+export type AssetState = (typeof ASSET_STATES)[number];
 export interface EnterpriseAsset extends Entity {
     assetId: string;
     organizationId: string;

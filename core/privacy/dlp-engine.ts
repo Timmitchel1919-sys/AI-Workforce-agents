@@ -32,7 +32,10 @@ export class DlpEngine {
 
     for (const policy of orgPolicies) {
       for (const rule of policy.rules) {
-        if ((rule.type === "REGEX" || rule.type === "KEYWORD") && rule.pattern) {
+        if (
+          (rule.type === "REGEX" || rule.type === "KEYWORD") &&
+          rule.pattern
+        ) {
           const regex = new RegExp(rule.pattern, "g");
           let match;
           while ((match = regex.exec(text)) !== null) {
