@@ -39,14 +39,6 @@ function _freshMfa(): SecurityMfaEvidence {
 
 const CLOCK = () => "2026-10-12T00:00:00.000Z";
 
-function makeService() {
-  const engine = new SecurityPolicyEngine(
-    new InMemorySecurityPolicyStore(defaultSecurityPolicies(CLOCK)),
-  );
-  const approvals = new ApprovalSystem();
-  return new DestructiveActionService(engine, approvals);
-}
-
 const REQUESTER: OperatorPrincipal = {
   id: "op-1",
   role: "operator",
@@ -62,6 +54,29 @@ const APPROVER2: OperatorPrincipal = {
   role: "admin",
   allowedProjects: ["p1"],
 };
+
+/**
+ * Trivial in-memory resolver backed by the test principals. The
+ * production composition wires a real resolver backed by the
+ * authoritative access-control store; this test fixture mirrors its
+ * shape without duplicating the identity logic.
+ */
+function makeTestResolver(principals: readonly OperatorPrincipal[]) {
+  const map = new Map(principals.map((p) => [p.id, p]));
+  return { resolve: (id: string) => map.get(id) };
+}
+
+function makeService(opts: { withResolver?: boolean } = {}) {
+  const engine = new SecurityPolicyEngine(
+    new InMemorySecurityPolicyStore(defaultSecurityPolicies(CLOCK)),
+  );
+  const approvals = new ApprovalSystem();
+  const resolver =
+    opts.withResolver === false
+      ? undefined
+      : makeTestResolver([REQUESTER, APPROVER, APPROVER2]);
+  return new DestructiveActionService(engine, approvals, undefined, resolver);
+}
 const UNAUTHORIZED: OperatorPrincipal = {
   id: "viewer-1",
   role: "viewer",
@@ -336,4 +351,29 @@ test("destructive: approval replay against a different request id fails", () => 
       projectId: "p1",
     }),
   );
+});
+
+test("destructive: assertApproved fails CLOSED when no DestructiveApproverResolver is configured", () => {
+  const s = makeService({ withResolver: false });
+  const req = s.request(REQUESTER, draft(), "corr-fail-closed");
+  s.decide(APPROVER, req.id, "approve", "ok");
+  // Status is `approved` and every other precondition would pass — but
+  // the executor cannot prove the approver is still an active,
+  // authorized operator, so authorization must be refused.
+  assert.throws(
+    () =>
+      assertDestructiveActionApproved(s, {
+        requestId: req.id,
+        principal: APPROVER,
+        actionType: "delete_data",
+        targetResourceType: "orders_table",
+        targetResourceId: "orders_v1",
+        environment: "staging",
+        projectId: "p1",
+        evidence: { reauth: freshReauth() },
+      }),
+    /authoritative approver revalidation unavailable/,
+  );
+  // And the request must NOT have transitioned to `executing`.
+  assert.equal(s.get(req.id)?.status, "approved");
 });

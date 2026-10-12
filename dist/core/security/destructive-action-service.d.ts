@@ -133,6 +133,14 @@ export declare class DestructiveActionService {
     private readonly repo;
     private readonly approverResolver?;
     private readonly observer?;
+    /**
+     * `approverResolver` is typed as optional only so that isolated unit
+     * tests that never reach `assertApproved(...)` can construct the
+     * service without wiring the authoritative access-control source.
+     * `assertApproved(...)` itself FAILS CLOSED when the resolver is
+     * missing — historical `Approval.decidedBy` metadata is NEVER
+     * accepted as proof of current authorization.
+     */
     constructor(engine: SecurityPolicyEngine, approvals?: ApprovalSystem, repo?: Repository<DestructiveActionRequest>, approverResolver?: DestructiveApproverResolver | undefined, observer?: DestructiveActionObserver | undefined);
     request(principal: OperatorPrincipal, draft: DestructiveActionRequestDraft, correlationId: string): DestructiveActionRequest;
     revise(principal: OperatorPrincipal, requestId: string, update: DestructiveActionRequestRevision): DestructiveActionRequest;

@@ -53,9 +53,17 @@ against another, because its `destructiveActionId` and
 
 ## Approver resolver (execution-time re-resolution)
 
-The service accepts an optional `DestructiveApproverResolver` that
-re-resolves historical approver ids against the authoritative
-operator directory immediately before execution. The resolver must
+The service accepts a `DestructiveApproverResolver` that re-resolves
+historical approver ids against the authoritative operator directory
+immediately before execution. The field is typed as **optional** only
+so unit tests that never reach `assertApproved(...)` can skip the
+wiring; `assertApproved(...)` itself **fails closed** when the
+resolver is absent — historical `Approval.decidedBy` metadata is
+NEVER accepted as proof of current authorization. A missing resolver
+refuses execution with
+`destructive execution blocked: authoritative approver revalidation unavailable`
+and emits a `destructive_action_execution_blocked` canonical event
+with reason `authoritative_approver_revalidation_unavailable`. The resolver must
 return `undefined` for any operator that is not currently `active`
 and reuses the authoritative `OperatorAccount` / access-control
 repository — the service does NOT keep a second identity system.

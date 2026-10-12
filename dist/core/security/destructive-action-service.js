@@ -155,6 +155,14 @@ export class DestructiveActionService {
     repo;
     approverResolver;
     observer;
+    /**
+     * `approverResolver` is typed as optional only so that isolated unit
+     * tests that never reach `assertApproved(...)` can construct the
+     * service without wiring the authoritative access-control source.
+     * `assertApproved(...)` itself FAILS CLOSED when the resolver is
+     * missing — historical `Approval.decidedBy` metadata is NEVER
+     * accepted as proof of current authorization.
+     */
     constructor(engine, approvals = new ApprovalSystem(), repo = new InMemoryRepository(), approverResolver, observer) {
         this.engine = engine;
         this.approvals = approvals;
@@ -688,6 +696,14 @@ export class DestructiveActionService {
             this.emitBlock(record, "duplicate approver identities");
             throw new StateTransitionError("two-person approval requires two distinct approvers");
         }
+        // Fail-closed: an authoritative resolver is MANDATORY. Historical
+        // Approval metadata is never accepted as proof of CURRENT
+        // authorization. Executing without a resolver would silently trust
+        // stale `approval.decidedBy` ids and defeat Layer-3 TOCTOU.
+        if (!this.approverResolver) {
+            this.emitBlock(record, "authoritative_approver_revalidation_unavailable");
+            throw new StateTransitionError("destructive execution blocked: authoritative approver revalidation unavailable");
+        }
         for (const approverId of uniqueApprovers) {
             if (approverId === record.requestedBy) {
                 this.observer?.onSecurityEvent?.({
@@ -700,8 +716,6 @@ export class DestructiveActionService {
                 this.emitBlock(record, "approver is the requester");
                 throw new PermissionDeniedError("separation of duties: the requester cannot count as an independent approver");
             }
-            if (!this.approverResolver)
-                continue; // Deferred to Layer 5 if absent.
             const current = this.approverResolver.resolve(approverId);
             const invalid = !current ||
                 !operatorCan(current, "approve_destructive_action") ||
