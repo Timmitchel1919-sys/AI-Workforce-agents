@@ -1,4 +1,5 @@
 import { validateSecurityEvent } from "../../contracts/index.js";
+import { chainSecurityEvent, securityEventChainScope, } from "../../core/security/security-event-integrity.js";
 /**
  * Durable canonical security-event store.
  *
@@ -10,16 +11,29 @@ import { validateSecurityEvent } from "../../contracts/index.js";
 export class FirestoreAppendOnlySecurityEventStore {
     firestore;
     collection;
+    chainHeads;
     constructor(firestore, collectionPath = "canonical_security_events") {
         this.firestore = firestore;
         this.collection = firestore.collection(collectionPath);
+        this.chainHeads = firestore.collection(`${collectionPath}_chain_heads`);
     }
     async append(event) {
         validateSecurityEvent(event);
         const ref = this.collection.doc(event.eventId);
-        const data = structuredClone(event);
+        const scope = securityEventChainScope(event);
+        const headRef = this.chainHeads.doc(scope);
         await this.firestore.runTransaction(async (transaction) => {
+            const head = await transaction.get(headRef);
+            const previous = head.data()?.eventHash;
+            const chained = chainSecurityEvent(event, typeof previous === "string" ? previous : undefined);
+            const data = chained;
             transaction.create(ref, data);
+            transaction.set(headRef, {
+                scope,
+                eventId: chained.eventId,
+                eventHash: chained.eventHash,
+                occurredAt: chained.occurredAt,
+            });
         });
     }
     async query(query = {}) {

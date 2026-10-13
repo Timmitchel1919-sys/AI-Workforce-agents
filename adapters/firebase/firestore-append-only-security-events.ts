@@ -5,6 +5,10 @@ import type {
 } from "../../contracts/index.js";
 import { validateSecurityEvent } from "../../contracts/index.js";
 import type { TransactionalFirestoreLike } from "./firebase-services.js";
+import {
+  chainSecurityEvent,
+  securityEventChainScope,
+} from "../../core/security/security-event-integrity.js";
 
 /**
  * Durable canonical security-event store.
@@ -16,20 +20,36 @@ import type { TransactionalFirestoreLike } from "./firebase-services.js";
  */
 export class FirestoreAppendOnlySecurityEventStore implements AsyncSecurityEventStore {
   private readonly collection;
+  private readonly chainHeads;
 
   constructor(
     private readonly firestore: TransactionalFirestoreLike,
     collectionPath = "canonical_security_events",
   ) {
     this.collection = firestore.collection(collectionPath);
+    this.chainHeads = firestore.collection(`${collectionPath}_chain_heads`);
   }
 
   async append(event: CanonicalSecurityEvent): Promise<void> {
     validateSecurityEvent(event);
     const ref = this.collection.doc(event.eventId);
-    const data = structuredClone(event) as unknown as Record<string, unknown>;
+    const scope = securityEventChainScope(event);
+    const headRef = this.chainHeads.doc(scope);
     await this.firestore.runTransaction(async (transaction) => {
+      const head = await transaction.get(headRef);
+      const previous = head.data()?.eventHash;
+      const chained = chainSecurityEvent(
+        event,
+        typeof previous === "string" ? previous : undefined,
+      );
+      const data = chained as unknown as Record<string, unknown>;
       transaction.create(ref, data);
+      transaction.set(headRef, {
+        scope,
+        eventId: chained.eventId,
+        eventHash: chained.eventHash,
+        occurredAt: chained.occurredAt,
+      });
     });
   }
 

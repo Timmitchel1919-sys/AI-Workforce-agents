@@ -11,6 +11,7 @@ import type { TransactionalFirestoreLike } from "./firebase-services.js";
 export declare class FirestoreAppendOnlySecurityEventStore implements AsyncSecurityEventStore {
     private readonly firestore;
     private readonly collection;
+    private readonly chainHeads;
     constructor(firestore: TransactionalFirestoreLike, collectionPath?: string);
     append(event: CanonicalSecurityEvent): Promise<void>;
     query(query?: SecurityEventQuery): Promise<CanonicalSecurityEvent[]>;

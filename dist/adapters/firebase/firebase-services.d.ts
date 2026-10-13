@@ -58,6 +58,18 @@ export interface FirebaseAuthLike {
     /** Admin SDK user lookup — used only by the trusted bootstrap tool. */
     getUser?(uid: string): Promise<FirebaseUserRecordLike>;
 }
+export interface DecodedAppCheckTokenLike {
+    app_id: string;
+    [claim: string]: unknown;
+}
+export interface VerifyAppCheckTokenResponseLike {
+    appId: string;
+    token: DecodedAppCheckTokenLike;
+    alreadyConsumed?: boolean;
+}
+export interface FirebaseAppCheckLike {
+    verifyToken(token: string): Promise<VerifyAppCheckTokenResponseLike>;
+}
 export interface StorageFileLike {
     readonly name: string;
     save(data: Buffer | string, options?: {
@@ -98,10 +110,11 @@ export interface FirebaseServices {
     firestore: FirestoreLike;
     auth: FirebaseAuthLike;
     storage: FirebaseStorageLike;
+    appCheck?: FirebaseAppCheckLike;
     config: FirebaseConfig;
 }
 /**
- * Initialise (or reuse) the Firebase app and return the three service seams.
+ * Initialise (or reuse) the Firebase app and return the service seams.
  * Never throws with a credential in the message.
  */
 export declare function createFirebaseServices(config?: FirebaseConfig): Promise<FirebaseServices>;

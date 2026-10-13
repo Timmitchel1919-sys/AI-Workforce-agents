@@ -1,23 +1,14 @@
-/**
- * Control Plane HTTP API.
- *
- * A dependency-free Node `http` request handler that exposes
- * `WorkforceQueryService` (read) and `WorkforceCommandService` (write) over
- * JSON. This is the seam the Phase 7C UI consumes:
- *
- *   UI → HTTP API → Query / Command service → Core → Repository → Firebase
- *
- * The API is NOT the authority. It authenticates the caller (via the injected
- * `OperatorDirectory`), threads a correlation id, maps errors and command
- * `errorKind`s to status codes, and forwards everything else to the two
- * services — which enforce authorization, approval, state, project isolation,
- * and audit. No stack trace is ever sent to a client.
- */
 import { type IncomingMessage, type ServerResponse } from "node:http";
 import { type IdentityVerifier, type OperatorDirectory } from "../contracts/index.js";
 import { type WorkforceCommandService, type WorkforceQueryService } from "../control/index.js";
 import type { AccessService, ProfileService } from "../core/index.js";
-import { type AppAttestationVerifier, type AppCheckMode, type CorsPolicy, type RateLimiter } from "./security/index.js";
+import { FirebaseMfaVerifier, FirebaseReauthenticationVerifier, type AppAttestationVerifier, type AppCheckMode, type CorsPolicy, type RateLimiter } from "./security/index.js";
+import { DestructiveActionService } from "../core/security/destructive-action-service.js";
+import { SecurityPolicyEngine } from "../core/security/security-policy-engine.js";
+import type { SecurityPolicyService } from "../core/security/security-policy-service.js";
+import type { SecretReferenceService } from "../core/security/secret-reference-service.js";
+import type { OperatorAccountStore } from "../contracts/index.js";
+import { type AsyncSecurityEventStore } from "../contracts/security-event.js";
 export interface ControlPlaneApiOptions {
     query: WorkforceQueryService;
     graphQuery?: import("../control/index.js").GraphQueryService;
@@ -53,6 +44,14 @@ export interface ControlPlaneApiOptions {
     generateCorrelationId?: () => string;
     /** Max JSON request body size in bytes. Default 1 MiB. */
     maxBodyBytes?: number;
+    destructiveActionService?: DestructiveActionService;
+    securityPolicyService?: SecurityPolicyService;
+    secretReferenceService?: SecretReferenceService;
+    securityPolicyEngine?: SecurityPolicyEngine;
+    operatorAccounts?: OperatorAccountStore;
+    securityEventStore?: AsyncSecurityEventStore | import("../core/security/security-event-store.js").SecurityEventStore;
+    mfaVerifier?: FirebaseMfaVerifier;
+    reauthVerifier?: FirebaseReauthenticationVerifier;
     /**
      * Layer-5 API Security options. All fields are optional so existing
      * tests and dev harnesses continue to work; production composition

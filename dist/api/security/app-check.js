@@ -73,3 +73,25 @@ export function resolveAppCheckMode(env = process.env) {
  * the header itself.
  */
 export const APP_CHECK_HEADER = "x-firebase-appcheck";
+/**
+ * Deterministically validates server App Check configuration at startup.
+ * When mode is enforced, requires a real verifier and protected route patterns.
+ */
+export function validateAppCheckProductionConfig(input) {
+    if (input.mode === "enforced") {
+        if (!input.verifier ||
+            input.verifier instanceof DefaultAppAttestationVerifier) {
+            return {
+                valid: false,
+                error: "APP_CHECK_ENFORCED_BUT_VERIFIER_UNAVAILABLE: server verifier is required when App Check is enforced",
+            };
+        }
+        if (!input.requiredPaths || input.requiredPaths.length === 0) {
+            return {
+                valid: false,
+                error: "APP_CHECK_ENFORCED_BUT_NO_ROUTES_CONFIGURED: privileged route patterns must be configured",
+            };
+        }
+    }
+    return { valid: true };
+}

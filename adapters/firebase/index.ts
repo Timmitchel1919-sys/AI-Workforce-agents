@@ -19,3 +19,4 @@ export * from "./firestore-operator-profile-store.js";
 export * from "./firestore-execution-state.js";
 export * from "./firestore-onboarding-store.js";
 export * from "./firestore-append-only-security-events.js";
+export * from "./firebase-app-check-verifier.js";

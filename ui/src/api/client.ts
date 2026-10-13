@@ -28,6 +28,21 @@ function errorMessageFromBody(body: unknown): string | undefined {
   return undefined;
 }
 
+function errorCodeFromBody(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  if ("code" in body && typeof body.code === "string") return body.code;
+  if (
+    "error" in body &&
+    body.error &&
+    typeof body.error === "object" &&
+    "code" in body.error &&
+    typeof body.error.code === "string"
+  ) {
+    return body.error.code;
+  }
+  return undefined;
+}
+
 export interface ApiRequestOptions extends RequestInit {
   accessToken?: string | null;
 }
@@ -45,6 +60,17 @@ export function setAccessTokenProvider(provider: AccessTokenProvider | null): vo
   accessTokenProvider = provider;
 }
 
+/**
+ * Returns the client's CURRENT App Check token.
+ */
+export type AppCheckTokenProvider = (forceRefresh: boolean) => Promise<string | null>;
+
+let appCheckTokenProvider: AppCheckTokenProvider | null = null;
+
+export function setAppCheckTokenProvider(provider: AppCheckTokenProvider | null): void {
+  appCheckTokenProvider = provider;
+}
+
 async function currentToken(fallback: string | null | undefined, forceRefresh: boolean) {
   if (!fallback) return fallback;
   if (!accessTokenProvider) return fallback;
@@ -55,19 +81,32 @@ async function currentToken(fallback: string | null | undefined, forceRefresh: b
   }
 }
 
+async function currentAppCheckToken(forceRefresh: boolean): Promise<string | null> {
+  if (!appCheckTokenProvider) return null;
+  try {
+    return await appCheckTokenProvider(forceRefresh);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Authenticated requests never reuse a stale ID token: the token is read
  * from Firebase at request time (ID tokens expire after an hour, and a
  * sleeping machine or idle tab never refreshes a captured copy). A 401 is
  * retried once with a force-refreshed token before it is surfaced.
+ *
+ * App Check tokens are automatically attached via standard `X-Firebase-AppCheck`.
+ * A 403 App Check failure is retried once with a force-refreshed App Check token.
  */
 export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
   const token = await currentToken(options.accessToken, false);
+  const appCheck = await currentAppCheckToken(false);
   try {
-    return await sendRequest<T>(path, { ...options, accessToken: token });
+    return await sendRequest<T>(path, { ...options, accessToken: token }, appCheck);
   } catch (error) {
     if (
       error instanceof ApiError &&
@@ -77,9 +116,22 @@ export async function apiRequest<T>(
     ) {
       const refreshed = await currentToken(options.accessToken, true);
       if (refreshed && refreshed !== token) {
-        return sendRequest<T>(path, { ...options, accessToken: refreshed });
+        return sendRequest<T>(path, { ...options, accessToken: refreshed }, appCheck);
       }
     }
+
+    if (
+      error instanceof ApiError &&
+      error.status === 403 &&
+      appCheckTokenProvider &&
+      (error.code === "app_check_missing" || error.code === "app_check_invalid")
+    ) {
+      const refreshedAppCheck = await currentAppCheckToken(true);
+      if (refreshedAppCheck && refreshedAppCheck !== appCheck) {
+        return sendRequest<T>(path, { ...options, accessToken: token }, refreshedAppCheck);
+      }
+    }
+
     throw error;
   }
 }
@@ -87,6 +139,7 @@ export async function apiRequest<T>(
 async function sendRequest<T>(
   path: string,
   options: ApiRequestOptions,
+  appCheckToken: string | null = null,
 ): Promise<T> {
   const controller = new AbortController();
 
@@ -104,6 +157,10 @@ async function sendRequest<T>(
 
   if (options.accessToken) {
     headers.set("Authorization", `Bearer ${options.accessToken}`);
+  }
+
+  if (appCheckToken) {
+    headers.set("X-Firebase-AppCheck", appCheckToken);
   }
 
   try {
@@ -125,6 +182,7 @@ async function sendRequest<T>(
       const bodyObj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
       throw new ApiError(message, {
         status: response.status,
+        code: errorCodeFromBody(body),
         ...(typeof bodyObj.errorKind === "string" ? { errorKind: bodyObj.errorKind } : {}),
         ...(typeof bodyObj.reason === "string" ? { reason: bodyObj.reason } : {}),
         requestId:

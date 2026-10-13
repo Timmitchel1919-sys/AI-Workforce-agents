@@ -51,9 +51,18 @@ interface RouteSecurityPolicy {
 ```
 
 Layer-5 ships the primitives (`apiError`, `apiSecurity` option on
-`createControlPlaneApi`, rate-limiter profiles, App Check hook). The
-per-route metadata table is wired incrementally — existing routes
-continue to pass the Layer-1 capability checks they already use.
+`createControlPlaneApi`, rate-limiter profiles, App Check hook). The typed
+high-risk command table is active: it selects the pre-auth rate profile and
+App Check requirement, then performs an early capability gate after
+authentication. Core command services still repeat their authoritative
+capability and project checks. Routes not yet present in the typed table retain
+those existing core checks and the production-wide App Check path policy.
+
+Security-policy and secret-reference mutation routes are also in this table.
+They require App Check, administrator capabilities, trusted Firebase
+MFA/reauth evidence, and a destructive request bound to the exact action and
+target. Secret-reference bodies accept metadata only; credential-shaped fields
+are rejected rather than ignored.
 
 ## Rate limiting
 
@@ -155,13 +164,13 @@ resolver and an observer that writes canonical security events:
   `destructive_action`), persisted to the append-only Layer-4 store.
   No raw tokens or request bodies leak into the event payload.
 
-## MFA / reauth evidence boundary (Layer 5 responsibility)
+## MFA / reauth evidence boundary
 
-Layer 3 defined the contracts and freshness windows. The API
-middleware (future `MfaVerifier` / `ReauthenticationVerifier` ports)
-is where the authoritative verification will plug in. For now, the
-narrow interfaces are reserved — Layer 3 continues to reject stale
-and absent evidence, and never trusts raw body booleans.
+`FirebaseMfaVerifier` and `FirebaseReauthenticationVerifier` derive evidence
+only from the Admin-SDK-verified identity. MFA requires a verified Firebase
+second-factor claim plus a valid, fresh `auth_time`; reauthentication requires
+a valid, fresh `auth_time`. Missing, stale, or future timestamps fail closed.
+Raw request-body booleans never enter the evidence path.
 
 ## Fail-closed availability
 

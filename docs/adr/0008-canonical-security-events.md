@@ -37,13 +37,13 @@ contract remains `CanonicalSecurityEvent` in `contracts/security-event.ts`.
 - **Query** adds `type`, `actorId`, `agentId`, `correlationId`,
   `approvalId`, `destructiveActionId`, `incidentId`, `targetId`.
   `limit` remains clamped to `[1, 100]`.
-- **Integrity chaining.** `previousEventHash` / `eventHash` remain
-  **optional** fields on the contract. A reliable chain requires
-  transaction-safe per-stream ordering that the current Firestore
-  adapter cannot cheaply guarantee across projects, so a global chain
-  is **deliberately not** implemented in Layer 4 and tamper-evidence
-  is **not** claimed. A per-project chain is viable as a follow-up on
-  top of the existing append-only transaction.create() semantics.
+- **Integrity chaining.** Every store now computes a deterministic SHA-256
+  `eventHash` over canonical event content and its `previousEventHash`.
+  Chains are scoped per project (with a separate `__global__` stream), so one
+  busy project cannot serialize all platform telemetry. The Firestore adapter
+  advances the event and chain-head document in the same transaction; the
+  in-memory and repository adapters apply the identical algorithm. Readers can
+  verify individual event integrity with `verifySecurityEventIntegrity`.
 - **Append-only** is unchanged: the store exposes only `append` and
   `query`. There is no `update`, `delete`, `set`, `clear` or `remove`
   surface. The Firestore client rules remain deny-all. The engine's
@@ -60,8 +60,6 @@ contract remains `CanonicalSecurityEvent` in `contracts/security-event.ts`.
   permission decisions, approvals, access events, tool execution and
   agent activity. There is one authoritative history (operational
   audit) and one normalized projection (canonical security events).
-
-## Decision
 
 ## Decision
 
@@ -85,6 +83,8 @@ It exposes only `append` and `query`, writes through a transaction's
 `create()` operation, and therefore rejects duplicate event IDs without
 exposing update or delete methods. The client-facing Firestore rules remain
 deny-all; the adapter protects the trusted server-side composition boundary.
+The same transaction also reads and advances a per-project chain head, making
+out-of-band content modification detectable without exposing a mutation API.
 
 ## Consequences
 

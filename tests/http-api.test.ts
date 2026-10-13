@@ -9,10 +9,16 @@ import type { AddressInfo } from "node:net";
 
 import { createControlPlaneApi, type ApiHandler } from "../api/index.js";
 import {
+  type ManagedSecretReference,
   PermissionDeniedError,
   type OperatorDirectory,
   type OperatorPrincipal,
 } from "../contracts/index.js";
+import {
+  InMemoryRepository,
+  SecretReferenceService,
+  type DestructiveActionService,
+} from "../core/index.js";
 import {
   type WorkforceCommandService,
   type WorkforceQueryService,
@@ -348,6 +354,108 @@ test("api: a command errorKind maps to the right status", async () => {
       ((await res.json()) as { errorKind: string }).errorKind,
       "forbidden",
     );
+  });
+});
+
+test("api security: route policy denies a privileged command before its handler", async () => {
+  const recorder: Recorder = { commandCalls: [], throwOnStatus: false };
+  const { query, command } = fakes(recorder);
+  const viewerDirectory: OperatorDirectory = {
+    async resolve() {
+      return { id: "viewer-1", role: "viewer", allowedProjects: "*" };
+    },
+  };
+  const api = createControlPlaneApi({
+    query,
+    command,
+    operatorDirectory: viewerDirectory,
+  });
+
+  await withServer(api, async (base) => {
+    const response = await fetch(`${base}/api/commands/set-budget-policy`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer viewer",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ projectId: "p1" }),
+    });
+    assert.equal(response.status, 403);
+    assert.equal(
+      ((await response.json()) as { error: { code: string } }).error.code,
+      "forbidden",
+    );
+  });
+
+  assert.deepEqual(recorder.commandCalls, []);
+});
+
+test("api security: secret reference endpoint persists metadata and rejects raw values", async () => {
+  const recorder: Recorder = { commandCalls: [], throwOnStatus: false };
+  const { query, command } = fakes(recorder);
+  const repository = new InMemoryRepository<ManagedSecretReference>();
+  const secrets = new SecretReferenceService(repository, {
+    authorize: async () => ({ authorized: true }),
+  });
+  const api = createControlPlaneApi({
+    query,
+    command,
+    operatorDirectory: {
+      async resolve() {
+        return { id: "admin-1", role: "admin", allowedProjects: "*" };
+      },
+    },
+    secretReferenceService: secrets,
+    destructiveActionService: {
+      currentApproverIds: () => [],
+    } as unknown as DestructiveActionService,
+  });
+
+  await withServer(api, async (base) => {
+    const headers = {
+      authorization: "Bearer admin",
+      "content-type": "application/json",
+    };
+    const bad = await fetch(`${base}/api/security/secret-references`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        destructiveActionId: "dar-1",
+        reference: {
+          ref: "secret://github-alpha",
+          provider: "gcp_secret_manager",
+          providerResource: "projects/p/secrets/github-alpha",
+          purpose: "GitHub authentication",
+          secret: "must-not-enter-the-catalog",
+        },
+      }),
+    });
+    assert.equal(bad.status, 400);
+    assert.equal(repository.list().length, 0);
+
+    const created = await fetch(`${base}/api/security/secret-references`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        destructiveActionId: "dar-1",
+        reference: {
+          ref: "secret://github-alpha",
+          provider: "gcp_secret_manager",
+          providerResource: "projects/p/secrets/github-alpha",
+          purpose: "GitHub authentication",
+        },
+      }),
+    });
+    assert.equal(created.status, 201);
+    const listed = await fetch(`${base}/api/security/secret-references`, {
+      headers: { authorization: "Bearer admin" },
+    });
+    assert.equal(listed.status, 200);
+    const payload = (await listed.json()) as {
+      references: ManagedSecretReference[];
+    };
+    assert.equal(payload.references[0]?.ref, "secret://github-alpha");
+    assert.equal(JSON.stringify(payload).includes("must-not-enter"), false);
   });
 });
 

@@ -25,11 +25,16 @@ import {
   evaluateAppCheck,
   originIsAllowed,
   resolveAppCheckMode,
+  routeSecurityPolicyFor,
+  validateAppCheckProductionConfig,
+  FirebaseMfaVerifier,
+  FirebaseReauthenticationVerifier,
   stripUntrustedFields,
   createDestructiveSecurityEventObserver,
   type AppAttestationVerifier,
   type CorsPolicy,
 } from "../api/security/index.js";
+import { FirebaseAppCheckVerifier } from "../adapters/firebase/firebase-app-check-verifier.js";
 import { AppendOnlySecurityEventStore } from "../core/security/security-event-store.js";
 import type { OperatorAccount } from "../contracts/index.js";
 
@@ -286,6 +291,206 @@ test("app check: mode is server-authoritative — client input cannot select it"
   assert.equal(resolveAppCheckMode({ APP_CHECK_MODE: "wat" }), "disabled");
   assert.equal(resolveAppCheckMode({}), "disabled");
   assert.equal(APP_CHECK_HEADER, "x-firebase-appcheck");
+});
+
+test("route policy: resolves privileged commands only from method and exact path", () => {
+  assert.equal(
+    routeSecurityPolicyFor("POST", "/api/commands/kill-execution")?.capability,
+    "cancel_execution",
+  );
+  assert.equal(
+    routeSecurityPolicyFor("POST", "/api/commands/set-budget-policy")
+      ?.rateLimitProfile,
+    "security_mutation",
+  );
+  assert.equal(
+    routeSecurityPolicyFor("GET", "/api/commands/kill-execution"),
+    undefined,
+  );
+  assert.equal(
+    routeSecurityPolicyFor("POST", "/api/commands/kill-execution/extra"),
+    undefined,
+  );
+  assert.equal(
+    routeSecurityPolicyFor("POST", "/api/commands/unknown"),
+    undefined,
+  );
+});
+
+test("route policy: destructive approvals and policy mutation have explicit capabilities", () => {
+  assert.equal(
+    routeSecurityPolicyFor("POST", "/api/destructive/requests/request-1/decide")
+      ?.capability,
+    "approve_destructive_action",
+  );
+  const mutation = routeSecurityPolicyFor(
+    "PUT",
+    "/api/security/foundation-policies/sec.example",
+  );
+  assert.equal(mutation?.capability, "manage_security_policy");
+  assert.equal(mutation?.destructive, true);
+  assert.equal(mutation?.appCheck, "required");
+
+  const secretCreate = routeSecurityPolicyFor(
+    "POST",
+    "/api/security/secret-references",
+  );
+  assert.equal(secretCreate?.capability, "manage_secret_references");
+  assert.equal(secretCreate?.securityPolicyAction, "secret.reference.create");
+  assert.equal(secretCreate?.destructive, true);
+  const secretUpdate = routeSecurityPolicyFor(
+    "PATCH",
+    "/api/security/secret-references/github-alpha",
+  );
+  assert.equal(secretUpdate?.securityPolicyAction, "secret.reference.update");
+  assert.equal(
+    routeSecurityPolicyFor(
+      "POST",
+      "/api/security/secret-references/github-alpha/extra",
+    ),
+    undefined,
+  );
+});
+
+test("app check: Firebase verifier accepts only Admin SDK verified app ids", async () => {
+  const verifier = new FirebaseAppCheckVerifier({
+    verifyToken: async () => ({
+      appId: "web:trusted",
+      token: { app_id: "web:trusted" },
+    }),
+  });
+
+  assert.deepEqual(await verifier.verify("signed-token"), {
+    valid: true,
+    appId: "web:trusted",
+  });
+});
+
+test("app check: Firebase verifier distinguishes invalid input from unavailable infrastructure", async () => {
+  const invalid = new FirebaseAppCheckVerifier({
+    verifyToken: async () => {
+      throw Object.assign(new Error("token expired"), {
+        code: "app-check/token-expired",
+      });
+    },
+  });
+  const unavailable = new FirebaseAppCheckVerifier({
+    verifyToken: async () => {
+      throw Object.assign(new Error("service unavailable"), {
+        code: "app-check/internal-error",
+      });
+    },
+  });
+
+  assert.deepEqual(await invalid.verify("expired-token"), {
+    valid: false,
+    error: "invalid",
+  });
+  assert.deepEqual(await unavailable.verify("signed-token"), {
+    valid: false,
+    error: "unavailable",
+  });
+  assert.deepEqual(
+    await new FirebaseAppCheckVerifier(undefined).verify("token"),
+    {
+      valid: false,
+      error: "verifier_unavailable",
+    },
+  );
+});
+
+test("app check: enforced startup requires both a real verifier and protected routes", () => {
+  const verifier = new FirebaseAppCheckVerifier({
+    verifyToken: async () => ({ appId: "web", token: { app_id: "web" } }),
+  });
+
+  assert.equal(
+    validateAppCheckProductionConfig({
+      mode: "enforced",
+      requiredPaths: [/^\/api\//],
+    }).valid,
+    false,
+  );
+  assert.equal(
+    validateAppCheckProductionConfig({
+      mode: "enforced",
+      verifier,
+      requiredPaths: [],
+    }).valid,
+    false,
+  );
+  assert.equal(
+    validateAppCheckProductionConfig({
+      mode: "enforced",
+      verifier,
+      requiredPaths: [/^\/api\//],
+    }).valid,
+    true,
+  );
+});
+
+test("trusted auth evidence: reauthentication requires a fresh verified auth_time", () => {
+  const now = Date.parse("2026-10-12T12:00:00.000Z");
+  const verifier = new FirebaseReauthenticationVerifier({ now: () => now });
+
+  assert.equal(verifier.verify({ uid: "u", emailVerified: true }), undefined);
+  assert.equal(
+    verifier.verify({
+      uid: "u",
+      emailVerified: true,
+      authTime: now / 1000 - 601,
+    }),
+    undefined,
+  );
+  assert.ok(
+    verifier.verify({
+      uid: "u",
+      emailVerified: true,
+      authTime: now / 1000 - 60,
+    }),
+  );
+});
+
+test("trusted auth evidence: MFA requires both a factor claim and fresh auth_time", () => {
+  const now = Date.parse("2026-10-12T12:00:00.000Z");
+  const verifier = new FirebaseMfaVerifier({ now: () => now });
+  const claims = { signInSecondFactor: "totp" };
+
+  assert.equal(
+    verifier.verify({ uid: "u", emailVerified: true, firebaseClaims: claims }),
+    undefined,
+  );
+  assert.equal(
+    verifier.verify({
+      uid: "u",
+      emailVerified: true,
+      authTime: now / 1000 - 601,
+      firebaseClaims: claims,
+    }),
+    undefined,
+  );
+  assert.equal(
+    verifier.verify({
+      uid: "u",
+      emailVerified: true,
+      authTime: now / 1000 + 61,
+      firebaseClaims: claims,
+    }),
+    undefined,
+  );
+  assert.deepEqual(
+    verifier.verify({
+      uid: "u",
+      emailVerified: true,
+      authTime: now / 1000 - 60,
+      firebaseClaims: claims,
+    }),
+    {
+      verified: true,
+      verifiedAt: "2026-10-12T11:59:00.000Z",
+      method: "firebase_mfa:totp",
+    },
+  );
 });
 
 /* ================================================================== */

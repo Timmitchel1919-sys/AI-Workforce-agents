@@ -48,11 +48,41 @@ export class FirebaseOperatorDirectory
     }
     const email = typeof decoded.email === "string" ? decoded.email : undefined;
     const name = typeof decoded.name === "string" ? decoded.name : undefined;
+    const authTime =
+      typeof decoded.auth_time === "number" ? decoded.auth_time : undefined;
+
+    const firebaseRaw = decoded.firebase;
+    const firebaseClaims =
+      firebaseRaw && typeof firebaseRaw === "object"
+        ? {
+            signInSecondFactor:
+              typeof (firebaseRaw as Record<string, unknown>)
+                .sign_in_second_factor === "string"
+                ? ((firebaseRaw as Record<string, unknown>)
+                    .sign_in_second_factor as string)
+                : undefined,
+            secondFactorIdentifier:
+              typeof (firebaseRaw as Record<string, unknown>)
+                .second_factor_identifier === "string"
+                ? ((firebaseRaw as Record<string, unknown>)
+                    .second_factor_identifier as string)
+                : undefined,
+            signInProvider:
+              typeof (firebaseRaw as Record<string, unknown>)
+                .sign_in_provider === "string"
+                ? ((firebaseRaw as Record<string, unknown>)
+                    .sign_in_provider as string)
+                : undefined,
+          }
+        : undefined;
+
     return {
       uid: decoded.uid,
       ...(email ? { email } : {}),
       ...(name ? { displayName: name } : {}),
       emailVerified: decoded.email_verified === true,
+      ...(authTime !== undefined ? { authTime } : {}),
+      ...(firebaseClaims ? { firebaseClaims } : {}),
     };
   }
 

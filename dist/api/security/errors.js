@@ -41,8 +41,11 @@ export const UNTRUSTED_BODY_FIELDS = [
     "operatorId",
     "allowedProjects",
     "mfaVerified",
+    "mfa",
     "reauthVerified",
+    "reauthentication",
     "approvalSatisfied",
+    "appCheckValid",
 ];
 export function stripUntrustedFields(body) {
     const clean = {};

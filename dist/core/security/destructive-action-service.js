@@ -700,7 +700,8 @@ export class DestructiveActionService {
         // Approval metadata is never accepted as proof of CURRENT
         // authorization. Executing without a resolver would silently trust
         // stale `approval.decidedBy` ids and defeat Layer-3 TOCTOU.
-        if (!this.approverResolver) {
+        const resolver = input.approverResolver ?? this.approverResolver;
+        if (!resolver) {
             this.emitBlock(record, "authoritative_approver_revalidation_unavailable");
             throw new StateTransitionError("destructive execution blocked: authoritative approver revalidation unavailable");
         }
@@ -716,7 +717,7 @@ export class DestructiveActionService {
                 this.emitBlock(record, "approver is the requester");
                 throw new PermissionDeniedError("separation of duties: the requester cannot count as an independent approver");
             }
-            const current = this.approverResolver.resolve(approverId);
+            const current = resolver.resolve(approverId);
             const invalid = !current ||
                 !operatorCan(current, "approve_destructive_action") ||
                 (record.projectId &&
@@ -828,6 +829,17 @@ export class DestructiveActionService {
     }
     list() {
         return this.repo.list();
+    }
+    /** Operator ids attached to the active revision's approval records. */
+    currentApproverIds(requestId) {
+        const record = this.require(requestId);
+        const activeRow = record.approvalHistory.find((entry) => entry.revision === record.revision && !entry.invalidatedAt);
+        if (!activeRow)
+            return [];
+        return [activeRow.primaryApprovalId, activeRow.secondaryApprovalId]
+            .filter((id) => Boolean(id))
+            .map((id) => this.approvals.get(id)?.decidedBy)
+            .filter((id) => Boolean(id));
     }
     listForApproval(principal) {
         return this.list().filter((r) => (r.status === "awaiting_approval" || r.status === "under_review") &&

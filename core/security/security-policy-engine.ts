@@ -286,6 +286,22 @@ export function defaultSecurityPolicies(now: () => string): SecurityPolicy[] {
     },
     {
       ...base,
+      id: "sec.b.control-plane.allow",
+      name: "B' — governed Control Plane actions",
+      priority: 109,
+      actionPatterns: [
+        "cancel.*",
+        "approval.*",
+        "policy.budget.*",
+        "policy.governance.*",
+      ],
+      risk: "medium",
+      effect: "allow",
+      reason:
+        "POLICY_B': known Control Plane actions remain subject to capability, project scope, and their domain services",
+    },
+    {
+      ...base,
       id: "sec.c.production-deployment",
       name: "C — production deployment",
       priority: 50,

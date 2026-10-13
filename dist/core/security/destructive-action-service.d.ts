@@ -36,6 +36,11 @@ export interface AssertApprovedInput {
      * (or historical, strongest-wins merged) policy demands them.
      */
     evidence?: SecurityExecutionEvidence;
+    /**
+     * Optional request-scoped fresh approver resolver. Overrides the service-level
+     * resolver for this execution.
+     */
+    approverResolver?: DestructiveApproverResolver;
 }
 /**
  * Target fingerprint. Covers the full material-identity tuple PLUS
@@ -151,6 +156,8 @@ export declare class DestructiveActionService {
     cancel(principal: OperatorPrincipal, requestId: string, reason: string): DestructiveActionRequest;
     get(id: string): DestructiveActionRequest | undefined;
     list(): DestructiveActionRequest[];
+    /** Operator ids attached to the active revision's approval records. */
+    currentApproverIds(requestId: string): string[];
     listForApproval(principal: OperatorPrincipal): DestructiveActionRequest[];
     private require;
     private transition;

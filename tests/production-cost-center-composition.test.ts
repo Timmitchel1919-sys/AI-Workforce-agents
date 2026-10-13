@@ -297,8 +297,8 @@ test("GOVERNANCE: an operator (not admin) cannot set the policy; an admin can, o
       { projectId: "ai-workforce", policy: { allowUnknownCost: true } },
       "aiw",
     );
-    assert.equal(denied.json.outcome, "denied");
-    assert.equal(denied.json.ok, false);
+    assert.equal(denied.status, 403);
+    assert.match(denied.json.error?.message ?? "", /capability/i);
 
     const set = await post(
       "/api/commands/set-governance-policy",

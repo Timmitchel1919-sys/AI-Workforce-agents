@@ -4,6 +4,10 @@ import type {
   SecurityEventQuery,
 } from "../../contracts/index.js";
 import { validateSecurityEvent } from "../../contracts/index.js";
+import {
+  chainSecurityEvent,
+  securityEventChainScope,
+} from "./security-event-integrity.js";
 export interface SecurityEventStore {
   append(event: CanonicalSecurityEvent): void;
   query(query?: SecurityEventQuery): CanonicalSecurityEvent[];
@@ -57,11 +61,15 @@ function select(
 }
 export class AppendOnlySecurityEventStore implements SecurityEventStore {
   private readonly events = new Map<string, CanonicalSecurityEvent>();
+  private readonly chainHeads = new Map<string, string>();
   append(event: CanonicalSecurityEvent): void {
     validateSecurityEvent(event);
     if (this.events.has(event.eventId))
       throw new Error(`security event already exists: ${event.eventId}`);
-    this.events.set(event.eventId, structuredClone(event));
+    const scope = securityEventChainScope(event);
+    const chained = chainSecurityEvent(event, this.chainHeads.get(scope));
+    this.events.set(event.eventId, chained);
+    this.chainHeads.set(scope, chained.eventHash!);
   }
   query(query: SecurityEventQuery = {}): CanonicalSecurityEvent[] {
     return select([...this.events.values()], query);
@@ -75,7 +83,12 @@ export class RepositorySecurityEventStore implements SecurityEventStore {
     validateSecurityEvent(event);
     if (this.repository.findById(event.eventId))
       throw new Error(`security event already exists: ${event.eventId}`);
-    this.repository.upsert(structuredClone(event));
+    const scope = securityEventChainScope(event);
+    const previous = this.repository
+      .list()
+      .filter((stored) => securityEventChainScope(stored) === scope)
+      .at(-1)?.eventHash;
+    this.repository.upsert(chainSecurityEvent(event, previous));
   }
   query(query: SecurityEventQuery = {}): CanonicalSecurityEvent[] {
     return select(this.repository.list(), query);

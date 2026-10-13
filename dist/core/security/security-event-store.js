@@ -1,4 +1,5 @@
 import { validateSecurityEvent } from "../../contracts/index.js";
+import { chainSecurityEvent, securityEventChainScope, } from "./security-event-integrity.js";
 function select(events, query = {}) {
     const limit = Math.min(Math.max(query.limit ?? 100, 1), 100);
     return events
@@ -25,11 +26,15 @@ function select(events, query = {}) {
 }
 export class AppendOnlySecurityEventStore {
     events = new Map();
+    chainHeads = new Map();
     append(event) {
         validateSecurityEvent(event);
         if (this.events.has(event.eventId))
             throw new Error(`security event already exists: ${event.eventId}`);
-        this.events.set(event.eventId, structuredClone(event));
+        const scope = securityEventChainScope(event);
+        const chained = chainSecurityEvent(event, this.chainHeads.get(scope));
+        this.events.set(event.eventId, chained);
+        this.chainHeads.set(scope, chained.eventHash);
     }
     query(query = {}) {
         return select([...this.events.values()], query);
@@ -44,7 +49,12 @@ export class RepositorySecurityEventStore {
         validateSecurityEvent(event);
         if (this.repository.findById(event.eventId))
             throw new Error(`security event already exists: ${event.eventId}`);
-        this.repository.upsert(structuredClone(event));
+        const scope = securityEventChainScope(event);
+        const previous = this.repository
+            .list()
+            .filter((stored) => securityEventChainScope(stored) === scope)
+            .at(-1)?.eventHash;
+        this.repository.upsert(chainSecurityEvent(event, previous));
     }
     query(query = {}) {
         return select(this.repository.list(), query);

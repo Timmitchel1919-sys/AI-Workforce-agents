@@ -56,3 +56,15 @@ export async function loadApproverSnapshot(
   }
   return map;
 }
+
+/**
+ * Convenience helper to build a request-scoped approver resolver immediately
+ * before execution from authoritative storage.
+ */
+export async function createRequestScopedApproverResolver(
+  store: Pick<OperatorAccountStore, "get">,
+  operatorIds: Iterable<string>,
+): Promise<OperatorAccountApproverResolver> {
+  const snapshot = await loadApproverSnapshot(store, operatorIds);
+  return createOperatorAccountApproverResolver(snapshot);
+}

@@ -8,6 +8,8 @@ import {
   AppendOnlySecurityEventStore,
   normalizeSecurityEvent,
   SECURITY_EVENT_LIMITS,
+  SECURITY_EVENT_GENESIS_HASH,
+  verifySecurityEventIntegrity,
 } from "../core/index.js";
 import {
   SECURITY_EVENT_CATEGORIES,
@@ -146,6 +148,29 @@ test("security-event: stored event is a clone — mutating input never leaks in"
   (input as unknown as { severity: string }).severity = "info";
   const stored = store.query({ projectId: "p1" })[0];
   assert.equal(stored?.severity, "high");
+});
+
+test("security-event: append-only store creates a verifiable per-project hash chain", () => {
+  const store = new AppendOnlySecurityEventStore();
+  store.append(baseEvent({ eventId: "chain-1", projectId: "p1" }));
+  store.append(
+    baseEvent({
+      eventId: "chain-2",
+      projectId: "p1",
+      occurredAt: "2026-10-12T00:00:01.000Z",
+    }),
+  );
+  store.append(baseEvent({ eventId: "other-1", projectId: "p2" }));
+
+  const p1 = store.query({ projectId: "p1" }).reverse();
+  const p2 = store.query({ projectId: "p2" });
+  assert.equal(p1[0]?.previousEventHash, SECURITY_EVENT_GENESIS_HASH);
+  assert.equal(p1[1]?.previousEventHash, p1[0]?.eventHash);
+  assert.equal(p2[0]?.previousEventHash, SECURITY_EVENT_GENESIS_HASH);
+  assert.ok(p1.every(verifySecurityEventIntegrity));
+
+  const tampered = { ...p1[1]!, outcome: "allowed" as const };
+  assert.equal(verifySecurityEventIntegrity(tampered), false);
 });
 
 test("security-event: query filter by correlationId narrows results", () => {

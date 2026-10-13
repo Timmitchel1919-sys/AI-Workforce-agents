@@ -6,6 +6,7 @@ export interface SecurityEventStore {
 export type { AsyncSecurityEventStore } from "../../contracts/security-event.js";
 export declare class AppendOnlySecurityEventStore implements SecurityEventStore {
     private readonly events;
+    private readonly chainHeads;
     append(event: CanonicalSecurityEvent): void;
     query(query?: SecurityEventQuery): CanonicalSecurityEvent[];
 }

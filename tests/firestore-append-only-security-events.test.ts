@@ -2,6 +2,10 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { FirestoreAppendOnlySecurityEventStore } from "../adapters/index.js";
 import { FakeFirestore } from "./fixtures/fake-firestore.js";
+import {
+  SECURITY_EVENT_GENESIS_HASH,
+  verifySecurityEventIntegrity,
+} from "../core/index.js";
 
 function event(overrides: Record<string, unknown> = {}) {
   return {
@@ -58,4 +62,7 @@ test("Firestore security event store queries by project and returns newest first
     events.map((item) => item.eventId),
     ["evt-2", "evt-1"],
   );
+  assert.equal(events[1]?.previousEventHash, SECURITY_EVENT_GENESIS_HASH);
+  assert.equal(events[0]?.previousEventHash, events[1]?.eventHash);
+  assert.ok(events.every(verifySecurityEventIntegrity));
 });

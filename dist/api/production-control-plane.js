@@ -17,7 +17,7 @@ import { WorkforceManagementService } from "../control/services/workforce-servic
  * without changing this authoritative runtime graph.
  */
 import { randomUUID } from "node:crypto";
-import { FirebaseOperatorDirectory, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { FirebaseOperatorDirectory, FirebaseAppCheckVerifier, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
 import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, OperationalAuditSink, OperationalDataSystem, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
@@ -31,6 +31,10 @@ import { OnboardingControlService } from "../control/services/onboarding-control
 import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/provisioned-project-adapter.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
+import { resolveAppCheckMode, validateAppCheckProductionConfig, createDestructiveSecurityEventObserver, DEFAULT_PRIVILEGED_APP_CHECK_ROUTES, } from "./security/index.js";
+import { DestructiveActionService } from "../core/security/destructive-action-service.js";
+import { SecurityPolicyEngine, defaultSecurityPolicies, } from "../core/security/security-policy-engine.js";
+import { DestructiveSecretReferenceMutationAuthorizer, DestructiveSecurityPolicyMutationAuthorizer, SecretReferenceService, SecurityPolicyService, } from "../core/security/index.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
 import { PRODUCTION_ENVIRONMENT_DESCRIPTORS, PRODUCTION_WORKFORCE_CONFIGURATION, } from "./production-workforce-config.js";
 /**
@@ -48,6 +52,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const approvalRepository = repositories.repository("approvals");
     const handoffRepository = repositories.repository("handoffs");
     const auditRepository = repositories.repository("audit_events");
+    const destructiveActionsRepository = repositories.repository("destructive_actions");
+    const securityPoliciesRepository = repositories.repository("security_policies");
+    const secretReferencesRepository = repositories.repository("secret_references");
     const operationalEventsRepository = repositories.repository("operational_events");
     const operationalOutcomesRepository = repositories.repository("operational_outcomes");
     const agentOpsRepository = repositories.repository("agent_operations");
@@ -125,6 +132,11 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const grcTrustContentRepository = repositories.repository("grc_trust_content");
     const grcFindingsRepository = repositories.repository("grc_findings");
     await repositories.hydrateAll();
+    if (securityPoliciesRepository.list().length === 0) {
+        for (const policy of defaultSecurityPolicies(now)) {
+            securityPoliciesRepository.upsert(policy);
+        }
+    }
     const operations = new OperationalDataSystem({
         events: operationalEventsRepository,
         outcomes: operationalOutcomesRepository,
@@ -562,6 +574,23 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const query = new WorkforceQueryService(context);
     const command = new WorkforceCommandService(context);
     const graphQuery = new GraphQueryService(context);
+    const appCheckMode = resolveAppCheckMode();
+    const appCheckVerifier = new FirebaseAppCheckVerifier(services.appCheck);
+    const appCheckRequiredPaths = DEFAULT_PRIVILEGED_APP_CHECK_ROUTES;
+    const appCheckConfig = validateAppCheckProductionConfig({
+        mode: appCheckMode,
+        verifier: appCheckVerifier,
+        requiredPaths: appCheckRequiredPaths,
+    });
+    if (!appCheckConfig.valid) {
+        throw new ValidationError(appCheckConfig.error ?? "invalid App Check configuration");
+    }
+    const canonicalSecurityEventStore = new FirestoreAppendOnlySecurityEventStore(transactionalFirestore);
+    const destructiveActionObserver = createDestructiveSecurityEventObserver(canonicalSecurityEventStore);
+    const securityPolicyEngine = new SecurityPolicyEngine(securityPoliciesRepository);
+    const destructiveActions = new DestructiveActionService(securityPolicyEngine, approvals, destructiveActionsRepository, undefined, destructiveActionObserver);
+    const securityPolicies = new SecurityPolicyService(securityPoliciesRepository, new DestructiveSecurityPolicyMutationAuthorizer(destructiveActions));
+    const secretReferences = new SecretReferenceService(secretReferencesRepository, new DestructiveSecretReferenceMutationAuthorizer(destructiveActions));
     const handler = createControlPlaneApi({
         onboarding,
         projectSync,
@@ -582,6 +611,20 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         portfolio,
         product,
         workforce,
+        destructiveActionService: destructiveActions,
+        securityPolicyService: securityPolicies,
+        secretReferenceService: secretReferences,
+        securityPolicyEngine,
+        securityEventStore: canonicalSecurityEventStore,
+        operatorAccounts,
+        apiSecurity: {
+            appCheck: {
+                mode: appCheckMode,
+                verifier: appCheckVerifier,
+                requiredPaths: appCheckRequiredPaths,
+            },
+            production: process.env.NODE_ENV === "production",
+        },
     });
     return Object.freeze({
         handler,
@@ -591,6 +634,11 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         bootstrap,
         query,
         command,
+        destructiveActions,
+        securityPolicies,
+        secretReferences,
+        securityPolicyEngine,
+        canonicalSecurityEvents: canonicalSecurityEventStore,
         /**
          * The authoritative specialist workforce layer. Exposed so the API reads
          * assignments and handoffs from the same services that create them,

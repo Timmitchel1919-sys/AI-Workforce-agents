@@ -14,8 +14,9 @@ import {
   type Auth,
   type User,
 } from "firebase/auth";
-import { initializeApp, getApps } from "firebase/app";
-import { apiRequest, setAccessTokenProvider } from "../api/client";
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { apiRequest, setAccessTokenProvider, setAppCheckTokenProvider } from "../api/client";
+import { initAppCheck, getAppCheckToken } from "./appCheck";
 import type {
   AccessDetails,
   AccessState,
@@ -60,8 +61,13 @@ const STATUS_TO_ACCESS: Record<string, AccessState> = {
   revoked: "revoked",
 };
 
+function getFirebaseApp(): FirebaseApp {
+  return getApps().length > 0 ? (getApps()[0] as FirebaseApp) : initializeApp(firebaseConfig);
+}
+
 function getFirebaseAuth(): Auth {
-  const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
+  const app = getFirebaseApp();
+  initAppCheck(app);
   return getAuth(app);
 }
 
@@ -126,7 +132,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const current = getFirebaseAuth().currentUser;
       return current ? current.getIdToken(forceRefresh) : null;
     });
-    return () => setAccessTokenProvider(null);
+    setAppCheckTokenProvider((forceRefresh) => getAppCheckToken(forceRefresh));
+    return () => {
+      setAccessTokenProvider(null);
+      setAppCheckTokenProvider(null);
+    };
   }, []);
 
   useEffect(() => {

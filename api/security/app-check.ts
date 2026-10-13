@@ -108,3 +108,53 @@ export function resolveAppCheckMode(
  * the header itself.
  */
 export const APP_CHECK_HEADER = "x-firebase-appcheck";
+
+/**
+ * Health and status summary of App Check for diagnostics and Security Center.
+ * Safe fields only; never carries tokens or secrets.
+ */
+export interface AppCheckSecurityStatus {
+  mode: AppCheckMode;
+  provider: string;
+  configured: boolean;
+  verifierHealthy: boolean;
+  clientExpected: boolean;
+  lastVerificationAt?: string;
+  missingCount?: number;
+  invalidCount?: number;
+}
+
+export interface AppCheckProductionConfigInput {
+  mode: AppCheckMode;
+  verifier?: AppAttestationVerifier;
+  requiredPaths?: readonly RegExp[];
+}
+
+/**
+ * Deterministically validates server App Check configuration at startup.
+ * When mode is enforced, requires a real verifier and protected route patterns.
+ */
+export function validateAppCheckProductionConfig(
+  input: AppCheckProductionConfigInput,
+): { valid: boolean; error?: string } {
+  if (input.mode === "enforced") {
+    if (
+      !input.verifier ||
+      input.verifier instanceof DefaultAppAttestationVerifier
+    ) {
+      return {
+        valid: false,
+        error:
+          "APP_CHECK_ENFORCED_BUT_VERIFIER_UNAVAILABLE: server verifier is required when App Check is enforced",
+      };
+    }
+    if (!input.requiredPaths || input.requiredPaths.length === 0) {
+      return {
+        valid: false,
+        error:
+          "APP_CHECK_ENFORCED_BUT_NO_ROUTES_CONFIGURED: privileged route patterns must be configured",
+      };
+    }
+  }
+  return { valid: true };
+}

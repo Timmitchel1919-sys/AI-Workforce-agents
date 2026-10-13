@@ -85,6 +85,11 @@ export interface AssertApprovedInput {
    * (or historical, strongest-wins merged) policy demands them.
    */
   evidence?: SecurityExecutionEvidence;
+  /**
+   * Optional request-scoped fresh approver resolver. Overrides the service-level
+   * resolver for this execution.
+   */
+  approverResolver?: DestructiveApproverResolver;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1013,7 +1018,8 @@ export class DestructiveActionService {
     // Approval metadata is never accepted as proof of CURRENT
     // authorization. Executing without a resolver would silently trust
     // stale `approval.decidedBy` ids and defeat Layer-3 TOCTOU.
-    if (!this.approverResolver) {
+    const resolver = input.approverResolver ?? this.approverResolver;
+    if (!resolver) {
       this.emitBlock(record, "authoritative_approver_revalidation_unavailable");
       throw new StateTransitionError(
         "destructive execution blocked: authoritative approver revalidation unavailable",
@@ -1033,7 +1039,7 @@ export class DestructiveActionService {
           "separation of duties: the requester cannot count as an independent approver",
         );
       }
-      const current = this.approverResolver.resolve(approverId);
+      const current = resolver.resolve(approverId);
       const invalid =
         !current ||
         !operatorCan(current, "approve_destructive_action") ||
@@ -1193,6 +1199,19 @@ export class DestructiveActionService {
 
   list(): DestructiveActionRequest[] {
     return this.repo.list();
+  }
+
+  /** Operator ids attached to the active revision's approval records. */
+  currentApproverIds(requestId: string): string[] {
+    const record = this.require(requestId);
+    const activeRow = record.approvalHistory.find(
+      (entry) => entry.revision === record.revision && !entry.invalidatedAt,
+    );
+    if (!activeRow) return [];
+    return [activeRow.primaryApprovalId, activeRow.secondaryApprovalId]
+      .filter((id): id is string => Boolean(id))
+      .map((id) => this.approvals.get(id)?.decidedBy)
+      .filter((id): id is string => Boolean(id));
   }
 
   listForApproval(principal: OperatorPrincipal): DestructiveActionRequest[] {

@@ -39,6 +39,7 @@ import {
 } from "../contracts/index.js";
 import {
   FirebaseOperatorDirectory,
+  FirebaseAppCheckVerifier,
   FirestoreExecutionPlanStore,
   FirestoreExecutionRecordStore,
   FirestoreExecutionSessionStore,
@@ -137,6 +138,27 @@ import { ProvisionedProjectAdapter } from "../adapters/projects/provisioned/prov
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi, type ApiHandler } from "./http-api.js";
 import {
+  resolveAppCheckMode,
+  validateAppCheckProductionConfig,
+  createDestructiveSecurityEventObserver,
+  DEFAULT_PRIVILEGED_APP_CHECK_ROUTES,
+} from "./security/index.js";
+import { DestructiveActionService } from "../core/security/destructive-action-service.js";
+import {
+  SecurityPolicyEngine,
+  defaultSecurityPolicies,
+} from "../core/security/security-policy-engine.js";
+import {
+  DestructiveSecretReferenceMutationAuthorizer,
+  DestructiveSecurityPolicyMutationAuthorizer,
+  SecretReferenceService,
+  SecurityPolicyService,
+} from "../core/security/index.js";
+import type { DestructiveActionRequest } from "../contracts/destructive-action.js";
+import type { SecurityPolicy } from "../contracts/security-policy.js";
+import type { ManagedSecretReference } from "../contracts/secret-reference.js";
+import type { AsyncSecurityEventStore } from "../contracts/security-event.js";
+import {
   createProductionWorkforceBootstrap,
   type ProductionWorkforceBootstrap,
   type ProductionWorkforceConfiguration,
@@ -154,6 +176,11 @@ export interface ProductionControlPlaneRuntime {
   readonly bootstrap: ProductionWorkforceBootstrap;
   readonly query: WorkforceQueryService;
   readonly command: WorkforceCommandService;
+  readonly destructiveActions: DestructiveActionService;
+  readonly securityPolicyEngine: SecurityPolicyEngine;
+  readonly securityPolicies: SecurityPolicyService;
+  readonly secretReferences: SecretReferenceService;
+  readonly canonicalSecurityEvents: AsyncSecurityEventStore;
   /**
    * The FULL release services. The control-plane context exposes only their read views; the
    * trusted host (and tests) hold the whole thing. No HTTP route reaches the mutating methods.
@@ -229,6 +256,12 @@ export async function createProductionControlPlaneRuntime(
   const approvalRepository = repositories.repository<Approval>("approvals");
   const handoffRepository = repositories.repository<Handoff>("handoffs");
   const auditRepository = repositories.repository<AuditEvent>("audit_events");
+  const destructiveActionsRepository =
+    repositories.repository<DestructiveActionRequest>("destructive_actions");
+  const securityPoliciesRepository =
+    repositories.repository<SecurityPolicy>("security_policies");
+  const secretReferencesRepository =
+    repositories.repository<ManagedSecretReference>("secret_references");
   const operationalEventsRepository =
     repositories.repository<OperationalEvent>("operational_events");
   const operationalOutcomesRepository =
@@ -483,6 +516,12 @@ export async function createProductionControlPlaneRuntime(
   >("grc_findings");
 
   await repositories.hydrateAll();
+
+  if (securityPoliciesRepository.list().length === 0) {
+    for (const policy of defaultSecurityPolicies(now)) {
+      securityPoliciesRepository.upsert(policy);
+    }
+  }
 
   const operations = new OperationalDataSystem({
     events: operationalEventsRepository,
@@ -1109,6 +1148,45 @@ export async function createProductionControlPlaneRuntime(
   const query = new WorkforceQueryService(context);
   const command = new WorkforceCommandService(context);
   const graphQuery = new GraphQueryService(context);
+  const appCheckMode = resolveAppCheckMode();
+  const appCheckVerifier = new FirebaseAppCheckVerifier(services.appCheck);
+  const appCheckRequiredPaths = DEFAULT_PRIVILEGED_APP_CHECK_ROUTES;
+  const appCheckConfig = validateAppCheckProductionConfig({
+    mode: appCheckMode,
+    verifier: appCheckVerifier,
+    requiredPaths: appCheckRequiredPaths,
+  });
+  if (!appCheckConfig.valid) {
+    throw new ValidationError(
+      appCheckConfig.error ?? "invalid App Check configuration",
+    );
+  }
+
+  const canonicalSecurityEventStore = new FirestoreAppendOnlySecurityEventStore(
+    transactionalFirestore,
+  );
+  const destructiveActionObserver = createDestructiveSecurityEventObserver(
+    canonicalSecurityEventStore,
+  );
+  const securityPolicyEngine = new SecurityPolicyEngine(
+    securityPoliciesRepository,
+  );
+  const destructiveActions = new DestructiveActionService(
+    securityPolicyEngine,
+    approvals,
+    destructiveActionsRepository,
+    undefined,
+    destructiveActionObserver,
+  );
+  const securityPolicies = new SecurityPolicyService(
+    securityPoliciesRepository,
+    new DestructiveSecurityPolicyMutationAuthorizer(destructiveActions),
+  );
+  const secretReferences = new SecretReferenceService(
+    secretReferencesRepository,
+    new DestructiveSecretReferenceMutationAuthorizer(destructiveActions),
+  );
+
   const handler = createControlPlaneApi({
     onboarding,
     projectSync,
@@ -1129,6 +1207,20 @@ export async function createProductionControlPlaneRuntime(
     portfolio,
     product,
     workforce,
+    destructiveActionService: destructiveActions,
+    securityPolicyService: securityPolicies,
+    secretReferenceService: secretReferences,
+    securityPolicyEngine,
+    securityEventStore: canonicalSecurityEventStore,
+    operatorAccounts,
+    apiSecurity: {
+      appCheck: {
+        mode: appCheckMode,
+        verifier: appCheckVerifier,
+        requiredPaths: appCheckRequiredPaths,
+      },
+      production: process.env.NODE_ENV === "production",
+    },
   });
 
   return Object.freeze({
@@ -1139,6 +1231,11 @@ export async function createProductionControlPlaneRuntime(
     bootstrap,
     query,
     command,
+    destructiveActions,
+    securityPolicies,
+    secretReferences,
+    securityPolicyEngine,
+    canonicalSecurityEvents: canonicalSecurityEventStore,
     /**
      * The authoritative specialist workforce layer. Exposed so the API reads
      * assignments and handoffs from the same services that create them,

@@ -67,3 +67,30 @@ export declare function resolveAppCheckMode(env?: Record<string, string | undefi
  * the header itself.
  */
 export declare const APP_CHECK_HEADER = "x-firebase-appcheck";
+/**
+ * Health and status summary of App Check for diagnostics and Security Center.
+ * Safe fields only; never carries tokens or secrets.
+ */
+export interface AppCheckSecurityStatus {
+    mode: AppCheckMode;
+    provider: string;
+    configured: boolean;
+    verifierHealthy: boolean;
+    clientExpected: boolean;
+    lastVerificationAt?: string;
+    missingCount?: number;
+    invalidCount?: number;
+}
+export interface AppCheckProductionConfigInput {
+    mode: AppCheckMode;
+    verifier?: AppAttestationVerifier;
+    requiredPaths?: readonly RegExp[];
+}
+/**
+ * Deterministically validates server App Check configuration at startup.
+ * When mode is enforced, requires a real verifier and protected route patterns.
+ */
+export declare function validateAppCheckProductionConfig(input: AppCheckProductionConfigInput): {
+    valid: boolean;
+    error?: string;
+};

@@ -3,6 +3,10 @@ import { WorkforceCommandService, WorkforceQueryService, type ControlPlaneContex
 import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, SpecialistHandoffService, InMemoryAssignmentRepository, SpecialistAssignmentService, WriteScopeLeaseManager, OperationalDataSystem, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { type ApiHandler } from "./http-api.js";
+import { DestructiveActionService } from "../core/security/destructive-action-service.js";
+import { SecurityPolicyEngine } from "../core/security/security-policy-engine.js";
+import { SecretReferenceService, SecurityPolicyService } from "../core/security/index.js";
+import type { AsyncSecurityEventStore } from "../contracts/security-event.js";
 import { type ProductionWorkforceBootstrap, type ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
 export interface ProductionControlPlaneRuntime {
     readonly handler: ApiHandler;
@@ -12,6 +16,11 @@ export interface ProductionControlPlaneRuntime {
     readonly bootstrap: ProductionWorkforceBootstrap;
     readonly query: WorkforceQueryService;
     readonly command: WorkforceCommandService;
+    readonly destructiveActions: DestructiveActionService;
+    readonly securityPolicyEngine: SecurityPolicyEngine;
+    readonly securityPolicies: SecurityPolicyService;
+    readonly secretReferences: SecretReferenceService;
+    readonly canonicalSecurityEvents: AsyncSecurityEventStore;
     /**
      * The FULL release services. The control-plane context exposes only their read views; the
      * trusted host (and tests) hold the whole thing. No HTTP route reaches the mutating methods.

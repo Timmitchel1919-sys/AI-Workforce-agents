@@ -23,5 +23,5 @@ export declare function apiError(code: ApiErrorCode, message: string, correlatio
  * them from the trusted execution path. Routes that accept arbitrary
  * JSON strip these before passing the body to downstream services.
  */
-export declare const UNTRUSTED_BODY_FIELDS: readonly ["role", "capabilities", "isAdmin", "authenticated", "firebaseUid", "operatorId", "allowedProjects", "mfaVerified", "reauthVerified", "approvalSatisfied"];
+export declare const UNTRUSTED_BODY_FIELDS: readonly ["role", "capabilities", "isAdmin", "authenticated", "firebaseUid", "operatorId", "allowedProjects", "mfaVerified", "mfa", "reauthVerified", "reauthentication", "approvalSatisfied", "appCheckValid"];
 export declare function stripUntrustedFields(body: Record<string, unknown>): Record<string, unknown>;

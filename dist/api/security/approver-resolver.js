@@ -29,3 +29,11 @@ export async function loadApproverSnapshot(store, operatorIds) {
     }
     return map;
 }
+/**
+ * Convenience helper to build a request-scoped approver resolver immediately
+ * before execution from authoritative storage.
+ */
+export async function createRequestScopedApproverResolver(store, operatorIds) {
+    const snapshot = await loadApproverSnapshot(store, operatorIds);
+    return createOperatorAccountApproverResolver(snapshot);
+}

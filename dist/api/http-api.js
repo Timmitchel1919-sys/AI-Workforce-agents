@@ -1,7 +1,25 @@
-import { NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, WorkforceError, } from "../contracts/index.js";
+/**
+ * Control Plane HTTP API.
+ *
+ * A dependency-free Node `http` request handler that exposes
+ * `WorkforceQueryService` (read) and `WorkforceCommandService` (write) over
+ * JSON. This is the seam the Phase 7C UI consumes:
+ *
+ *   UI → HTTP API → Query / Command service → Core → Repository → Firebase
+ *
+ * The API is NOT the authority. It authenticates the caller (via the injected
+ * `OperatorDirectory`), threads a correlation id, maps errors and command
+ * `errorKind`s to status codes, and forwards everything else to the two
+ * services — which enforce authorization, approval, state, project isolation,
+ * and audit. No stack trace is ever sent to a client.
+ */
+import { randomUUID } from "node:crypto";
+import { NotFoundError, PermissionDeniedError, StateTransitionError, ValidationError, WorkforceError, operatorCan, operatorCanAccessProject, } from "../contracts/index.js";
 import { sanitizeCorrelationId } from "../control/correlation.js";
 import { parseGraphQueryParams } from "../control/services/graph-query-service.js";
-import { APP_CHECK_HEADER, DEFAULT_CORS, applyCors, applySecurityHeaders, apiError, appCheckBlocks, createInMemoryRateLimiter, evaluateAppCheck, resolveAppCheckMode, } from "./security/index.js";
+import { APP_CHECK_HEADER, DEFAULT_CORS, applyCors, applySecurityHeaders, apiError, appCheckBlocks, createInMemoryRateLimiter, evaluateAppCheck, resolveAppCheckMode, routeSecurityPolicyFor, FirebaseMfaVerifier, FirebaseReauthenticationVerifier, createRequestScopedApproverResolver, stripUntrustedFields, DEFAULT_PRIVILEGED_APP_CHECK_ROUTES, } from "./security/index.js";
+import { SECURITY_EVENT_TYPES, } from "../contracts/security-event.js";
+import { normalizeSecurityEvent } from "../core/security/security-event-normalizer.js";
 const ONBOARDING_METHODS = {
     onboarding_create: "onboardingCreate",
     onboarding_update: "onboardingUpdate",
@@ -87,8 +105,29 @@ export function createControlPlaneApi(options) {
     const rateLimiter = apiSecurity?.rateLimiter ?? createInMemoryRateLimiter();
     const appCheckMode = apiSecurity?.appCheck?.mode ?? resolveAppCheckMode();
     const appCheckVerifier = apiSecurity?.appCheck?.verifier;
-    const appCheckRequiredPaths = apiSecurity?.appCheck?.requiredPaths ?? [];
+    const appCheckRequiredPaths = apiSecurity?.appCheck?.requiredPaths ??
+        (appCheckMode === "enforced" ? DEFAULT_PRIVILEGED_APP_CHECK_ROUTES : []);
     const productionHeaders = apiSecurity?.production === true;
+    const mfaVerifier = options.mfaVerifier ?? new FirebaseMfaVerifier();
+    const reauthVerifier = options.reauthVerifier ?? new FirebaseReauthenticationVerifier();
+    const securityEventStore = options.securityEventStore;
+    async function recordSecurityEvent(event) {
+        if (!securityEventStore)
+            return;
+        try {
+            const normalized = normalizeSecurityEvent({
+                ...event,
+                eventId: event.eventId ?? `sec_${randomUUID()}`,
+            });
+            const res = securityEventStore.append(normalized);
+            if (res && typeof res.then === "function") {
+                await res;
+            }
+        }
+        catch {
+            // Security event logging must not crash unprivileged operations
+        }
+    }
     return (req, res) => {
         void handle(req, res).catch((error) => {
             send(res, 500, { error: { message: errorMessage(error) } }, "");
@@ -106,6 +145,7 @@ export function createControlPlaneApi(options) {
         const url = new URL(req.url ?? "/", "http://localhost");
         const path = url.pathname.replace(/\/$/, "");
         const method = (req.method ?? "GET").toUpperCase();
+        const routePolicy = routeSecurityPolicyFor(method, path, base);
         // Rate limit, keyed by route + remote ip (pre-auth signal). Health
         // probes are intentionally exempt — load balancers depend on them.
         if (!(method === "GET" && path === base + "/health")) {
@@ -114,10 +154,23 @@ export function createControlPlaneApi(options) {
                 ?.trim();
             const rateKey = `${method}:${path}:${ipHeader ?? req.socket.remoteAddress ?? "unknown"}`;
             const decision = rateLimiter.check({
-                profile: "authenticated_default",
+                profile: routePolicy?.rateLimitProfile ?? "authenticated_default",
                 key: rateKey,
             });
             if (!decision.allowed) {
+                await recordSecurityEvent({
+                    category: "api_security",
+                    type: SECURITY_EVENT_TYPES.RATE_LIMIT_EXCEEDED,
+                    severity: "medium",
+                    outcome: "blocked",
+                    actor: { kind: "unknown" },
+                    source: { kind: "network", ip: ipHeader },
+                    correlationId,
+                    evidence: {
+                        path,
+                        retryAfterSeconds: decision.retryAfterSeconds,
+                    },
+                });
                 if (decision.retryAfterSeconds !== undefined) {
                     res.setHeader("retry-after", String(decision.retryAfterSeconds));
                 }
@@ -129,7 +182,8 @@ export function createControlPlaneApi(options) {
         // `monitor` it never blocks; in `enforced` it blocks protected
         // routes with missing/invalid/unavailable attestation.
         const token = headerValue(req, APP_CHECK_HEADER);
-        const routeRequiresAppCheck = appCheckRequiredPaths.some((re) => re.test(path));
+        const routeRequiresAppCheck = routePolicy?.appCheck === "required" ||
+            appCheckRequiredPaths.some((re) => re.test(path));
         const appCheck = await evaluateAppCheck({
             mode: appCheckMode,
             token: token ?? undefined,
@@ -142,6 +196,23 @@ export function createControlPlaneApi(options) {
                 : appCheck.outcome === "unavailable"
                     ? "security_dependency_unavailable"
                     : "app_check_invalid";
+            await recordSecurityEvent({
+                category: "api_security",
+                type: code,
+                severity: appCheck.outcome === "unavailable" ? "high" : "medium",
+                outcome: "blocked",
+                actor: { kind: "unknown" },
+                source: {
+                    kind: "network",
+                    ip: headerValue(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+                        req.socket.remoteAddress,
+                },
+                correlationId,
+                evidence: {
+                    path,
+                    appCheckOutcome: appCheck.outcome,
+                },
+            });
             const { status, body } = apiError(code, "App Check verification required", correlationId);
             return send(res, status, body, correlationId);
         }
@@ -161,6 +232,20 @@ export function createControlPlaneApi(options) {
         if (method === "GET" && route === "/me/access") {
             const identity = await verifyIdentity(req);
             if (!identity) {
+                await recordSecurityEvent({
+                    category: "authentication",
+                    type: SECURITY_EVENT_TYPES.AUTH_FAILED,
+                    severity: "medium",
+                    outcome: "denied",
+                    actor: { kind: "unknown" },
+                    source: {
+                        kind: "network",
+                        ip: headerValue(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+                            req.socket.remoteAddress,
+                    },
+                    correlationId,
+                    evidence: { path: route },
+                });
                 return send(res, 401, { error: { message: "authentication required" } }, correlationId);
             }
             if (!options.access) {
@@ -176,7 +261,43 @@ export function createControlPlaneApi(options) {
         // Authenticate every other route.
         const principal = await authenticate(req);
         if (!principal) {
+            await recordSecurityEvent({
+                category: "authentication",
+                type: SECURITY_EVENT_TYPES.AUTH_FAILED,
+                severity: "medium",
+                outcome: "denied",
+                actor: { kind: "unknown" },
+                source: {
+                    kind: "network",
+                    ip: headerValue(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+                        req.socket.remoteAddress,
+                },
+                correlationId,
+                evidence: { path: route },
+            });
             return send(res, 401, { error: { message: "authentication required" } }, correlationId);
+        }
+        // Static route metadata is defense in depth. Core command services still
+        // perform their own authorization; this early gate prevents privileged
+        // handlers from being reached with a capability the route forbids.
+        if (routePolicy?.capability &&
+            !operatorCan(principal, routePolicy.capability)) {
+            await recordSecurityEvent({
+                category: "authorization",
+                type: SECURITY_EVENT_TYPES.CAPABILITY_DENIED,
+                severity: "high",
+                outcome: "denied",
+                actor: { kind: "human", id: principal.id },
+                source: {
+                    kind: "network",
+                    ip: headerValue(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+                        req.socket.remoteAddress,
+                },
+                correlationId,
+                evidence: { path: route, capability: routePolicy.capability },
+            });
+            const { status, body } = apiError("forbidden", "required capability is not granted", correlationId);
+            return send(res, status, body, correlationId);
         }
         try {
             if (options.projectSync)
@@ -195,6 +316,12 @@ export function createControlPlaneApi(options) {
             }
             if (route.startsWith("/datagov/")) {
                 return await handleDataGovernance(route, segs, method, req, res, principal, correlationId);
+            }
+            if (route.startsWith("/security/foundation-policies")) {
+                return await handleFoundationPolicies(req, res, segs, method, principal, correlationId);
+            }
+            if (route.startsWith("/security/secret-references")) {
+                return await handleSecretReferences(req, res, segs, method, principal, correlationId);
             }
             if (route.startsWith("/security/")) {
                 return await handleSecurity(route, segs, method, req, res, principal, correlationId);
@@ -299,6 +426,9 @@ export function createControlPlaneApi(options) {
             if (method === "POST" && segs[0] === "commands" && segs.length === 2) {
                 return await handleCommand(req, res, segs[1], principal, correlationId);
             }
+            if (route.startsWith("/destructive/")) {
+                return await handleDestructive(req, res, route, segs, method, principal, correlationId);
+            }
             return send(res, method === "POST" ? 404 : 405, { error: { message: "not found" } }, correlationId);
         }
         catch (error) {
@@ -306,13 +436,17 @@ export function createControlPlaneApi(options) {
         }
     }
     async function verifyIdentity(req) {
-        if (!options.identityVerifier)
+        const verifier = options.identityVerifier ??
+            ("verify" in options.operatorDirectory
+                ? options.operatorDirectory
+                : undefined);
+        if (!verifier)
             return null;
         const header = headerValue(req, "authorization") ?? "";
         const match = /^Bearer\s+(.+)$/i.exec(header.trim());
         if (!match)
             return null;
-        return options.identityVerifier.verify(match[1].trim());
+        return verifier.verify(match[1].trim());
     }
     async function authenticate(req) {
         const header = headerValue(req, "authorization") ?? "";
@@ -320,6 +454,150 @@ export function createControlPlaneApi(options) {
         if (!match)
             return null;
         return operatorDirectory.resolve(match[1].trim());
+    }
+    async function handleDestructive(req, res, route, segs, method, principal, correlationId) {
+        const service = options.destructiveActionService;
+        if (!service) {
+            return send(res, 404, { error: { message: "destructive action service not configured" } }, correlationId);
+        }
+        try {
+            // POST /destructive/requests
+            if (route === "/destructive/requests" && method === "POST") {
+                const rawBody = await readJsonBody(req, maxBody);
+                const body = stripUntrustedFields(rawBody);
+                const result = service.request(principal, body, correlationId);
+                return send(res, 201, result, correlationId);
+            }
+            // GET /destructive/requests
+            if (route === "/destructive/requests" && method === "GET") {
+                const requests = service.list();
+                return send(res, 200, { requests }, correlationId);
+            }
+            // GET /destructive/requests/:id
+            if (segs.length === 3 &&
+                segs[0] === "destructive" &&
+                segs[1] === "requests" &&
+                method === "GET") {
+                const item = service.get(segs[2]);
+                if (!item) {
+                    return send(res, 404, { error: { message: "not found" } }, correlationId);
+                }
+                return send(res, 200, item, correlationId);
+            }
+            // POST /destructive/requests/:id/decide
+            if (segs.length === 4 &&
+                segs[0] === "destructive" &&
+                segs[1] === "requests" &&
+                segs[3] === "decide" &&
+                method === "POST") {
+                const rawBody = await readJsonBody(req, maxBody);
+                const body = stripUntrustedFields(rawBody);
+                const result = service.decide(principal, segs[2], body.decision, typeof body.reason === "string" ? body.reason : undefined);
+                return send(res, 200, result, correlationId);
+            }
+            // POST /destructive/requests/:id/execute
+            if (segs.length === 4 &&
+                segs[0] === "destructive" &&
+                segs[1] === "requests" &&
+                segs[3] === "execute" &&
+                method === "POST") {
+                return send(res, 405, {
+                    error: {
+                        message: "generic destructive execution is disabled; use the bound resource executor",
+                    },
+                }, correlationId);
+            }
+            return send(res, 404, { error: { message: "not found" } }, correlationId);
+        }
+        catch (e) {
+            return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+        }
+    }
+    async function handleFoundationPolicies(req, res, segs, method, principal, correlationId) {
+        const service = options.securityPolicyService;
+        if (!service) {
+            return send(res, 404, { error: { message: "not found" } }, correlationId);
+        }
+        if (method === "GET" && segs.length === 2) {
+            return send(res, 200, { policies: service.list(principal) }, correlationId);
+        }
+        if (method !== "PUT" || segs.length !== 3) {
+            return send(res, 405, { error: { message: "method not allowed" } }, correlationId);
+        }
+        const rawBody = await readJsonBody(req, maxBody);
+        const body = stripUntrustedFields(rawBody);
+        const policy = body.policy;
+        if (!policy || typeof policy !== "object" || Array.isArray(policy)) {
+            throw new ValidationError("policy object is required");
+        }
+        if (policy.id !== segs[2]) {
+            throw new ValidationError("policy id must match the route id");
+        }
+        if (typeof body.destructiveActionId !== "string") {
+            throw new ValidationError("destructiveActionId is required");
+        }
+        const identity = await verifyIdentity(req);
+        const destructive = options.destructiveActionService;
+        if (!destructive) {
+            throw new PermissionDeniedError("destructive action service unavailable");
+        }
+        const approverResolver = options.operatorAccounts
+            ? await createRequestScopedApproverResolver(options.operatorAccounts, destructive.currentApproverIds(body.destructiveActionId))
+            : undefined;
+        const stored = await service.upsert(principal, policy, {
+            correlationId,
+            destructiveActionId: body.destructiveActionId,
+            environment: productionHeaders ? "production" : "local",
+            evidence: {
+                mfa: mfaVerifier.verify(identity),
+                reauth: reauthVerifier.verify(identity),
+            },
+            approverResolver,
+        });
+        return send(res, 200, stored, correlationId);
+    }
+    async function handleSecretReferences(req, res, segs, method, principal, correlationId) {
+        const service = options.secretReferenceService;
+        const destructive = options.destructiveActionService;
+        if (!service || !destructive) {
+            return send(res, 404, { error: { message: "not found" } }, correlationId);
+        }
+        if (method === "GET" && segs.length === 2) {
+            return send(res, 200, { references: service.list(principal) }, correlationId);
+        }
+        const isCreate = method === "POST" && segs.length === 2;
+        const isUpdate = method === "PATCH" && segs.length === 3;
+        if (!isCreate && !isUpdate) {
+            return send(res, 405, { error: { message: "method not allowed" } }, correlationId);
+        }
+        const body = await readJsonBody(req, maxBody);
+        if (typeof body.destructiveActionId !== "string") {
+            throw new ValidationError("destructiveActionId is required");
+        }
+        const mutation = isCreate ? body.reference : body.update;
+        if (!mutation || typeof mutation !== "object" || Array.isArray(mutation)) {
+            throw new ValidationError(isCreate ? "reference object is required" : "update object is required");
+        }
+        const identity = await verifyIdentity(req);
+        const approverResolver = options.operatorAccounts
+            ? await createRequestScopedApproverResolver(options.operatorAccounts, destructive.currentApproverIds(body.destructiveActionId))
+            : undefined;
+        const context = {
+            correlationId,
+            destructiveActionId: body.destructiveActionId,
+            environment: productionHeaders
+                ? "production"
+                : "local",
+            evidence: {
+                mfa: mfaVerifier.verify(identity),
+                reauth: reauthVerifier.verify(identity),
+            },
+            approverResolver,
+        };
+        const stored = isCreate
+            ? await service.create(principal, mutation, context)
+            : await service.update(principal, `secret://${segs[2]}`, mutation, context);
+        return send(res, isCreate ? 201 : 200, stored, correlationId);
     }
     async function handleGet(res, segs, params, principal, correlationId) {
         const [head, id] = segs;
@@ -857,8 +1135,121 @@ export function createControlPlaneApi(options) {
         catch (error) {
             return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
         }
+        const routePolicy = routeSecurityPolicyFor("POST", `${base}/commands/${name}`, base);
+        let destructiveExecutionId;
+        if (routePolicy) {
+            if (routePolicy.projectScope && typeof body.projectId === "string") {
+                if (!operatorCanAccessProject(principal, body.projectId)) {
+                    await recordSecurityEvent({
+                        category: "authorization",
+                        type: SECURITY_EVENT_TYPES.PROJECT_SCOPE_DENIED,
+                        severity: "high",
+                        outcome: "denied",
+                        actor: { kind: "human", id: principal.id },
+                        source: {
+                            kind: "network",
+                            ip: headerValue(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+                                req.socket.remoteAddress,
+                        },
+                        correlationId,
+                        evidence: { command: name, projectId: body.projectId },
+                    });
+                    const { status, body: errBody } = apiError("forbidden", `operator does not have access to project ${body.projectId}`, correlationId);
+                    return send(res, status, errBody, correlationId);
+                }
+            }
+            if (options.securityPolicyEngine && routePolicy.securityPolicyAction) {
+                const decision = options.securityPolicyEngine.evaluate({
+                    action: routePolicy.securityPolicyAction,
+                    actorId: principal.id,
+                    actorType: "human",
+                    role: principal.role,
+                    projectId: typeof body.projectId === "string" ? body.projectId : undefined,
+                    environment: apiSecurity?.production === true ? "production" : "local",
+                    targetResourceType: "control_plane_command",
+                    targetResourceId: name,
+                    destructive: routePolicy.destructive === true,
+                    irreversible: body.irreversible === true,
+                    production: apiSecurity?.production === true,
+                    requestedAt: new Date().toISOString(),
+                    correlationId,
+                });
+                if (!decision.allowed) {
+                    await recordSecurityEvent({
+                        category: "policy",
+                        type: SECURITY_EVENT_TYPES.POLICY_DENIED,
+                        severity: decision.risk === "critical" ? "critical" : "high",
+                        outcome: "denied",
+                        actor: { kind: "human", id: principal.id },
+                        source: {
+                            kind: "network",
+                            ip: headerValue(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+                                req.socket.remoteAddress,
+                        },
+                        correlationId,
+                        evidence: { command: name, reason: decision.reason },
+                    });
+                    const { status, body: errBody } = apiError("forbidden", decision.reason ?? "security policy denied action", correlationId);
+                    return send(res, status, errBody, correlationId);
+                }
+            }
+            if (routePolicy.destructive &&
+                (options.destructiveActionService || productionHeaders)) {
+                if (!options.destructiveActionService ||
+                    typeof body.destructiveActionId !== "string") {
+                    return send(res, 403, { error: { message: "approved destructiveActionId is required" } }, correlationId);
+                }
+                const verifiedIdentity = await verifyIdentity(req);
+                const mfa = mfaVerifier.verify(verifiedIdentity);
+                const reauth = reauthVerifier.verify(verifiedIdentity);
+                const record = options.destructiveActionService.get(String(body.destructiveActionId));
+                if (!record) {
+                    return send(res, 404, { error: { message: "destructive action request not found" } }, correlationId);
+                }
+                let approverResolver;
+                if (options.operatorAccounts) {
+                    approverResolver = await createRequestScopedApproverResolver(options.operatorAccounts, options.destructiveActionService.currentApproverIds(record.id));
+                }
+                try {
+                    options.destructiveActionService.assertApproved({
+                        requestId: body.destructiveActionId,
+                        principal,
+                        actionType: record.actionType,
+                        targetResourceType: "control_plane_command",
+                        targetResourceId: name,
+                        environment: productionHeaders ? "production" : "local",
+                        projectId: typeof body.projectId === "string"
+                            ? body.projectId
+                            : record.projectId,
+                        evidence: { mfa, reauth },
+                        approverResolver,
+                    });
+                    destructiveExecutionId = body.destructiveActionId;
+                }
+                catch (e) {
+                    return send(res, statusForError(e), { error: { message: errorMessage(e) } }, correlationId);
+                }
+            }
+        }
         const fn = command[methodName];
-        const result = await fn.call(command, principal, body, { correlationId });
+        let result;
+        try {
+            result = await fn.call(command, principal, body, { correlationId });
+        }
+        catch (error) {
+            if (destructiveExecutionId && options.destructiveActionService) {
+                options.destructiveActionService.markFailed(destructiveExecutionId, principal.id, errorMessage(error));
+            }
+            throw error;
+        }
+        if (destructiveExecutionId && options.destructiveActionService) {
+            if (result.errorKind) {
+                options.destructiveActionService.markFailed(destructiveExecutionId, principal.id, `command failed: ${result.errorKind}`);
+            }
+            else {
+                options.destructiveActionService.markExecuted(destructiveExecutionId, principal.id, Object.freeze({ command: name, correlationId }));
+            }
+        }
         const status = result.errorKind ? ERROR_KIND_STATUS[result.errorKind] : 200;
         return send(res, status, result, correlationId);
     }
@@ -877,6 +1268,22 @@ export function createControlPlaneApi(options) {
 /* ------------------------------------------------------------------ */
 /* Helpers                                                            */
 /* ------------------------------------------------------------------ */
+function sanitizeRequestBody(body) {
+    const clean = {};
+    for (const [k, v] of Object.entries(body)) {
+        if (k === "mfa" ||
+            k === "mfaVerified" ||
+            k === "reauth" ||
+            k === "reauthVerified" ||
+            k === "reauthentication" ||
+            k === "approvalSatisfied" ||
+            k === "appCheckValid") {
+            continue;
+        }
+        clean[k] = v;
+    }
+    return clean;
+}
 function headerValue(req, name) {
     const raw = req.headers[name];
     return Array.isArray(raw) ? raw[0] : raw;
@@ -903,7 +1310,7 @@ async function readJsonBody(req, maxBytes) {
             Array.isArray(preParsed)) {
             throw new ValidationError("request body must be a JSON object");
         }
-        return preParsed;
+        return sanitizeRequestBody(preParsed);
     }
     const chunks = [];
     let total = 0;
@@ -927,7 +1334,7 @@ async function readJsonBody(req, maxBytes) {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         throw new ValidationError("request body must be a JSON object");
     }
-    return parsed;
+    return sanitizeRequestBody(parsed);
 }
 /** Non-negative integers from the query string (invalid → ValidationError). */
 function boundedInts(params, keys) {

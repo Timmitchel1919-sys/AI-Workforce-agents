@@ -29,3 +29,8 @@ export declare function createOperatorAccountApproverResolver(snapshot: Readonly
  * so the evidence is maximally fresh.
  */
 export declare function loadApproverSnapshot(store: Pick<OperatorAccountStore, "get">, operatorIds: Iterable<string>): Promise<ReadonlyMap<string, OperatorAccount | undefined>>;
+/**
+ * Convenience helper to build a request-scoped approver resolver immediately
+ * before execution from authoritative storage.
+ */
+export declare function createRequestScopedApproverResolver(store: Pick<OperatorAccountStore, "get">, operatorIds: Iterable<string>): Promise<OperatorAccountApproverResolver>;

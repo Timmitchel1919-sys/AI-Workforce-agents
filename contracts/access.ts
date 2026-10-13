@@ -71,6 +71,14 @@ export interface VerifiedIdentity {
   email?: string;
   displayName?: string;
   emailVerified: boolean;
+  /** Unix timestamp in seconds when the authentication ceremony occurred. */
+  authTime?: number;
+  /** Verified Firebase Auth token claims (e.g. second factor for MFA). */
+  firebaseClaims?: {
+    signInSecondFactor?: string;
+    secondFactorIdentifier?: string;
+    signInProvider?: string;
+  };
 }
 
 /** Verifies an opaque credential (Firebase ID token) → identity or null. */

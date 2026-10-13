@@ -36,11 +36,34 @@ export class FirebaseOperatorDirectory {
         }
         const email = typeof decoded.email === "string" ? decoded.email : undefined;
         const name = typeof decoded.name === "string" ? decoded.name : undefined;
+        const authTime = typeof decoded.auth_time === "number" ? decoded.auth_time : undefined;
+        const firebaseRaw = decoded.firebase;
+        const firebaseClaims = firebaseRaw && typeof firebaseRaw === "object"
+            ? {
+                signInSecondFactor: typeof firebaseRaw
+                    .sign_in_second_factor === "string"
+                    ? firebaseRaw
+                        .sign_in_second_factor
+                    : undefined,
+                secondFactorIdentifier: typeof firebaseRaw
+                    .second_factor_identifier === "string"
+                    ? firebaseRaw
+                        .second_factor_identifier
+                    : undefined,
+                signInProvider: typeof firebaseRaw
+                    .sign_in_provider === "string"
+                    ? firebaseRaw
+                        .sign_in_provider
+                    : undefined,
+            }
+            : undefined;
         return {
             uid: decoded.uid,
             ...(email ? { email } : {}),
             ...(name ? { displayName: name } : {}),
             emailVerified: decoded.email_verified === true,
+            ...(authTime !== undefined ? { authTime } : {}),
+            ...(firebaseClaims ? { firebaseClaims } : {}),
         };
     }
     /** Authentication + authorization: only an ACTIVE account is a principal. */

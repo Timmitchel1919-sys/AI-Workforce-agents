@@ -86,6 +86,26 @@ requires them. No public Storage paths are added during Layer 6.
 | secret references           | server-only, mutable (metadata only, raw values via Vault — Layer 7) |
 | deployment records          | server-only, mutable with history                                    |
 
+### Secret-reference catalog (Layer 7)
+
+The Control Plane stores secret-reference metadata in the server-only
+`secret_references` collection. Its schema can represent only a `secret://`
+name, provider resource identifier, purpose, project scope, lifecycle status,
+and rotation timestamps. Raw values, tokens, passwords, credentials, private
+keys, and API keys are rejected before authorization or persistence.
+
+`GET /api/security/secret-references`,
+`POST /api/security/secret-references`, and
+`PATCH /api/security/secret-references/:name` are capability- and App
+Check-protected. Mutations additionally require a destructive-action approval
+bound to the exact action (`secret.reference.create|update`), reference id,
+project, and environment, plus trusted MFA/reauth evidence when required by
+policy.
+
+This catalog does not claim that a raw-value Vault resolver is configured. The
+deny-all secret broker remains the safe production fallback until a
+provider-specific last-mile resolver is explicitly composed.
+
 ## Firebase App Check
 
 - Client (`ui/`): initialize App Check in the Firebase SDK where
