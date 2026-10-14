@@ -7,6 +7,7 @@ import { DestructiveActionService } from "../core/security/destructive-action-se
 import { SecurityPolicyEngine } from "../core/security/security-policy-engine.js";
 import type { SecurityPolicyService } from "../core/security/security-policy-service.js";
 import type { SecretReferenceService } from "../core/security/secret-reference-service.js";
+import type { IncidentResponseService } from "../core/secops/incident-response-service.js";
 import type { OperatorAccountStore } from "../contracts/index.js";
 import { type AsyncSecurityEventStore } from "../contracts/security-event.js";
 export interface ControlPlaneApiOptions {
@@ -47,6 +48,10 @@ export interface ControlPlaneApiOptions {
     destructiveActionService?: DestructiveActionService;
     securityPolicyService?: SecurityPolicyService;
     secretReferenceService?: SecretReferenceService;
+    incidentResponseService?: IncidentResponseService;
+    secretRotationService?: import("../core/security/secret-rotation-service.js").SecretRotationService;
+    securityFindingStore?: import("../core/security/security-finding-source.js").SecurityFindingStore;
+    deploymentSecurityGate?: import("../core/security/deployment-security-gate.js").DeploymentSecurityGate;
     securityPolicyEngine?: SecurityPolicyEngine;
     operatorAccounts?: OperatorAccountStore;
     securityEventStore?: AsyncSecurityEventStore | import("../core/security/security-event-store.js").SecurityEventStore;

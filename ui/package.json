@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "test": "vitest --environment jsdom"
+    "test": "vitest --environment jsdom",
+    "test:ci": "node scripts/run-tests-ci.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

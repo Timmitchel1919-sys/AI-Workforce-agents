@@ -22,7 +22,20 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run build && node scripts/run-tests.mjs",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+    "test:unit": "npm run build && node scripts/run-unit-tests.mjs",
+    "test:firebase": "npm run build && node scripts/check-emulator-runtime.mjs && npx --yes firebase-tools@13.35.1 emulators:exec --project demo-ai-workforce --only auth,firestore,storage \"npm run test:firebase:inner\"",
+    "test:firebase:inner": "node scripts/run-firebase-tests.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "staging:check": "node scripts/check-staging-config.mjs",
+    "staging:deploy": "node scripts/deploy-staging.mjs",
+    "staging:verify": "node scripts/verify-staging.mjs",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
+    "security:deps": "node scripts/security-deps.mjs",
+    "security:secrets": "node scripts/security-secrets.mjs",
+    "security:sast": "npm run typecheck && npm run lint",
+    "security:sbom": "node scripts/security-sbom.mjs",
+    "security:license": "node scripts/security-license.mjs",
+    "security:check": "node scripts/security-check.mjs"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

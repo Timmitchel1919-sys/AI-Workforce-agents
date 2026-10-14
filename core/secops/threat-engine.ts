@@ -3,11 +3,28 @@ import {
   ThreatRule,
   SecurityIncident,
 } from "../../contracts/secops.js";
+import type { Repository } from "../../contracts/persistence.js";
+
+export interface DurableSecurityIncident extends SecurityIncident {
+  id: string;
+}
+export interface DurableSecurityEvent extends SecurityEvent {
+  id: string;
+}
 
 export class ThreatEngine {
   private events: SecurityEvent[] = [];
   private rules = new Map<string, ThreatRule[]>();
   private incidents = new Map<string, SecurityIncident>();
+
+  constructor(
+    private readonly incidentRepository?: Repository<DurableSecurityIncident>,
+    private readonly eventRepository?: Repository<DurableSecurityEvent>,
+  ) {
+    for (const incident of incidentRepository?.list() ?? [])
+      this.incidents.set(incident.incidentId, incident);
+    this.events.push(...(eventRepository?.list() ?? []));
+  }
 
   registerRule(rule: ThreatRule) {
     const list = this.rules.get(rule.organizationId) || [];
@@ -17,6 +34,7 @@ export class ThreatEngine {
 
   logEvent(event: SecurityEvent) {
     this.events.push(event);
+    this.eventRepository?.upsert({ ...event, id: event.eventId });
     this.evaluateThreats(event.organizationId, event.actor, event.timestamp);
   }
 
@@ -101,13 +119,12 @@ export class ThreatEngine {
     };
 
     this.incidents.set(incident.incidentId, incident);
+    this.incidentRepository?.upsert({ ...incident, id: incident.incidentId });
 
-    // Simulate taking the action
-    if (rule.action === "BLOCK_USER") {
-      console.log(
-        `[SECOPS] Blocking user action triggered for incident ${incident.incidentId}`,
-      );
-    }
+    // Detection is deliberately side-effect free. Containment is a governed
+    // destructive action and must be requested, approved and executed by the
+    // incident-response service; threat detection may never block a user or
+    // revoke a key autonomously.
   }
 
   getIncidents(organizationId: string): SecurityIncident[] {

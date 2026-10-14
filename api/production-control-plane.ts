@@ -36,6 +36,7 @@ import {
   type Task,
   type Workflow,
   type WorkflowControlRecord,
+  PermissionDeniedError,
 } from "../contracts/index.js";
 import {
   FirebaseOperatorDirectory,
@@ -144,6 +145,11 @@ import {
   DEFAULT_PRIVILEGED_APP_CHECK_ROUTES,
 } from "./security/index.js";
 import { DestructiveActionService } from "../core/security/destructive-action-service.js";
+import { IncidentResponseService } from "../core/secops/incident-response-service.js";
+import type {
+  ContainmentExecutor,
+  SecurityIncidentRecord,
+} from "../core/secops/incident-response-service.js";
 import {
   SecurityPolicyEngine,
   defaultSecurityPolicies,
@@ -153,7 +159,22 @@ import {
   DestructiveSecurityPolicyMutationAuthorizer,
   SecretReferenceService,
   SecurityPolicyService,
+  SecretAccessService,
+  ToolCredentialBroker,
+  SecretRotationService,
+  SecurityFindingStore,
+  DeploymentSecurityGate,
+  SecretLeakHandler,
 } from "../core/security/index.js";
+import {
+  GoogleSecretManagerVault,
+  InMemorySecretVault,
+} from "../adapters/vault/index.js";
+import type {
+  SecretVault,
+  CredentialBroker,
+  SecurityFinding,
+} from "../contracts/index.js";
 import type { DestructiveActionRequest } from "../contracts/destructive-action.js";
 import type { SecurityPolicy } from "../contracts/security-policy.js";
 import type { ManagedSecretReference } from "../contracts/secret-reference.js";
@@ -180,6 +201,13 @@ export interface ProductionControlPlaneRuntime {
   readonly securityPolicyEngine: SecurityPolicyEngine;
   readonly securityPolicies: SecurityPolicyService;
   readonly secretReferences: SecretReferenceService;
+  readonly secretVault: SecretVault;
+  readonly secretAccess: SecretAccessService;
+  readonly credentialBroker: CredentialBroker;
+  readonly secretRotation: SecretRotationService;
+  readonly securityFindings: SecurityFindingStore;
+  readonly deploymentGate: DeploymentSecurityGate;
+  readonly secretLeakHandler: SecretLeakHandler;
   readonly canonicalSecurityEvents: AsyncSecurityEventStore;
   /**
    * The FULL release services. The control-plane context exposes only their read views; the
@@ -262,6 +290,8 @@ export async function createProductionControlPlaneRuntime(
     repositories.repository<SecurityPolicy>("security_policies");
   const secretReferencesRepository =
     repositories.repository<ManagedSecretReference>("secret_references");
+  const securityIncidentsRepository =
+    repositories.repository<SecurityIncidentRecord>("security_incidents");
   const operationalEventsRepository =
     repositories.repository<OperationalEvent>("operational_events");
   const operationalOutcomesRepository =
@@ -1182,9 +1212,73 @@ export async function createProductionControlPlaneRuntime(
     securityPoliciesRepository,
     new DestructiveSecurityPolicyMutationAuthorizer(destructiveActions),
   );
+  const containmentExecutor: ContainmentExecutor = {
+    execute: async ({ request, principal }) => {
+      const targetId = request.justification.affectedResources[0];
+      if (!targetId) throw new ValidationError("containment target is missing");
+      if (request.justification.affectedResources.length !== 1) {
+        throw new ValidationError("containment requires exactly one target");
+      }
+      const result = await command.disableAgent(
+        principal,
+        { agentId: targetId },
+        { correlationId: request.correlationId },
+      );
+      if (result.outcome !== "executed") {
+        throw new PermissionDeniedError(
+          `authoritative agent disable was not executed: ${result.outcome}`,
+        );
+      }
+      return {
+        subsystem: "agent_registry",
+        action: "disable_agent",
+        targetId,
+        result,
+      };
+    },
+  };
   const secretReferences = new SecretReferenceService(
     secretReferencesRepository,
     new DestructiveSecretReferenceMutationAuthorizer(destructiveActions),
+  );
+  const incidentResponse = new IncidentResponseService(
+    securityIncidentsRepository,
+    destructiveActions,
+    { canAccess: (principal) => principal.allowedProjects === "*" },
+    containmentExecutor,
+  );
+  const secretVault: SecretVault =
+    process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT
+      ? new GoogleSecretManagerVault({
+          projectId:
+            process.env.GCP_PROJECT_ID ?? process.env.GOOGLE_CLOUD_PROJECT,
+        })
+      : new InMemorySecretVault();
+  const secretAccess = new SecretAccessService({
+    vault: secretVault,
+    repository: secretReferencesRepository,
+    policyEngine: securityPolicyEngine,
+    securityEvents: canonicalSecurityEventStore,
+  });
+  const credentialBroker = new ToolCredentialBroker(secretAccess);
+  const secretRotation = new SecretRotationService({
+    vault: secretVault,
+    repository: secretReferencesRepository,
+    policyEngine: securityPolicyEngine,
+    securityEvents: canonicalSecurityEventStore,
+  });
+  const securityFindingsRepository =
+    repositories.repository<SecurityFinding>("security_findings");
+  const securityFindings = new SecurityFindingStore(securityFindingsRepository);
+  const deploymentGate = new DeploymentSecurityGate(
+    securityFindings,
+    securityPolicyEngine,
+    canonicalSecurityEventStore,
+  );
+  const secretLeakHandler = new SecretLeakHandler(
+    securityFindings,
+    secretReferencesRepository,
+    canonicalSecurityEventStore,
   );
 
   const handler = createControlPlaneApi({
@@ -1210,6 +1304,10 @@ export async function createProductionControlPlaneRuntime(
     destructiveActionService: destructiveActions,
     securityPolicyService: securityPolicies,
     secretReferenceService: secretReferences,
+    incidentResponseService: incidentResponse,
+    secretRotationService: secretRotation,
+    securityFindingStore: securityFindings,
+    deploymentSecurityGate: deploymentGate,
     securityPolicyEngine,
     securityEventStore: canonicalSecurityEventStore,
     operatorAccounts,
@@ -1234,6 +1332,13 @@ export async function createProductionControlPlaneRuntime(
     destructiveActions,
     securityPolicies,
     secretReferences,
+    secretVault,
+    secretAccess,
+    credentialBroker,
+    secretRotation,
+    securityFindings,
+    deploymentGate,
+    secretLeakHandler,
     securityPolicyEngine,
     canonicalSecurityEvents: canonicalSecurityEventStore,
     /**

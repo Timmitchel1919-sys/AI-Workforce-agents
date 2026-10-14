@@ -12,3 +12,4 @@ export * from "./firebase/index.js";
 export * from "./environments/index.js";
 export * from "./execution/index.js";
 export * from "./workspace/index.js";
+export * from "./vault/index.js";

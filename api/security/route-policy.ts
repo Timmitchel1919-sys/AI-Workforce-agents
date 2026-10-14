@@ -240,6 +240,65 @@ export function routeSecurityPolicyFor(
   const escapedBase = basePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const normalizedMethod = method.toUpperCase();
   if (
+    normalizedMethod === "GET" &&
+    new RegExp(`^${escapedBase}/security/incidents$`).test(path)
+  ) {
+    return {
+      authentication: "active_operator",
+      capability: "view_security",
+      appCheck: "required",
+      risk: "high",
+      rateLimitProfile: "authenticated_default",
+    };
+  }
+  if (
+    normalizedMethod === "PATCH" &&
+    new RegExp(`^${escapedBase}/security/incidents/[^/]+$`).test(path)
+  ) {
+    return {
+      authentication: "active_operator",
+      capability: "manage_security_incidents",
+      appCheck: "required",
+      risk: "high",
+      securityPolicyAction: "security.incident.update",
+      destructive: true,
+      requireJson: true,
+      rateLimitProfile: "security_mutation",
+    };
+  }
+  if (
+    normalizedMethod === "POST" &&
+    new RegExp(
+      `^${escapedBase}/security/incidents/[^/]+/containment-requests$`,
+    ).test(path)
+  ) {
+    return {
+      authentication: "active_operator",
+      capability: "request_destructive_action",
+      appCheck: "required",
+      risk: "critical",
+      securityPolicyAction: "security.incident.contain",
+      destructive: true,
+      requireJson: true,
+      rateLimitProfile: "destructive_approval",
+    };
+  }
+  if (
+    normalizedMethod === "POST" &&
+    new RegExp(`^${escapedBase}/security/incidents/[^/]+/contain$`).test(path)
+  ) {
+    return {
+      authentication: "active_operator",
+      capability: "contain_security_threat",
+      appCheck: "required",
+      risk: "critical",
+      securityPolicyAction: "security.incident.contain",
+      destructive: true,
+      requireJson: true,
+      rateLimitProfile: "destructive_approval",
+    };
+  }
+  if (
     (normalizedMethod === "POST" || normalizedMethod === "PATCH") &&
     new RegExp(`^${escapedBase}/security/secret-references(?:/[^/]+)?$`).test(
       path,

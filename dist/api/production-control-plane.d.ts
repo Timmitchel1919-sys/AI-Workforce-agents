@@ -5,7 +5,8 @@ import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { type ApiHandler } from "./http-api.js";
 import { DestructiveActionService } from "../core/security/destructive-action-service.js";
 import { SecurityPolicyEngine } from "../core/security/security-policy-engine.js";
-import { SecretReferenceService, SecurityPolicyService } from "../core/security/index.js";
+import { SecretReferenceService, SecurityPolicyService, SecretAccessService, SecretRotationService, SecurityFindingStore, DeploymentSecurityGate, SecretLeakHandler } from "../core/security/index.js";
+import type { SecretVault, CredentialBroker } from "../contracts/index.js";
 import type { AsyncSecurityEventStore } from "../contracts/security-event.js";
 import { type ProductionWorkforceBootstrap, type ProductionWorkforceConfiguration } from "./production-workforce-bootstrap.js";
 export interface ProductionControlPlaneRuntime {
@@ -20,6 +21,13 @@ export interface ProductionControlPlaneRuntime {
     readonly securityPolicyEngine: SecurityPolicyEngine;
     readonly securityPolicies: SecurityPolicyService;
     readonly secretReferences: SecretReferenceService;
+    readonly secretVault: SecretVault;
+    readonly secretAccess: SecretAccessService;
+    readonly credentialBroker: CredentialBroker;
+    readonly secretRotation: SecretRotationService;
+    readonly securityFindings: SecurityFindingStore;
+    readonly deploymentGate: DeploymentSecurityGate;
+    readonly secretLeakHandler: SecretLeakHandler;
     readonly canonicalSecurityEvents: AsyncSecurityEventStore;
     /**
      * The FULL release services. The control-plane context exposes only their read views; the

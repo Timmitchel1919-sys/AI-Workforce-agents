@@ -1,0 +1,17 @@
+import { mkdir, rm } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { tmpdir } from "node:os";
+import { spawn } from "node:child_process";
+const uiRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const testRoot = resolve(uiRoot, ".test-tmp");
+const osTemp = resolve(testRoot, "os-temp");
+const vitestTemp = resolve(testRoot, "vitest");
+await rm(testRoot, { recursive: true, force: true });
+await mkdir(osTemp, { recursive: true });
+await mkdir(vitestTemp, { recursive: true });
+console.log(JSON.stringify({ platform: process.platform, cwd: process.cwd(), osTemp: tmpdir(), TMP: process.env.TMP ?? null, TEMP: process.env.TEMP ?? null, TMPDIR: process.env.TMPDIR ?? null, controlledTemp: osTemp }));
+const command = process.execPath;
+const vitestEntry = resolve(uiRoot, "node_modules", "vitest", "vitest.mjs");
+const child = spawn(command, [vitestEntry, "--run", "--environment", "jsdom", ...process.argv.slice(2)], { cwd: uiRoot, stdio: "inherit", shell: false, env: { ...process.env, TMP: osTemp, TEMP: osTemp, TMPDIR: osTemp, VITEST_SEGFAULT_RETRY: "0" } });
+child.on("exit", async (code) => { await rm(testRoot, { recursive: true, force: true }); process.exit(code ?? 1); });

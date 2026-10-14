@@ -39,6 +39,7 @@ function validateRecord(record) {
     validateDate(record.updatedAt, "updatedAt");
     validateDate(record.lastRotatedAt, "lastRotatedAt");
     validateDate(record.rotationDueAt, "rotationDueAt");
+    validateDate(record.expiresAt, "expiresAt");
 }
 /** Durable metadata catalog. Raw secret material cannot be represented here. */
 export class SecretReferenceService {

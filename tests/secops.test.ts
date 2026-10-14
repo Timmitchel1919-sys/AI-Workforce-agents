@@ -1,7 +1,11 @@
 import test from "node:test";
 
 import { assert } from "./helpers/assert.js";
-import { ThreatEngine } from "../core/secops/index.js";
+import {
+  SimulatedContainmentExecutor,
+  ThreatEngine,
+} from "../core/secops/index.js";
+import { InMemoryRepository } from "../core/persistence/in-memory-repository.js";
 
 test("SecOps: Threat Engine detection and incident creation", () => {
   const engine = new ThreatEngine();
@@ -61,6 +65,89 @@ test("SecOps: Threat Engine detection and incident creation", () => {
   assert.equal(incidents[0].status, "OPEN");
   assert.equal(incidents[0].severity, "CRITICAL");
   assert.include(incidents[0].relatedEvents, "evt_3");
+});
+
+test("SecOps: threat detection never performs autonomous containment", () => {
+  const engine = new ThreatEngine();
+  engine.registerRule({
+    ruleId: "rule_block",
+    organizationId: "org_safe",
+    name: "Abuse",
+    condition: "RATE_LIMIT_EXCEEDED",
+    threshold: 1,
+    timeWindowSeconds: 60,
+    action: "BLOCK_USER",
+    status: "ACTIVE",
+  });
+  const originalLog = console.log;
+  let logged = false;
+  console.log = () => {
+    logged = true;
+  };
+  try {
+    engine.logEvent({
+      eventId: "evt_safe",
+      organizationId: "org_safe",
+      source: "API",
+      type: "API_ABUSE",
+      severity: "CRITICAL",
+      actor: "user_safe",
+      details: {},
+      timestamp: new Date(),
+    });
+  } finally {
+    console.log = originalLog;
+  }
+  assert.equal(logged, false);
+  assert.equal(engine.getIncidents("org_safe").length, 1);
+});
+
+test("SecOps: threat incidents survive an engine restart", () => {
+  const incidents = new InMemoryRepository<any>();
+  const events = new InMemoryRepository<any>();
+  const first = new ThreatEngine(incidents, events);
+  first.registerRule({
+    ruleId: "r",
+    organizationId: "org",
+    name: "abuse",
+    condition: "RATE_LIMIT_EXCEEDED",
+    threshold: 1,
+    timeWindowSeconds: 60,
+    action: "ALERT",
+    status: "ACTIVE",
+  });
+  first.logEvent({
+    eventId: "e",
+    organizationId: "org",
+    source: "API",
+    type: "API_ABUSE",
+    severity: "HIGH",
+    actor: "u",
+    details: {},
+    timestamp: new Date(),
+  });
+  const second = new ThreatEngine(incidents, events);
+  assert.equal(second.getIncidents("org").length, 1);
+  assert.equal(second.getEvents("org").length, 1);
+});
+
+test("SecOps: simulated containment is explicitly non-authoritative", async () => {
+  const executor = new SimulatedContainmentExecutor();
+  const result = await executor.execute({
+    request: { incidentId: "unused" } as any,
+    incident: {
+      id: "inc",
+      incidentId: "inc",
+      organizationId: "org",
+      title: "test",
+      severity: "HIGH",
+      status: "OPEN",
+      relatedEvents: [],
+      createdAt: new Date(),
+    },
+    principal: { id: "admin", role: "admin", allowedProjects: "*" },
+  });
+  assert.equal(result.simulatedOnly, true);
 });
 
 import { SecOpsService } from "../core/secops/secops-service.js";

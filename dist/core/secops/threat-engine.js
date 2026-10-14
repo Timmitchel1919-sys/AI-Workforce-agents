@@ -1,7 +1,16 @@
 export class ThreatEngine {
+    incidentRepository;
+    eventRepository;
     events = [];
     rules = new Map();
     incidents = new Map();
+    constructor(incidentRepository, eventRepository) {
+        this.incidentRepository = incidentRepository;
+        this.eventRepository = eventRepository;
+        for (const incident of incidentRepository?.list() ?? [])
+            this.incidents.set(incident.incidentId, incident);
+        this.events.push(...(eventRepository?.list() ?? []));
+    }
     registerRule(rule) {
         const list = this.rules.get(rule.organizationId) || [];
         list.push(rule);
@@ -9,6 +18,7 @@ export class ThreatEngine {
     }
     logEvent(event) {
         this.events.push(event);
+        this.eventRepository?.upsert({ ...event, id: event.eventId });
         this.evaluateThreats(event.organizationId, event.actor, event.timestamp);
     }
     evaluateThreats(organizationId, actor, now) {
@@ -61,10 +71,11 @@ export class ThreatEngine {
             createdAt: new Date(),
         };
         this.incidents.set(incident.incidentId, incident);
-        // Simulate taking the action
-        if (rule.action === "BLOCK_USER") {
-            console.log(`[SECOPS] Blocking user action triggered for incident ${incident.incidentId}`);
-        }
+        this.incidentRepository?.upsert({ ...incident, id: incident.incidentId });
+        // Detection is deliberately side-effect free. Containment is a governed
+        // destructive action and must be requested, approved and executed by the
+        // incident-response service; threat detection may never block a user or
+        // revoke a key autonomously.
     }
     getIncidents(organizationId) {
         return Array.from(this.incidents.values()).filter((i) => i.organizationId === organizationId);

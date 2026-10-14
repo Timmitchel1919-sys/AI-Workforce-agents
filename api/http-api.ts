@@ -69,6 +69,7 @@ import {
 import { SecurityPolicyEngine } from "../core/security/security-policy-engine.js";
 import type { SecurityPolicyService } from "../core/security/security-policy-service.js";
 import type { SecretReferenceService } from "../core/security/secret-reference-service.js";
+import type { IncidentResponseService } from "../core/secops/incident-response-service.js";
 import type { OperatorAccountStore } from "../contracts/index.js";
 import {
   SECURITY_EVENT_TYPES,
@@ -114,6 +115,10 @@ export interface ControlPlaneApiOptions {
   destructiveActionService?: DestructiveActionService;
   securityPolicyService?: SecurityPolicyService;
   secretReferenceService?: SecretReferenceService;
+  incidentResponseService?: IncidentResponseService;
+  secretRotationService?: import("../core/security/secret-rotation-service.js").SecretRotationService;
+  securityFindingStore?: import("../core/security/security-finding-source.js").SecurityFindingStore;
+  deploymentSecurityGate?: import("../core/security/deployment-security-gate.js").DeploymentSecurityGate;
   securityPolicyEngine?: SecurityPolicyEngine;
   operatorAccounts?: OperatorAccountStore;
   securityEventStore?:
@@ -574,11 +579,43 @@ export function createControlPlaneApi(
           correlationId,
         );
       }
-      if (route.startsWith("/security/secret-references")) {
+      if (
+        route.startsWith("/security/secret-references") ||
+        route.startsWith("/security/secrets")
+      ) {
         return await handleSecretReferences(
           req,
           res,
           segs,
+          method,
+          principal,
+          correlationId,
+        );
+      }
+      if (route.startsWith("/security/findings")) {
+        return await handleSecurityFindings(
+          req,
+          res,
+          segs,
+          method,
+          principal,
+          correlationId,
+        );
+      }
+      if (route.startsWith("/security/incidents")) {
+        return await handleSecurityIncidents(
+          req,
+          res,
+          segs,
+          method,
+          principal,
+          correlationId,
+        );
+      }
+      if (route.startsWith("/security/deployment-gate")) {
+        return await handleDeploymentGate(
+          req,
+          res,
           method,
           principal,
           correlationId,
@@ -1043,6 +1080,78 @@ export function createControlPlaneApi(
     }
     const isCreate = method === "POST" && segs.length === 2;
     const isUpdate = method === "PATCH" && segs.length === 3;
+    const isRotate =
+      method === "POST" && segs.length === 4 && segs[3] === "rotate";
+    const isRevoke =
+      method === "POST" && segs.length === 4 && segs[3] === "revoke";
+
+    if (isRotate) {
+      const rotationService = options.secretRotationService;
+      if (!rotationService) {
+        return send(
+          res,
+          404,
+          { error: { message: "secret rotation service not configured" } },
+          correlationId,
+        );
+      }
+      const refId = segs[2]!;
+      const list = service.list(principal);
+      const target = list.find(
+        (r) => r.id === refId || r.ref === `secret://${refId}`,
+      );
+      if (!target)
+        throw new NotFoundError(`secret reference not found: ${refId}`);
+      const body = await readJsonBody(req, maxBody);
+      if (typeof body.newSecretValue !== "string" || !body.newSecretValue) {
+        throw new ValidationError("newSecretValue is required for rotation");
+      }
+      const rotated = await rotationService.rotate(
+        principal,
+        target,
+        body.newSecretValue,
+        {
+          principalType: "human",
+          principalId: principal.id,
+          projectId: target.projectId,
+          environment: productionHeaders ? "production" : "local",
+          purpose: `Manual rotation by ${principal.id}`,
+          correlationId,
+          requestedAt: new Date().toISOString(),
+        },
+      );
+      return send(res, 200, rotated, correlationId);
+    }
+
+    if (isRevoke) {
+      const rotationService = options.secretRotationService;
+      if (!rotationService) {
+        return send(
+          res,
+          404,
+          { error: { message: "secret rotation service not configured" } },
+          correlationId,
+        );
+      }
+      const refId = segs[2]!;
+      const list = service.list(principal);
+      const target = list.find(
+        (r) => r.id === refId || r.ref === `secret://${refId}`,
+      );
+      if (!target)
+        throw new NotFoundError(`secret reference not found: ${refId}`);
+      const revoked = await rotationService.emergencyRevoke(principal, target, {
+        principalType: "human",
+        principalId: principal.id,
+        projectId: target.projectId,
+        environment: productionHeaders ? "production" : "local",
+        purpose: `Emergency revocation by ${principal.id}`,
+        correlationId,
+        requestedAt: new Date().toISOString(),
+      });
+      return send(res, 200, revoked, correlationId);
+    }
+
     if (!isCreate && !isUpdate) {
       return send(
         res,
@@ -1093,6 +1202,213 @@ export function createControlPlaneApi(
           context,
         );
     return send(res, isCreate ? 201 : 200, stored, correlationId);
+  }
+
+  async function handleSecurityIncidents(
+    req: IncomingMessage,
+    res: ServerResponse,
+    segs: string[],
+    method: string,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    const service = options.incidentResponseService;
+    if (!service)
+      return send(res, 404, { error: { message: "not found" } }, correlationId);
+    const organizationId = req.headers["x-organization-id"];
+    if (typeof organizationId !== "string" || !organizationId.trim()) {
+      throw new ValidationError("x-organization-id is required");
+    }
+    if (method === "GET" && segs.length === 2) {
+      return send(
+        res,
+        200,
+        { incidents: service.listIncidents(principal, organizationId) },
+        correlationId,
+      );
+    }
+    const incidentId = segs[2];
+    if (!incidentId)
+      return send(
+        res,
+        405,
+        { error: { message: "method not allowed" } },
+        correlationId,
+      );
+    const isRequest =
+      method === "POST" &&
+      segs.length === 4 &&
+      segs[3] === "containment-requests";
+    const isExecute =
+      method === "POST" && segs.length === 4 && segs[3] === "contain";
+    if (isRequest) {
+      const body = stripUntrustedFields(await readJsonBody(req, maxBody));
+      const requested = service.requestContainment(principal, {
+        incidentId,
+        organizationId,
+        targetResourceType:
+          typeof body.targetResourceType === "string"
+            ? body.targetResourceType
+            : "incident",
+        targetResourceId:
+          typeof body.targetResourceId === "string"
+            ? body.targetResourceId
+            : incidentId,
+        environment: productionHeaders ? "production" : "local",
+        projectId:
+          typeof body.projectId === "string" ? body.projectId : undefined,
+        reason: typeof body.reason === "string" ? body.reason : "",
+        correlationId,
+      });
+      return send(res, 201, requested, correlationId);
+    }
+    if (isExecute) {
+      const body = stripUntrustedFields(await readJsonBody(req, maxBody));
+      if (typeof body.destructiveActionId !== "string")
+        throw new ValidationError("destructiveActionId is required");
+      const identity = await verifyIdentity(req);
+      const result = await service.executeContainment(
+        principal,
+        body.destructiveActionId,
+        incidentId,
+        organizationId,
+        {
+          mfa: mfaVerifier.verify(identity),
+          reauth: reauthVerifier.verify(identity),
+        },
+      );
+      return send(res, 200, result, correlationId);
+    }
+    if (method === "PATCH" && segs.length === 3) {
+      const body = stripUntrustedFields(await readJsonBody(req, maxBody));
+      if (
+        typeof body.status !== "string" ||
+        !["OPEN", "INVESTIGATING", "MITIGATED", "RESOLVED"].includes(
+          body.status,
+        )
+      ) {
+        throw new ValidationError("valid incident status is required");
+      }
+      return send(
+        res,
+        200,
+        service.updateStatus(
+          principal,
+          incidentId,
+          organizationId,
+          body.status as import("../contracts/secops.js").SecurityIncident["status"],
+        ),
+        correlationId,
+      );
+    }
+    return send(
+      res,
+      405,
+      { error: { message: "method not allowed" } },
+      correlationId,
+    );
+  }
+
+  async function handleSecurityFindings(
+    req: IncomingMessage,
+    res: ServerResponse,
+    _segs: string[],
+    method: string,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    const store = options.securityFindingStore;
+    if (!store) {
+      return send(
+        res,
+        404,
+        { error: { message: "security finding store not configured" } },
+        correlationId,
+      );
+    }
+    if (
+      !operatorCan(principal, "view_security") &&
+      !operatorCan(principal, "manage_security_policy")
+    ) {
+      throw new PermissionDeniedError("view_security capability required");
+    }
+    if (method === "GET") {
+      return send(res, 200, { findings: store.list() }, correlationId);
+    }
+    if (method === "POST") {
+      if (!operatorCan(principal, "manage_security_policy")) {
+        throw new PermissionDeniedError(
+          "manage_security_policy capability required",
+        );
+      }
+      const body = await readJsonBody(req, maxBody);
+      store.ingest(
+        body as unknown as import("../contracts/security-finding.js").SecurityFinding,
+      );
+      return send(
+        res,
+        201,
+        { finding: body, status: "ingested" },
+        correlationId,
+      );
+    }
+    return send(
+      res,
+      405,
+      { error: { message: "method not allowed" } },
+      correlationId,
+    );
+  }
+
+  async function handleDeploymentGate(
+    req: IncomingMessage,
+    res: ServerResponse,
+    method: string,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    const gate = options.deploymentSecurityGate;
+    if (!gate) {
+      return send(
+        res,
+        404,
+        { error: { message: "deployment security gate not configured" } },
+        correlationId,
+      );
+    }
+    if (
+      !operatorCan(principal, "view_security") &&
+      !operatorCan(principal, "manage_security_policy")
+    ) {
+      throw new PermissionDeniedError("view_security capability required");
+    }
+    if (method !== "POST") {
+      return send(
+        res,
+        405,
+        { error: { message: "method not allowed" } },
+        correlationId,
+      );
+    }
+    const body = await readJsonBody(req, maxBody);
+    const env = (
+      typeof body.environment === "string"
+        ? body.environment
+        : productionHeaders
+          ? "production"
+          : "staging"
+    ) as "local" | "test" | "staging" | "production";
+    const projectId =
+      typeof body.projectId === "string" ? body.projectId : undefined;
+    const override =
+      body.override && typeof body.override === "object"
+        ? ({
+            ...(body.override as Record<string, unknown>),
+            principal,
+          } as unknown as import("../core/security/deployment-security-gate.js").SecurityOverrideRequest)
+        : undefined;
+    const evaluation = gate.evaluateDeployment(env, projectId, override);
+    return send(res, 200, evaluation, correlationId);
   }
 
   async function handleGet(

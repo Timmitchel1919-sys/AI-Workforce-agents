@@ -1,0 +1,15 @@
+title = "Gitleaks config for AI Workforce"
+
+[allowlist]
+description = "Narrow exclusions for synthetic unit test fixtures and public sample environments"
+paths = [
+  '''^tests/.*''',
+  '''^ui/\.env\.example$''',
+  '''^ui/\.env\.production$''',
+  '''^dist/.*''',
+]
+regexes = [
+  '''FAKE_SECRET''',
+  '''sk-test-[a-zA-Z0-9]+''',
+  '''mock-test-key-[a-zA-Z0-9]+''',
+]

@@ -101,6 +101,8 @@ export const CONTROL_CAPABILITIES = [
   "approve_destructive_action",
   /** Manage secret references / metadata — never raw secret values. */
   "manage_secret_references",
+  /** Internal/governed resolution of secret references via vault lease. */
+  "use_secret_reference",
   /** Privileged identity-security administration (operator lifecycle writes). */
   "manage_identity_security",
   /** Agent-security administration (trust level, quarantine, revoke). */
@@ -199,6 +201,7 @@ export const ROLE_CAPABILITIES: Record<
     "request_destructive_action",
     "approve_destructive_action",
     "manage_secret_references",
+    "use_secret_reference",
     "manage_identity_security",
     "manage_agent_security",
     "contain_security_threat",

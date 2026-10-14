@@ -953,6 +953,8 @@ export * from "./privacy.js";
 export * from "./api-platform.js";
 export * from "./secops.js";
 export * from "./secret-reference.js";
+export * from "./vault.js";
+export * from "./security-finding.js";
 export * from "./extensions.js";
 export * from "./mlops.js";
 export * from "./marketing.js";

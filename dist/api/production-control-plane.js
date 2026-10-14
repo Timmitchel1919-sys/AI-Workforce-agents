@@ -17,6 +17,7 @@ import { WorkforceManagementService } from "../control/services/workforce-servic
  * without changing this authoritative runtime graph.
  */
 import { randomUUID } from "node:crypto";
+import { PermissionDeniedError, } from "../contracts/index.js";
 import { FirebaseOperatorDirectory, FirebaseAppCheckVerifier, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
@@ -33,8 +34,10 @@ import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { createControlPlaneApi } from "./http-api.js";
 import { resolveAppCheckMode, validateAppCheckProductionConfig, createDestructiveSecurityEventObserver, DEFAULT_PRIVILEGED_APP_CHECK_ROUTES, } from "./security/index.js";
 import { DestructiveActionService } from "../core/security/destructive-action-service.js";
+import { IncidentResponseService } from "../core/secops/incident-response-service.js";
 import { SecurityPolicyEngine, defaultSecurityPolicies, } from "../core/security/security-policy-engine.js";
-import { DestructiveSecretReferenceMutationAuthorizer, DestructiveSecurityPolicyMutationAuthorizer, SecretReferenceService, SecurityPolicyService, } from "../core/security/index.js";
+import { DestructiveSecretReferenceMutationAuthorizer, DestructiveSecurityPolicyMutationAuthorizer, SecretReferenceService, SecurityPolicyService, SecretAccessService, ToolCredentialBroker, SecretRotationService, SecurityFindingStore, DeploymentSecurityGate, SecretLeakHandler, } from "../core/security/index.js";
+import { GoogleSecretManagerVault, InMemorySecretVault, } from "../adapters/vault/index.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
 import { PRODUCTION_ENVIRONMENT_DESCRIPTORS, PRODUCTION_WORKFORCE_CONFIGURATION, } from "./production-workforce-config.js";
 /**
@@ -55,6 +58,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const destructiveActionsRepository = repositories.repository("destructive_actions");
     const securityPoliciesRepository = repositories.repository("security_policies");
     const secretReferencesRepository = repositories.repository("secret_references");
+    const securityIncidentsRepository = repositories.repository("security_incidents");
     const operationalEventsRepository = repositories.repository("operational_events");
     const operationalOutcomesRepository = repositories.repository("operational_outcomes");
     const agentOpsRepository = repositories.repository("agent_operations");
@@ -590,7 +594,50 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const securityPolicyEngine = new SecurityPolicyEngine(securityPoliciesRepository);
     const destructiveActions = new DestructiveActionService(securityPolicyEngine, approvals, destructiveActionsRepository, undefined, destructiveActionObserver);
     const securityPolicies = new SecurityPolicyService(securityPoliciesRepository, new DestructiveSecurityPolicyMutationAuthorizer(destructiveActions));
+    const containmentExecutor = {
+        execute: async ({ request, principal }) => {
+            const targetId = request.justification.affectedResources[0];
+            if (!targetId)
+                throw new ValidationError("containment target is missing");
+            if (request.justification.affectedResources.length !== 1) {
+                throw new ValidationError("containment requires exactly one target");
+            }
+            const result = await command.disableAgent(principal, { agentId: targetId }, { correlationId: request.correlationId });
+            if (result.outcome !== "executed") {
+                throw new PermissionDeniedError(`authoritative agent disable was not executed: ${result.outcome}`);
+            }
+            return {
+                subsystem: "agent_registry",
+                action: "disable_agent",
+                targetId,
+                result,
+            };
+        },
+    };
     const secretReferences = new SecretReferenceService(secretReferencesRepository, new DestructiveSecretReferenceMutationAuthorizer(destructiveActions));
+    const incidentResponse = new IncidentResponseService(securityIncidentsRepository, destructiveActions, { canAccess: (principal) => principal.allowedProjects === "*" }, containmentExecutor);
+    const secretVault = process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT
+        ? new GoogleSecretManagerVault({
+            projectId: process.env.GCP_PROJECT_ID ?? process.env.GOOGLE_CLOUD_PROJECT,
+        })
+        : new InMemorySecretVault();
+    const secretAccess = new SecretAccessService({
+        vault: secretVault,
+        repository: secretReferencesRepository,
+        policyEngine: securityPolicyEngine,
+        securityEvents: canonicalSecurityEventStore,
+    });
+    const credentialBroker = new ToolCredentialBroker(secretAccess);
+    const secretRotation = new SecretRotationService({
+        vault: secretVault,
+        repository: secretReferencesRepository,
+        policyEngine: securityPolicyEngine,
+        securityEvents: canonicalSecurityEventStore,
+    });
+    const securityFindingsRepository = repositories.repository("security_findings");
+    const securityFindings = new SecurityFindingStore(securityFindingsRepository);
+    const deploymentGate = new DeploymentSecurityGate(securityFindings, securityPolicyEngine, canonicalSecurityEventStore);
+    const secretLeakHandler = new SecretLeakHandler(securityFindings, secretReferencesRepository, canonicalSecurityEventStore);
     const handler = createControlPlaneApi({
         onboarding,
         projectSync,
@@ -614,6 +661,10 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         destructiveActionService: destructiveActions,
         securityPolicyService: securityPolicies,
         secretReferenceService: secretReferences,
+        incidentResponseService: incidentResponse,
+        secretRotationService: secretRotation,
+        securityFindingStore: securityFindings,
+        deploymentSecurityGate: deploymentGate,
         securityPolicyEngine,
         securityEventStore: canonicalSecurityEventStore,
         operatorAccounts,
@@ -637,6 +688,13 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         destructiveActions,
         securityPolicies,
         secretReferences,
+        secretVault,
+        secretAccess,
+        credentialBroker,
+        secretRotation,
+        securityFindings,
+        deploymentGate,
+        secretLeakHandler,
         securityPolicyEngine,
         canonicalSecurityEvents: canonicalSecurityEventStore,
         /**

@@ -10,7 +10,7 @@ import type {
  * content. Matched case-insensitively against the full key name.
  */
 const SECRET_KEYS =
-  /^(password|passphrase|access[-_]?token|refresh[-_]?token|id[-_]?token|session[-_]?token|authorization|cookie|private[-_]?key|service[-_]?account[-_]?key|client[-_]?secret|api[-_]?key|webhook[-_]?secret|credential|credentials|secret)$/i;
+  /^(password|passphrase|access[-_]?token|refresh[-_]?token|id[-_]?token|session[-_]?token|token|authorization|cookie|private[-_]?key|service[-_]?account[-_]?key|client[-_]?secret|api[-_]?key|webhook[-_]?secret|credential|credentials|secret|secret[-_]?value)$/i;
 
 /**
  * In-string patterns that LOOK like a secret even in free text. We

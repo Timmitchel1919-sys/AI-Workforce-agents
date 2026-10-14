@@ -315,6 +315,22 @@ test("route policy: resolves privileged commands only from method and exact path
     routeSecurityPolicyFor("POST", "/api/commands/unknown"),
     undefined,
   );
+  assert.equal(
+    routeSecurityPolicyFor("GET", "/api/security/incidents")?.capability,
+    "view_security",
+  );
+  assert.equal(
+    routeSecurityPolicyFor(
+      "POST",
+      "/api/security/incidents/inc-1/containment-requests",
+    )?.capability,
+    "request_destructive_action",
+  );
+  assert.equal(
+    routeSecurityPolicyFor("POST", "/api/security/incidents/inc-1/contain")
+      ?.capability,
+    "contain_security_threat",
+  );
 });
 
 test("route policy: destructive approvals and policy mutation have explicit capabilities", () => {

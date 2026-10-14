@@ -42,4 +42,27 @@ jobs:
       - name: Build
         run: npm run build
 
+  firebase-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+      - run: npm ci
+      - run: npm run test:firebase
+
+  ui-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+      - run: npm --prefix ui ci
+      - run: npm --prefix ui run test:ci
+      - run: npm --prefix ui run build
+
 # No secrets or AI provider credentials are required or referenced by this workflow.

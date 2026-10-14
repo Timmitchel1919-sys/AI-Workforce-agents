@@ -81,8 +81,9 @@ Boundaries that these capabilities do **not** change:
   metadata-only. Reading / exporting raw secret values is reserved for a
   separate Vault-backed layer and never falls back to this capability.
 - **No autonomous containment.** `contain_security_threat` is an
-  authorization primitive. A later layer must implement the governed
-  containment route and audit it; Layer 1 ships none.
+  admin-only capability. The incident API exposes only governed containment
+  requests and execution after approval, exact incident binding, fresh
+  MFA/reauth evidence and an authoritative executor.
 - **No destructive-action execution.** `request_destructive_action` and
   `approve_destructive_action` grant submission / approval authority only.
   The Layer-3 Destructive Action Approval Gate (not implemented here) is what
@@ -214,3 +215,7 @@ authoritative `operators/{uid}` account, and are written only by the Control
 Plane. Changes are audited as `access_event` (`profile_photo_updated`,
 `profile_photo_removed`) without the image data. The display name is edited on
 the Firebase Auth profile; the refreshed ID token carries it to the account.
+
+### Incident containment
+
+Threat detection is side-effect free. Containment requires a destructive-action request, exact target binding, approval, fresh MFA/reauth evidence, tenant scope authorization, and an injected authoritative executor. If no executor is configured, execution fails closed; no user, agent, key, or network resource is blocked autonomously.
