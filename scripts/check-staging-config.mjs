@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { URL } from "node:url";
 
 const project = process.env.STAGING_FIREBASE_PROJECT_ID?.trim();
 const base = process.env.STAGING_BASE_URL?.trim();

@@ -61,7 +61,7 @@ jobs:
         with:
           node-version: "22.x"
           cache: npm
-      - run: npm --prefix ui ci
+      - run: npm --prefix ui ci --legacy-peer-deps
       - run: npm --prefix ui run test:ci
       - run: npm --prefix ui run build
 

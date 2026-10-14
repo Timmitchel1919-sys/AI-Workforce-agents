@@ -4,6 +4,8 @@ import { assert } from "./helpers/assert.js";
 import {
   SimulatedContainmentExecutor,
   ThreatEngine,
+  type DurableSecurityIncident,
+  type DurableSecurityEvent,
 } from "../core/secops/index.js";
 import { InMemoryRepository } from "../core/persistence/in-memory-repository.js";
 
@@ -103,8 +105,8 @@ test("SecOps: threat detection never performs autonomous containment", () => {
 });
 
 test("SecOps: threat incidents survive an engine restart", () => {
-  const incidents = new InMemoryRepository<any>();
-  const events = new InMemoryRepository<any>();
+  const incidents = new InMemoryRepository<DurableSecurityIncident>();
+  const events = new InMemoryRepository<DurableSecurityEvent>();
   const first = new ThreatEngine(incidents, events);
   first.registerRule({
     ruleId: "r",
@@ -134,7 +136,11 @@ test("SecOps: threat incidents survive an engine restart", () => {
 test("SecOps: simulated containment is explicitly non-authoritative", async () => {
   const executor = new SimulatedContainmentExecutor();
   const result = await executor.execute({
-    request: { incidentId: "unused" } as any,
+    request: {
+      incidentId: "unused",
+      targetResourceType: "agent",
+      targetResourceId: "agent-1",
+    } as unknown as import("../contracts/destructive-action.js").DestructiveActionRequest,
     incident: {
       id: "inc",
       incidentId: "inc",

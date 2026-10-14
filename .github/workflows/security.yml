@@ -64,7 +64,7 @@ jobs:
         run: npm ci
 
       - name: Install UI dependencies
-        run: npm --prefix ui ci
+        run: npm --prefix ui ci --legacy-peer-deps
 
       - name: Verify Dependencies Against Security Policy
         run: node scripts/security-deps.mjs
