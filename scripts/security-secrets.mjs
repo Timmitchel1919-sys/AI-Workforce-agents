@@ -17,6 +17,7 @@ const IGNORED_PATH_PREFIXES = [
   "tests/",
   "ui/.env.example",
   "ui/.env.production",
+  "ui/.env.test",
   ".gitleaks.toml",
 ];
 

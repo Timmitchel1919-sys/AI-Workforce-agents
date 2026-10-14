@@ -9,6 +9,7 @@ dist/tests/
 # Public build-time config for the deployed UI (no secrets); ".env.*" ignores
 # everything else.
 !.env.production
+!.env.test
 coverage/
 
 # Local persistence data written by JsonFilePersistence at runtime

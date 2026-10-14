@@ -6,6 +6,7 @@ paths = [
   '''^tests/.*''',
   '''^ui/\.env\.example$''',
   '''^ui/\.env\.production$''',
+  '''^ui/\.env\.test$''',
   '''^dist/.*''',
 ]
 regexes = [

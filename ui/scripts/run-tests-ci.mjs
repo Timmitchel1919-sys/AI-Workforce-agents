@@ -13,5 +13,5 @@ await mkdir(vitestTemp, { recursive: true });
 console.log(JSON.stringify({ platform: process.platform, cwd: process.cwd(), osTemp: tmpdir(), TMP: process.env.TMP ?? null, TEMP: process.env.TEMP ?? null, TMPDIR: process.env.TMPDIR ?? null, controlledTemp: osTemp }));
 const command = process.execPath;
 const vitestEntry = resolve(uiRoot, "node_modules", "vitest", "vitest.mjs");
-const child = spawn(command, [vitestEntry, "--run", "--environment", "jsdom", ...process.argv.slice(2)], { cwd: uiRoot, stdio: "inherit", shell: false, env: { ...process.env, TMP: osTemp, TEMP: osTemp, TMPDIR: osTemp, VITEST_SEGFAULT_RETRY: "0" } });
+const child = spawn(command, [vitestEntry, "--run", "--environment", "jsdom", ...process.argv.slice(2)], { cwd: uiRoot, stdio: "inherit", shell: false, env: { ...process.env, TMP: osTemp, TEMP: osTemp, TMPDIR: osTemp, VITEST_SEGFAULT_RETRY: "0", VITE_AGENTS_PATH: process.env.VITE_AGENTS_PATH ?? "/api/agents" } });
 child.on("exit", async (code) => { await rm(testRoot, { recursive: true, force: true }); process.exit(code ?? 1); });
