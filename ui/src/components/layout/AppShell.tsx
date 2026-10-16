@@ -8,6 +8,7 @@ import { InstallAppButton } from "../pwa/InstallAppButton";
 import { MobileTabBar } from "./MobileTabBar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { WorkspaceContextProvider } from "../../features/workspaceContext";
+import { WorkspaceControls } from "./WorkspaceControls";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -140,6 +141,7 @@ export default function AppShell() {
         />
 
         <ConnectionStatus />
+        <WorkspaceControls />
         <main className="app-shell__main" id="main-content" tabIndex={-1}>
           <Outlet />
         </main>

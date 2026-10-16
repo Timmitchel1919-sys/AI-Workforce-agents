@@ -3,6 +3,19 @@
   flex-direction: column;
   gap: var(--space-8);
 }
+.overview-personalize { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:var(--space-3) var(--space-4); border:1px solid var(--color-border); border-radius:var(--radius-lg); background:var(--color-surface); }
+.overview-personalize > div, .overview-personalize__button { display:inline-flex; align-items:center; gap:var(--space-2); }
+.overview-personalize__button, .overview-widget-setting button, .overview-widget-setting select { border:1px solid var(--color-border); border-radius:var(--radius-md); background:var(--color-surface-muted); color:var(--color-text); padding:.5rem .7rem; font:inherit; cursor:pointer; }
+.overview-personalize__button:focus-visible, .overview-widget-setting button:focus-visible, .overview-widget-setting select:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
+.overview-widget-settings { display:grid; gap:var(--space-2); padding:var(--space-4); border:1px solid var(--color-border); border-radius:var(--radius-lg); background:var(--color-surface); }
+.overview-widget-setting { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:var(--space-2) 0; border-bottom:1px solid var(--color-border); }
+.overview-widget-setting label, .overview-widget-setting > div { display:flex; align-items:center; gap:var(--space-2); }
+.overview-widgets { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-6); }
+.overview-widget { min-width:0; }
+.overview-widget--wide { grid-column:1 / -1; }
+.overview-widget .page-section { margin:0; }
+@media (max-width: 900px) { .overview-widgets { grid-template-columns:1fr; } .overview-widget { grid-column:1; } }
+@media (max-width: 600px) { .overview-widget-setting { align-items:flex-start; flex-direction:column; } .overview-personalize { align-items:flex-start; } }
 
 /* Status card spans the full row; metric cards sit beneath it and scale with the viewport. */
 .overview-grid {
