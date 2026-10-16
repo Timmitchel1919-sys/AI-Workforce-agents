@@ -28,6 +28,8 @@ const TasksPage = fromChunk(loadControlCenterRoutes, "TasksPage");
 const TaskDetailPage = fromChunk(loadControlCenterRoutes, "TaskDetailPage");
 const WorkflowsPage = fromChunk(loadControlCenterRoutes, "WorkflowsPage");
 const WorkflowDetailPage = fromChunk(loadControlCenterRoutes, "WorkflowDetailPage");
+const WorkflowStudioPage = fromChunk(loadControlCenterRoutes, "WorkflowStudioPage");
+const CommandCenterPage = fromChunk(loadControlCenterRoutes, "CommandCenterPage");
 const DesignSystemPage = fromChunk(loadControlCenterRoutes, "DesignSystemPage");
 const SettingsPage = fromChunk(loadControlCenterRoutes, "SettingsPage");
 const ProfilePage = fromChunk(loadControlCenterRoutes, "ProfilePage");
@@ -144,6 +146,8 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "tasks/:taskId", element: withSuspense(<TaskDetailPage />) },
       { path: "workflows", element: withSuspense(<WorkflowsPage />) },
       { path: "workflows/:workflowId", element: withSuspense(<WorkflowDetailPage />) },
+      { path: "workflow-studio", element: withSuspense(<WorkflowStudioPage />) },
+      { path: "command", element: withSuspense(<CommandCenterPage />) },
       { path: "graph", element: withSuspense(<SpatialGraphPage />) },
       { path: "projects", element: withSuspense(<ProjectsPage />) },
       { path: "projects/new", element: withSuspense(<NewProjectPage />) },

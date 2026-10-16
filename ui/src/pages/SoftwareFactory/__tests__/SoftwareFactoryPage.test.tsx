@@ -113,7 +113,7 @@ describe("SoftwareFactoryPage", () => {
     expect(screen.getByText("Tasks: 3 · 2 active")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "Open Web platform" });
     expect(link).toHaveAttribute("href", "/software-factory/proj-core/web-platform");
-    const overview = calls.find((c) => c.url.startsWith("/api/software-factory"));
+    const overview = calls.find((c) => c.url.startsWith("/api/software-factory?"));
     expect(overview?.url).toBe("/api/software-factory?projectId=proj-core");
   });
 
@@ -223,5 +223,36 @@ describe("SoftwareFactoryPage", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Softwarefabriek" })).toBeInTheDocument();
     expect(await screen.findByText("Actief")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\bsoftwareFactory\.[a-zA-Z]+/);
+  });
+});
+describe("FactoryPipelinePanel", () => {
+  it("renders the server's stage modes and treats a malformed payload as a failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "/api/projects") return respond(200, PROJECTS);
+        if (url === "/api/software-factory/pipeline")
+          return respond(200, {
+            stages: [
+              { stage: "deployment", mode: "unavailable", reason: "no_deployment_adapter" },
+              { stage: "human_approval", mode: "awaiting_approval", reason: "approval_system" },
+            ],
+            runners: [],
+          });
+        if (url.startsWith("/api/software-factory")) return respond(200, { programs: [] });
+        return respond(404, {});
+      }),
+    );
+    renderAt();
+    expect(await screen.findByText("No deployment adapter is registered.")).toBeInTheDocument();
+    expect(screen.getByText("Needs approval")).toBeInTheDocument();
+    expect(screen.getByText(/needs a registered cloud runner/i)).toBeInTheDocument();
+  });
+
+  it("does not show a calm pipeline when the payload is malformed", async () => {
+    mockApi();
+    renderAt();
+    expect(await screen.findByText("Could not load the pipeline from the Control Plane.")).toBeInTheDocument();
   });
 });

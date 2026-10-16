@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { SessionSecurityCard } from "./SessionSecurityCard";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera, Trash2 } from "lucide-react";
@@ -30,8 +31,8 @@ export default function ProfilePage() {
   const { hash } = useLocation();
 
   useEffect(() => {
-    if (hash === "#preferences") {
-      document.getElementById("preferences")?.scrollIntoView?.({ block: "start" });
+    if (hash === "#preferences" || hash === "#sessions") {
+      document.getElementById(hash.slice(1))?.scrollIntoView?.({ block: "start" });
     }
   }, [hash]);
 
@@ -41,6 +42,7 @@ export default function ProfilePage() {
       <div className="profile-cards">
         <ProfileCard />
         <PreferencesCard />
+        <SessionSecurityCard />
       </div>
     </PageContainer>
   );

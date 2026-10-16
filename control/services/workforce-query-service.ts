@@ -45,6 +45,7 @@ import {
   operatorCanAccessProject,
   PermissionDeniedError,
   validateOperatorPrincipal,
+  ValidationError,
 } from "../../contracts/index.js";
 import type {
   EnvironmentDescriptor,
@@ -59,6 +60,8 @@ import {
 } from "../../core/index.js";
 import type { ProjectWorkforcePlan } from "../../core/index.js";
 import { type ControlPlaneContext } from "../context.js";
+import { workflowStudioCatalog } from "./workflow-studio-views.js";
+import { factoryPipeline } from "./factory-pipeline-view.js";
 import {
   deriveAgentView,
   deriveApprovalView,
@@ -945,6 +948,112 @@ export class WorkforceQueryService {
     )
       return undefined;
     return getProjectGovernancePolicy(this.ctx, principal, projectId);
+  }
+
+  /** UI Layer 5: the development pipeline as this deployment can actually run it. */
+  getFactoryPipeline(principal: OperatorPrincipal) {
+    this.authorizeView(principal);
+    return factoryPipeline(this.ctx);
+  }
+
+  /* -------------------------------------------------------------- */
+  /* UI Layer 6 — Model Registry (declared profiles only)            */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Model capability profiles the Model Router may select from. Only what the
+   * deployment DECLARES: no benchmarks, latency or pricing are invented, and a
+   * registered provider is not claimed to have working credentials.
+   */
+  getModelRegistry(principal: OperatorPrincipal) {
+    this.authorizeView(principal);
+    const routing = this.ctx.routing;
+    if (!routing?.models) return { configured: false as const };
+    return {
+      configured: true as const,
+      profiles: routing.models.list().map((p) => ({
+        profileId: p.id,
+        providerId: p.providerId,
+        model: p.model ?? null,
+        capabilities: [...p.capabilities],
+        providerRegistered: routing.providers?.has(p.providerId) ?? false,
+      })),
+      credentialStatus: "not_reported" as const,
+      pricing: "not_declared" as const,
+      benchmarks: "not_measured" as const,
+    };
+  }
+
+  /* -------------------------------------------------------------- */
+  /* UI Layer 4 — Workflow Studio (read models)                      */
+  /* -------------------------------------------------------------- */
+
+  private studioProject(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ): boolean {
+    this.authorizeView(principal);
+    return (
+      !!this.ctx.workflowDefinitions &&
+      !!this.ctx.projects.get(projectId) &&
+      operatorCanAccessProject(principal, projectId)
+    );
+  }
+
+  private studioSources() {
+    return {
+      agents: this.ctx.agents,
+      tools: this.ctx.tools,
+      isAgentEnabled: (agentId: string, projectId: string) =>
+        this.ctx.agentOps.isEnabled(agentId, projectId),
+    };
+  }
+
+  getWorkflowStudioCatalog(principal: OperatorPrincipal, projectId: string) {
+    if (!this.studioProject(principal, projectId)) return undefined;
+    return workflowStudioCatalog(this.studioSources(), projectId);
+  }
+
+  async getWorkflowDefinitions(
+    principal: OperatorPrincipal,
+    projectId: string,
+  ) {
+    if (!this.studioProject(principal, projectId)) return undefined;
+    const items = await this.ctx.workflowDefinitions!.list(projectId);
+    return { items, total: items.length };
+  }
+
+  async getWorkflowDefinition(
+    principal: OperatorPrincipal,
+    projectId: string,
+    definitionId: string,
+  ) {
+    if (!this.studioProject(principal, projectId)) return undefined;
+    const svc = this.ctx.workflowDefinitions!;
+    const definition = await svc.get(projectId, definitionId);
+    if (!definition) return undefined;
+    return {
+      definition,
+      versions: await svc.versions(projectId, definitionId),
+    };
+  }
+
+  async getWorkflowSimulation(
+    principal: OperatorPrincipal,
+    projectId: string,
+    definitionId: string,
+    source: string | null,
+  ) {
+    if (!this.studioProject(principal, projectId)) return undefined;
+    const svc = this.ctx.workflowDefinitions!;
+    if (!(await svc.get(projectId, definitionId))) return undefined;
+    const parsed =
+      source === null || source === "draft"
+        ? "draft"
+        : Number.parseInt(source, 10);
+    if (parsed !== "draft" && (!Number.isInteger(parsed) || parsed < 1))
+      throw new ValidationError('source must be "draft" or a version number');
+    return svc.simulate(projectId, definitionId, parsed);
   }
 
   /** EO-7 routing decision history (bounded, newest first). */

@@ -139,3 +139,9 @@
 .preference-card .settings-note {
   margin: 0;
 }
+
+.profile-hint {
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}

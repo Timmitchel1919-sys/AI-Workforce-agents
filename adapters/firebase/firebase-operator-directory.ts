@@ -13,6 +13,7 @@
  */
 import {
   principalFor,
+  sessionRevoked,
   type IdentityVerifier,
   type OperatorAccountStore,
   type OperatorDirectory,
@@ -50,6 +51,7 @@ export class FirebaseOperatorDirectory
     const name = typeof decoded.name === "string" ? decoded.name : undefined;
     const authTime =
       typeof decoded.auth_time === "number" ? decoded.auth_time : undefined;
+    const issuedAt = typeof decoded.iat === "number" ? decoded.iat : undefined;
 
     const firebaseRaw = decoded.firebase;
     const firebaseClaims =
@@ -82,6 +84,7 @@ export class FirebaseOperatorDirectory
       ...(name ? { displayName: name } : {}),
       emailVerified: decoded.email_verified === true,
       ...(authTime !== undefined ? { authTime } : {}),
+      ...(issuedAt !== undefined ? { issuedAt } : {}),
       ...(firebaseClaims ? { firebaseClaims } : {}),
     };
   }
@@ -91,7 +94,10 @@ export class FirebaseOperatorDirectory
     const identity = await this.verify(credential);
     if (!identity) return null;
     try {
-      return principalFor(await this.accounts.get(identity.uid));
+      const account = await this.accounts.get(identity.uid);
+      // A token issued before "sign out all devices" is refused immediately.
+      if (sessionRevoked(account, identity.issuedAt)) return null;
+      return principalFor(account);
     } catch {
       return null;
     }

@@ -9,6 +9,8 @@ import { AuditControlService } from "../control/services/audit-service.js";
 import { PortfolioControlService } from "../control/services/portfolio-service.js";
 import { ProductManagementService } from "../control/services/product-service.js";
 import { WorkforceManagementService } from "../control/services/workforce-service.js";
+import { workflowCapabilityContext } from "../control/services/workflow-studio-views.js";
+import { WorkflowDefinitionService } from "../core/workflows/workflow-definition-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -681,6 +683,8 @@ export async function createProductionControlPlaneRuntime(
     store: operatorAccounts,
     audit,
     projects: bootstrap.projects,
+    // UI Layer 7: "sign out all devices" also revokes Firebase refresh tokens.
+    identityProvider: services.auth,
   });
   const profile = new ProfileService({
     profiles: new FirestoreOperatorProfileStore(transactionalFirestore, {
@@ -981,6 +985,9 @@ export async function createProductionControlPlaneRuntime(
       },
     },
     routing: {
+      // UI Layer 6: the declared model capability profiles + which providers are registered.
+      models: modelCapabilities,
+      providers: modelProviders,
       router: {
         get: (...a: Parameters<typeof modelRouter.get>) =>
           modelRouter.get(...a),
@@ -1029,6 +1036,19 @@ export async function createProductionControlPlaneRuntime(
       },
     ),
     workflowEngine,
+    // UI Layer 4 Workflow Studio: definitions + immutable versions in the durable record store.
+    workflowDefinitions: new WorkflowDefinitionService({
+      store: executionRecords,
+      capabilities: (projectId) =>
+        workflowCapabilityContext(
+          {
+            agents: bootstrap.agents,
+            tools: bootstrap.tools,
+            isAgentEnabled: (agentId, pid) => agentOps.isEnabled(agentId, pid),
+          },
+          projectId,
+        ),
+    }),
     events: new FirestoreEventPublisher(
       services.firestore.collection("control_events"),
     ),

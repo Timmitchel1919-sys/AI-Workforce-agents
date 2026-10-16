@@ -92,7 +92,13 @@ export interface ControlPlaneApiOptions {
    */
   identityVerifier?: IdentityVerifier;
   /** AUTHZ-1: serves `GET /me/access` (the caller's own access state). */
-  access?: Pick<AccessService, "myAccess">;
+  access?: Pick<AccessService, "myAccess"> &
+    Partial<
+      Pick<
+        AccessService,
+        "resolvePrincipal" | "revokeOwnSessions" | "isSessionRevoked"
+      >
+    >;
   /** The caller's own profile (`/me/profile`, photo upload/removal). */
   profile?: Pick<ProfileService, "myProfile" | "setPhoto" | "removePhoto">;
   itsm?: import("../control/services/itsm-control-service.js").ITSMControlService;
@@ -208,6 +214,13 @@ const COMMAND_METHODS: Record<
   "create-workstream": "createWorkstream",
   "add-workstream-task": "addTaskToWorkstream",
   "tick-software-factory": "tickSoftwareFactory",
+  // UI Layer 4 — Workflow Studio (authoring; never executes).
+  "save-workflow-draft": "saveWorkflowDraft",
+  "validate-workflow": "validateWorkflow",
+  "publish-workflow": "publishWorkflow",
+  "archive-workflow": "archiveWorkflow",
+  "restore-workflow-version": "restoreWorkflowVersion",
+  "duplicate-workflow": "duplicateWorkflow",
   // EO-6.2 / EO-6.3 — AI Cost Center & Governance Policy Engine.
   "set-budget-policy": "setBudgetPolicy",
   "set-governance-policy": "setGovernancePolicy",
@@ -406,6 +419,55 @@ export function createControlPlaneApi(
     // verified identity (authentication), never an active role: this is how
     // a pending user learns they are pending. Creates a PENDING request on
     // first contact; grants nothing.
+    // UI Layer 7 lost-device response: `POST /me/sessions/revoke` signs the
+    // caller out of EVERY device (including this one). Only an active operator
+    // whose current token is still valid may do it; it only ever reduces access.
+    if (method === "POST" && route === "/me/sessions/revoke") {
+      const identity = await verifyIdentity(req);
+      const access = options.access;
+      const principal =
+        identity && access?.resolvePrincipal
+          ? await access.resolvePrincipal(identity)
+          : null;
+      if (!identity || !principal || !access?.revokeOwnSessions) {
+        return send(
+          res,
+          401,
+          { error: { message: "authentication required" } },
+          correlationId,
+        );
+      }
+      try {
+        const result = await access.revokeOwnSessions(identity, correlationId);
+        await recordSecurityEvent({
+          category: "authentication",
+          type: SECURITY_EVENT_TYPES.SESSION_REVOKED,
+          severity: "medium",
+          outcome: "allowed",
+          actor: { kind: "human", id: principal.id },
+          source: {
+            kind: "network",
+            ip:
+              headerValue(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+              req.socket.remoteAddress,
+          },
+          correlationId,
+          evidence: {
+            scope: "all_devices",
+            refreshTokensRevoked: result.refreshTokensRevoked,
+          },
+        });
+        return send(res, 200, result, correlationId);
+      } catch (error) {
+        return send(
+          res,
+          statusForError(error),
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+    }
+
     if (method === "GET" && route === "/me/access") {
       const identity = await verifyIdentity(req);
       if (!identity) {
@@ -440,6 +502,16 @@ export function createControlPlaneApi(
         );
       }
       try {
+        if (await options.access.isSessionRevoked?.(identity)) {
+          return send(
+            res,
+            401,
+            {
+              error: { message: "this session was signed out; sign in again" },
+            },
+            correlationId,
+          );
+        }
         return send(
           res,
           200,
@@ -1703,6 +1775,56 @@ export function createControlPlaneApi(
             correlationId,
           );
         }
+        // UI Layer 4 Workflow Studio: catalog, definitions, versions, simulation.
+        if (
+          segs.length === 4 &&
+          segs[2] === "workflow-studio" &&
+          segs[3] === "catalog"
+        ) {
+          return send(
+            res,
+            200,
+            notNull(query.getWorkflowStudioCatalog(principal, id!)),
+            correlationId,
+          );
+        }
+        if (segs.length === 3 && segs[2] === "workflow-definitions") {
+          return send(
+            res,
+            200,
+            notNull(await query.getWorkflowDefinitions(principal, id!)),
+            correlationId,
+          );
+        }
+        if (segs.length === 4 && segs[2] === "workflow-definitions") {
+          return send(
+            res,
+            200,
+            notNull(
+              await query.getWorkflowDefinition(principal, id!, segs[3]!),
+            ),
+            correlationId,
+          );
+        }
+        if (
+          segs.length === 5 &&
+          segs[2] === "workflow-definitions" &&
+          segs[4] === "simulation"
+        ) {
+          return send(
+            res,
+            200,
+            notNull(
+              await query.getWorkflowSimulation(
+                principal,
+                id!,
+                segs[3]!,
+                params.get("source"),
+              ),
+            ),
+            correlationId,
+          );
+        }
         // EO-6.3 governance policy (provider/model allow-list, approval threshold).
         if (segs.length === 3 && segs[2] === "governance-policy") {
           return send(
@@ -1886,6 +2008,22 @@ export function createControlPlaneApi(
           { error: { message: "not found" } },
           correlationId,
         );
+      case "intelligence":
+        // UI Layer 6: GET /api/intelligence/models — declared model profiles.
+        if (segs.length === 2 && segs[1] === "models") {
+          return send(
+            res,
+            200,
+            query.getModelRegistry(principal),
+            correlationId,
+          );
+        }
+        return send(
+          res,
+          404,
+          { error: { message: "not found" } },
+          correlationId,
+        );
       case "planning":
         // GET /api/planning/technologies — read-only planner catalog.
         if (segs.length === 2 && segs[1] === "technologies") {
@@ -1926,6 +2064,15 @@ export function createControlPlaneApi(
           correlationId,
         );
       case "software-factory":
+        // UI Layer 5: GET /api/software-factory/pipeline — truthful stage modes.
+        if (segs.length === 2 && segs[1] === "pipeline") {
+          return send(
+            res,
+            200,
+            query.getFactoryPipeline(principal),
+            correlationId,
+          );
+        }
         // GET /api/software-factory, GET /api/software-factory/programs/:programId
         if (segs[1] === "programs" && segs.length === 3) {
           const projectId = params.get("projectId");

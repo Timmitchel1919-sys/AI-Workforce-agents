@@ -17,6 +17,7 @@ import "../Approvals/ApprovalsPage.css";
 import "../Infrastructure/InfrastructurePage.css";
 import { commandLabel } from "./feedback";
 import "./SoftwareFactoryPage.css";
+import { FactoryPipelinePanel } from "./FactoryPipelinePanel";
 
 interface Notice {
   tone: "ok" | "error";
@@ -70,6 +71,8 @@ export default function SoftwareFactoryPage() {
           {notice.text}
         </p>
       ) : null}
+
+      <FactoryPipelinePanel />
 
       {projectId ? (
         <>

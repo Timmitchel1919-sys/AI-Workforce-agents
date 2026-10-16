@@ -29,6 +29,8 @@ import {
   ShieldAlert,
   Puzzle,
   Megaphone,
+  Workflow,
+  TerminalSquare,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -46,6 +48,8 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   agents: Bot,
   tasks: ListTodo,
   workflows: GitBranch,
+  "workflow-studio": Workflow,
+  command: TerminalSquare,
   projects: FolderKanban,
   approvals: ClipboardCheck,
   "audit-log": ScrollText,

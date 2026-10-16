@@ -1,15 +1,21 @@
 {
-  "name": "AI Workforce Control Center",
+  "name": "AI Workforce OS",
   "short_name": "AI Workforce",
-  "description": "AI Workforce Control Center for governed agent operations.",
+  "description": "Private AI operating system: command center, missions, approvals and governed agent operations.",
   "id": "/",
-  "start_url": "/",
+  "start_url": "/overview",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0b1120",
-  "theme_color": "#0b1120",
+  "orientation": "any",
+  "background_color": "#050505",
+  "theme_color": "#050505",
   "icons": [
     { "src": "/brand/app-icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/brand/app-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "shortcuts": [
+    { "name": "Command Center", "url": "/command" },
+    { "name": "Approvals", "url": "/approvals" },
+    { "name": "Missions", "url": "/software-factory" }
   ]
 }

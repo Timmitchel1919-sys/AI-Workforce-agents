@@ -5,6 +5,8 @@ import TopBar from "./TopBar";
 import { useSidebarNotch } from "./useSidebarNotch";
 import { useI18n } from "../../i18n";
 import { InstallAppButton } from "../pwa/InstallAppButton";
+import { MobileTabBar } from "./MobileTabBar";
+import { ConnectionStatus } from "./ConnectionStatus";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -135,10 +137,12 @@ export default function AppShell() {
           mobileNavigationTriggerRef={triggerRef}
         />
 
+        <ConnectionStatus />
         <main className="app-shell__main" id="main-content" tabIndex={-1}>
           <Outlet />
         </main>
       </div>
+      <MobileTabBar moreOpen={mobileNavigationOpen} onMore={() => setMobileNavigationOpen((open) => !open)} /> 
     </div>
   );
 }

@@ -7,6 +7,8 @@ export { default as TasksPage } from "../../pages/Tasks/TasksPage";
 export { default as TaskDetailPage } from "../../pages/Tasks/TaskDetailPage";
 export { default as WorkflowsPage } from "../../pages/Workflows/WorkflowsPage";
 export { default as WorkflowDetailPage } from "../../pages/Workflows/WorkflowDetailPage";
+export { default as WorkflowStudioPage } from "../../pages/WorkflowStudio/WorkflowStudioPage";
+export { default as CommandCenterPage } from "../../pages/Command/CommandCenterPage";
 export { default as DesignSystemPage } from "../../pages/DesignSystem/DesignSystemPage";
 export { default as SettingsPage } from "../../pages/Settings/SettingsPage";
 export { default as ProfilePage } from "../../pages/Profile/ProfilePage";

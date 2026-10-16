@@ -7,6 +7,8 @@ export type NavigationIconId =
   | "agents"
   | "tasks"
   | "workflows"
+  | "workflow-studio"
+  | "command"
   | "projects"
   | "approvals"
   | "audit-log"
@@ -55,9 +57,11 @@ export const navigationSections: Array<{ id: NavigationSectionId; labelKey: Mess
 // Only real routes — no placeholders for modules that do not exist yet.
 export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.overview", route: "/overview", icon: "overview", section: "main" },
+  { labelKey: "nav.commandCenter", route: "/command", icon: "command", section: "main" },
   { labelKey: "nav.agents", route: "/agents", icon: "agents", section: "main" },
   { labelKey: "nav.tasks", route: "/tasks", icon: "tasks", section: "main" },
   { labelKey: "nav.workflows", route: "/workflows", icon: "workflows", section: "main" },
+  { labelKey: "nav.workflowStudio", route: "/workflow-studio", icon: "workflow-studio", section: "workspace" },
   { labelKey: "nav.projects", route: "/projects", icon: "projects", section: "workspace" },
   { labelKey: "nav.approvals", route: "/approvals", icon: "approvals", section: "workspace" },
   { labelKey: "nav.infrastructure", route: "/infrastructure", icon: "infrastructure", section: "workspace" },

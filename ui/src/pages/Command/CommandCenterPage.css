@@ -1,0 +1,56 @@
+.cc-form,
+.cc-result,
+.cc-examples {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+}
+
+.cc-label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--color-text-secondary); }
+.cc-row { display: flex; gap: 8px; }
+
+.cc-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 16px; /* prevents iOS zoom-on-focus */
+}
+
+.cc-mic,
+.cc-go { min-height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.cc-mic.is-live { border-color: var(--color-danger); color: var(--color-danger); }
+.cc-live { color: var(--color-danger); font-size: 13px; }
+.cc-muted { color: var(--color-text-muted); font-size: 13px; }
+.cc-warn { color: var(--color-warning); }
+.cc-result h2,
+.cc-examples h2 { margin: 0 0 8px; font-size: 14px; }
+
+.cc-examples ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+
+.cc-chip {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cc-chip:hover { background: var(--color-surface-hover); }
+
+@media (max-width: 520px) {
+  .cc-row { flex-wrap: wrap; }
+  .cc-input { flex-basis: 100%; }
+  .cc-go { flex: 1; }
+}

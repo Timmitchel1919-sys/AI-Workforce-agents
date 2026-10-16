@@ -1,11 +1,13 @@
 /* global self, caches, fetch, URL */
 
-const CACHE_NAME = "ai-workforce-shell-v1";
+// Only the static shell is cached. API responses are NEVER cached (see the
+// fetch handler), so no authorized data or token outlives a session revocation.
+const CACHE_NAME = "ai-workforce-shell-v2";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
-  "/ai-workforce-app-icon.png",
-  "/ai-workforce-logo.png",
+  "/brand/app-icon-192.png",
+  "/brand/app-icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
