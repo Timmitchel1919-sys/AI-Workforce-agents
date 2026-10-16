@@ -29,6 +29,15 @@ export interface AccessServiceOptions {
         has(projectId: string): boolean;
     };
     clock?: () => string;
+    /**
+     * Identity-provider refresh-token revocation (Firebase Admin). Optional:
+     * without it, "sign out all devices" still refuses every existing ID token,
+     * but a device holding a refresh token could mint a new one — the result
+     * reports that honestly.
+     */
+    identityProvider?: {
+        revokeRefreshTokens?(uid: string): Promise<void>;
+    };
 }
 export interface AccessActor {
     principal: OperatorPrincipal;
@@ -41,11 +50,24 @@ export declare class AccessService {
     constructor(options: AccessServiceOptions);
     /** The principal for an identity, or null unless the account is ACTIVE. */
     resolvePrincipal(identity: VerifiedIdentity): Promise<OperatorPrincipal | null>;
+    /** True when this token predates the account's last "sign out all devices". */
+    isSessionRevoked(identity: VerifiedIdentity): Promise<boolean>;
     /**
      * `GET /api/me/access`. A first visit records a PENDING access request —
      * never access. Profile fields are refreshed from the verified token.
      */
     myAccess(identity: VerifiedIdentity): Promise<MyAccessView>;
+    /**
+     * "Sign out all devices" for the caller's OWN account. Reduces access only,
+     * so it needs no extra approval. Every ID token issued before now is refused
+     * from the next request on, and the identity provider's refresh tokens are
+     * revoked when that capability is wired. Idempotent: repeating it just moves
+     * the cut-off forward.
+     */
+    revokeOwnSessions(identity: VerifiedIdentity, correlationId?: string): Promise<{
+        sessionsValidAfter: number;
+        refreshTokensRevoked: boolean;
+    }>;
     listAccounts(principal: OperatorPrincipal): Promise<OperatorAccountView[]>;
     /**
      * Apply one administrative action. Validation order: capability → target

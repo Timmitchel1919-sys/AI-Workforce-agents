@@ -402,6 +402,51 @@ export declare class WorkforceQueryService {
         configured: true;
         policy: import("../../contracts/governance.js").GovernancePolicy | null;
     } | undefined>;
+    /** UI Layer 5: the development pipeline as this deployment can actually run it. */
+    getFactoryPipeline(principal: OperatorPrincipal): {
+        stages: import("./factory-pipeline-view.js").FactoryStageView[];
+        runners: {
+            family: string;
+            status: string;
+            realRunners: number;
+        }[];
+    };
+    /**
+     * Model capability profiles the Model Router may select from. Only what the
+     * deployment DECLARES: no benchmarks, latency or pricing are invented, and a
+     * registered provider is not claimed to have working credentials.
+     */
+    getModelRegistry(principal: OperatorPrincipal): {
+        configured: false;
+        profiles?: undefined;
+        credentialStatus?: undefined;
+        pricing?: undefined;
+        benchmarks?: undefined;
+    } | {
+        configured: true;
+        profiles: {
+            profileId: string;
+            providerId: string;
+            model: string | null;
+            capabilities: ("reasoning" | "coding" | "vision" | "structured_output" | "large_context")[];
+            providerRegistered: boolean;
+        }[];
+        credentialStatus: "not_reported";
+        pricing: "not_declared";
+        benchmarks: "not_measured";
+    };
+    private studioProject;
+    private studioSources;
+    getWorkflowStudioCatalog(principal: OperatorPrincipal, projectId: string): import("./workflow-studio-views.js").WorkflowStudioCatalog | undefined;
+    getWorkflowDefinitions(principal: OperatorPrincipal, projectId: string): Promise<{
+        items: import("../../contracts/workflow-definitions.js").WorkflowDefinition[];
+        total: number;
+    } | undefined>;
+    getWorkflowDefinition(principal: OperatorPrincipal, projectId: string, definitionId: string): Promise<{
+        definition: import("../../contracts/workflow-definitions.js").WorkflowDefinition;
+        versions: import("../../contracts/workflow-definitions.js").WorkflowVersion[];
+    } | undefined>;
+    getWorkflowSimulation(principal: OperatorPrincipal, projectId: string, definitionId: string, source: string | null): Promise<import("../../contracts/workflow-definitions.js").WorkflowSimulation | undefined>;
     /** EO-7 routing decision history (bounded, newest first). */
     getProjectRoutingDecisions(principal: OperatorPrincipal, projectId: string): Promise<{
         configured: false;

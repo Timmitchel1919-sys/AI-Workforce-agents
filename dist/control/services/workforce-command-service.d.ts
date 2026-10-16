@@ -115,6 +115,13 @@ export declare class WorkforceCommandService {
     evaluateGovernance(principal: OperatorPrincipal, input: unknown, options?: CommandOptions): Promise<ControlCommandResult>;
     private resolveTask;
     private resolveWorkflow;
+    saveWorkflowDraft(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    validateWorkflow(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    publishWorkflow(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    archiveWorkflow(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    restoreWorkflowVersion(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    duplicateWorkflow(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    private workflowStudio;
     /**
      * Record a `control_command` audit event and return the structured result.
      * `errorKind` refines a non-`executed` outcome; when omitted it defaults to

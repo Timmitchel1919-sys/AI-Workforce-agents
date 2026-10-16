@@ -996,6 +996,119 @@ export class WorkforceCommandService {
         }
         return { ok: true, workflow };
     }
+    /* -------------------------------------------------------------- */
+    /* UI Layer 4 — Workflow Studio (authoring only; never executes)   */
+    /* -------------------------------------------------------------- */
+    async saveWorkflowDraft(principal, input, options) {
+        return this.workflowStudio(principal, "save_workflow_draft", "author_workflow", input, options, async (svc, projectId) => {
+            const def = await svc.saveDraft({
+                projectId,
+                definitionId: typeof input?.definitionId === "string"
+                    ? input.definitionId
+                    : undefined,
+                expectedRevision: typeof input?.expectedRevision === "number"
+                    ? input.expectedRevision
+                    : undefined,
+                name: input?.name,
+                description: typeof input?.description === "string"
+                    ? input.description
+                    : undefined,
+                graph: input?.graph,
+            }, principal.id);
+            return {
+                def,
+                reason: `workflow draft saved (revision ${def.draftRevision})`,
+            };
+        });
+    }
+    async validateWorkflow(principal, input, options) {
+        return this.workflowStudio(principal, "validate_workflow", "author_workflow", input, options, async (svc, projectId) => {
+            const def = await svc.validateStored(projectId, input?.definitionId, principal.id);
+            return {
+                def,
+                reason: def.lastValidation?.valid
+                    ? "workflow draft is valid"
+                    : "workflow draft has validation errors",
+            };
+        });
+    }
+    async publishWorkflow(principal, input, options) {
+        return this.workflowStudio(principal, "publish_workflow", "publish_workflow", input, options, async (svc, projectId) => {
+            const { definition, version } = await svc.publish(projectId, input?.definitionId, input?.expectedRevision, principal.id);
+            return {
+                def: definition,
+                reason: `workflow version ${version.version} published`,
+                extra: { version: version.version, graphHash: version.graphHash },
+            };
+        });
+    }
+    async archiveWorkflow(principal, input, options) {
+        return this.workflowStudio(principal, "archive_workflow", "publish_workflow", input, options, async (svc, projectId) => {
+            const def = await svc.archive(projectId, input?.definitionId, principal.id);
+            return { def, reason: "workflow archived (versions are kept)" };
+        });
+    }
+    async restoreWorkflowVersion(principal, input, options) {
+        return this.workflowStudio(principal, "restore_workflow_version", "author_workflow", input, options, async (svc, projectId) => {
+            const def = await svc.restoreVersion(projectId, input?.definitionId, input?.version, principal.id);
+            return {
+                def,
+                reason: `version ${String(input?.version)} copied into draft revision ${def.draftRevision}`,
+            };
+        });
+    }
+    async duplicateWorkflow(principal, input, options) {
+        return this.workflowStudio(principal, "duplicate_workflow", "author_workflow", input, options, async (svc, projectId) => {
+            const def = await svc.duplicate(projectId, input?.definitionId, principal.id);
+            return { def, reason: "workflow duplicated as a new draft" };
+        });
+    }
+    async workflowStudio(principal, command, capability, input, options, act) {
+        const run = { correlationId: resolveCorrelationId(options) };
+        let projectId;
+        try {
+            projectId = requireId(input?.projectId, `${command}.projectId`);
+        }
+        catch (error) {
+            return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+        }
+        if (!operatorCan(principal, capability)) {
+            return this.audited(principal, command, "denied", undefined, `role "${principal.role}" may not ${capability.replace("_", " ")}s`, { projectId }, run);
+        }
+        if (!operatorCanAccessProject(principal, projectId)) {
+            return this.audited(principal, command, "denied", undefined, `operator may not act on project "${projectId}"`, { projectId }, run);
+        }
+        const svc = this.ctx.workflowDefinitions;
+        if (!svc) {
+            return this.audited(principal, command, "rejected", undefined, "the Workflow Studio is not composed in this deployment", { projectId }, run, "not_found");
+        }
+        if (!this.ctx.projects.has(projectId)) {
+            return this.audited(principal, command, "rejected", undefined, "unknown project", { projectId }, run, "not_found");
+        }
+        try {
+            const { def, reason, extra } = await act(svc, projectId);
+            return this.audited(principal, command, "executed", def.definitionId, reason, {
+                projectId,
+                definitionId: def.definitionId,
+                status: def.status,
+                draftRevision: def.draftRevision,
+                valid: def.lastValidation?.valid ?? false,
+                latestPublishedVersion: def.latestPublishedVersion,
+                ...extra,
+            }, run);
+        }
+        catch (error) {
+            return this.audited(principal, command, "rejected", typeof input?.definitionId === "string"
+                ? input.definitionId
+                : undefined, message(error), { projectId }, run, error instanceof NotFoundError
+                ? "not_found"
+                : error instanceof StateTransitionError
+                    ? "invalid_state"
+                    : error instanceof ValidationError
+                        ? "invalid_request"
+                        : "command_failure");
+        }
+    }
     /**
      * Record a `control_command` audit event and return the structured result.
      * `errorKind` refines a non-`executed` outcome; when omitted it defaults to

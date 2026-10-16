@@ -11,7 +11,7 @@
  * account resolves to `null` (deny by default). Custom claims are not used for
  * authorization.
  */
-import { principalFor, } from "../../contracts/index.js";
+import { principalFor, sessionRevoked, } from "../../contracts/index.js";
 export class FirebaseOperatorDirectory {
     auth;
     accounts;
@@ -37,6 +37,7 @@ export class FirebaseOperatorDirectory {
         const email = typeof decoded.email === "string" ? decoded.email : undefined;
         const name = typeof decoded.name === "string" ? decoded.name : undefined;
         const authTime = typeof decoded.auth_time === "number" ? decoded.auth_time : undefined;
+        const issuedAt = typeof decoded.iat === "number" ? decoded.iat : undefined;
         const firebaseRaw = decoded.firebase;
         const firebaseClaims = firebaseRaw && typeof firebaseRaw === "object"
             ? {
@@ -63,6 +64,7 @@ export class FirebaseOperatorDirectory {
             ...(name ? { displayName: name } : {}),
             emailVerified: decoded.email_verified === true,
             ...(authTime !== undefined ? { authTime } : {}),
+            ...(issuedAt !== undefined ? { issuedAt } : {}),
             ...(firebaseClaims ? { firebaseClaims } : {}),
         };
     }
@@ -72,7 +74,11 @@ export class FirebaseOperatorDirectory {
         if (!identity)
             return null;
         try {
-            return principalFor(await this.accounts.get(identity.uid));
+            const account = await this.accounts.get(identity.uid);
+            // A token issued before "sign out all devices" is refused immediately.
+            if (sessionRevoked(account, identity.issuedAt))
+                return null;
+            return principalFor(account);
         }
         catch {
             return null;

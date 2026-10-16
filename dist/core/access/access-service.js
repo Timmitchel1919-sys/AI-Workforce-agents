@@ -19,7 +19,7 @@
  *   - the initial administrator bootstrap works once, then locks.
  * Every change is audited (`access_event`), with no token or credential.
  */
-import { NotFoundError, OPERATOR_ROLES, PermissionDeniedError, ROLE_RANK, StateTransitionError, ValidationError, capabilitiesFor, isActiveAdmin, operatorCan, principalFor, } from "../../contracts/index.js";
+import { NotFoundError, OPERATOR_ROLES, PermissionDeniedError, ROLE_RANK, StateTransitionError, ValidationError, capabilitiesFor, isActiveAdmin, operatorCan, principalFor, sessionRevoked, } from "../../contracts/index.js";
 import { now } from "../shared.js";
 /** Which statuses each action may start from, and where it leads. */
 const TRANSITIONS = {
@@ -43,7 +43,14 @@ export class AccessService {
     /* -------------------------------------------------------------- */
     /** The principal for an identity, or null unless the account is ACTIVE. */
     async resolvePrincipal(identity) {
-        return principalFor(await this.options.store.get(identity.uid));
+        const account = await this.options.store.get(identity.uid);
+        if (sessionRevoked(account, identity.issuedAt))
+            return null;
+        return principalFor(account);
+    }
+    /** True when this token predates the account's last "sign out all devices". */
+    async isSessionRevoked(identity) {
+        return sessionRevoked(await this.options.store.get(identity.uid), identity.issuedAt);
     }
     /**
      * `GET /api/me/access`. A first visit records a PENDING access request —
@@ -102,6 +109,65 @@ export class AccessService {
             ...(authorized ? { allowedProjects: account.allowedProjects } : {}),
             capabilities: capabilitiesFor(account),
         };
+    }
+    /* -------------------------------------------------------------- */
+    /* Lost-device response (UI Layer 7)                             */
+    /* -------------------------------------------------------------- */
+    /**
+     * "Sign out all devices" for the caller's OWN account. Reduces access only,
+     * so it needs no extra approval. Every ID token issued before now is refused
+     * from the next request on, and the identity provider's refresh tokens are
+     * revoked when that capability is wired. Idempotent: repeating it just moves
+     * the cut-off forward.
+     */
+    async revokeOwnSessions(identity, correlationId) {
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+            const account = await this.options.store.get(identity.uid);
+            if (!account || account.status !== "active") {
+                throw new PermissionDeniedError("only an active operator can revoke sessions");
+            }
+            const cutoff = Math.floor(Date.parse(this.clock()) / 1000);
+            const next = {
+                ...account,
+                sessionsValidAfter: Math.max(cutoff, account.sessionsValidAfter ?? 0),
+                updatedAt: this.clock(),
+                revision: account.revision + 1,
+            };
+            try {
+                await this.options.store.commit({
+                    kind: "update",
+                    account: next,
+                    expectedRevision: account.revision,
+                    activeAdminDelta: 0,
+                });
+            }
+            catch (error) {
+                if (attempt < 2)
+                    continue; // a concurrent change: re-read and retry
+                throw error;
+            }
+            let refreshTokensRevoked = false;
+            const revoke = this.options.identityProvider?.revokeRefreshTokens;
+            if (revoke) {
+                try {
+                    await revoke.call(this.options.identityProvider, identity.uid);
+                    refreshTokensRevoked = true;
+                }
+                catch {
+                    refreshTokensRevoked = false;
+                }
+            }
+            this.record("sessions_revoked", identity.uid, identity.uid, {
+                sessionsValidAfter: next.sessionsValidAfter,
+                refreshTokensRevoked,
+                correlationId,
+            });
+            return {
+                sessionsValidAfter: next.sessionsValidAfter,
+                refreshTokensRevoked,
+            };
+        }
+        throw new StateTransitionError("could not revoke sessions; try again");
     }
     /* -------------------------------------------------------------- */
     /* Administration                                                */

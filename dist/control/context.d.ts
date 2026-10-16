@@ -90,6 +90,14 @@ export interface ControlPlaneContext {
      */
     routing?: {
         router: Pick<ModelRouter, "get" | "listByProject">;
+        /** UI Layer 6 Model Registry: declared capability profiles (never benchmarks). */
+        models?: {
+            list(): readonly import("../contracts/index.js").ModelCapabilityProfile[];
+        };
+        /** Registered provider ids (registration != configured credentials). */
+        providers?: {
+            has(id: string): boolean;
+        };
     };
     /** EO-4.5 environment execution adapter/runner status. */
     environmentAdapters?: Pick<EnvironmentAdapterRegistry, "status">;
@@ -120,6 +128,11 @@ export interface ControlPlaneContext {
     };
     softwareFactory?: import("../core/orchestrator/software-factory-orchestrator.js").SoftwareFactoryOrchestrator;
     workflowEngine?: Pick<WorkflowEngine, "resume">;
+    /**
+     * UI Layer 4 Workflow Studio: durable, versioned workflow DEFINITIONS
+     * (authoring only — never executes). Absent => studio routes 404.
+     */
+    workflowDefinitions?: import("../core/workflows/workflow-definition-service.js").WorkflowDefinitionService;
     /** Health probes. Anything not listed is reported as `unknown` (unmeasured). */
     healthProbes?: readonly HealthProbe[];
     /**

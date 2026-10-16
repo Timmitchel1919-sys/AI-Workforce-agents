@@ -57,6 +57,8 @@ export interface FirebaseAuthLike {
     verifyIdToken(idToken: string): Promise<DecodedTokenLike>;
     /** Admin SDK user lookup — used only by the trusted bootstrap tool. */
     getUser?(uid: string): Promise<FirebaseUserRecordLike>;
+    /** Admin SDK: invalidate every refresh token of a user (lost-device response). */
+    revokeRefreshTokens?(uid: string): Promise<void>;
 }
 export interface DecodedAppCheckTokenLike {
     app_id: string;

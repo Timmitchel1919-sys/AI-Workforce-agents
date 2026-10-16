@@ -442,6 +442,7 @@ export * from "./operations.js";
 export * from "./research.js";
 export * from "./tools.js";
 export * from "./workflow.js";
+export * from "./workflow-definitions.js";
 export * from "./project-manager.js";
 export * from "./developer.js";
 export * from "./qa.js";

@@ -25,7 +25,7 @@ export interface ControlPlaneApiOptions {
      */
     identityVerifier?: IdentityVerifier;
     /** AUTHZ-1: serves `GET /me/access` (the caller's own access state). */
-    access?: Pick<AccessService, "myAccess">;
+    access?: Pick<AccessService, "myAccess"> & Partial<Pick<AccessService, "resolvePrincipal" | "revokeOwnSessions" | "isSessionRevoked">>;
     /** The caller's own profile (`/me/profile`, photo upload/removal). */
     profile?: Pick<ProfileService, "myProfile" | "setPhoto" | "removePhoto">;
     itsm?: import("../control/services/itsm-control-service.js").ITSMControlService;

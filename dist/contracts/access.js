@@ -41,6 +41,16 @@ export function isActiveAdmin(account) {
  * The single authorization decision: only an ACTIVE account with a role
  * yields a principal. Pending, rejected, suspended, revoked or missing → null.
  */
+/**
+ * Whether a token issued at `issuedAt` predates the account's last
+ * "sign out all devices". A token with no `iat` is treated as stale once a
+ * revocation exists (deny by default).
+ */
+export function sessionRevoked(account, issuedAt) {
+    if (!account?.sessionsValidAfter)
+        return false;
+    return issuedAt === undefined || issuedAt < account.sessionsValidAfter;
+}
 export function principalFor(account) {
     if (!account || account.status !== "active" || !account.role)
         return null;

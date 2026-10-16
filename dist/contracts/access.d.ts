@@ -23,6 +23,12 @@ export interface OperatorAccount {
     statusReason?: string;
     /** True for the account created by the initial administrator bootstrap. */
     bootstrap?: boolean;
+    /**
+     * UI Layer 7 lost-device response: Unix seconds. ID tokens ISSUED before this
+     * instant are refused, so "sign out all devices" takes effect on the very
+     * next request, not when the stolen token would naturally expire.
+     */
+    sessionsValidAfter?: number;
     /** Optimistic-concurrency counter; bumped on every committed change. */
     revision: number;
 }
@@ -34,6 +40,8 @@ export interface VerifiedIdentity {
     emailVerified: boolean;
     /** Unix timestamp in seconds when the authentication ceremony occurred. */
     authTime?: number;
+    /** Unix timestamp in seconds when this ID token was issued (`iat`). */
+    issuedAt?: number;
     /** Verified Firebase Auth token claims (e.g. second factor for MFA). */
     firebaseClaims?: {
         signInSecondFactor?: string;
@@ -109,6 +117,12 @@ export declare function isActiveAdmin(account: OperatorAccount | undefined): boo
  * The single authorization decision: only an ACTIVE account with a role
  * yields a principal. Pending, rejected, suspended, revoked or missing → null.
  */
+/**
+ * Whether a token issued at `issuedAt` predates the account's last
+ * "sign out all devices". A token with no `iat` is treated as stale once a
+ * revocation exists (deny by default).
+ */
+export declare function sessionRevoked(account: OperatorAccount | undefined, issuedAt: number | undefined): boolean;
 export declare function principalFor(account: OperatorAccount | undefined): OperatorPrincipal | null;
 export declare function capabilitiesFor(account: OperatorAccount | undefined): readonly ControlCapability[];
 export declare function validateOperatorAccount(account: OperatorAccount): void;
