@@ -1,0 +1,59 @@
+.ops-bento {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ops-card {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  backdrop-filter: blur(var(--glass-blur, 12px));
+}
+.ops-card--wide { grid-column: 1 / -1; }
+.ops-card h2 { margin: 0 0 10px; font-size: 15px; color: var(--color-text-heading); }
+.ops-muted { color: var(--color-text-muted); font-size: 13px; }
+.ops-mono { font-family: ui-monospace, monospace; font-size: 12px; }
+.ops-big { font-size: 22px; font-weight: 600; margin: 4px 0 8px; }
+.ops-list { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
+.ops-health {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ops-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.ops-status--healthy { border-left-color: var(--color-success); }
+.ops-status--degraded { border-left-color: var(--color-warning); }
+.ops-status--unavailable { border-left-color: var(--color-danger); }
+.ops-status--unknown { border-left-color: var(--color-border-strong); border-left-style: dashed; }
+.ops-counts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 8px; }
+.ops-counts dt { font-size: 12px; color: var(--color-text-muted); }
+.ops-counts dd { margin: 0; font-size: 18px; font-weight: 600; }
+.ops-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin: 8px 0 12px; }
+.ops-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--color-text-secondary); }
+.ops-field input {
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  font: inherit;
+}
+.ops-table-wrap { overflow-x: auto; }
+.ops-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ops-table th, .ops-table td { padding: 6px 8px; border-bottom: 1px solid var(--color-border); text-align: left; }
+.ops-table thead th { font-size: 12px; color: var(--color-text-secondary); }

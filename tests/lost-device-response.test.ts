@@ -27,6 +27,8 @@ import {
 } from "../control/index.js";
 import {
   AccessService,
+  InMemoryExecutionRecordStore,
+  LockdownService,
   AgentRegistry,
   ApprovalSystem,
   AuditLog,
@@ -44,7 +46,12 @@ class FakeAuth implements FirebaseAuthLike {
   async verifyIdToken(token: string): Promise<DecodedTokenLike> {
     const m = /^tok-([a-z0-9-]+?)-(\d+)$/.exec(token);
     if (!m) throw new Error("invalid token");
-    return { uid: m[1]!, iat: Number(m[2]), email_verified: true };
+    return {
+      uid: m[1]!,
+      iat: Number(m[2]),
+      auth_time: Number(m[2]),
+      email_verified: true,
+    };
   }
   async revokeRefreshTokens(uid: string) {
     this.revoked.push(uid);
@@ -63,6 +70,10 @@ async function setup(now: { iso: string }) {
   await accounts.commit({
     kind: "create_pending",
     account: { id: "owner", status: "active", role: "admin", ...base },
+  });
+  await accounts.commit({
+    kind: "create_pending",
+    account: { id: "viewer", status: "active", role: "viewer", ...base },
   });
   await accounts.commit({
     kind: "create_pending",
@@ -98,14 +109,28 @@ async function setup(now: { iso: string }) {
       operatorDirectory: directory,
       identityVerifier: directory,
       access,
+      lockdown: new LockdownService(
+        new InMemoryExecutionRecordStore(),
+        audit,
+        () => Date.parse(now.iso),
+      ),
     }),
   );
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const { port } = server.address() as AddressInfo;
-  const call = async (method: string, path: string, token?: string) => {
+  const call = async (
+    method: string,
+    path: string,
+    token?: string,
+    body?: unknown,
+  ) => {
     const res = await fetch(`http://127.0.0.1:${port}/api${path}`, {
       method,
-      headers: token ? { authorization: `Bearer ${token}` } : {},
+      headers: {
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
     const text = await res.text();
     return {
@@ -189,6 +214,80 @@ test("L7 LOST DEVICE: only an active, authenticated operator can revoke; repeat 
       account?.status,
       "active",
       "the owner is never locked out of the account itself",
+    );
+  } finally {
+    await s.close();
+  }
+});
+
+test("L11 LOCKDOWN: admin + recent sign-in only; blocks every command; idempotent; lift restores", async () => {
+  const now = { iso: "2026-10-16T12:00:00.000Z" };
+  const s = await setup(now);
+  try {
+    const fresh = `tok-owner-${sec(now.iso) - 60}`;
+    const stale = `tok-owner-${sec(now.iso) - 3600}`;
+    const viewer = `tok-viewer-${sec(now.iso)}`;
+    const st = await s.call("GET", "/platform/lockdown", viewer);
+    assert.equal(st.body?.active, false, JSON.stringify(st));
+    assert.equal(
+      (await s.call("POST", "/platform/lockdown", undefined, { reason: "x" }))
+        .status,
+      401,
+    );
+    assert.equal(
+      (await s.call("POST", "/platform/lockdown", viewer, { reason: "x" }))
+        .status,
+      403,
+      "not an admin",
+    );
+    assert.equal(
+      (await s.call("POST", "/platform/lockdown", stale, { reason: "x" }))
+        .status,
+      403,
+      "sign-in too old",
+    );
+    assert.equal(
+      (await s.call("POST", "/platform/lockdown", fresh, {})).status,
+      400,
+      "reason required",
+    );
+
+    const on = await s.call("POST", "/platform/lockdown", fresh, {
+      reason: "phone stolen",
+    });
+    assert.equal(on.status, 200);
+    assert.equal(on.body.active, true);
+    const again = await s.call("POST", "/platform/lockdown", fresh, {
+      reason: "again",
+    });
+    assert.equal(again.body.revision, on.body.revision, "idempotent");
+
+    // Every command is refused, even for the administrator; reads still work.
+    const cmd = await s.call("POST", "/commands/approve", fresh, {
+      approvalId: "a1",
+    });
+    assert.equal(cmd.status, 423);
+    assert.equal((await s.call("GET", "/agents", fresh)).status, 200);
+    // Sign-out everywhere still works during lockdown (it only reduces access).
+    assert.equal(
+      (await s.call("POST", "/platform/lockdown/lift", stale)).status,
+      403,
+      "lift needs step-up too",
+    );
+
+    const off = await s.call("POST", "/platform/lockdown/lift", fresh);
+    assert.equal(off.body.active, false);
+    assert.notEqual(
+      (await s.call("POST", "/commands/approve", fresh, { approvalId: "a1" }))
+        .status,
+      423,
+    );
+    const events = s.audit
+      .query({})
+      .filter((e) => String((e.data as any)?.action).startsWith("lockdown_"));
+    assert.deepEqual(
+      events.map((e) => (e.data as any).action),
+      ["lockdown_activated", "lockdown_lifted"],
     );
   } finally {
     await s.close();

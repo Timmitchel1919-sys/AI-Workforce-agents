@@ -15,12 +15,12 @@ stays authoritative.
 - **Validation** runs on the server against the live agent and tool registries, on every save, publish and simulation. The client copy only gives hints. Credentials are refused, and unknown fields are dropped.
 - **Execution modes:**
 
-  | Mode | Status |
-  |---|---|
-  | Design | Available |
-  | Validation | Available |
-  | Simulation | Available. Pure read: no agent, model, tool or approval call. |
-  | Dry run | **Not offered.** No side-effect-free path exists. |
+  | Mode           | Status                                                                                                                  |
+  | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+  | Design         | Available                                                                                                               |
+  | Validation     | Available                                                                                                               |
+  | Simulation     | Available. Pure read: no agent, model, tool or approval call.                                                           |
+  | Dry run        | **Not offered.** No side-effect-free path exists.                                                                       |
   | Live execution | **Withheld.** Workflow run state is in memory in a runtime rebuilt per request, so a launched run would not be durable. |
 
 - **Commands:** `save-workflow-draft`, `validate-workflow`, `publish-workflow`, `archive-workflow`, `restore-workflow-version`, `duplicate-workflow`.
@@ -64,8 +64,8 @@ Production today has no runner, Git connection or deploy adapter. Implementation
 
 ## Not implemented / blocked
 
-| Item | Status |
-|---|---|
-| Live and PC-independent cloud execution | **BLOCKED.** No cloud runner is registered, and workflow run state is not durable. A runner (for example Cloud Run Jobs) adds recurring cost and needs owner approval. |
-| Pull requests / GitHub | **NOT IMPLEMENTED.** No GitHub adapter is configured. |
-| Emergency lockdown, per-device session inventory, push notifications, routing-policy editor, agent builder | **NOT IMPLEMENTED** in this release. |
+| Item                                                                                                       | Status                                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Live and PC-independent cloud execution                                                                    | **BLOCKED.** No cloud runner is registered, and workflow run state is not durable. A runner (for example Cloud Run Jobs) adds recurring cost and needs owner approval. |
+| Pull requests / GitHub                                                                                     | **NOT IMPLEMENTED.** No GitHub adapter is configured.                                                                                                                  |
+| Emergency lockdown, per-device session inventory, push notifications, routing-policy editor, agent builder | **NOT IMPLEMENTED** in this release.                                                                                                                                   |

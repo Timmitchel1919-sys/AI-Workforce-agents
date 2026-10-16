@@ -92,6 +92,11 @@ export interface ControlPlaneApiOptions {
    */
   identityVerifier?: IdentityVerifier;
   /** AUTHZ-1: serves `GET /me/access` (the caller's own access state). */
+  /** UI Layer 11 emergency lockdown. Absent => no lockdown routes, nothing blocked. */
+  lockdown?: Pick<
+    import("../core/access/lockdown-service.js").LockdownService,
+    "status" | "activate" | "lift"
+  >;
   access?: Pick<AccessService, "myAccess"> &
     Partial<
       Pick<
@@ -419,6 +424,82 @@ export function createControlPlaneApi(
     // verified identity (authentication), never an active role: this is how
     // a pending user learns they are pending. Creates a PENDING request on
     // first contact; grants nothing.
+    // UI Layer 11 emergency lockdown: GET status (any active operator),
+    // POST activate / lift (administrator with a recent sign-in, audited).
+    if (route === "/platform/lockdown" || route === "/platform/lockdown/lift") {
+      const identity = await verifyIdentity(req);
+      const access = options.access;
+      const principal =
+        identity && access?.resolvePrincipal
+          ? await access.resolvePrincipal(identity)
+          : null;
+      if (!identity || !principal) {
+        return send(
+          res,
+          401,
+          { error: { message: "authentication required" } },
+          correlationId,
+        );
+      }
+      if (!options.lockdown) {
+        return send(
+          res,
+          404,
+          { error: { message: "not found" } },
+          correlationId,
+        );
+      }
+      try {
+        if (method === "GET" && route === "/platform/lockdown") {
+          return send(res, 200, await options.lockdown.status(), correlationId);
+        }
+        if (method !== "POST") {
+          return send(
+            res,
+            405,
+            { error: { message: "method not allowed" } },
+            correlationId,
+          );
+        }
+        const body =
+          route === "/platform/lockdown" ? await readJsonBody(req, 4096) : {};
+        const state =
+          route === "/platform/lockdown"
+            ? await options.lockdown.activate(
+                principal,
+                identity.authTime,
+                body.reason,
+                correlationId,
+              )
+            : await options.lockdown.lift(
+                principal,
+                identity.authTime,
+                correlationId,
+              );
+        await recordSecurityEvent({
+          category: "authorization",
+          type: SECURITY_EVENT_TYPES.POLICY_CHANGED,
+          severity: "high",
+          outcome: "allowed",
+          actor: { kind: "human", id: principal.id },
+          source: { kind: "network", ip: req.socket.remoteAddress },
+          correlationId,
+          evidence: {
+            lockdown: state.active ? "active" : "lifted",
+            revision: state.revision,
+          },
+        });
+        return send(res, 200, state, correlationId);
+      } catch (error) {
+        return send(
+          res,
+          statusForError(error),
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+    }
+
     // UI Layer 7 lost-device response: `POST /me/sessions/revoke` signs the
     // caller out of EVERY device (including this one). Only an active operator
     // whose current token is still valid may do it; it only ever reduces access.
@@ -970,6 +1051,23 @@ export function createControlPlaneApi(
       );
     }
 
+    if (
+      method !== "GET" &&
+      options.lockdown &&
+      (await options.lockdown.status()).active
+    ) {
+      return send(
+        res,
+        423,
+        {
+          error: {
+            message:
+              "emergency lockdown is active; destructive actions are suspended",
+          },
+        },
+        correlationId,
+      );
+    }
     try {
       // POST /destructive/requests
       if (route === "/destructive/requests" && method === "POST") {
@@ -2783,6 +2881,19 @@ export function createControlPlaneApi(
       );
     }
     // Own properties only: inherited names ("constructor", "__proto__", "toString") are not commands.
+    // UI Layer 11: an active emergency lockdown refuses every command.
+    if (options.lockdown && (await options.lockdown.status()).active) {
+      return send(
+        res,
+        423,
+        {
+          error: {
+            message: "emergency lockdown is active; commands are suspended",
+          },
+        },
+        correlationId,
+      );
+    }
     const methodName = Object.hasOwn(COMMAND_METHODS, name)
       ? COMMAND_METHODS[name]
       : undefined;

@@ -31,6 +31,11 @@ import {
   Megaphone,
   Workflow,
   TerminalSquare,
+  Activity,
+  ShieldHalf,
+  BarChart3,
+  Palette,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -50,6 +55,11 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   workflows: GitBranch,
   "workflow-studio": Workflow,
   command: TerminalSquare,
+  operations: Activity,
+  "security-center": ShieldHalf,
+  analytics: BarChart3,
+  creative: Palette,
+  optimization: TrendingUp,
   projects: FolderKanban,
   approvals: ClipboardCheck,
   "audit-log": ScrollText,

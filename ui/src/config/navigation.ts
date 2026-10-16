@@ -9,6 +9,11 @@ export type NavigationIconId =
   | "workflows"
   | "workflow-studio"
   | "command"
+  | "operations"
+  | "security-center"
+  | "analytics"
+  | "creative"
+  | "optimization"
   | "projects"
   | "approvals"
   | "audit-log"
@@ -62,6 +67,11 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.tasks", route: "/tasks", icon: "tasks", section: "main" },
   { labelKey: "nav.workflows", route: "/workflows", icon: "workflows", section: "main" },
   { labelKey: "nav.workflowStudio", route: "/workflow-studio", icon: "workflow-studio", section: "workspace" },
+  { labelKey: "nav.opsCenter", route: "/operations", icon: "operations", section: "workspace" },
+  { labelKey: "nav.creativeStudio", route: "/creative", icon: "creative", section: "workspace" },
+  { labelKey: "nav.analyticsStudio", route: "/analytics", icon: "analytics", section: "intelligence" },
+  { labelKey: "nav.optimization", route: "/optimization", icon: "optimization", section: "intelligence" },
+  { labelKey: "nav.securityCenter", route: "/security-center", icon: "security-center", section: "governance" },
   { labelKey: "nav.projects", route: "/projects", icon: "projects", section: "workspace" },
   { labelKey: "nav.approvals", route: "/approvals", icon: "approvals", section: "workspace" },
   { labelKey: "nav.infrastructure", route: "/infrastructure", icon: "infrastructure", section: "workspace" },

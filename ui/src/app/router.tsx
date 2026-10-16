@@ -30,6 +30,10 @@ const WorkflowsPage = fromChunk(loadControlCenterRoutes, "WorkflowsPage");
 const WorkflowDetailPage = fromChunk(loadControlCenterRoutes, "WorkflowDetailPage");
 const WorkflowStudioPage = fromChunk(loadControlCenterRoutes, "WorkflowStudioPage");
 const CommandCenterPage = fromChunk(loadControlCenterRoutes, "CommandCenterPage");
+const SecurityCenterPage = fromChunk(loadControlCenterRoutes, "SecurityCenterPage");
+const AnalyticsStudioPage = fromChunk(loadControlCenterRoutes, "AnalyticsStudioPage");
+const CreativeStudioPage = fromChunk(loadControlCenterRoutes, "CreativeStudioPage");
+const OptimizationPage = fromChunk(loadControlCenterRoutes, "OptimizationPage");
 const DesignSystemPage = fromChunk(loadControlCenterRoutes, "DesignSystemPage");
 const SettingsPage = fromChunk(loadControlCenterRoutes, "SettingsPage");
 const ProfilePage = fromChunk(loadControlCenterRoutes, "ProfilePage");
@@ -148,6 +152,10 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "workflows/:workflowId", element: withSuspense(<WorkflowDetailPage />) },
       { path: "workflow-studio", element: withSuspense(<WorkflowStudioPage />) },
       { path: "command", element: withSuspense(<CommandCenterPage />) },
+      { path: "security-center", element: withSuspense(<SecurityCenterPage />) },
+      { path: "analytics", element: withSuspense(<AnalyticsStudioPage />) },
+      { path: "creative", element: withSuspense(<CreativeStudioPage />) },
+      { path: "optimization", element: withSuspense(<OptimizationPage />) },
       { path: "graph", element: withSuspense(<SpatialGraphPage />) },
       { path: "projects", element: withSuspense(<ProjectsPage />) },
       { path: "projects/new", element: withSuspense(<NewProjectPage />) },
