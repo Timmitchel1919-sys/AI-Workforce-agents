@@ -16,6 +16,8 @@ describe("workspace context persistence", () => {
     expect(result).toEqual({
       recentRoutes: [{ pathname: "/projects" }, { pathname: "/tasks" }],
       pinnedRoutes: ["/projects"],
+      recentSearches: [],
+      recentCommands: [],
       openPanels: ["context"],
       layoutPreset: "standard",
       dashboardWidgets: [
@@ -25,6 +27,15 @@ describe("workspace context persistence", () => {
         { id: "recent", visible: true, size: "compact" },
       ],
     });
+  });
+
+  it("bounds and sanitizes recent search and command history", () => {
+    let state = emptyWorkspaceContext();
+    state = workspaceReducer(state, { type: "search", query: `  ${"x".repeat(100)}  ` });
+    state = workspaceReducer(state, { type: "command", pathname: "/projects" });
+    const sanitized = sanitizeStoredWorkspaceContext({ ...state, recentCommands: ["/projects", "https://attacker.example"] });
+    expect(sanitized.recentSearches).toEqual(["x".repeat(80)]);
+    expect(sanitized.recentCommands).toEqual(["/projects"]);
   });
 
   it("keeps layout preferences presentation-only and supports reset", () => {

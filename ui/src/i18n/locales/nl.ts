@@ -105,6 +105,14 @@ export const nl: Messages = {
     searchCommands: "Opdrachten zoeken",
     searchPlaceholder: "Zoek opdrachten of pagina's",
     navigationCommands: "Navigatieopdrachten",
+    smartSearch: "Slim zoeken",
+    workspaceAssistant: "Werkruimte-assistent",
+    assistantNotConnected: "NIET VERBONDEN",
+    assistantNotConnectedDescription: "Er is geen geautoriseerd Control Plane Model Router-endpoint beschikbaar voor deze interface. AI-uitleg en samenvattingen blijven niet beschikbaar.",
+    assistantBoundary: "De assistent is alleen adviserend. Hij kan nooit goedkeuren, implementeren, verwijderen, uitgeven of beveiligingsbeleid wijzigen zonder een geautoriseerde Control Plane-actie.",
+    searchCategories: "Zoekcategorieën",
+    allCategories: "Alle",
+    suggested: "Voorgesteld",
     noCommands: "Geen overeenkomende opdrachten",
     commandAuthorizationNotice: "Navigatie verleent geen autorisatie. Beveiligde acties blijven door het Control Plane afgedwongen.",
     restrictedView: "Toegang beperkt",
@@ -2847,4 +2855,3 @@ export const nl: Messages = {
     }
   }
 };
-

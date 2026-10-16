@@ -60,7 +60,7 @@ export const en = {
     governanceControls: "Governance",
     continuity: "Continuity",
     costCenter: "Cost Center",
-    auditLog: "Audit Log", itsm: "ITSM", 
+    auditLog: "Audit Log", itsm: "ITSM",
     settings: "Settings",
     designSystem: "Design System",
     organization: "Organizations",
@@ -106,6 +106,14 @@ export const en = {
     searchCommands: "Search commands",
     searchPlaceholder: "Search commands or pages",
     navigationCommands: "Navigation commands",
+    smartSearch: "Smart search",
+    workspaceAssistant: "Workspace assistant",
+    assistantNotConnected: "NOT CONNECTED",
+    assistantNotConnectedDescription: "No authorized Control Plane Model Router endpoint is available to this interface. AI explanations and summaries remain unavailable.",
+    assistantBoundary: "The assistant is advisory only. It can never approve, deploy, delete, spend, or change security policy without an authorized Control Plane action.",
+    searchCategories: "Search categories",
+    allCategories: "All",
+    suggested: "Suggested",
     noCommands: "No matching commands",
     commandAuthorizationNotice: "Navigation does not grant authorization. Protected actions remain enforced by the Control Plane.",
     restrictedView: "Access restricted",
@@ -2848,4 +2856,3 @@ export const en = {
     }
   }
 };
-

@@ -62,6 +62,8 @@ function AccountWorkspaceProvider({ userId, children }: { userId: string | null;
     moveDashboardWidget: (id: DashboardWidgetId, direction: -1 | 1) => dispatch({ type: "widget-move", id, direction }),
     setDashboardWidgetSize: (id: DashboardWidgetId, size: DashboardWidgetSize) => dispatch({ type: "widget-size", id, size }),
     resetDashboard: () => dispatch({ type: "dashboard-reset" }),
+    recordSearch: (query: string) => dispatch({ type: "search", query }),
+    recordCommand: (pathname: string) => { const normalized = normalizePathname(pathname); if (normalized) dispatch({ type: "command", pathname: normalized }); },
   }), [current, stored, togglePinnedRoute]);
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

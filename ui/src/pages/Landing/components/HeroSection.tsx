@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import type { MouseEvent } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { useHeroScrollProgress } from "../hooks/useLandingMotion";
@@ -76,7 +77,7 @@ export function HeroSection() {
           <motion.a
             href="#system"
             className="lp-button lp-button--secondary lp-button--large"
-            onClick={(e) => scrollToSection(e, "system")}
+            onClick={(e: MouseEvent<HTMLAnchorElement>) => scrollToSection(e, "system")}
             whileHover={reduce ? undefined : { scale: 1.03, y: -2 }}
             whileTap={reduce ? undefined : { scale: 0.97 }}
             transition={{ type: "spring", stiffness: 380, damping: 22 }}
@@ -90,7 +91,7 @@ export function HeroSection() {
         href="#system"
         className="lp-hero__scroll"
         aria-label={t("landing.hero.scroll")}
-        onClick={(e) => scrollToSection(e, "system")}
+        onClick={(e: MouseEvent<HTMLAnchorElement>) => scrollToSection(e, "system")}
         animate={reduce ? undefined : { y: [0, 6, 0] }}
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
       >

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-16T00:42:27.321Z",
-  "totalPackages": 1322,
-  "allowedCount": 1277,
+  "generatedAt": "2026-10-16T07:21:35.084Z",
+  "totalPackages": 1325,
+  "allowedCount": 1280,
   "reviewRequiredCount": 45,
   "prohibitedCount": 0,
   "packages": [
@@ -1290,6 +1290,12 @@
       "status": "allowed"
     },
     {
+      "package": "framer-motion",
+      "version": "14.3.0",
+      "license": "MIT",
+      "status": "allowed"
+    },
+    {
       "package": "fresh",
       "version": "2.0.0",
       "license": "MIT",
@@ -1906,6 +1912,18 @@
       "version": "7.1.3",
       "license": "BlueOak-1.0.0",
       "status": "review_required"
+    },
+    {
+      "package": "motion-dom",
+      "version": "14.3.0",
+      "license": "MIT",
+      "status": "allowed"
+    },
+    {
+      "package": "motion-utils",
+      "version": "14.1.1",
+      "license": "MIT",
+      "status": "allowed"
     },
     {
       "package": "ms",

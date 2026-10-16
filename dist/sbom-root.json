@@ -3,7 +3,7 @@
   "specVersion": "1.5",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-16T00:42:27.077Z",
+    "timestamp": "2026-10-16T07:21:34.936Z",
     "component": {
       "type": "application",
       "name": "ai-workforce-agents",
@@ -1511,6 +1511,13 @@
     },
     {
       "type": "library",
+      "name": "framer-motion",
+      "version": "14.3.0",
+      "purl": "pkg:npm/framer-motion@14.3.0",
+      "license": "MIT"
+    },
+    {
+      "type": "library",
       "name": "fresh",
       "version": "2.0.0",
       "purl": "pkg:npm/fresh@2.0.0",
@@ -2229,6 +2236,20 @@
       "version": "7.1.3",
       "purl": "pkg:npm/minipass@7.1.3",
       "license": "BlueOak-1.0.0"
+    },
+    {
+      "type": "library",
+      "name": "motion-dom",
+      "version": "14.3.0",
+      "purl": "pkg:npm/motion-dom@14.3.0",
+      "license": "MIT"
+    },
+    {
+      "type": "library",
+      "name": "motion-utils",
+      "version": "14.1.1",
+      "purl": "pkg:npm/motion-utils@14.1.1",
+      "license": "MIT"
     },
     {
       "type": "library",

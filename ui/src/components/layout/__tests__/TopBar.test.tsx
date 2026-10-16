@@ -74,4 +74,15 @@ describe('TopBar', () => {
     expect(screen.queryByText('Platform admin')).not.toBeInTheDocument();
     expect(screen.queryByText('Security operations')).not.toBeInTheDocument();
   });
+
+  it('offers categorized contextual search and an honest disconnected assistant state', () => {
+    renderTopBar('/');
+    fireEvent.click(screen.getByRole('button', { name: /search commands or pages/i }));
+
+    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
+    expect(screen.getAllByText('Suggested').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('tab', { name: /workspace assistant/i }));
+    expect(screen.getByText('NOT CONNECTED')).toBeInTheDocument();
+    expect(screen.getByText(/assistant is advisory only/i)).toBeInTheDocument();
+  });
 });
