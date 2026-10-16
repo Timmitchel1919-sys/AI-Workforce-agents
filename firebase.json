@@ -34,7 +34,18 @@
       "tsconfig.json",
       ".prettierignore",
       ".prettierrc.json",
-      "dist/tests"
+      "dist/tests",
+      ".agents",
+      ".cache",
+      ".opencode",
+      ".claude",
+      "*.mp4",
+      "*.webp",
+      "*.png",
+      "users.json",
+      "make-admin*",
+      "patch*.cjs",
+      "skills-lock.json"
     ]
   },
   "hosting": {
