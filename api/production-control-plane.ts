@@ -12,6 +12,7 @@ import { WorkforceManagementService } from "../control/services/workforce-servic
 import { workflowCapabilityContext } from "../control/services/workflow-studio-views.js";
 import { WorkflowDefinitionService } from "../core/workflows/workflow-definition-service.js";
 import { LockdownService } from "../core/access/lockdown-service.js";
+import { KnowledgeDocumentService } from "../core/knowledge/knowledge-document-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -1037,6 +1038,8 @@ export async function createProductionControlPlaneRuntime(
       },
     ),
     workflowEngine,
+    // UI Layer 13: knowledge documents in the durable record store.
+    knowledgeDocuments: new KnowledgeDocumentService(executionRecords),
     // UI Layer 4 Workflow Studio: definitions + immutable versions in the durable record store.
     workflowDefinitions: new WorkflowDefinitionService({
       store: executionRecords,

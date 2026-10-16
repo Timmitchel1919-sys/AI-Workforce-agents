@@ -36,6 +36,7 @@ import {
   BarChart3,
   Palette,
   TrendingUp,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -60,6 +61,7 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
   analytics: BarChart3,
   creative: Palette,
   optimization: TrendingUp,
+  "agent-teams": Users,
   projects: FolderKanban,
   approvals: ClipboardCheck,
   "audit-log": ScrollText,

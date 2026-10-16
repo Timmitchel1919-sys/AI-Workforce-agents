@@ -10,6 +10,7 @@ export type CommandIntent =
   | { kind: "open_project"; projectId: string; label: string; to: string }
   | { kind: "navigate"; intent: NavigateIntent; to: string }
   | { kind: "requires_approval"; action: string; to: string }
+  | { kind: "search_knowledge"; query: string; to: string }
   | { kind: "unsupported_pull_requests" }
   | { kind: "project_not_found"; query: string }
   | { kind: "no_match" };
@@ -23,7 +24,10 @@ export type NavigateIntent =
   | "show_activity"
   | "show_runners"
   | "show_intelligence"
-  | "show_security";
+  | "show_security"
+  | "show_integrations"
+  | "show_teams"
+  | "show_operations";
 
 export interface ProjectRef {
   projectId: string;
@@ -45,6 +49,9 @@ const HIGH_IMPACT: { re: RegExp; action: string }[] = [
 
 const NAV: { re: RegExp; intent: NavigateIntent; to: string }[] = [
   { re: /\b(approvals?|goedkeuring(en)?)\b/, intent: "show_approvals", to: "/approvals" },
+  { re: /\b(integrations?|integraties|mcp|webhooks?|connectors?)\b/, intent: "show_integrations", to: "/integrations" },
+  { re: /\b(teams?|handoffs?|overdrachten|task board)\b/, intent: "show_teams", to: "/agent-teams" },
+  { re: /\b(failed|mislukt|incidents?|alerts?|operations)\b/, intent: "show_operations", to: "/operations" },
   { re: /\b(missions?|missies?|software factory|programs?|programma'?s?)\b/, intent: "show_missions", to: "/software-factory" },
   { re: /\b(agents?)\b/, intent: "show_agents", to: "/agents" },
   { re: /\b(workflows?|studio)\b/, intent: "show_workflows", to: "/workflow-studio" },
@@ -76,6 +83,12 @@ export function interpretCommand(raw: string, projects: readonly ProjectRef[]): 
       label: match.displayName ?? match.projectId,
       to: `/projects/${encodeURIComponent(match.projectId)}`,
     };
+  }
+
+  const find = /^(?:find|search|zoek)\s+(?:for\s+|naar\s+)?(?:the\s+|de\s+)?(.+?)(?:\s+(?:docs?|documentation|documentatie|knowledge|kennis))?$/.exec(text);
+  if (find && find[1]!.trim()) {
+    const query = find[1]!.trim().slice(0, 200);
+    return { kind: "search_knowledge", query, to: `/knowledge?q=${encodeURIComponent(query)}` };
   }
 
   if (/\b(pull requests?|prs?)\b/.test(text)) return { kind: "unsupported_pull_requests" };

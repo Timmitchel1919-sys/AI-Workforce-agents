@@ -14,6 +14,7 @@ export type NavigationIconId =
   | "analytics"
   | "creative"
   | "optimization"
+  | "agent-teams"
   | "projects"
   | "approvals"
   | "audit-log"
@@ -68,6 +69,7 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.workflows", route: "/workflows", icon: "workflows", section: "main" },
   { labelKey: "nav.workflowStudio", route: "/workflow-studio", icon: "workflow-studio", section: "workspace" },
   { labelKey: "nav.opsCenter", route: "/operations", icon: "operations", section: "workspace" },
+  { labelKey: "nav.agentTeams", route: "/agent-teams", icon: "agent-teams", section: "workspace" },
   { labelKey: "nav.creativeStudio", route: "/creative", icon: "creative", section: "workspace" },
   { labelKey: "nav.analyticsStudio", route: "/analytics", icon: "analytics", section: "intelligence" },
   { labelKey: "nav.optimization", route: "/optimization", icon: "optimization", section: "intelligence" },

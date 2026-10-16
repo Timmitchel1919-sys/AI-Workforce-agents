@@ -181,6 +181,12 @@ function IntentView({ intent }: { intent: CommandIntent }) {
           <Link to={intent.to}>{t("mobileCommand.open")}</Link>
         </p>
       );
+    case "search_knowledge":
+      return (
+        <p>
+          {t("mobileCommand.intents.search_knowledge", { query: intent.query })} — <Link to={intent.to}>{t("mobileCommand.open")}</Link>
+        </p>
+      );
     case "unsupported_pull_requests":
       return <p className="cc-muted">{t("mobileCommand.intents.unsupported_pull_requests")}</p>;
     case "project_not_found":

@@ -5,7 +5,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { RequireRole } from "../auth/RequireRole";
 import { useAuth } from "../auth/useAuth";
 import { Spinner } from "../components/ui";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n } from "../i18n";
 import RouteError from "./RouteError";
 import { loadAuthRoutes, loadControlCenterRoutes, loadLanding, loadProjectOnboarding } from "./routeModules";
 
@@ -35,6 +35,8 @@ const SecurityCenterPage = fromChunk(loadControlCenterRoutes, "SecurityCenterPag
 const AnalyticsStudioPage = fromChunk(loadControlCenterRoutes, "AnalyticsStudioPage");
 const CreativeStudioPage = fromChunk(loadControlCenterRoutes, "CreativeStudioPage");
 const OptimizationPage = fromChunk(loadControlCenterRoutes, "OptimizationPage");
+const AgentTeamsPage = fromChunk(loadControlCenterRoutes, "AgentTeamsPage");
+const KnowledgePage = fromChunk(loadControlCenterRoutes, "KnowledgePage");
 const DesignSystemPage = fromChunk(loadControlCenterRoutes, "DesignSystemPage");
 const SettingsPage = fromChunk(loadControlCenterRoutes, "SettingsPage");
 const ProfilePage = fromChunk(loadControlCenterRoutes, "ProfilePage");
@@ -101,21 +103,6 @@ function withSuspense(node: ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
 }
 
-function PlaceholderPage({ titleKey }: { titleKey: MessageKey }) {
-  const { t } = useI18n();
-  return (
-    <div className="page">
-      <section className="page-header">
-        <p className="eyebrow">{t("common.brand")}</p>
-        <h1>{t(titleKey)}</h1>
-        <p className="page-description">
-          {t("shell.reservedDescription")}
-        </p>
-      </section>
-    </div>
-  );
-}
-
 /** Every page gets the in-app error state (the shell stays usable). */
 function withErrorElements<T extends { errorElement?: ReactNode; children?: T[] }>(routes: T[]): T[] {
   return routes.map((route) => ({
@@ -159,6 +146,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "analytics", element: withSuspense(<AnalyticsStudioPage />) },
       { path: "creative", element: withSuspense(<CreativeStudioPage />) },
       { path: "optimization", element: withSuspense(<OptimizationPage />) },
+      { path: "agent-teams", element: withSuspense(<AgentTeamsPage />) },
       { path: "graph", element: withSuspense(<SpatialGraphPage />) },
       { path: "projects", element: withSuspense(<ProjectsPage />) },
       { path: "projects/new", element: withSuspense(<NewProjectPage />) },
@@ -195,7 +183,7 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "infrastructure/tools", element: withSuspense(<InfrastructurePage />) },
       { path: "software-factory", element: withSuspense(<SoftwareFactoryPage />) },
       { path: "software-factory/:projectId/:programId", element: withSuspense(<SoftwareFactoryProgramPage />) },
-      { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
+      { path: "knowledge", element: withSuspense(<KnowledgePage />) },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
       { path: "settings/access", element: adminOnly(withSuspense(<UsersAccessPage />)) },

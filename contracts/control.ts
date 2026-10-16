@@ -76,6 +76,8 @@ export const CONTROL_CAPABILITIES = [
   /* UI Layer 4 — Workflow Studio: authoring drafts vs publishing immutable versions. */
   "author_workflow",
   "publish_workflow",
+  /* UI Layer 13 - project knowledge documents. */
+  "author_knowledge",
   /* PROJECT-2 — project onboarding & provisioning (administrators only). */
   "create_project",
   /* EO-6.2 — AI Cost Center: setting the enforced budget is administrator-only. */
@@ -154,6 +156,7 @@ export const ROLE_CAPABILITIES: Record<
     "tick_software_factory",
     // UI Layer 4: operators author workflow drafts; publishing is administrator-only.
     "author_workflow",
+    "author_knowledge",
     // SECURITY V1 Layer 1: operators may read posture + detailed events, and
     // submit (but not approve) destructive-action requests. Policy mutation,
     // incident lifecycle, approvals, secrets, identity/agent-security admin,
@@ -194,6 +197,7 @@ export const ROLE_CAPABILITIES: Record<
     "tick_software_factory",
     "author_workflow",
     "publish_workflow",
+    "author_knowledge",
     // PROJECT-2: creating/provisioning a project is administrator-only.
     "create_project",
     // EO-6.2: setting the enforced budget policy is administrator-only.
@@ -303,6 +307,9 @@ export const CONTROL_COMMANDS = [
   "archive_workflow",
   "restore_workflow_version",
   "duplicate_workflow",
+  // UI Layer 13 - knowledge documents.
+  "save_knowledge_document",
+  "archive_knowledge_document",
   // PROJECT-2 — project onboarding & provisioning.
   "onboarding_create",
   "onboarding_update",

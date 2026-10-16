@@ -13,6 +13,7 @@ export { default as SecurityCenterPage } from "../../pages/SecurityCenter/Securi
 export { default as AnalyticsStudioPage } from "../../pages/Analytics/AnalyticsStudioPage";
 export { default as CreativeStudioPage } from "../../pages/Creative/CreativeStudioPage";
 export { default as OptimizationPage } from "../../pages/Optimization/OptimizationPage";
+export { default as AgentTeamsPage } from "../../pages/AgentTeams/AgentTeamsPage";
 export { default as DesignSystemPage } from "../../pages/DesignSystem/DesignSystemPage";
 export { default as SettingsPage } from "../../pages/Settings/SettingsPage";
 export { default as ProfilePage } from "../../pages/Profile/ProfilePage";
