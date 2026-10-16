@@ -23,7 +23,7 @@
     "format:check": "prettier --check .",
     "test": "npm run build && node scripts/run-tests.mjs",
     "test:unit": "npm run build && node scripts/run-unit-tests.mjs",
-    "test:firebase": "npm run build && node scripts/check-emulator-runtime.mjs && npx --yes firebase-tools@13.35.1 emulators:exec --project demo-ai-workforce --only auth,firestore,storage \"npm run test:firebase:inner\"",
+    "test:firebase": "npm run build && node scripts/check-emulator-runtime.mjs && node scripts/run-firebase-emulator-suite.mjs",
     "test:firebase:inner": "node scripts/run-firebase-tests.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "staging:check": "node scripts/check-staging-config.mjs",
@@ -63,6 +63,7 @@
   "dependencies": {
     "firebase-admin": ">=13 <15",
     "firebase-functions": "^7.3.2",
+    "framer-motion": "^14.3.0",
     "openai": "^6.17.0"
   }
 }
