@@ -64,6 +64,6 @@
     "firebase-admin": ">=13 <15",
     "firebase-functions": "^7.3.2",
     "framer-motion": "^14.3.0",
-    "openai": "^6.17.0"
+    "openai": "^7.32.0"
   }
 }
