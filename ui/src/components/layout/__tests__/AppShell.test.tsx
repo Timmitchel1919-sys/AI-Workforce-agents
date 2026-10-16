@@ -81,4 +81,22 @@ describe('AppShell', () => {
     expect(none.container.querySelector('.app-shell__sidebar')).not.toHaveAttribute('data-notch');
     none.unmount();
   });
+
+  it('supports keyboard-first inspector and privacy-conscious saved views', () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}><ThemeProvider><AuthProvider>
+      <MemoryRouter initialEntries={['/projects']}>
+        <Routes><Route element={<AppShell />}><Route path="/projects" element={<div>Projects page</div>} /></Route></Routes>
+      </MemoryRouter>
+      </AuthProvider></ThemeProvider></QueryClientProvider>,
+    );
+
+    fireEvent.keyDown(window, { key: 'i' });
+    expect(screen.getByRole('complementary', { name: /context inspector/i })).toBeInTheDocument();
+    expect(screen.getByText(/not connected.*authorized control plane/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /save view/i }));
+    expect(screen.getByText(/\/projects · standard/i)).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'm' });
+    expect(screen.getByRole('main')).toHaveFocus();
+  });
 });

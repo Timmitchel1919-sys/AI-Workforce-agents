@@ -46,7 +46,8 @@ export default function TopBar({
       if (isTypingField || modalOpen) return;
 
       const isShortcut =
-        (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+        ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") ||
+        (!event.ctrlKey && !event.metaKey && !event.altKey && event.key === "/");
 
       if (!isShortcut) {
         return;

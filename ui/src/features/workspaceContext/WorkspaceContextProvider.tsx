@@ -64,6 +64,8 @@ function AccountWorkspaceProvider({ userId, children }: { userId: string | null;
     resetDashboard: () => dispatch({ type: "dashboard-reset" }),
     recordSearch: (query: string) => dispatch({ type: "search", query }),
     recordCommand: (pathname: string) => { const normalized = normalizePathname(pathname); if (normalized) dispatch({ type: "command", pathname: normalized }); },
+    saveCurrentView: () => dispatch({ type: "save-view", view: { id: `${current.pathname}:${stored.layoutPreset}`, pathname: current.pathname, layoutPreset: stored.layoutPreset } }),
+    removeSavedView: (id: string) => dispatch({ type: "remove-view", id }),
   }), [current, stored, togglePinnedRoute]);
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

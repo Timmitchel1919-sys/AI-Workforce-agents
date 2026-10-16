@@ -18,6 +18,9 @@ describe("workspace context persistence", () => {
       pinnedRoutes: ["/projects"],
       recentSearches: [],
       recentCommands: [],
+      savedViews: [],
+      recentLayouts: [],
+      routeVisits: [],
       openPanels: ["context"],
       layoutPreset: "standard",
       dashboardWidgets: [
@@ -48,5 +51,18 @@ describe("workspace context persistence", () => {
     expect(state.dashboardWidgets.find((item) => item.id === "recent")?.visible).toBe(false);
     state = workspaceReducer(state, { type: "dashboard-reset" });
     expect(state.dashboardWidgets.map((item) => item.id)).toEqual(["status", "metrics", "activity", "recent"]);
+  });
+
+  it("stores bounded privacy-conscious history and saved views", () => {
+    let state = emptyWorkspaceContext();
+    state = workspaceReducer(state, { type: "visit", pathname: "/projects" });
+    state = workspaceReducer(state, { type: "visit", pathname: "/projects" });
+    state = workspaceReducer(state, { type: "layout", preset: "split" });
+    state = workspaceReducer(state, { type: "save-view", view: { id: "/projects:split", pathname: "/projects", layoutPreset: "split" } });
+    expect(state.routeVisits).toEqual([{ pathname: "/projects", count: 2 }]);
+    expect(state.recentLayouts).toEqual(["split"]);
+    expect(state.savedViews).toEqual([{ id: "/projects:split", pathname: "/projects", layoutPreset: "split" }]);
+    state = workspaceReducer(state, { type: "remove-view", id: "/projects:split" });
+    expect(state.savedViews).toEqual([]);
   });
 });

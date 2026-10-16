@@ -55,6 +55,12 @@ describe('TopBar', () => {
     expect(screen.getByText(/navigation does not grant authorization/i)).toBeInTheDocument();
   });
 
+  it('focuses search with slash without hijacking typing fields', async () => {
+    renderTopBar('/');
+    fireEvent.keyDown(window, { key: '/' });
+    await waitFor(() => expect(screen.getByRole('textbox', { name: /search commands/i })).toHaveFocus());
+  });
+
   it('closes the command palette with Escape and restores focus to its trigger', async () => {
     renderTopBar('/');
     const trigger = screen.getByRole('button', { name: /search commands or pages/i });

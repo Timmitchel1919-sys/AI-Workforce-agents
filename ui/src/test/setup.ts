@@ -18,3 +18,21 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 });
+
+class TestIntersectionObserver implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = '0px';
+  readonly thresholds = [0];
+  disconnect() {}
+  observe(target: Element) {
+    this.callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this);
+  }
+  unobserve() {}
+  takeRecords(): IntersectionObserverEntry[] { return []; }
+  constructor(private readonly callback: IntersectionObserverCallback) {}
+}
+
+Object.defineProperty(globalThis, 'IntersectionObserver', {
+  writable: true,
+  value: TestIntersectionObserver,
+});
