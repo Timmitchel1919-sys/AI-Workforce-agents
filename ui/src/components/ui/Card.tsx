@@ -1,19 +1,26 @@
 import React from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import "./ui.css";
 
-export interface CardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
+export interface CardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title' | 'onDrag' | 'onDragStart' | 'onDragEnd' | 'onAnimationStart' | 'onAnimationEnd'> {
   title?: React.ReactNode;
   description?: React.ReactNode;
   header?: React.ReactNode;
   footer?: React.ReactNode;
   compact?: boolean;
+  interactive?: boolean;
 }
 
-export function Card({ title, description, header, footer, compact, children, className, ...rest }: CardProps) {
+export function Card({ title, description, header, footer, compact, interactive, children, className, ...rest }: CardProps) {
+  const reduce = useReducedMotion();
+  const shouldHover = !reduce && (interactive ?? Boolean(rest.onClick));
+
   return (
-    <div
+    <motion.div
       className={["ui-card", compact ? "compact" : "", className ?? ""].filter(Boolean).join(" ")}
-      {...rest}
+      whileHover={shouldHover ? { y: -3, scale: 1.01 } : undefined}
+      transition={{ type: "spring", stiffness: 320, damping: 24 }}
+      {...(rest as React.ComponentProps<typeof motion.div>)}
     >
       {(title || header) && (
         <div className="header">
@@ -26,7 +33,7 @@ export function Card({ title, description, header, footer, compact, children, cl
       )}
       <div>{children}</div>
       {footer ? <div className="footer">{footer}</div> : null}
-    </div>
+    </motion.div>
   );
 }
 
