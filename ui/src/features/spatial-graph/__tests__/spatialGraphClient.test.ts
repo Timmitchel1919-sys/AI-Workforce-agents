@@ -6,7 +6,7 @@ vi.mock("../../../api/client", () => ({ apiRequest: (...a: unknown[]) => apiRequ
 import { fetchWorkforceGraph, pollWorkforceGraph } from "../api/spatialGraphClient";
 
 describe("fetchWorkforceGraph", () => {
-  const valid = { projectId: "p1", mode: "WORKFORCE", revision: 1, generatedAt: "2026-09-26T00:00:00.000Z", nodes: [], edges: [] };
+  const valid = { projectId: "p1", mode: "WORKFORCE", revision: 1, generatedAt: "2026-09-26T00:00:00.000Z", nodes: [], edges: [], truncated: false, appliedLimits: { depth: 3, maxNodes: 250, maxEdges: 1500 } };
   beforeEach(() => apiRequest.mockReset().mockResolvedValue(valid));
 
   it("sends a plain GET with no query when no options are given", async () => {
@@ -52,6 +52,19 @@ describe("fetchWorkforceGraph", () => {
     apiRequest.mockResolvedValue({ ...valid, generatedAt: 5 });
     await expect(fetchWorkforceGraph("p1", {}, "t")).rejects.toThrow(/unexpected response/i);
   });
+
+  it.each([
+    ["cross-project node", { nodes: [{ id: "n1", type: "TASK", label: "Task", status: "open", state: "active", projectId: "other", referenceId: "r1" }] }],
+    ["duplicate node id", { nodes: [
+      { id: "n1", type: "TASK", label: "One", status: "open", state: "active", projectId: "p1", referenceId: "r1" },
+      { id: "n1", type: "TASK", label: "Two", status: "open", state: "active", projectId: "p1", referenceId: "r2" },
+    ] }],
+    ["dangling edge", { edges: [{ id: "e1", type: "DEPENDS_ON", source: "missing", target: "also-missing" }] }],
+    ["nested metadata", { nodes: [{ id: "n1", type: "TASK", label: "Task", status: "open", state: "active", projectId: "p1", referenceId: "r1", metadata: { unsafe: { nested: true } } }] }],
+  ])("rejects a structurally unsafe %s", async (_name, override) => {
+    apiRequest.mockResolvedValue({ ...valid, ...override });
+    await expect(fetchWorkforceGraph("p1", {}, "t")).rejects.toThrow(/unexpected response/i);
+  });
 });
 
 describe("pollWorkforceGraph", () => {
@@ -77,7 +90,7 @@ describe("pollWorkforceGraph", () => {
   });
 
   it("returns a full validated projection when the revision moved", async () => {
-    apiRequest.mockResolvedValue({ projectId: "p1", mode: "EXECUTION", revision: 10, generatedAt: "t", nodes: [], edges: [] });
+    apiRequest.mockResolvedValue({ projectId: "p1", mode: "EXECUTION", revision: 10, generatedAt: "2026-09-26T00:00:01.000Z", nodes: [], edges: [], truncated: false, appliedLimits: { depth: 3, maxNodes: 250, maxEdges: 1500 } });
     const r = await pollWorkforceGraph("p1", { mode: "EXECUTION" }, "tok", 9);
     expect("nodes" in r && r.revision).toBe(10);
   });

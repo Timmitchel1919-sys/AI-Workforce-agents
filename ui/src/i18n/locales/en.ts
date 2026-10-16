@@ -97,9 +97,17 @@ export const en = {
     navigationCommands: "Navigation commands",
     noCommands: "No matching commands",
     commandAuthorizationNotice: "Navigation does not grant authorization. Protected actions remain enforced by the Control Plane.",
+    restrictedView: "Access restricted",
+    restrictedViewDescription: "Your current role cannot open this administrative view.",
+    returnToOverview: "Return to overview",
     headerActions: "Header actions",
     controlPlane: "Control Plane",
     notifications: "Notifications",
+    notificationsNotConnected: "Notifications — not connected",
+    pinnedCommand: "Pinned",
+    recentCommand: "Recently visited",
+    pinCommand: "Pin {page}",
+    unpinCommand: "Unpin {page}",
     accountMenu: "Account menu",
     profile: "Profile",
     preferences: "Preferences",
@@ -1460,6 +1468,11 @@ export const en = {
     },
   },
   operations: {
+    platformTitle: "Platform Operations",
+    platformDescription: "Authoritative execution and environment state from the Control Plane.",
+    globalNotConnectedTitle: "Global fleet telemetry is not connected",
+    globalNotConnectedDescription: "No authoritative global operations endpoint is configured. Open a project to inspect its real execution sessions, verifications, source control, and releases.",
+    openProjects: "Open projects",
     tab: "Operations",
     description: "Live execution, verification, source control and releases — authoritative backend state only.",
     overviewTitle: "Execution overview",
@@ -2210,7 +2223,9 @@ export const en = {
     "opensInNewTab": "(opens in a new tab)"
   },
   intelligence: {
-    pageDescription: "Predictive decision and optimization engine. Monitors drift, anomalies, and performs forecasting."
+    pageDescription: "Predictive decision support backed by authoritative Control Plane data.",
+    notConnectedTitle: "Intelligence service is not connected",
+    notConnectedDescription: "No authoritative forecasting, anomaly, recommendation, or model-drift feed is configured. Model status and metrics will appear only after a verified Control Plane integration is available."
   },
   workflowStudio: {
     title: "Workflow Studio",

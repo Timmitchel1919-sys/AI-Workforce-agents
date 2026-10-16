@@ -103,9 +103,10 @@ export default function TopBar({
         <div className="topbar__right app-shell__topbar-actions" aria-label={t("shell.headerActions")}>
           <IconButton
             type="button"
-            label={t("shell.notifications")}
-            aria-label={t("shell.notifications")}
+            label={t("shell.notificationsNotConnected")}
+            aria-label={t("shell.notificationsNotConnected")}
             className="topbar__action-button topbar__secondary-action"
+            disabled
           >
             <Bell size={16} aria-hidden="true" />
           </IconButton>

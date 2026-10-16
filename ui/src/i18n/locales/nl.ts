@@ -96,9 +96,17 @@ export const nl: Messages = {
     navigationCommands: "Navigatieopdrachten",
     noCommands: "Geen overeenkomende opdrachten",
     commandAuthorizationNotice: "Navigatie verleent geen autorisatie. Beveiligde acties blijven door het Control Plane afgedwongen.",
+    restrictedView: "Toegang beperkt",
+    restrictedViewDescription: "Je huidige rol kan deze beheerweergave niet openen.",
+    returnToOverview: "Terug naar overzicht",
     headerActions: "Acties in de kopbalk",
     controlPlane: "Control Plane",
     notifications: "Meldingen",
+    notificationsNotConnected: "Meldingen — niet verbonden",
+    pinnedCommand: "Vastgezet",
+    recentCommand: "Onlangs bezocht",
+    pinCommand: "{page} vastzetten",
+    unpinCommand: "{page} losmaken",
     accountMenu: "Accountmenu",
     profile: "Profiel",
     preferences: "Voorkeuren",
@@ -1459,6 +1467,11 @@ export const nl: Messages = {
     },
   },
   operations: {
+    platformTitle: "Platform Operations",
+    platformDescription: "Autoritatieve uitvoerings- en omgevingsstatus vanuit het Control Plane.",
+    globalNotConnectedTitle: "Globale fleet-telemetrie is niet verbonden",
+    globalNotConnectedDescription: "Er is geen autoritatief globaal operations-endpoint geconfigureerd. Open een project voor de echte uitvoeringssessies, verificaties, broncodebeheer en releases.",
+    openProjects: "Projecten openen",
     tab: "Uitvoering",
     description: "Live uitvoering, verificatie, broncodebeheer en releases — uitsluitend gezaghebbende backendstatus.",
     overviewTitle: "Uitvoeringsoverzicht",
@@ -2209,7 +2222,9 @@ export const nl: Messages = {
     "opensInNewTab": "(opent in een nieuw tabblad)"
   },
   intelligence: {
-    pageDescription: "Voorspellende beslissings- en optimalisatie-engine. Bewaakt afwijkingen, anomalieën en voert voorspellingen uit."
+    pageDescription: "Voorspellende beslissingsondersteuning op basis van autoritatieve Control Plane-data.",
+    notConnectedTitle: "Intelligence-service is niet verbonden",
+    notConnectedDescription: "Er is geen autoritatieve feed voor voorspellingen, anomalieën, aanbevelingen of modeldrift geconfigureerd. Modelstatus en statistieken verschijnen pas na een geverifieerde Control Plane-integratie."
   },
   workflowStudio: {
     title: "Workflow Studio",

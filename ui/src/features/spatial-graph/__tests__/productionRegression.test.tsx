@@ -44,8 +44,13 @@ describe("Spatial Graph against the real network client", () => {
   });
 
   it("requests /api/projects/:id/graph with the bearer token", async () => {
+    const projection = makeProjection();
     const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify(makeProjection({ projectId: "money-mind" })), {
+      new Response(JSON.stringify({
+        ...projection,
+        projectId: "money-mind",
+        nodes: projection.nodes.map((node) => ({ ...node, projectId: "money-mind" })),
+      }), {
         status: 200,
         headers: { "content-type": "application/json" },
       }),

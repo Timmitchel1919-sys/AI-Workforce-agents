@@ -7,6 +7,7 @@ import { useI18n } from "../../i18n";
 import { InstallAppButton } from "../pwa/InstallAppButton";
 import { MobileTabBar } from "./MobileTabBar";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { WorkspaceContextProvider } from "../../features/workspaceContext";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -80,6 +81,7 @@ export default function AppShell() {
   useSidebarNotch(sidebarRef, [pathname, sidebarCollapsed, mobileNavigationOpen, t]);
 
   return (
+    <WorkspaceContextProvider>
     <div className={`app-shell${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
       <aside
         ref={sidebarRef}
@@ -144,5 +146,6 @@ export default function AppShell() {
       </div>
       <MobileTabBar moreOpen={mobileNavigationOpen} onMore={() => setMobileNavigationOpen((open) => !open)} /> 
     </div>
+    </WorkspaceContextProvider>
   );
 }

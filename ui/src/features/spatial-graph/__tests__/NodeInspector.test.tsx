@@ -56,7 +56,7 @@ describe("NodeInspector", () => {
       </I18nProvider>,
     );
     expect(screen.getByText("Mislukt")).toBeInTheDocument();
-    expect(screen.getByText("abc123")).toBeInTheDocument();
+    expect(screen.queryByText("abc123")).not.toBeInTheDocument();
     expect(screen.getByText("Geen relaties in de huidige weergave.")).toBeInTheDocument();
   });
 });

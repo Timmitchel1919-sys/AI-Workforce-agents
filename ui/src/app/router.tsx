@@ -2,6 +2,7 @@
 import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
+import { RequireRole } from "../auth/RequireRole";
 import { useAuth } from "../auth/useAuth";
 import { Spinner } from "../components/ui";
 import { useI18n, type MessageKey } from "../i18n";
@@ -93,6 +94,8 @@ function RouteFallback() {
     </div>
   );
 }
+
+const adminOnly = (element: ReactNode) => <RequireRole role="admin">{element}</RequireRole>;
 
 function withSuspense(node: ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
@@ -195,20 +198,20 @@ export const router = createBrowserRouter(withErrorElements([
       { path: "knowledge", element: <PlaceholderPage titleKey="nav.knowledge" /> },
       { path: "profile", element: withSuspense(<ProfilePage />) },
       { path: "settings", element: withSuspense(<SettingsPage />) },
-      { path: "settings/access", element: withSuspense(<UsersAccessPage />) },
+      { path: "settings/access", element: adminOnly(withSuspense(<UsersAccessPage />)) },
       { path: "design-system", element: withSuspense(<DesignSystemPage />) },
       { path: "extensions", element: withSuspense(<ExtensionsPage />) },
-      { path: "organizations", element: withSuspense(<OrganizationPage />) },
-      { path: "billing", element: withSuspense(<BillingPage />) },
-      { path: "sso-settings", element: withSuspense(<SsoSettingsPage />) },
-      { path: "admin", element: withSuspense(<PlatformAdminPage />) },
-      { path: "commercial-admin", element: withSuspense(<CommercialAdminPage />) },
-      { path: "customer-operations", element: withSuspense(<CustomerProfilePage />) },
+      { path: "organizations", element: adminOnly(withSuspense(<OrganizationPage />)) },
+      { path: "billing", element: adminOnly(withSuspense(<BillingPage />)) },
+      { path: "sso-settings", element: adminOnly(withSuspense(<SsoSettingsPage />)) },
+      { path: "admin", element: adminOnly(withSuspense(<PlatformAdminPage />)) },
+      { path: "commercial-admin", element: adminOnly(withSuspense(<CommercialAdminPage />)) },
+      { path: "customer-operations", element: adminOnly(withSuspense(<CustomerProfilePage />)) },
       { path: "incidents", element: withSuspense(<IncidentsPage />) },
-      { path: "privacy", element: withSuspense(<PrivacySettingsPage />) },
-      { path: "developer-platform", element: withSuspense(<DeveloperPlatformPage />) },
-      { path: "secops", element: withSuspense(<SecOpsPage />) },
-      { path: "marketing", element: withSuspense(<MarketingPage />) },
+      { path: "privacy", element: adminOnly(withSuspense(<PrivacySettingsPage />)) },
+      { path: "developer-platform", element: adminOnly(withSuspense(<DeveloperPlatformPage />)) },
+      { path: "secops", element: adminOnly(withSuspense(<SecOpsPage />)) },
+      { path: "marketing", element: adminOnly(withSuspense(<MarketingPage />)) },
       { path: "trust", element: withSuspense(<TrustCenterPage />) },
     ],
   },

@@ -5,11 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { AuthProvider } from '../../../auth/AuthProvider';
 import { ThemeProvider } from '../../../themes/ThemeProvider';
 import TopBar from '../TopBar';
+import { WorkspaceContextProvider } from '../../../features/workspaceContext';
 
 function renderTopBar(initialEntry = '/') {
   return render(
     <QueryClientProvider client={new QueryClient()}><ThemeProvider><AuthProvider>
     <MemoryRouter initialEntries={[initialEntry]}>
+      <WorkspaceContextProvider>
       <Routes>
         <Route element={<TopBar />}>
           <Route path="/" element={<div>Overview page</div>} />
@@ -17,6 +19,7 @@ function renderTopBar(initialEntry = '/') {
           <Route path="/design-system" element={<div>Design system page</div>} />
         </Route>
       </Routes>
+      </WorkspaceContextProvider>
     </MemoryRouter>
     </AuthProvider></ThemeProvider></QueryClientProvider>,
   );
@@ -31,7 +34,7 @@ describe('TopBar', () => {
     expect(screen.getByRole('button', { name: /interface language/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /switch to (light|dark) theme/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /approvals/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /notifications.*not connected/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument();
   });
 

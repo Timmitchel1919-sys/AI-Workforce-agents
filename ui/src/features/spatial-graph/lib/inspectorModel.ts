@@ -113,62 +113,7 @@ export interface InspectorModel {
   extras: InspectorExtra[];
 }
 
-const SENSITIVE_KEY = /secret|token|password|credential|api_?key|path|host|url|email/i;
-const MAX_EXTRAS = 8;
 const MAX_VALUE_LENGTH = 120;
-
-/** Metadata keys consumed by dedicated fields (excluded from the "other details" list). */
-const CONSUMED_KEYS = new Set([
-  "description",
-  "role",
-  "priority",
-  "environmentClass",
-  "kind",
-  "capabilities",
-  "model",
-  "provider",
-  "version",
-  "taskType",
-  "riskClass",
-  "environmentRequirements",
-  "upstreamDependencies",
-  "downstreamDependents",
-  "progressPercent",
-  "createdAt",
-  "updatedAt",
-  "code",
-  "environmentType",
-  "availability",
-  "assignedTasks",
-  "stageKind",
-  "risk",
-  "attempts",
-  "startedAt",
-  "endedAt",
-  "fileCount",
-  "stages",
-  "passedStages",
-  "failedStages",
-  "reviewerKind",
-  "action",
-  "requestedAt",
-  "decidedAt",
-  "commitSha",
-  "branch",
-  "targetClass",
-  "simulated",
-  "durationMs",
-  "completedAt",
-]);
-
-export function humanizeKey(key: string): string {
-  const spaced = key
-    .replace(/[_-]+/g, " ")
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .trim()
-    .toLowerCase();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
 
 function metaString(node: WorkforceGraphNode, key: string): string | null {
   const v = node.metadata?.[key];
@@ -350,16 +295,9 @@ export function buildInspectorModel(node: WorkforceGraphNode, graph: GraphData):
   fields.push({ id: "project", value: { kind: "text", text: node.projectId || null } });
   fields.push({ id: "reference", value: { kind: "text", text: node.referenceId || null } });
 
-  const extras: InspectorExtra[] = [];
-  for (const key of Object.keys(node.metadata ?? {}).sort()) {
-    if (CONSUMED_KEYS.has(key) || SENSITIVE_KEY.test(key)) continue;
-    const v = metaString(node, key);
-    if (v === null) continue;
-    extras.push({ key, label: humanizeKey(key), value: v });
-    if (extras.length >= MAX_EXTRAS) break;
-  }
-
-  return { node, fields, relations, extras };
+  // The inspector is allowlist-only. Unknown backend metadata is never rendered, because a
+  // denylist cannot anticipate future credential, tenant, or infrastructure fields.
+  return { node, fields, relations, extras: [] };
 }
 
 export function edgeCounts(edges: readonly WorkforceGraphEdge[]): Map<WorkforceGraphEdgeType, number> {

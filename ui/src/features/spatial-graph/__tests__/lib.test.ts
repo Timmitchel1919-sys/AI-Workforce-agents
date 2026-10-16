@@ -190,9 +190,9 @@ describe("inspector model", () => {
     expect(a2.fields.find((f) => f.id === "role")!.value).toEqual({ kind: "text", text: null });
   });
 
-  it("filters sensitive metadata keys and caps extras", () => {
+  it("never renders arbitrary metadata outside the explicit per-node allowlist", () => {
     const n = node("x", "COMMIT", "c", "active", { sha: "abc", apiToken: "s3cr3t", workPath: "/tmp", description: "d" });
     const m = buildInspectorModel(n, { nodes: [n], edges: [] });
-    expect(m.extras.map((e) => e.key)).toEqual(["sha"]);
+    expect(m.extras).toEqual([]);
   });
 });

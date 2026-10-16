@@ -31,6 +31,8 @@
   align-items: center;
   gap: var(--space-2);
   max-width: 38rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .state__icon {
@@ -69,6 +71,7 @@
   font-size: clamp(var(--text-lg), 2vw, var(--text-xl));
   line-height: var(--line-tight);
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .state__description {
@@ -76,6 +79,7 @@
   max-width: 38rem;
   color: var(--color-text-secondary);
   line-height: var(--line-normal);
+  overflow-wrap: anywhere;
 }
 
 .state__actions {

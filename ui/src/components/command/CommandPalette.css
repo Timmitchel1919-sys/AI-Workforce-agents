@@ -76,6 +76,12 @@
   overflow-y: auto;
 }
 
+.command-palette__results li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1);
+}
+
 .command-palette__results button {
   display: flex;
   align-items: center;
@@ -92,6 +98,9 @@
   text-align: left;
   cursor: pointer;
 }
+
+.command-palette__route-meta { display: inline-flex; align-items: center; gap: var(--space-2); }
+.command-palette__pin { width: 2.5rem !important; padding-inline: 0 !important; justify-content: center !important; }
 
 .command-palette__results button:hover {
   border-color: var(--color-border);
