@@ -11,6 +11,7 @@ import { ProductManagementService } from "../control/services/product-service.js
 import { WorkforceManagementService } from "../control/services/workforce-service.js";
 import { workflowCapabilityContext } from "../control/services/workflow-studio-views.js";
 import { WorkflowDefinitionService } from "../core/workflows/workflow-definition-service.js";
+import { LockdownService } from "../core/access/lockdown-service.js";
 /**
  * The single production Control Plane composition root.
  *
@@ -655,6 +656,8 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     const deploymentGate = new DeploymentSecurityGate(securityFindings, securityPolicyEngine, canonicalSecurityEventStore);
     const secretLeakHandler = new SecretLeakHandler(securityFindings, secretReferencesRepository, canonicalSecurityEventStore);
     const handler = createControlPlaneApi({
+        // UI Layer 11: emergency lockdown state is durable in the execution record store.
+        lockdown: new LockdownService(executionRecords, audit),
         onboarding,
         projectSync,
         graphQuery,

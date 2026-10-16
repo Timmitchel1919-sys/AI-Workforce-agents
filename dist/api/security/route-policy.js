@@ -22,6 +22,7 @@ export const DEFAULT_PRIVILEGED_APP_CHECK_ROUTES = [
     /^\/api\/me\/profile(\/.*)?$/,
     /^\/api\/me\/access$/,
     /^\/api\/me\/sessions\/.+/,
+    /^\/api\/platform\/lockdown(\/lift)?$/,
     /^\/api\/destructive\/.+/,
 ];
 /**

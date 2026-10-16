@@ -25,6 +25,8 @@ export interface ControlPlaneApiOptions {
      */
     identityVerifier?: IdentityVerifier;
     /** AUTHZ-1: serves `GET /me/access` (the caller's own access state). */
+    /** UI Layer 11 emergency lockdown. Absent => no lockdown routes, nothing blocked. */
+    lockdown?: Pick<import("../core/access/lockdown-service.js").LockdownService, "status" | "activate" | "lift">;
     access?: Pick<AccessService, "myAccess"> & Partial<Pick<AccessService, "resolvePrincipal" | "revokeOwnSessions" | "isSessionRevoked">>;
     /** The caller's own profile (`/me/profile`, photo upload/removal). */
     profile?: Pick<ProfileService, "myProfile" | "setPhoto" | "removePhoto">;
