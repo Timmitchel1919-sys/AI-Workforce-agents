@@ -114,3 +114,30 @@ test("the audit sink records only project-scoped, redacted observations", () => 
     false,
   );
 });
+
+test("audit ids skip durable collisions so an append-only operational sink survives a cold-start sequence reset", () => {
+  const events = new InMemoryRepository<OperationalEvent>();
+  const outcomes = new InMemoryRepository<OperationalOutcome>();
+  const auditEvents = new InMemoryRepository<import("../contracts/index.js").AuditEvent>();
+  // Reserve a broad prefix range, exactly as a prior serverless process could have done.
+  for (let index = 1; index <= 256; index += 1) {
+    const id = `audit_${index.toString(36)}`;
+    auditEvents.upsert({ id, type: "task_completed", timestamp: TIME, projectId: "aims", data: {} });
+    events.upsert({
+      id: `operation_${id}`,
+      projectId: "aims",
+      kind: "audit_observation",
+      observedAt: TIME,
+      recordedAt: TIME,
+      provenance: { source: "workforce", sourceId: id },
+      dimensions: { auditType: "task_completed" },
+    });
+  }
+  const data = new OperationalDataSystem({ events, outcomes, clock: () => TIME });
+  const audit = new AuditLog(new OperationalAuditSink(data), auditEvents);
+  const created = audit.record("task_completed", { projectId: "aims", data: {} });
+
+  assert.equal(auditEvents.findById(created.id)?.id, created.id);
+  assert.equal(events.findById(`operation_${created.id}`)?.provenance.sourceId, created.id);
+  assert.equal(auditEvents.list().length, 257);
+});

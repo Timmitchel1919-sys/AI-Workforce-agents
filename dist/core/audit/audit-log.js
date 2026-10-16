@@ -24,8 +24,15 @@ export class AuditLog {
         }
     }
     record(type, fields) {
+        // `createId` is deliberately process-local. A serverless cold start resets its sequence while
+        // the repository survives, so skip every durable id that already exists instead of overwriting
+        // an audit record (or colliding with an append-only OperationalAuditSink observation).
+        let id = createId("audit");
+        while (this.events.some((event) => event.id === id) || this.repo?.findById(id)) {
+            id = createId("audit");
+        }
         const event = {
-            id: createId("audit"),
+            id,
             type,
             timestamp: now(),
             taskId: fields.taskId,

@@ -843,7 +843,10 @@ export async function createProductionControlPlaneRuntime(
   // project explicitly permits proceeding on unknown cost — the REAL budget hard-stop still
   // applies regardless (`BudgetEnforcer.evaluateInternal`, checked unconditionally). Every OTHER
   // project stays fail-closed by default (EO-6.3's reviewed, unchanged behavior).
-  await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
+  const existingMoneyMindGovernance = await governancePolicies.getInternal("money-mind");
+  if (existingMoneyMindGovernance?.allowUnknownCost !== true) {
+    await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
+  }
   bootstrap.agentExecutors.replace(
     CONTROL_PLANE_ANALYSIS_AGENT_ID,
     createProductionOpenAIAgentExecutor(audit, {
