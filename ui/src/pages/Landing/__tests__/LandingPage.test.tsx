@@ -1,13 +1,16 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { AuthProvider } from "../../../auth/AuthProvider";
 import LandingPage from "../LandingPage";
 import { agentDepartments, environments } from "../landingContent";
 
 function renderLanding() {
   return render(
-    <MemoryRouter>
-      <LandingPage />
-    </MemoryRouter>,
+    <AuthProvider>
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>
+    </AuthProvider>,
   );
 }
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -23,14 +23,14 @@ function renderTopBar(initialEntry = '/') {
 }
 
 describe('TopBar', () => {
-  it('displays the active route title and accessible command field', () => {
+  it('displays the active route title and global command trigger', () => {
     renderTopBar('/');
 
     expect(screen.getByText('Overview')).toBeInTheDocument();
-    expect(screen.getByRole('searchbox', { name: /search commands/i })).toBeInTheDocument();
-    // Theme and language live on Profile → Preferences, not in the header.
-    expect(screen.queryByRole('group', { name: /interface language/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /switch to (light|dark) theme/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /search commands or pages/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /interface language/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /switch to (light|dark) theme/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /approvals/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument();
   });
@@ -43,13 +43,32 @@ describe('TopBar', () => {
     expect(screen.getByRole('menuitem', { name: 'Sign out' })).toHaveClass('topbar__menu-button--danger');
   });
 
-  it('focuses the command input on Ctrl/Cmd + K', () => {
+  it('opens and focuses the command palette on Ctrl/Cmd + K', async () => {
     renderTopBar('/agents');
 
-    const input = screen.getByRole('searchbox', { name: /search commands/i });
-    expect(input).not.toHaveFocus();
-
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    expect(input).toHaveFocus();
+    const input = screen.getByRole('textbox', { name: /search commands/i });
+    await waitFor(() => expect(input).toHaveFocus());
+    expect(screen.getByText(/navigation does not grant authorization/i)).toBeInTheDocument();
+  });
+
+  it('closes the command palette with Escape and restores focus to its trigger', async () => {
+    renderTopBar('/');
+    const trigger = screen.getByRole('button', { name: /search commands or pages/i });
+
+    fireEvent.click(trigger);
+    await waitFor(() => expect(screen.getByRole('textbox', { name: /search commands/i })).toHaveFocus());
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('does not expose admin-only destinations to a user without an admin role', () => {
+    renderTopBar('/');
+    fireEvent.click(screen.getByRole('button', { name: /search commands or pages/i }));
+
+    expect(screen.queryByText('Platform admin')).not.toBeInTheDocument();
+    expect(screen.queryByText('Security operations')).not.toBeInTheDocument();
   });
 });

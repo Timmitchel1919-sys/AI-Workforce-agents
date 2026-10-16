@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Command, LogOut, Menu, Search, SlidersHorizontal, UserRound } from "lucide-react";
+import { Bell, Languages, LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { IconButton, UserAvatar } from "../ui";
 import { getPageTitleKey } from "../../config/pageTitles";
 import { useMyProfile } from "../../features/profile";
 import { useI18n } from "../../i18n";
+import { useTheme } from "../../themes/useTheme";
+import CommandPalette from "../command/CommandPalette";
 import "./TopBar.css";
 
 interface TopBarProps {
@@ -22,11 +24,13 @@ export default function TopBar({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { t } = useI18n();
+  const { t, language, setLanguage } = useI18n();
+  const { resolvedTheme, setTheme } = useTheme();
   const { data: profile } = useMyProfile();
   const accountLabel = user?.displayName || user?.email || "Operator";
-  const searchRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
 
   const pageTitleKey = useMemo(() => getPageTitleKey(location.pathname), [location.pathname]);
 
@@ -38,10 +42,8 @@ export default function TopBar({
         (target.matches("input, textarea, select") ||
           target.isContentEditable ||
           target.closest("[contenteditable='true']"));
-
-      if (isTypingField) {
-        return;
-      }
+      const modalOpen = Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
+      if (isTypingField || modalOpen) return;
 
       const isShortcut =
         (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
@@ -51,8 +53,7 @@ export default function TopBar({
       }
 
       event.preventDefault();
-      searchRef.current?.focus();
-      searchRef.current?.select();
+      setCommandOpen(true);
     };
 
     window.addEventListener("keydown", handleShortcut);
@@ -81,22 +82,21 @@ export default function TopBar({
           </div>
         </div>
 
-        <div className="topbar__search" role="search" aria-label={t("shell.commandSearch")}>
-          <label htmlFor="global-command" className="sr-only">
-            {t("shell.searchCommands")}
-          </label>
+        <div className="topbar__search">
           <Search size={16} className="topbar__search-icon" aria-hidden="true" />
-          <input
+          <button
             id="global-command"
             ref={searchRef}
             className="topbar__search-field"
-            type="search"
-            role="searchbox"
-            aria-label={t("shell.searchCommands")}
-            placeholder={t("shell.searchPlaceholder")}
-          />
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={commandOpen}
+            onClick={() => setCommandOpen(true)}
+          >
+            <span>{t("shell.searchPlaceholder")}</span>
+          </button>
           <span className="topbar__kbd" aria-hidden="true">
-            <Command size={12} />
+            Ctrl K
           </span>
         </div>
 
@@ -105,9 +105,32 @@ export default function TopBar({
             type="button"
             label={t("shell.notifications")}
             aria-label={t("shell.notifications")}
-            className="topbar__action-button"
+            className="topbar__action-button topbar__secondary-action"
           >
             <Bell size={16} aria-hidden="true" />
+          </IconButton>
+
+          <IconButton type="button" label={t("nav.approvals")} className="topbar__action-button topbar__secondary-action" onClick={() => navigate("/approvals")}>
+            <ShieldCheck size={16} aria-hidden="true" />
+          </IconButton>
+
+          <IconButton
+            type="button"
+            label={resolvedTheme === "dark" ? t("shell.switchToLight") : t("shell.switchToDark")}
+            className="topbar__action-button topbar__secondary-action"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          >
+            {resolvedTheme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+          </IconButton>
+
+          <IconButton
+            type="button"
+            label={t("shell.languageQuick")}
+            className="topbar__action-button topbar__language"
+            onClick={() => setLanguage(language === "en" ? "nl" : "en")}
+          >
+            <Languages size={16} aria-hidden="true" />
+            <span aria-hidden="true">{language.toUpperCase()}</span>
           </IconButton>
 
           <div className="topbar__account">
@@ -174,6 +197,7 @@ export default function TopBar({
           </div>
         </div>
       </div>
+      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} returnFocusRef={searchRef} />
     </header>
   );
 }

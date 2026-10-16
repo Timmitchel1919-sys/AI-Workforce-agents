@@ -218,6 +218,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
   max-width: 760px;
   transform: translate3d(0, calc(var(--lp-hero-progress, 0) * -90px), 0);
   opacity: calc(1 - var(--lp-hero-progress, 0) * 0.85);
@@ -1269,6 +1270,16 @@
 }
 
 @media (max-width: 560px) {
+  .lp-nav__bar {
+    gap: 12px;
+  }
+
+  .lp-nav__brand {
+    min-width: 0;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+  }
+
   .lp-hero {
     padding-top: 96px;
   }
@@ -1283,6 +1294,29 @@
 
   .lp-hero__verbs {
     display: none;
+  }
+
+  .lp-hero__title {
+    max-width: 100%;
+    padding-left: 0.12em;
+    font-size: clamp(27px, 8.5vw, 34px);
+    letter-spacing: 0.12em;
+  }
+
+  .lp-hero__tagline {
+    gap: 8px;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+  }
+
+  .lp-hero__tagline::before,
+  .lp-hero__tagline::after {
+    width: 18px;
+  }
+
+  .lp-hero__description {
+    max-width: 100%;
+    font-size: 14px;
   }
 
   .lp-hero__actions {

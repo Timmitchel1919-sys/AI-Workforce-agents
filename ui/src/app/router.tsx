@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components -- route table module, not a component module */
 import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { RequireAuth } from "../auth/RequireAuth";
+import { useAuth } from "../auth/useAuth";
 import { Spinner } from "../components/ui";
 import { useI18n, type MessageKey } from "../i18n";
 import RouteError from "./RouteError";
@@ -70,6 +71,13 @@ const PortfolioPage = fromChunk(loadControlCenterRoutes, "PortfolioPage");
 const ProductPage = fromChunk(loadControlCenterRoutes, "ProductPage");
 const WorkforcePage = fromChunk(loadControlCenterRoutes, "WorkforcePage");
 
+function RootRoute() {
+  const { access, loading, user } = useAuth();
+  if (loading) return <RouteFallback />;
+  if (user && access === "granted") return <Navigate to="/overview" replace />;
+  return <LandingPage />;
+}
+
 function RouteFallback() {
   const { t } = useI18n();
   return (
@@ -112,7 +120,7 @@ export const router = createBrowserRouter(withErrorElements([
   {
     // Public landing experience; the Control Center lives under the AppShell routes below.
     path: "/",
-    element: withSuspense(<LandingPage />),
+    element: withSuspense(<RootRoute />),
   },
   {
     // Secure gateway; the brand environment persists across both forms.

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T18:38:32.558Z",
-  "totalPackages": 1320,
-  "allowedCount": 1275,
+  "generatedAt": "2026-10-16T00:42:27.321Z",
+  "totalPackages": 1322,
+  "allowedCount": 1277,
   "reviewRequiredCount": 45,
   "prohibitedCount": 0,
   "packages": [
@@ -3397,7 +3397,13 @@
     },
     {
       "package": "@grpc/grpc-js",
-      "version": "1.9.16",
+      "version": "1.14.6",
+      "license": "Apache-2.0",
+      "status": "allowed"
+    },
+    {
+      "package": "@grpc/grpc-js/node_modules/@grpc/proto-loader",
+      "version": "0.8.1",
       "license": "Apache-2.0",
       "status": "allowed"
     },
@@ -3596,6 +3602,12 @@
     {
       "package": "@jridgewell/trace-mapping",
       "version": "0.3.31",
+      "license": "MIT",
+      "status": "allowed"
+    },
+    {
+      "package": "@js-sdsl/ordered-map",
+      "version": "4.4.2",
       "license": "MIT",
       "status": "allowed"
     },

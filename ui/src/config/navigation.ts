@@ -41,6 +41,7 @@ export interface NavigationItem {
   icon: NavigationIconId;
   badge?: NavigationBadge;
   section: NavigationSectionId;
+  minimumRole?: "admin";
 }
 
 export const navigationSections: Array<{ id: NavigationSectionId; labelKey: MessageKey }> = [
@@ -62,7 +63,6 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.infrastructure", route: "/infrastructure", icon: "infrastructure", section: "workspace" },
   { labelKey: "nav.softwareFactory", route: "/software-factory", icon: "software-factory", section: "workspace" },
   { labelKey: "nav.spatialGraph" , route: "/graph", icon: "spatial-graph", section: "main" },
-  { labelKey: "nav.knowledge", route: "/knowledge", icon: "knowledge", section: "intelligence" },
   { labelKey: "nav.intelligence", route: "/intelligence", icon: "intelligence", section: "intelligence" },
   { labelKey: "nav.governanceControls", route: "/governance", icon: "governance", section: "governance" },
   { labelKey: "nav.continuity", route: "/continuity", icon: "governance", section: "governance" },
@@ -73,14 +73,19 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.extensions", route: "/extensions", icon: "extensions", section: "integrations" },
   { labelKey: "nav.organization", route: "/organizations", icon: "organization", section: "main" },
   { labelKey: "nav.billing", route: "/billing", icon: "billing", section: "main" },
-  { labelKey: "nav.sso", route: "/sso-settings", icon: "sso", section: "main" },
-  { labelKey: "nav.platformAdmin", route: "/admin", icon: "admin", section: "governance" },
-  { labelKey: "nav.commercialAdmin", route: "/commercial-admin", icon: "commercial-admin", section: "governance" },
+  { labelKey: "nav.sso", route: "/sso-settings", icon: "sso", section: "main", minimumRole: "admin" },
+  { labelKey: "nav.platformAdmin", route: "/admin", icon: "admin", section: "governance", minimumRole: "admin" },
+  { labelKey: "nav.commercialAdmin", route: "/commercial-admin", icon: "commercial-admin", section: "governance", minimumRole: "admin" },
   { labelKey: "nav.customerOps", route: "/customer-operations", icon: "customer-ops", section: "main" },
   { labelKey: "nav.incidents", route: "/incidents", icon: "incidents", section: "governance" },
-  { labelKey: "nav.privacy", route: "/privacy", icon: "privacy", section: "governance" },
-  { labelKey: "nav.developer", route: "/developer-platform", icon: "developer", section: "main" },
-  { labelKey: "nav.secops", route: "/secops", icon: "secops", section: "governance" },
+  { labelKey: "nav.privacy", route: "/privacy", icon: "privacy", section: "governance", minimumRole: "admin" },
+  { labelKey: "nav.developer", route: "/developer-platform", icon: "developer", section: "main", minimumRole: "admin" },
+  { labelKey: "nav.secops", route: "/secops", icon: "secops", section: "governance", minimumRole: "admin" },
   { labelKey: "nav.marketing", route: "/marketing", icon: "marketing", section: "main" },
-  { labelKey: "nav.trustCenter", route: "/trust", icon: "governance", section: "governance" },{ labelKey: "nav.itsm", route: "/itsm", icon: "infrastructure", section: "governance" },
+  { labelKey: "nav.trustCenter", route: "/trust", icon: "governance", section: "governance" },
+  { labelKey: "nav.itsm", route: "/itsm", icon: "infrastructure", section: "governance" },
 ];
+
+export function visibleNavigationItems(role: "viewer" | "operator" | "admin" | undefined) {
+  return navigationItems.filter((item) => !item.minimumRole || role === item.minimumRole);
+}

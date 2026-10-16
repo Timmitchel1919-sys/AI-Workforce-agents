@@ -3,7 +3,7 @@
   "specVersion": "1.5",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-14T18:38:32.394Z",
+    "timestamp": "2026-10-16T00:42:27.089Z",
     "component": {
       "type": "application",
       "name": "ai-workforce-ui",
@@ -833,8 +833,15 @@
     {
       "type": "library",
       "name": "@grpc/grpc-js",
-      "version": "1.9.16",
-      "purl": "pkg:npm/@grpc/grpc-js@1.9.16",
+      "version": "1.14.6",
+      "purl": "pkg:npm/@grpc/grpc-js@1.14.6",
+      "license": "Apache-2.0"
+    },
+    {
+      "type": "library",
+      "name": "@grpc/grpc-js/node_modules/@grpc/proto-loader",
+      "version": "0.8.1",
+      "purl": "pkg:npm/@grpc/grpc-js/node_modules/@grpc/proto-loader@0.8.1",
       "license": "Apache-2.0"
     },
     {
@@ -1066,6 +1073,13 @@
       "name": "@jridgewell/trace-mapping",
       "version": "0.3.31",
       "purl": "pkg:npm/@jridgewell/trace-mapping@0.3.31",
+      "license": "MIT"
+    },
+    {
+      "type": "library",
+      "name": "@js-sdsl/ordered-map",
+      "version": "4.4.2",
+      "purl": "pkg:npm/@js-sdsl/ordered-map@4.4.2",
       "license": "MIT"
     },
     {

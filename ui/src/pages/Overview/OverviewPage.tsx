@@ -4,8 +4,8 @@ import PageSection from "../../components/layout/PageSection";
 import { useOverview } from "../../features/overview";
 import type { OverviewSnapshot } from "../../features/overview/api/overviewTypes";
 import { useI18n } from "../../i18n";
-import { OverviewHero } from "./components/OverviewHero";
 import { OverviewMetrics } from "./components/OverviewMetrics";
+import { OverviewHero } from "./components/OverviewHero";
 import { OverviewActivityCard } from "./components/OverviewActivityCard";
 import { OverviewDegradedState } from "./components/OverviewDegradedState";
 import { OverviewStateView } from "./components/OverviewStateView";
@@ -53,7 +53,7 @@ export default function OverviewPage() {
 
   const header = (
     <>
-      <PageHeader eyebrow={t("common.brand")} title={t("overview.title")} description={t("overview.description")} />
+      <PageHeader title={t("overview.title")} description={t("overview.description")} />
       <OverviewHero />
     </>
   );

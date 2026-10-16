@@ -32,10 +32,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import { useI18n } from "../../i18n";
 import {
-  navigationItems,
   navigationSections,
+  visibleNavigationItems,
   type NavigationIconId,
 } from "../../config/navigation";
 import "./Sidebar.css";
@@ -88,6 +89,8 @@ export default function Sidebar({
 }: SidebarProps) {
   const isRail = collapsed && Boolean(onToggleCollapsed);
   const { t } = useI18n();
+  const { accessDetails } = useAuth();
+  const availableItems = visibleNavigationItems(accessDetails.role);
 
   return (
     <nav
@@ -145,7 +148,7 @@ export default function Sidebar({
 
       <div className="sidebar__scroll scroll-panel">
         {navigationSections.map((section) => {
-          const sectionItems = navigationItems.filter(
+          const sectionItems = availableItems.filter(
             (item) => item.section === section.id,
           );
 
