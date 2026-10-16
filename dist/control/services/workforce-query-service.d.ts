@@ -402,6 +402,48 @@ export declare class WorkforceQueryService {
         configured: true;
         policy: import("../../contracts/governance.js").GovernancePolicy | null;
     } | undefined>;
+    private knowledgeProject;
+    getKnowledgeDocuments(principal: OperatorPrincipal, projectId: string): Promise<{
+        items: import("../../core/index.js").KnowledgeDocument[];
+        total: number;
+    } | undefined>;
+    getKnowledgeDocument(principal: OperatorPrincipal, projectId: string, documentId: string): Promise<{
+        versions: Omit<import("../../core/index.js").KnowledgeVersion, "content">[];
+        document: import("../../core/index.js").KnowledgeDocument;
+        content: string | null;
+    } | undefined>;
+    searchKnowledge(principal: OperatorPrincipal, projectId: string, q: string | null): Promise<{
+        mode: "keyword";
+        semantic: boolean;
+        items: import("../../core/index.js").KnowledgeSearchHit[];
+    } | undefined>;
+    /**
+     * UI Layer 14 - integrations the server can actually vouch for. Registered is
+     * not connected: credentials are never inspected or returned.
+     */
+    getIntegrationRegistry(principal: OperatorPrincipal): {
+        integrations: ({
+            id: string;
+            category: string;
+            name: string;
+            registered: boolean;
+            connection: "unverified";
+        } | {
+            id: string;
+            category: string;
+            name: string;
+            registered: boolean;
+            connection: "in_use";
+        } | {
+            id: string;
+            category: string;
+            name: string;
+            registered: boolean;
+            connection: "not_configured";
+        })[];
+        mcpServers: unknown[];
+        webhooks: unknown[];
+    };
     /** UI Layer 5: the development pipeline as this deployment can actually run it. */
     getFactoryPipeline(principal: OperatorPrincipal): {
         stages: import("./factory-pipeline-view.js").FactoryStageView[];

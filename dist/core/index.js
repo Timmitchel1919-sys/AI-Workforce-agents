@@ -31,6 +31,7 @@ export * from "./workflows/workflow-system.js";
 export * from "./workflows/workflow-engine.js";
 export * from "./workflows/workflow-definition-service.js";
 export * from "./access/lockdown-service.js";
+export * from "./knowledge/knowledge-document-service.js";
 export * from "./environments/fingerprint.js";
 export * from "./environments/environment-probe.js";
 export * from "./environments/capability-mapping.js";

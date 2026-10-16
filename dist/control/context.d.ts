@@ -132,6 +132,8 @@ export interface ControlPlaneContext {
      * UI Layer 4 Workflow Studio: durable, versioned workflow DEFINITIONS
      * (authoring only — never executes). Absent => studio routes 404.
      */
+    /** UI Layer 13: project knowledge documents (durable, versioned). */
+    knowledgeDocuments?: import("../core/knowledge/knowledge-document-service.js").KnowledgeDocumentService;
     workflowDefinitions?: import("../core/workflows/workflow-definition-service.js").WorkflowDefinitionService;
     /** Health probes. Anything not listed is reported as `unknown` (unmeasured). */
     healthProbes?: readonly HealthProbe[];

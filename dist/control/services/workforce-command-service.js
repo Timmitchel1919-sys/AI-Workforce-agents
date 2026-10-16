@@ -1063,6 +1063,67 @@ export class WorkforceCommandService {
             return { def, reason: "workflow duplicated as a new draft" };
         });
     }
+    /* UI Layer 13 - knowledge documents (content is data, never instructions). */
+    async saveKnowledgeDocument(principal, input, options) {
+        return this.knowledgeCommand(principal, "save_knowledge_document", input, options, async (svc, projectId) => {
+            const doc = await svc.save({
+                projectId,
+                documentId: input?.documentId,
+                title: input?.title,
+                kind: input?.kind,
+                tags: input?.tags,
+                source: input?.source,
+                content: input?.content,
+            }, principal.id);
+            return {
+                id: doc.documentId,
+                reason: `knowledge document saved (version ${doc.latestVersion})`,
+                details: { documentId: doc.documentId, version: doc.latestVersion },
+            };
+        });
+    }
+    async archiveKnowledgeDocument(principal, input, options) {
+        return this.knowledgeCommand(principal, "archive_knowledge_document", input, options, async (svc, projectId) => {
+            const doc = await svc.archive(projectId, input?.documentId, principal.id);
+            return {
+                id: doc.documentId,
+                reason: "knowledge document archived (versions kept)",
+                details: { documentId: doc.documentId },
+            };
+        });
+    }
+    async knowledgeCommand(principal, command, input, options, act) {
+        const run = { correlationId: resolveCorrelationId(options) };
+        let projectId;
+        try {
+            projectId = requireId(input?.projectId, `${command}.projectId`);
+        }
+        catch (error) {
+            return this.audited(principal, command, "rejected", undefined, message(error), {}, run);
+        }
+        if (!operatorCan(principal, "author_knowledge"))
+            return this.audited(principal, command, "denied", undefined, `role "${principal.role}" may not author knowledge`, { projectId }, run);
+        if (!operatorCanAccessProject(principal, projectId))
+            return this.audited(principal, command, "denied", undefined, `operator may not act on project "${projectId}"`, { projectId }, run);
+        const svc = this.ctx.knowledgeDocuments;
+        if (!svc)
+            return this.audited(principal, command, "rejected", undefined, "knowledge documents are not composed in this deployment", { projectId }, run, "not_found");
+        if (!this.ctx.projects.has(projectId))
+            return this.audited(principal, command, "rejected", undefined, "unknown project", { projectId }, run, "not_found");
+        try {
+            const out = await act(svc, projectId);
+            return this.audited(principal, command, "executed", out.id, out.reason, { projectId, ...out.details }, run);
+        }
+        catch (error) {
+            return this.audited(principal, command, "rejected", undefined, message(error), { projectId }, run, error instanceof NotFoundError
+                ? "not_found"
+                : error instanceof StateTransitionError
+                    ? "invalid_state"
+                    : error instanceof ValidationError
+                        ? "invalid_request"
+                        : "command_failure");
+        }
+    }
     async workflowStudio(principal, command, capability, input, options, act) {
         const run = { correlationId: resolveCorrelationId(options) };
         let projectId;

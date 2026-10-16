@@ -73,6 +73,9 @@ const COMMAND_METHODS = {
     "archive-workflow": "archiveWorkflow",
     "restore-workflow-version": "restoreWorkflowVersion",
     "duplicate-workflow": "duplicateWorkflow",
+    // UI Layer 13 - knowledge documents.
+    "save-knowledge-document": "saveKnowledgeDocument",
+    "archive-knowledge-document": "archiveKnowledgeDocument",
     // EO-6.2 / EO-6.3 — AI Cost Center & Governance Policy Engine.
     "set-budget-policy": "setBudgetPolicy",
     "set-governance-policy": "setGovernancePolicy",
@@ -1024,6 +1027,16 @@ export function createControlPlaneApi(options) {
                 if (segs.length === 3 && segs[2] === "audit-findings") {
                     return send(res, 200, notNull(await query.getProjectAuditFindings(principal, id)), correlationId);
                 }
+                // UI Layer 13 knowledge: list, one document (+versions), keyword search.
+                if (segs.length === 3 && segs[2] === "knowledge") {
+                    return send(res, 200, notNull(await query.getKnowledgeDocuments(principal, id)), correlationId);
+                }
+                if (segs.length === 3 && segs[2] === "knowledge-search") {
+                    return send(res, 200, notNull(await query.searchKnowledge(principal, id, params.get("q"))), correlationId);
+                }
+                if (segs.length === 4 && segs[2] === "knowledge") {
+                    return send(res, 200, notNull(await query.getKnowledgeDocument(principal, id, segs[3])), correlationId);
+                }
                 // UI Layer 4 Workflow Studio: catalog, definitions, versions, simulation.
                 if (segs.length === 4 &&
                     segs[2] === "workflow-studio" &&
@@ -1115,6 +1128,12 @@ export function createControlPlaneApi(options) {
                 }
                 if (segs.length === 3 && segs[1] === "sessions") {
                     return send(res, 200, notNull(await query.getExecutionSession(principal, segs[2])), correlationId);
+                }
+                return send(res, 404, { error: { message: "not found" } }, correlationId);
+            case "integrations":
+                // UI Layer 14: GET /api/integrations/registry
+                if (segs.length === 2 && segs[1] === "registry") {
+                    return send(res, 200, query.getIntegrationRegistry(principal), correlationId);
                 }
                 return send(res, 404, { error: { message: "not found" } }, correlationId);
             case "intelligence":

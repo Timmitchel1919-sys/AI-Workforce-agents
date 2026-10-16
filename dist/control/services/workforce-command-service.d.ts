@@ -121,6 +121,9 @@ export declare class WorkforceCommandService {
     archiveWorkflow(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
     restoreWorkflowVersion(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
     duplicateWorkflow(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    saveKnowledgeDocument(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    archiveKnowledgeDocument(principal: OperatorPrincipal, input: Record<string, unknown>, options?: CommandOptions): Promise<ControlCommandResult>;
+    private knowledgeCommand;
     private workflowStudio;
     /**
      * Record a `control_command` audit event and return the structured result.

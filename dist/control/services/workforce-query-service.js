@@ -643,6 +643,76 @@ export class WorkforceQueryService {
             return undefined;
         return getProjectGovernancePolicy(this.ctx, principal, projectId);
     }
+    /* UI Layer 13 - knowledge (project-scoped; IDOR -> undefined -> 404). */
+    knowledgeProject(principal, projectId) {
+        this.authorizeView(principal);
+        return (!!this.ctx.knowledgeDocuments &&
+            !!this.ctx.projects.get(projectId) &&
+            operatorCanAccessProject(principal, projectId));
+    }
+    async getKnowledgeDocuments(principal, projectId) {
+        if (!this.knowledgeProject(principal, projectId))
+            return undefined;
+        const items = await this.ctx.knowledgeDocuments.list(projectId);
+        return { items, total: items.length };
+    }
+    async getKnowledgeDocument(principal, projectId, documentId) {
+        if (!this.knowledgeProject(principal, projectId))
+            return undefined;
+        const svc = this.ctx.knowledgeDocuments;
+        const found = await svc.get(projectId, documentId);
+        if (!found)
+            return undefined;
+        return { ...found, versions: await svc.versions(projectId, documentId) };
+    }
+    async searchKnowledge(principal, projectId, q) {
+        if (!this.knowledgeProject(principal, projectId))
+            return undefined;
+        if (!q || q.length > 200)
+            throw new ValidationError("q (1-200 characters) is required");
+        return {
+            mode: "keyword",
+            semantic: false,
+            items: await this.ctx.knowledgeDocuments.search(projectId, q),
+        };
+    }
+    /**
+     * UI Layer 14 - integrations the server can actually vouch for. Registered is
+     * not connected: credentials are never inspected or returned.
+     */
+    getIntegrationRegistry(principal) {
+        this.authorizeView(principal);
+        const providers = [
+            ...new Set(this.ctx.routing?.models?.list().map((p) => p.providerId) ?? []),
+        ];
+        return {
+            integrations: [
+                ...providers.map((id) => ({
+                    id: `model:${id}`,
+                    category: "ai_provider",
+                    name: id,
+                    registered: this.ctx.routing?.providers?.has(id) ?? false,
+                    connection: "unverified",
+                })),
+                {
+                    id: "firebase",
+                    category: "cloud",
+                    name: "firebase",
+                    registered: true,
+                    connection: "in_use",
+                },
+                {
+                    id: "github",
+                    category: "development",
+                    name: "github",
+                    registered: false,
+                    connection: "not_configured",
+                },
+            ],
+            mcpServers: [],
+            webhooks: [],
+        };
+    }
     /** UI Layer 5: the development pipeline as this deployment can actually run it. */
     getFactoryPipeline(principal) {
         this.authorizeView(principal);
