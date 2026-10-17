@@ -190,6 +190,54 @@ test("runtime singleton loads once and reuses the memoized runtime", async () =>
   assert.equal(second, third);
 });
 
+test("R2 dispatcher barrier awaits runtime.flush before the response ends", async () => {
+  const events: string[] = [];
+  let resolveFlush: (() => void) | undefined;
+  const flushGate = new Promise<void>((resolve) => {
+    resolveFlush = resolve;
+  });
+
+  const handler = createControlPlaneHttpsAdapter(async () => ({
+    handler: (_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      // Response is "ended" by handler, but the wrapped .end must wait for flush.
+      res.end(JSON.stringify({ status: "ok" }));
+    },
+    flush: async () => {
+      events.push("flush:start");
+      await flushGate;
+      events.push("flush:end");
+    },
+  }));
+
+  const pending = request(handler, "/api/health");
+  // Give the handler a tick to call res.end and enter the flush wait.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  events.push("released-flush");
+  resolveFlush!();
+
+  const response = await pending;
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { status: "ok" });
+  assert.deepEqual(events, ["flush:start", "released-flush", "flush:end"]);
+});
+
+test("R2 dispatcher barrier releases the response if runtime.flush rejects", async () => {
+  const handler = createControlPlaneHttpsAdapter(async () => ({
+    handler: (_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
+    },
+    flush: async () => {
+      throw new Error("firestore unavailable");
+    },
+  }));
+
+  const response = await request(handler, "/api/health");
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { status: "ok" });
+});
+
 test("a failed cold start stays failed for that instance, with no fake fallback", async () => {
   let attempts = 0;
   const singleton = createRuntimeSingleton(async () => {
