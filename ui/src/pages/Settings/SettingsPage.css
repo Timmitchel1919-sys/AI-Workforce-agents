@@ -144,7 +144,7 @@
 
 .settings-theme__preview-card--short {
   width: 60%;
-  border-color: #d9a72e;
+  border-color: var(--primary, #38bdf8);
 }
 
 .settings-theme__text {

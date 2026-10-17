@@ -9,7 +9,7 @@
   --glass-bg: rgba(20, 20, 25, 0.65);
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-glow: rgba(0, 255, 170, 0.15);
-  --glass-text: #e0e0e0;
+  --glass-text: var(--foreground, #f5f7fb);
   --glass-active: rgba(0, 255, 170, 0.3);
   color: var(--glass-text);
 }
@@ -84,7 +84,7 @@
   width: 32px;
   height: 32px;
   border: 3px solid var(--glass-border);
-  border-top-color: #00ffaa;
+  border-top-color: var(--success, #34d399);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
