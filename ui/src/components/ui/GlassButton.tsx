@@ -1,8 +1,8 @@
 import * as React from "react";
 import "./GlassButton.css";
 
-type Size = "sm" | "default" | "lg" | "icon";
-type Variant = "primary" | "secondary" | "ghost" | "premium";
+type Size = "sm" | "default" | "lg" | "icon" | "compact";
+type Variant = "primary" | "secondary" | "ghost" | "premium" | "danger" | "success" | "toolbar";
 
 export interface GlassButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {

@@ -17,3 +17,10 @@ export type {
   CommandItem,
   CommandChip,
 } from "./CommandPanel";
+export { InternalSonarBackground } from "./InternalSonarBackground";
+export { DataPanel } from "./DataPanel";
+export type { DataPanelProps } from "./DataPanel";
+export { StatCard } from "./StatCard";
+export type { StatCardProps } from "./StatCard";
+export { StatusChip } from "./StatusChip";
+export type { StatusChipProps, StatusTone } from "./StatusChip";

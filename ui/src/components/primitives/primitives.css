@@ -1,13 +1,13 @@
 /* AI Workforce primitives — token-driven, no component-specific one-offs. */
 
-/* ---------- GlassPanel ---------- */
+/* ---------- GlassPanel — surface tiers (LEVEL 0..4) ---------- */
 .aw-panel {
   position: relative;
   border-radius: var(--radius-card);
   background: var(--surface);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(var(--blur-md)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(140%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 10px 30px rgba(0, 0, 0, 0.35);
@@ -16,14 +16,98 @@
 .aw-panel.aw-panel--elevated {
   background: var(--surface-elevated);
   border-color: var(--glass-border-strong);
+  backdrop-filter: blur(var(--blur-lg)) saturate(145%);
+  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(145%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.aw-panel.aw-panel--critical {
+  background: color-mix(in oklab, var(--surface-elevated) 95%, transparent);
+  border: 1px solid color-mix(in oklab, var(--primary) 25%, var(--glass-border-strong));
+  backdrop-filter: blur(var(--blur-xl)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 24px 50px rgba(0, 0, 0, 0.55),
+    0 0 32px color-mix(in oklab, var(--primary) 15%, transparent);
 }
 .aw-panel.aw-panel--flat {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   background: rgba(255, 255, 255, 0.02);
+}
+.aw-panel.aw-panel--data {
+  backdrop-filter: blur(var(--blur-sm)) saturate(130%);
+  -webkit-backdrop-filter: blur(var(--blur-sm)) saturate(130%);
+  background: color-mix(in oklab, var(--background) 70%, transparent);
+}
+
+/* ---------- DataPanel ---------- */
+.aw-data-panel {
+  padding: 1.25rem;
+  border-radius: var(--radius-panel);
+}
+.aw-data-panel.aw-data-panel--compact { padding: 0.75rem; }
+.aw-data-panel.aw-panel { /* lighter blur than GlassCard for dense content */
+  backdrop-filter: blur(var(--blur-sm)) saturate(130%);
+  -webkit-backdrop-filter: blur(var(--blur-sm)) saturate(130%);
+}
+
+/* ---------- StatCard ---------- */
+.aw-stat { display: flex; flex-direction: column; gap: 0.5rem; }
+.aw-stat-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.aw-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.aw-stat-icon { color: var(--primary); display: inline-flex; }
+.aw-stat-value {
+  font-size: clamp(1.5rem, 2.2vw, 1.95rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  line-height: 1.1;
+}
+.aw-stat-foot { display: flex; align-items: center; gap: 0.6rem; font-size: 0.78rem; }
+.aw-stat-delta--up    { color: var(--success); }
+.aw-stat-delta--down  { color: var(--danger); }
+.aw-stat-delta--flat  { color: var(--foreground-muted); }
+.aw-stat-note { color: var(--foreground-muted); }
+
+/* ---------- StatusChip ---------- */
+.aw-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--silver);
+  white-space: nowrap;
+}
+.aw-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.aw-status-dot--pulse { animation: aw-pulse 2.4s ease-in-out infinite; }
+.aw-status-chip--idle     { color: var(--state-idle);    border-color: color-mix(in oklab, var(--state-idle)    35%, transparent); }
+.aw-status-chip--running  { color: var(--state-running); border-color: color-mix(in oklab, var(--state-running) 35%, transparent); }
+.aw-status-chip--queued   { color: var(--state-queued);  border-color: color-mix(in oklab, var(--state-queued)  35%, transparent); }
+.aw-status-chip--blocked  { color: var(--state-blocked); border-color: color-mix(in oklab, var(--state-blocked) 35%, transparent); }
+.aw-status-chip--success  { color: var(--success);       border-color: color-mix(in oklab, var(--success)       35%, transparent); }
+.aw-status-chip--warning  { color: var(--warning);       border-color: color-mix(in oklab, var(--warning)       35%, transparent); }
+.aw-status-chip--info     { color: var(--info);          border-color: color-mix(in oklab, var(--info)          35%, transparent); }
+.aw-status-chip--cyan     { color: var(--primary);       border-color: color-mix(in oklab, var(--primary)       35%, transparent); }
+.aw-status-chip--violet   { color: var(--secondary);     border-color: color-mix(in oklab, var(--secondary)     35%, transparent); }
+.aw-status-chip--neutral  { color: var(--silver);        border-color: var(--glass-border); }
+@media (prefers-reduced-motion: reduce) {
+  .aw-status-dot--pulse { animation: none; }
 }
 
 /* ---------- GlassCard ---------- */
@@ -121,8 +205,9 @@
    into siblings. The background itself stays fixed to the viewport, so the
    canvas never exceeds viewport dimensions regardless of document height. */
 .aw-bg-host { position: relative; isolation: isolate; }
-.aw-bg-host > .aw-bg { z-index: 0; }
-.aw-bg-host > :not(.aw-bg) { position: relative; z-index: 1; }
+.aw-bg-host > .aw-bg,
+.aw-bg-host > .aw-sonar { z-index: 0; }
+.aw-bg-host > :not(.aw-bg):not(.aw-sonar) { position: relative; z-index: 1; }
 .aw-bg {
   position: fixed;
   inset: 0;

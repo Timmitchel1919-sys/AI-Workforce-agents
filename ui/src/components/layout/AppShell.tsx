@@ -9,6 +9,7 @@ import { MobileTabBar } from "./MobileTabBar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { WorkspaceContextProvider } from "../../features/workspaceContext";
 import { WorkspaceControls } from "./WorkspaceControls";
+import { InternalSonarBackground } from "../primitives/InternalSonarBackground";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -83,7 +84,8 @@ export default function AppShell() {
 
   return (
     <WorkspaceContextProvider>
-    <div className={`app-shell${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
+    <div className={`app-shell aw-bg-host${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
+      <InternalSonarBackground intensity="calm" />
       <aside
         ref={sidebarRef}
         className="app-shell__sidebar"

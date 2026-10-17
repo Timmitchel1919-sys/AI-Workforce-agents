@@ -179,6 +179,60 @@
   letter-spacing: -0.005em;
   font-weight: 600;
 }
+
+/* Danger — destructive actions (delete, revoke, reject). */
+.ui-glass-btn-wrap.v-danger .ui-glass-btn {
+  background: linear-gradient(
+    -75deg,
+    color-mix(in oklab, var(--danger, #f87171) 20%, var(--color-background)),
+    color-mix(in oklab, var(--danger, #f87171) 32%, var(--color-background)),
+    color-mix(in oklab, var(--danger, #f87171) 20%, var(--color-background))
+  );
+  box-shadow:
+    inset 0 0.125em 0.125em rgba(255, 255, 255, 0.1),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.2),
+    0 0.3em 0.4em -0.1em rgba(0, 0, 0, 0.35),
+    0 0 0.2em 0.1em inset color-mix(in oklab, var(--danger, #f87171) 25%, transparent);
+}
+.ui-glass-btn-wrap.v-danger .ui-glass-btn-text { color: #fff5f5; }
+
+/* Success — approve, confirm. */
+.ui-glass-btn-wrap.v-success .ui-glass-btn {
+  background: linear-gradient(
+    -75deg,
+    color-mix(in oklab, var(--success, #34d399) 20%, var(--color-background)),
+    color-mix(in oklab, var(--success, #34d399) 32%, var(--color-background)),
+    color-mix(in oklab, var(--success, #34d399) 20%, var(--color-background))
+  );
+  box-shadow:
+    inset 0 0.125em 0.125em rgba(255, 255, 255, 0.1),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.18),
+    0 0.3em 0.4em -0.1em rgba(0, 0, 0, 0.3),
+    0 0 0.2em 0.1em inset color-mix(in oklab, var(--success, #34d399) 25%, transparent);
+}
+.ui-glass-btn-wrap.v-success .ui-glass-btn-text { color: #f0fff5; }
+
+/* Toolbar — minimal chrome, for filter/table row actions. */
+.ui-glass-btn-wrap.v-toolbar .ui-glass-btn {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--glass-border, rgba(255,255,255,0.08));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.ui-glass-btn-wrap.v-toolbar .ui-glass-btn::after { display: none; }
+.ui-glass-btn-wrap.v-toolbar .ui-glass-btn:hover {
+  background: var(--glass-strong, rgba(255,255,255,0.06));
+  transform: none;
+}
+
+/* Compact size — toolbar density. */
+.ui-glass-btn.compact {
+  font-size: var(--text-sm, 0.875rem);
+}
+.ui-glass-btn.compact .ui-glass-btn-text {
+  padding: 0.35rem 0.7rem;
+  min-height: 32px;
+}
 .ui-glass-btn.sm .ui-glass-btn-text { padding: 0.5rem 1rem; }
 .ui-glass-btn.default .ui-glass-btn-text { padding: 0.875rem 1.5rem; }
 .ui-glass-btn.lg .ui-glass-btn-text { padding: 1rem 2rem; }
