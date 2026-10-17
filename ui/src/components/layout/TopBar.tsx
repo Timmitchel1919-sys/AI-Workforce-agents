@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Languages, LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "lucide-react";
+import { Languages, LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { IconButton, UserAvatar } from "../ui";
@@ -8,6 +8,7 @@ import { useMyProfile } from "../../features/profile";
 import { useI18n } from "../../i18n";
 import { useTheme } from "../../themes/useTheme";
 import CommandPalette from "../command/CommandPalette";
+import NotificationCenter from "../../features/notifications/NotificationCenter";
 import "./TopBar.css";
 
 interface TopBarProps {
@@ -102,15 +103,7 @@ export default function TopBar({
         </div>
 
         <div className="topbar__right app-shell__topbar-actions" aria-label={t("shell.headerActions")}>
-          <IconButton
-            type="button"
-            label={t("shell.notificationsNotConnected")}
-            aria-label={t("shell.notificationsNotConnected")}
-            className="topbar__action-button topbar__secondary-action"
-            disabled
-          >
-            <Bell size={16} aria-hidden="true" />
-          </IconButton>
+          <NotificationCenter />
 
           <IconButton type="button" label={t("nav.approvals")} className="topbar__action-button topbar__secondary-action" onClick={() => navigate("/approvals")}>
             <ShieldCheck size={16} aria-hidden="true" />

@@ -1,11 +1,16 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../../auth/AuthProvider';
 import { ThemeProvider } from '../../../themes/ThemeProvider';
 import TopBar from '../TopBar';
 import { WorkspaceContextProvider } from '../../../features/workspaceContext';
+
+vi.mock('../../../features/governance', () => ({
+  useApprovalQueue: () => ({ state: 'empty', items: [], total: 0 }),
+  useAuditTrail: () => ({ state: 'empty', items: [], total: 0 }),
+}));
 
 function renderTopBar(initialEntry = '/') {
   return render(
@@ -34,8 +39,17 @@ describe('TopBar', () => {
     expect(screen.getByRole('button', { name: /interface language/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /switch to (light|dark) theme/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /approvals/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /notifications.*not connected/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^notifications$/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument();
+  });
+
+  it('opens smart notifications without exposing a privileged action', () => {
+    renderTopBar('/');
+    fireEvent.click(screen.getByRole('button', { name: /^notifications$/i }));
+    expect(screen.getByRole('dialog', { name: /smart notifications/i })).toBeInTheDocument();
+    expect(screen.getByText(/control plane events only/i)).toBeInTheDocument();
+    expect(screen.getByText(/privileged actions still require authorization/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /approve|deploy|delete/i })).not.toBeInTheDocument();
   });
 
   it('account menu links to profile and preferences; sign out is styled as danger', () => {

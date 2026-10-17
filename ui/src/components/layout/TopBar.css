@@ -189,6 +189,68 @@
   position: relative;
 }
 
+.notification-center { position: relative; }
+.notification-center__trigger { position: relative; }
+.notification-center__count {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-topbar);
+  border-radius: var(--radius-full);
+  background: var(--color-danger);
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+.notification-center__panel {
+  position: absolute;
+  top: calc(100% + 0.65rem);
+  right: 0;
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: min(38rem, calc(100vh - var(--header-height) - 2rem));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-solid);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  color: var(--color-text);
+}
+.notification-center__header,
+.notification-center__filters,
+.notification-center__panel footer { padding: var(--space-3) var(--space-4); }
+.notification-center__header { display: flex; justify-content: space-between; gap: var(--space-3); border-bottom: 1px solid var(--color-border); }
+.notification-center__header div { display: flex; flex-direction: column; gap: 0.15rem; }
+.notification-center__header span,
+.notification-center__panel footer { color: var(--color-text-muted); font-size: var(--text-xs); }
+.notification-center__header button { border: 0; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 1.25rem; cursor: pointer; }
+.notification-center__filters { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); border-bottom: 1px solid var(--color-border); }
+.notification-center__filters label { display: grid; gap: 0.25rem; color: var(--color-text-muted); font-size: var(--text-xs); }
+.notification-center__filters select { min-width: 0; padding: 0.45rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--text-sm); }
+.notification-center__body { overflow-y: auto; }
+.notification-center__body > p { margin: 0; padding: var(--space-5) var(--space-4); color: var(--color-text-muted); }
+.notification-center__body ul { list-style: none; margin: 0; padding: 0; }
+.notification-center__body li + li { border-top: 1px solid var(--color-border); }
+.notification-center__body li button { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 0.2rem var(--space-2); width: 100%; padding: var(--space-3) var(--space-4); border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.notification-center__body li button:hover,
+.notification-center__body li button:focus-visible { background: var(--color-surface-muted); outline: none; }
+.notification-center__body li strong,
+.notification-center__body li > button > span:not(.notification-center__priority),
+.notification-center__body li small { grid-column: 2; }
+.notification-center__body li small { color: var(--color-text-muted); }
+.notification-center__body li svg { grid-column: 3; grid-row: 1; }
+.notification-center__priority { grid-column: 1; grid-row: 1 / span 3; align-self: start; padding: 0.15rem 0.35rem; border-radius: var(--radius-sm); background: var(--color-surface-muted); color: var(--color-text-secondary); font-size: 0.625rem; font-weight: 800; text-transform: uppercase; }
+.notification-center__priority--critical { background: color-mix(in srgb, var(--color-danger) 16%, transparent); color: var(--color-danger); }
+.notification-center__priority--high { background: color-mix(in srgb, var(--color-warning) 16%, transparent); color: var(--color-warning); }
+.notification-center__panel footer { border-top: 1px solid var(--color-border); }
+
 /* Pill-shaped account button with a circular avatar. */
 .topbar__account-button {
   position: relative;
@@ -334,6 +396,8 @@
   .topbar__account-button {
     padding: 0.1875rem;
   }
+
+  .notification-center { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

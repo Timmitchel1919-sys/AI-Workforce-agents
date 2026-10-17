@@ -28,6 +28,7 @@ import type { SpatialInsightsReport } from "../../../../../contracts/graph";
 import { traceExecutionPath } from "../lib/executionPath";
 import type { LiveStatus } from "../lib/liveStatus";
 import type { GraphTransition } from "../lib/graphDiff";
+import { summarizeSpatialOperations } from "../lib/operationalSummary";
 
 import "../spatial-graph.css";
 
@@ -91,6 +92,7 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
   );
 
   const selectedNode = derived.selectedId ? (nodeById.get(derived.selectedId) ?? null) : null;
+  const operationalSummary = useMemo(() => summarizeSpatialOperations(graph), [graph]);
   const isolatedNode = derived.isolatedId ? (nodeById.get(derived.isolatedId) ?? null) : null;
   const expanded = derived.selectedId !== null && derived.expandedIds.includes(derived.selectedId);
 
@@ -334,6 +336,9 @@ export function SpatialGraphWorkspace({ graph, mode, busy = false, onModeChange,
       )}
       <div className="sg-status" role="status" aria-live="polite" aria-atomic="true">
         <p data-testid="sg-status">{status}</p>
+        <p data-testid="sg-operational-summary">
+          Operational state: {operationalSummary.attention} need attention · {operationalSummary.activeExecutions} active executions · {operationalSummary.healthy} healthy
+        </p>
         {pathIds && !matchIds && (
           <p data-testid="sg-path-status">{t("spatial.pathTrace", { count: pathIds.size })}</p>
         )}
