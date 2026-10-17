@@ -149,7 +149,7 @@
 }
 
 .sidebar__brand-subtitle {
-  color: var(--color-brand-gold-strong);
+  color: var(--silver, var(--color-text-muted));
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -236,8 +236,8 @@
 }
 
 .sidebar__link.is-active .sidebar__icon {
-  border-color: var(--color-brand-gold);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-brand-gold) 35%, transparent);
+  border-color: var(--primary, #38bdf8);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--primary, #38bdf8) 35%, transparent);
 }
 
 .sidebar__label {
@@ -282,7 +282,7 @@
   flex-shrink: 0;
   width: 0.45rem;
   height: 0.45rem;
-  border: 1px solid var(--color-brand-gold);
+  border: 1px solid var(--primary, var(--color-primary));
   transform: rotate(45deg);
 }
 
