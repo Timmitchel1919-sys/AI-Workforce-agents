@@ -1,7 +1,9 @@
 import { GlassCard } from "../../primitives/GlassCard";
 import { SectionContainer } from "../../primitives/SectionContainer";
+import { useI18n } from "../../../i18n";
 import "./sections.css";
 
+/** Vendor / product names are not translated. */
 const integrations = [
   "GitHub", "GitLab", "Firebase", "Google Cloud", "AWS", "Vercel",
   "Linear", "Jira", "Slack", "Notion", "Supabase", "PostgreSQL",
@@ -9,11 +11,12 @@ const integrations = [
 ];
 
 export function Integrations() {
+  const { t } = useI18n();
   return (
     <SectionContainer
-      eyebrow="Tool fabric"
-      title="Already speaks your systems."
-      lede="Native tool adapters cover source, cloud, data, communication, and model providers. Each adapter runs inside the sandboxed tool fabric with policy and audit."
+      eyebrow={t("landing.v2.integrations.eyebrow")}
+      title={t("landing.v2.integrations.title")}
+      lede={t("landing.v2.integrations.lede")}
     >
       <GlassCard pad="md">
         <div className="lp2-integrations">

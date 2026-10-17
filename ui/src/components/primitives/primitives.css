@@ -70,6 +70,7 @@
   to { --aw-angle: 360deg; }
 }
 .aw-glow[data-active="false"]::before { opacity: 0.25; animation-play-state: paused; }
+.aw-glow[data-active="true"]::before  { animation-play-state: running; }
 
 @media (prefers-reduced-motion: reduce) {
   .aw-glow::before { animation: none; }
@@ -115,7 +116,13 @@
   margin: 0 0 2.5rem 0;
 }
 
-/* ---------- PageBackground (canvas layer host + static fallback) ---------- */
+/* ---------- PageBackground (canvas layer host + static fallback) ----------
+   Place inside an element with class `aw-bg-host` to scope it to that
+   subtree; `position: absolute` keeps it from leaking into other routes
+   that happen to also mount a background. */
+.aw-bg-host { position: relative; isolation: isolate; }
+.aw-bg-host > .aw-bg { position: absolute; z-index: 0; }
+.aw-bg-host > :not(.aw-bg) { position: relative; z-index: 1; }
 .aw-bg {
   position: fixed;
   inset: 0;
@@ -237,9 +244,17 @@
   border-radius: 10px;
   border: 1px solid var(--glass-border);
   background: var(--glass);
+}
+/* No hover affordance: these items are not interactive. Interactive versions
+   must set data-interactive="true" explicitly. */
+.aw-cmd-item[data-interactive="true"] {
+  cursor: pointer;
   transition: background 180ms var(--ease-cmd), border-color 180ms var(--ease-cmd);
 }
-.aw-cmd-item:hover { background: var(--glass-strong); border-color: var(--glass-border-strong); }
+.aw-cmd-item[data-interactive="true"]:hover {
+  background: var(--glass-strong);
+  border-color: var(--glass-border-strong);
+}
 .aw-cmd-item--active {
   background: var(--primary-soft);
   border-color: color-mix(in oklab, var(--primary) 35%, transparent);
@@ -294,9 +309,27 @@
 .aw-cmd-chip.violet { color: var(--secondary); border-color: color-mix(in oklab, var(--secondary) 35%, transparent); }
 
 @media (max-width: 1024px) {
-  .aw-cmd { grid-template-columns: 1fr 1fr; }
-  .aw-cmd-col:last-child { grid-column: span 2; }
-}
-@media (max-width: 640px) {
   .aw-cmd { grid-template-columns: 1fr; min-height: 0; }
+  .aw-cmd-col:not(.aw-cmd-col--primary) { display: none; }
+  .aw-cmd[data-mobile-mode="full"] .aw-cmd-col { display: flex; }
+}
+.aw-cmd-mobile-summary { display: none; }
+@media (max-width: 1024px) {
+  .aw-cmd-mobile-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    border-radius: 10px;
+    border: 1px dashed var(--glass-border);
+    background: var(--glass);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--silver);
+    text-transform: uppercase;
+  }
+  .aw-cmd-mobile-summary > span { white-space: nowrap; }
+  .aw-cmd-mobile-summary b { color: var(--foreground); font-weight: 500; }
 }

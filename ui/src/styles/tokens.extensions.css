@@ -13,8 +13,8 @@
   --glass-border-strong: rgba(255, 255, 255, 0.16);
 
   --foreground:          #f5f7fb;
-  --foreground-muted:    #8b93a7;
-  --foreground-dim:      #5e6676;
+  --foreground-muted:    #a9b2c3;
+  --foreground-dim:      #6c7384;
 
   /* Accents — cyan primary, violet secondary, silver detail */
   --primary:             #38bdf8;
@@ -44,8 +44,42 @@
   --ease-cmd:            cubic-bezier(0.22, 1, 0.36, 1);
   --duration-beam:       6s;
 
-  /* Typographic micro-labels (command-center chip text) */
+  /* Typographic stack — Inter + JetBrains Mono loaded from Google Fonts in index.html. */
+  --font-sans: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* --- Legacy --lp-* token aliases ---------------------------------------
+     Make the old auth / os-theme styling resolve to the new cyan/violet
+     palette so /login and /landing visibly belong to the same product.
+     Nothing is deleted here; os-theme.css still owns the initial values —
+     these overrides win because they come later in the cascade.
+     --------------------------------------------------------------------- */
+  --lp-bg:                 var(--background);
+  --lp-bg-deep:            #020203;
+  --lp-navy:               #040509;
+  --lp-blue:               var(--primary-strong);
+  --lp-blue-bright:        var(--primary);
+  --lp-blue-soft:          var(--primary-soft);
+  --lp-cyan:               var(--primary);
+  --lp-gold:               var(--secondary);
+  --lp-gold-bright:        var(--secondary-strong);
+  --lp-gold-soft:          var(--secondary-soft);
+  --lp-text:               var(--foreground);
+  --lp-text-secondary:     var(--silver);
+  --lp-text-muted:         var(--foreground-muted);
+
+  --lp-glass-bg:           var(--surface);
+  --lp-glass-bg-strong:    var(--surface-elevated);
+  --lp-glass-border:       var(--glass-border);
+  --lp-glass-border-hover: var(--glass-border-strong);
+  --lp-glass-highlight:    rgba(255, 255, 255, 0.08);
+
+  --lp-field-bg:           color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  --lp-field-border:       var(--glass-border-strong);
+  --lp-field-border-focus: color-mix(in oklab, var(--primary) 55%, transparent);
+  --lp-field-glow:         0 0 0 3px var(--ring), 0 0 18px var(--primary-glow);
+  --lp-focus:              var(--ring);
+  --lp-font:               var(--font-sans);
 }
 
 :root[data-theme='light'],

@@ -1,5 +1,6 @@
 import { GlassCard } from "../../primitives/GlassCard";
 import { SectionContainer } from "../../primitives/SectionContainer";
+import { useI18n } from "../../../i18n";
 import "./sections.css";
 
 const projects = [
@@ -12,15 +13,16 @@ const projects = [
 ];
 
 export function Projects() {
+  const { t } = useI18n();
   return (
     <SectionContainer
-      eyebrow="Projects"
-      title="Composable workspaces, each with their own policies."
-      lede="Projects aren't folders. Each one is a workspace of agents, tools, approvals, and spend — versioned and auditable like code."
+      eyebrow={t("landing.v2.projects.eyebrow")}
+      title={t("landing.v2.projects.title")}
+      lede={t("landing.v2.projects.lede")}
     >
       <div className="lp2-projects">
         <GlassCard pad="md">
-          <div className="lp2-tile-head">active</div>
+          <div className="lp2-tile-head">{t("landing.v2.projects.active")}</div>
           {projects.slice(0, 3).map((p) => (
             <div key={p.name} className="lp2-project-row">
               <span>{p.name}</span>
@@ -29,7 +31,7 @@ export function Projects() {
           ))}
         </GlassCard>
         <GlassCard pad="md">
-          <div className="lp2-tile-head">idle</div>
+          <div className="lp2-tile-head">{t("landing.v2.projects.idle")}</div>
           {projects.slice(3).map((p) => (
             <div key={p.name} className="lp2-project-row">
               <span>{p.name}</span>
@@ -38,11 +40,11 @@ export function Projects() {
           ))}
         </GlassCard>
         <GlassCard pad="md">
-          <div className="lp2-tile-head">this hour</div>
-          <div className="lp2-project-row"><span>Spend</span><span className="meta">$4.21</span></div>
-          <div className="lp2-project-row"><span>Deployments</span><span className="meta">2 ok</span></div>
-          <div className="lp2-project-row"><span>Approvals waiting</span><span className="meta">1</span></div>
-          <div className="lp2-project-row"><span>Latency p95</span><span className="meta">1.2 s</span></div>
+          <div className="lp2-tile-head">{t("landing.v2.projects.hour")}</div>
+          <div className="lp2-project-row"><span>{t("landing.v2.projects.spend")}</span><span className="meta">$4.21</span></div>
+          <div className="lp2-project-row"><span>{t("landing.v2.projects.deployments")}</span><span className="meta">2 ok</span></div>
+          <div className="lp2-project-row"><span>{t("landing.v2.projects.approvals")}</span><span className="meta">1</span></div>
+          <div className="lp2-project-row"><span>{t("landing.v2.projects.latency")}</span><span className="meta">1.2 s</span></div>
         </GlassCard>
       </div>
     </SectionContainer>

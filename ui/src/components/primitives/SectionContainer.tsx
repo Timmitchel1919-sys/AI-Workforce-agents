@@ -1,12 +1,16 @@
 import * as React from "react";
 import "./primitives.css";
 
+type HeadingLevel = "h2" | "h3" | "h4";
+
 export interface SectionContainerProps
   extends Omit<React.HTMLAttributes<HTMLElement>, "title"> {
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   lede?: React.ReactNode;
   as?: "section" | "div" | "article";
+  /** Heading tag for the section title (default h2). */
+  headingAs?: HeadingLevel;
 }
 
 export function SectionContainer({
@@ -15,6 +19,7 @@ export function SectionContainer({
   lede,
   children,
   as: Tag = "section",
+  headingAs: Heading = "h2",
   className,
   ...rest
 }: SectionContainerProps) {
@@ -22,7 +27,7 @@ export function SectionContainer({
     <Tag className={["aw-section", className].filter(Boolean).join(" ")} {...rest}>
       <div className="aw-section-inner">
         {eyebrow && <div className="aw-section-eyebrow">{eyebrow}</div>}
-        {title && <h2 className="aw-section-title">{title}</h2>}
+        {title && <Heading className="aw-section-title">{title}</Heading>}
         {lede && <p className="aw-section-lede">{lede}</p>}
         {children}
       </div>

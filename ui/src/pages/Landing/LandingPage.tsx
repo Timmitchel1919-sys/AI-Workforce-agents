@@ -34,13 +34,13 @@ export default function LandingPage() {
   }, [t]);
 
   return (
-    <div className="lp os-theme">
+    <div className="lp os-theme aw-bg-host">
       <a className="lp-skip-link" href="#lp-main">
         {t("landing.skip")}
       </a>
       <PageBackground variant="beams" />
       <Nav />
-      <main id="lp-main" className="lp-main">
+      <main id="lp-main" className="lp-main" tabIndex={-1}>
         <Hero />
         <Capabilities />
         <Departments />

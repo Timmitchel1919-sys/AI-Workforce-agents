@@ -54,7 +54,10 @@ export default function CommandPalette({
   const [active, setActive] = useState(0);
   const closeAndRestoreFocus = useCallback(() => {
     onClose();
-    returnFocusRef?.current?.focus();
+    // Defer focus restoration until after the dialog unmount so the browser
+    // (and jsdom) don't bounce focus to <body> when the previously-focused
+    // input disappears mid-call.
+    queueMicrotask(() => returnFocusRef?.current?.focus());
   }, [onClose, returnFocusRef]);
   const commands = useMemo(
     () =>
@@ -155,7 +158,7 @@ export default function CommandPalette({
     workspace.recordCommand(route);
     onClose();
     navigate(route);
-    returnFocusRef?.current?.focus();
+    queueMicrotask(() => returnFocusRef?.current?.focus());
   };
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {

@@ -69,8 +69,10 @@ describe('TopBar', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: /search commands/i })).toHaveFocus());
     fireEvent.keyDown(window, { key: 'Escape' });
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
+    // Focus restoration happens on the next animation frame; wait for both the
+    // dialog teardown and the focus to move back to the trigger before asserting.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it('does not expose admin-only destinations to a user without an admin role', () => {

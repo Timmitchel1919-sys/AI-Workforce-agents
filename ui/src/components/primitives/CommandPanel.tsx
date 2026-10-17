@@ -14,6 +14,8 @@ export type CommandColumn = {
   heading: string;
   trailing?: React.ReactNode;
   items: CommandItem[];
+  /** The primary column stays visible on mobile; the others collapse into a chip summary. */
+  primary?: boolean;
 };
 
 export type CommandChip = {
@@ -21,10 +23,19 @@ export type CommandChip = {
   tone?: "ok" | "warn" | "cyan" | "violet";
 };
 
+export type CommandSummary = {
+  label: string;
+  value: string;
+};
+
 export interface CommandPanelProps {
   columns: [CommandColumn, CommandColumn, CommandColumn];
   footerChips?: CommandChip[];
+  /** Compact chip row shown instead of the collapsed columns on mobile. */
+  mobileSummary?: CommandSummary[];
   active?: boolean;
+  /** Force all columns visible on mobile (used by dedicated preview routes, not the hero). */
+  mobileFull?: boolean;
 }
 
 function pulseClass(state?: CommandItem["state"]) {
@@ -33,12 +44,28 @@ function pulseClass(state?: CommandItem["state"]) {
   return "aw-cmd-pulse aw-cmd-pulse--idle";
 }
 
-export function CommandPanel({ columns, footerChips, active = true }: CommandPanelProps) {
+export function CommandPanel({
+  columns,
+  footerChips,
+  mobileSummary,
+  mobileFull = false,
+  active = true,
+}: CommandPanelProps) {
   return (
     <GlowBorder active={active} radius={22}>
-      <GlassPanel elevation="elevated" className="aw-cmd" aria-label="AI Workforce command preview">
+      <GlassPanel
+        elevation="elevated"
+        className="aw-cmd"
+        aria-label="AI Workforce command preview"
+        data-mobile-mode={mobileFull ? "full" : "primary"}
+      >
         {columns.map((col) => (
-          <section key={col.heading} className="aw-cmd-col">
+          <section
+            key={col.heading}
+            className={["aw-cmd-col", col.primary ? "aw-cmd-col--primary" : ""]
+              .filter(Boolean)
+              .join(" ")}
+          >
             <div className="aw-cmd-col-head">
               <span>{col.heading}</span>
               {col.trailing}
@@ -62,8 +89,19 @@ export function CommandPanel({ columns, footerChips, active = true }: CommandPan
             ))}
           </section>
         ))}
+
+        {mobileSummary && mobileSummary.length > 0 && !mobileFull && (
+          <div className="aw-cmd-mobile-summary" aria-label="Summary">
+            {mobileSummary.map((s) => (
+              <span key={s.label}>
+                {s.label} · <b>{s.value}</b>
+              </span>
+            ))}
+          </div>
+        )}
+
         {footerChips && footerChips.length > 0 && (
-          <footer
+          <div
             className="aw-cmd-row"
             style={{ gridColumn: "1 / -1", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.5rem" }}
           >
@@ -72,7 +110,7 @@ export function CommandPanel({ columns, footerChips, active = true }: CommandPan
                 {c.label}
               </span>
             ))}
-          </footer>
+          </div>
         )}
       </GlassPanel>
     </GlowBorder>
