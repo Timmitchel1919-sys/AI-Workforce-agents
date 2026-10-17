@@ -286,15 +286,10 @@ describe("Sign up", () => {
     expect(alert).not.toHaveTextContent(/already in use|already registered|exists/i);
   });
 
-  it("switches between sign-in and sign-up within the same gateway", async () => {
-    const user = userEvent.setup();
-    render(<Harness path="/login" />);
-
-    await user.click(screen.getByRole("link", { name: /Create account/i }));
-    expect(screen.getByRole("heading", { name: /Create your account/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: /Sign in/i }));
-    expect(screen.getByRole("heading", { name: /Welcome back/i })).toBeInTheDocument();
-  });
+  // The sign-in → sign-up toggle test is intentionally removed:
+  // AI Workforce is a private, invite-only platform and the public /signup
+  // route no longer exists in the router. The Create account link has been
+  // replaced by an invite-only notice on the login card.
 });
 
 describe("Protected routes", () => {

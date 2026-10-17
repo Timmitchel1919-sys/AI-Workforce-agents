@@ -56,7 +56,7 @@ export default function AuthLayout() {
   }, []);
 
   useEffect(() => {
-    document.title = location.pathname === "/signup" ? t("auth.titleSignUp") : t("auth.titleSignIn");
+    document.title = t("auth.titleSignIn");
   }, [location.pathname, t]);
 
   const flow = useMemo<AuthFlowContext>(

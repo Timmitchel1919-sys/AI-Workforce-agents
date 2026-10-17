@@ -1,0 +1,245 @@
+/* Landing sections — shared layout classes. All colors from tokens.extensions.css */
+
+.lp2-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem clamp(1rem, 4vw, 2.5rem);
+  background: color-mix(in oklab, var(--background) 70%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+}
+.lp2-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: -0.01em;
+}
+.lp2-brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+.lp2-nav-links {
+  display: flex;
+  gap: 1.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lp2-nav-links a {
+  color: var(--foreground-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 160ms var(--ease-cmd);
+}
+.lp2-nav-links a:hover { color: var(--foreground); }
+.lp2-nav-cta { display: inline-flex; gap: 0.5rem; }
+@media (max-width: 720px) {
+  .lp2-nav-links { display: none; }
+}
+
+/* Hero */
+.lp2-hero {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: center;
+  min-height: 72vh;
+}
+.lp2-hero-head { max-width: 36rem; }
+.lp2-hero-title {
+  font-size: clamp(2.25rem, 4.6vw, 3.75rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.04;
+  color: var(--foreground);
+  margin: 0 0 1rem 0;
+}
+.lp2-hero-accent {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+}
+.lp2-hero-lede {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--foreground-muted);
+  margin: 0 0 2rem 0;
+  max-width: 44ch;
+}
+.lp2-hero-ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.lp2-hero-meta {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.lp2-hero-meta b { color: var(--foreground); font-weight: 500; }
+@media (max-width: 1024px) {
+  .lp2-hero { grid-template-columns: 1fr; min-height: 0; padding-block: 2rem; }
+}
+
+/* Bento grid */
+.lp2-bento {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+.lp2-bento .bento-wide { grid-column: span 2; }
+.lp2-bento .bento-tall { grid-row: span 2; }
+.lp2-bento .bento-full { grid-column: span 4; }
+@media (max-width: 1024px) {
+  .lp2-bento { grid-template-columns: repeat(2, 1fr); }
+  .lp2-bento .bento-full { grid-column: span 2; }
+}
+@media (max-width: 640px) {
+  .lp2-bento { grid-template-columns: 1fr; }
+  .lp2-bento .bento-wide,
+  .lp2-bento .bento-tall,
+  .lp2-bento .bento-full { grid-column: span 1; grid-row: auto; }
+}
+.lp2-tile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+.lp2-tile-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: -0.01em;
+  margin: 0 0 0.5rem 0;
+}
+.lp2-tile-text {
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Workflow timeline */
+.lp2-workflow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.lp2-workflow-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-button);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+}
+.lp2-workflow-row b {
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.lp2-workflow-row p { margin: 0; color: var(--foreground-muted); font-size: 0.9rem; }
+@media (max-width: 640px) {
+  .lp2-workflow-row { grid-template-columns: 1fr; }
+}
+
+/* Integrations list */
+.lp2-integrations {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+.lp2-int {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-button);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--foreground);
+  font-size: 0.9rem;
+}
+.lp2-int-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary-glow);
+}
+
+/* Security */
+.lp2-sec {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+/* CTA */
+.lp2-cta-shell { text-align: center; padding: clamp(2rem, 4vw, 3.5rem) 1rem; }
+.lp2-cta-title {
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem 0;
+}
+.lp2-cta-sub { color: var(--foreground-muted); margin: 0 0 2rem 0; }
+.lp2-cta-row { display: inline-flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+
+/* Footer */
+.lp2-footer {
+  padding: 2rem clamp(1rem, 4vw, 2.5rem);
+  border-top: 1px solid var(--glass-border);
+  color: var(--foreground-muted);
+  font-size: 0.825rem;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.lp2-footer a { color: var(--foreground); text-decoration: none; }
+.lp2-footer a:hover { color: var(--primary); }
+
+/* Projects placeholder */
+.lp2-projects {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 1024px) { .lp2-projects { grid-template-columns: 1fr; } }
+.lp2-project-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed var(--glass-border);
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+.lp2-project-row:last-child { border-bottom: 0; }
+.lp2-project-row span.meta { color: var(--foreground-muted); font-family: var(--font-mono); font-size: 0.72rem; }

@@ -104,11 +104,80 @@
 
 .ui-glass-btn-text {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   color: color-mix(in oklab, var(--color-text) 90%, transparent);
   text-shadow: 0 0.25em 0.05em rgba(0, 0, 0, 0.1);
   user-select: none;
   transition: all var(--gb-anim-time) var(--gb-anim-ease);
+}
+.ui-glass-btn-ico { display: inline-flex; align-items: center; }
+.ui-glass-btn-ico svg { width: 1em; height: 1em; }
+.ui-glass-btn-label { display: inline-flex; align-items: center; }
+.ui-glass-btn-spinner {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  animation: ui-glass-btn-spin 0.9s linear infinite;
+  opacity: 0.85;
+}
+@keyframes ui-glass-btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ui-glass-btn-spinner { animation-duration: 2.4s; }
+}
+.ui-glass-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+.ui-glass-btn-wrap[data-disabled="true"] { pointer-events: none; }
+
+/* ---- Variants ---- */
+.ui-glass-btn-wrap.v-primary .ui-glass-btn {
+  background: linear-gradient(
+    -75deg,
+    color-mix(in oklab, var(--primary, #38bdf8) 22%, var(--color-background)),
+    color-mix(in oklab, var(--primary, #38bdf8) 32%, var(--color-background)),
+    color-mix(in oklab, var(--primary, #38bdf8) 22%, var(--color-background))
+  );
+  box-shadow:
+    inset 0 0.125em 0.125em rgba(255, 255, 255, 0.1),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.2),
+    0 0.3em 0.4em -0.1em rgba(0, 0, 0, 0.35),
+    0 0 0.2em 0.1em inset color-mix(in oklab, var(--primary, #38bdf8) 25%, transparent);
+}
+.ui-glass-btn-wrap.v-primary .ui-glass-btn-text { color: #f5fbff; }
+
+.ui-glass-btn-wrap.v-ghost .ui-glass-btn {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--glass-border, rgba(255,255,255,0.1));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.ui-glass-btn-wrap.v-ghost .ui-glass-btn::after { display: none; }
+.ui-glass-btn-wrap.v-ghost .ui-glass-btn:hover {
+  background: var(--glass, rgba(255,255,255,0.04));
+  transform: none;
+}
+
+.ui-glass-btn-wrap.v-premium .ui-glass-btn {
+  background: linear-gradient(
+    -75deg,
+    color-mix(in oklab, var(--primary, #38bdf8) 18%, transparent),
+    color-mix(in oklab, var(--secondary, #a78bfa) 22%, transparent),
+    color-mix(in oklab, var(--primary, #38bdf8) 18%, transparent)
+  );
+  box-shadow:
+    inset 0 0.125em 0.125em rgba(255, 255, 255, 0.14),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.22),
+    0 0.4em 0.5em -0.1em rgba(0, 0, 0, 0.4),
+    0 0 0 1px inset color-mix(in oklab, var(--primary, #38bdf8) 35%, transparent),
+    0 0 24px color-mix(in oklab, var(--primary, #38bdf8) 25%, transparent);
+}
+.ui-glass-btn-wrap.v-premium .ui-glass-btn-text {
+  color: #ffffff;
+  letter-spacing: -0.005em;
+  font-weight: 600;
 }
 .ui-glass-btn.sm .ui-glass-btn-text { padding: 0.5rem 1rem; }
 .ui-glass-btn.default .ui-glass-btn-text { padding: 0.875rem 1.5rem; }

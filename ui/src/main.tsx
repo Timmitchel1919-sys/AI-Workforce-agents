@@ -5,6 +5,7 @@ import { AppProviders } from "./app/provider/AppProviders";
 import { registerServiceWorker } from "./pwa/serviceWorker";
 import "./styles/reset.css";
 import "./styles/tokens.css";
+import "./styles/tokens.extensions.css";
 import "./styles/globals.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

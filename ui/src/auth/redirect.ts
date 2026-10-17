@@ -1,6 +1,6 @@
 import { CONTROL_CENTER_ROUTE } from "../components/brand/brand";
 
-const AUTH_PATHS = ["/login", "/signup"];
+const AUTH_PATHS = ["/login", "/signup", "/forgot-password"];
 
 /**
  * Returns a same-origin, in-app path to continue to after sign-in, or the

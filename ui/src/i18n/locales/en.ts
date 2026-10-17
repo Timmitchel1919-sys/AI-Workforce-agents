@@ -1185,6 +1185,7 @@ export const en = {
     verifying: "Verifying…",
     newHere: "New to AI Workforce?",
     createAccount: "Create account",
+    inviteOnly: "Access is invite-only. Reach out to your workspace administrator for an invitation.",
     accessGranted: "Access granted",
     entering: "Entering the Control Center…",
     resetTitle: "Reset password",

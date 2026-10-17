@@ -19,7 +19,6 @@ const LandingPage = lazy(loadLanding);
 
 const AuthLayout = fromChunk(loadAuthRoutes, "AuthLayout");
 const LoginPage = fromChunk(loadAuthRoutes, "LoginPage");
-const SignupPage = fromChunk(loadAuthRoutes, "SignupPage");
 
 const AppShell = fromChunk(loadControlCenterRoutes, "AppShell");
 const OverviewPage = fromChunk(loadControlCenterRoutes, "OverviewPage");
@@ -123,7 +122,8 @@ export const router = createBrowserRouter(withErrorElements([
     element: withSuspense(<AuthLayout />),
     children: [
       { path: "login", element: withSuspense(<LoginPage />) },
-      { path: "signup", element: withSuspense(<SignupPage />) },
+      { path: "signup", element: <Navigate to="/login" replace /> },
+      { path: "forgot-password", element: withSuspense(<LoginPage />) },
     ],
   },
   {

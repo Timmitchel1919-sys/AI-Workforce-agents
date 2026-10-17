@@ -1,0 +1,69 @@
+/* AI Workforce — Design Token Extensions
+   Augments tokens.css with the Phase-8-approved cyan/violet command-center palette.
+   Preserves every existing --color-* variable; adds the Phase-8 token names on top. */
+
+:root {
+  /* Core surfaces (semantic aliases over existing color tokens) */
+  --background:          #050507;
+  --surface:             rgba(14, 16, 22, 0.72);
+  --surface-elevated:    rgba(22, 24, 32, 0.84);
+  --glass:               rgba(255, 255, 255, 0.04);
+  --glass-strong:        rgba(255, 255, 255, 0.08);
+  --glass-border:        rgba(255, 255, 255, 0.10);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
+
+  --foreground:          #f5f7fb;
+  --foreground-muted:    #8b93a7;
+  --foreground-dim:      #5e6676;
+
+  /* Accents — cyan primary, violet secondary, silver detail */
+  --primary:             #38bdf8;
+  --primary-strong:      #0ea5e9;
+  --primary-soft:        rgba(56, 189, 248, 0.14);
+  --primary-glow:        rgba(56, 189, 248, 0.35);
+
+  --secondary:           #a78bfa;
+  --secondary-strong:    #8b5cf6;
+  --secondary-soft:      rgba(167, 139, 250, 0.14);
+  --secondary-glow:      rgba(167, 139, 250, 0.30);
+
+  --silver:              rgba(226, 232, 240, 0.72);
+  --silver-dim:          rgba(226, 232, 240, 0.44);
+
+  /* State */
+  --ring:                rgba(56, 189, 248, 0.55);
+  --border:              var(--glass-border);
+  --border-strong:       var(--glass-border-strong);
+
+  /* Shape */
+  --radius-button:       14px;
+  --radius-card:         18px;
+  --radius-card-lg:      22px;
+
+  /* Motion */
+  --ease-cmd:            cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-beam:       6s;
+
+  /* Typographic micro-labels (command-center chip text) */
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:root[data-theme='light'],
+[data-theme='light'] {
+  --background:          #f7f8fb;
+  --surface:             rgba(255, 255, 255, 0.78);
+  --surface-elevated:    rgba(255, 255, 255, 0.90);
+  --glass:               rgba(17, 24, 39, 0.03);
+  --glass-strong:        rgba(17, 24, 39, 0.06);
+  --glass-border:        rgba(17, 24, 39, 0.10);
+  --glass-border-strong: rgba(17, 24, 39, 0.17);
+  --foreground:          #111318;
+  --foreground-muted:    #4b5563;
+  --foreground-dim:      #9ca3af;
+  --silver:              rgba(17, 24, 39, 0.72);
+  --silver-dim:          rgba(17, 24, 39, 0.44);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration-beam: 0s; }
+}

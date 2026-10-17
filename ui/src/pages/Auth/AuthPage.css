@@ -660,6 +660,15 @@
   font-size: 13px;
 }
 
+.auth-switch--private {
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: var(--silver-dim, var(--lp-text-muted));
+  max-width: 36ch;
+  margin-inline: auto;
+  line-height: 1.5;
+}
+
 .auth-fineprint {
   margin: 0;
   color: var(--lp-text-muted);

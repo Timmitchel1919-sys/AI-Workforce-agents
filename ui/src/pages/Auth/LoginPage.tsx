@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, Check, Mail } from "lucide-react";
 import { useAuth } from "../../auth/useAuth";
 import { authErrorKey } from "../../auth/authErrors";
@@ -163,8 +163,6 @@ export default function LoginPage() {
     }
   };
 
-  const signupHref = params.get("next") ? `/signup?next=${encodeURIComponent(next)}` : "/signup";
-
   return (
     <AuthCard
       eyebrow={t("auth.secureAccess")}
@@ -172,11 +170,8 @@ export default function LoginPage() {
       description={t("auth.signInDescription")}
       granted={granted}
       footer={
-        <p className="auth-switch">
-          {t("auth.newHere")}{" "}
-          <Link to={signupHref} className="auth-link">
-            {t("auth.createAccount")} <ArrowRight size={13} aria-hidden="true" />
-          </Link>
+        <p className="auth-switch auth-switch--private">
+          {t("auth.inviteOnly")}
         </p>
       }
     >

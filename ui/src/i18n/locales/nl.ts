@@ -1184,6 +1184,7 @@ export const nl: Messages = {
     verifying: "Controleren…",
     newHere: "Nieuw bij AI Workforce?",
     createAccount: "Account aanmaken",
+    inviteOnly: "Toegang is alleen op uitnodiging. Neem contact op met je workspace-beheerder voor een uitnodiging.",
     accessGranted: "Toegang verleend",
     entering: "Control Center wordt geopend…",
     resetTitle: "Wachtwoord opnieuw instellen",

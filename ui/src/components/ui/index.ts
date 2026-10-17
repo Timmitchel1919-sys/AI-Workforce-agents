@@ -29,4 +29,7 @@ export type { GlassButtonProps } from './GlassButton';
 export { GlassAuthForm, GlassField } from './GlassAuthForm';
 export type { GlassAuthFormProps, GlassFieldProps } from './GlassAuthForm';
 
+// Primitives (new design-system layer)
+export * from '../primitives';
+
 export * from './ui.css';

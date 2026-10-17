@@ -1,0 +1,302 @@
+/* AI Workforce primitives — token-driven, no component-specific one-offs. */
+
+/* ---------- GlassPanel ---------- */
+.aw-panel {
+  position: relative;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 30px rgba(0, 0, 0, 0.35);
+  color: var(--foreground);
+}
+.aw-panel.aw-panel--elevated {
+  background: var(--surface-elevated);
+  border-color: var(--glass-border-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.aw-panel.aw-panel--flat {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ---------- GlassCard ---------- */
+.aw-card { padding: 1.5rem; border-radius: var(--radius-card); }
+.aw-card.pad-sm { padding: 1rem; }
+.aw-card.pad-lg { padding: 2rem; border-radius: var(--radius-card-lg); }
+
+/* ---------- GlowBorder (SVG animated conic edge) ---------- */
+.aw-glow {
+  position: relative;
+  border-radius: inherit;
+  isolation: isolate;
+}
+.aw-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background:
+    conic-gradient(
+      from var(--aw-angle, 0deg),
+      transparent 0deg,
+      var(--primary) 60deg,
+      transparent 120deg,
+      transparent 240deg,
+      var(--secondary) 300deg,
+      transparent 360deg
+    );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.9;
+  animation: aw-glow-rotate var(--duration-beam) linear infinite;
+}
+@property --aw-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes aw-glow-rotate {
+  to { --aw-angle: 360deg; }
+}
+.aw-glow[data-active="false"]::before { opacity: 0.25; animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-glow::before { animation: none; }
+}
+
+/* ---------- SectionContainer ---------- */
+.aw-section {
+  width: 100%;
+  padding: clamp(3rem, 6vw, 6rem) clamp(1rem, 4vw, 2.5rem);
+}
+.aw-section-inner {
+  max-width: 1200px;
+  margin-inline: auto;
+}
+.aw-section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--silver);
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  background: var(--glass);
+  margin-bottom: 1rem;
+}
+.aw-section-title {
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  color: var(--foreground);
+  margin: 0 0 0.75rem 0;
+}
+.aw-section-lede {
+  font-size: 1.05rem;
+  color: var(--foreground-muted);
+  max-width: 56ch;
+  line-height: 1.55;
+  margin: 0 0 2.5rem 0;
+}
+
+/* ---------- PageBackground (canvas layer host + static fallback) ---------- */
+.aw-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, var(--secondary-soft), transparent 60%),
+    radial-gradient(900px 500px at 5% 10%, var(--primary-soft), transparent 65%),
+    linear-gradient(180deg, var(--background) 0%, #030306 100%);
+  overflow: hidden;
+  pointer-events: none;
+}
+.aw-bg-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.65;
+}
+.aw-bg-noise {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 3px 3px;
+  mix-blend-mode: screen;
+  opacity: 0.35;
+}
+.aw-bg-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* ---------- AuthCard ---------- */
+.aw-auth {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  padding: 2.25rem 2rem;
+  border-radius: var(--radius-card-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.aw-auth-header { display: flex; flex-direction: column; gap: 0.5rem; }
+.aw-auth-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.aw-auth-logo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+.aw-auth-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--foreground);
+}
+.aw-auth-subtitle {
+  margin: 0;
+  color: var(--foreground-muted);
+  font-size: 0.925rem;
+  line-height: 1.5;
+}
+.aw-auth-notice {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--silver-dim);
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+}
+.aw-auth-footer {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--foreground-muted);
+}
+
+/* ---------- CommandPanel ---------- */
+.aw-cmd {
+  position: relative;
+  border-radius: var(--radius-card-lg);
+  padding: 1.25rem;
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  gap: 1rem;
+  min-height: 420px;
+}
+.aw-cmd-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.aw-cmd-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--silver);
+  padding: 0 0.25rem;
+}
+.aw-cmd-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  transition: background 180ms var(--ease-cmd), border-color 180ms var(--ease-cmd);
+}
+.aw-cmd-item:hover { background: var(--glass-strong); border-color: var(--glass-border-strong); }
+.aw-cmd-item--active {
+  background: var(--primary-soft);
+  border-color: color-mix(in oklab, var(--primary) 35%, transparent);
+}
+.aw-cmd-item-label {
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.aw-cmd-item-meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--foreground-muted);
+  letter-spacing: 0.04em;
+}
+.aw-cmd-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 8px var(--primary-glow);
+  animation: aw-pulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.aw-cmd-pulse--violet { background: var(--secondary); box-shadow: 0 0 8px var(--secondary-glow); }
+.aw-cmd-pulse--idle { animation: none; opacity: 0.5; }
+@keyframes aw-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aw-cmd-pulse { animation: none; }
+}
+
+.aw-cmd-row { display: flex; align-items: center; gap: 0.6rem; }
+.aw-cmd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--silver);
+}
+.aw-cmd-chip.ok     { color: #86efac; border-color: color-mix(in oklab, #86efac 30%, transparent); }
+.aw-cmd-chip.warn   { color: #fcd34d; border-color: color-mix(in oklab, #fcd34d 30%, transparent); }
+.aw-cmd-chip.cyan   { color: var(--primary); border-color: color-mix(in oklab, var(--primary) 35%, transparent); }
+.aw-cmd-chip.violet { color: var(--secondary); border-color: color-mix(in oklab, var(--secondary) 35%, transparent); }
+
+@media (max-width: 1024px) {
+  .aw-cmd { grid-template-columns: 1fr 1fr; }
+  .aw-cmd-col:last-child { grid-column: span 2; }
+}
+@media (max-width: 640px) {
+  .aw-cmd { grid-template-columns: 1fr; min-height: 0; }
+}
