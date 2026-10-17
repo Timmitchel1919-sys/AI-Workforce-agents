@@ -224,7 +224,7 @@ function ApprovalCard({
       {pending && (canApprove || canReject) ? (
         <div className="gov-actions">
           {canApprove ? (
-            <button type="button" className="ui-button primary" onClick={() => onDecide("approve")}>
+            <button type="button" className="ui-button success" onClick={() => onDecide("approve")}>
               <CheckCircle2 size={16} aria-hidden /> {t("approvalQueue.approve")}
             </button>
           ) : null}

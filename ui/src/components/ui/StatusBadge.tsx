@@ -13,17 +13,19 @@ export type Status =
   | "paused"
   | "blocked";
 
+/** Resolve dot colour via CSS tokens so the status palette tracks the design
+ *  system (cyan = running, violet = queued/paused, success for completed, etc.). */
 const statusMap: Record<Status, { color: string; label: string }> = {
-  online: { color: "#16a34a", label: "Online" },
-  offline: { color: "#6b7280", label: "Offline" },
-  idle: { color: "#f59e0b", label: "Idle" },
-  active: { color: "#16a34a", label: "Active" },
-  running: { color: "#0ea5e9", label: "Running" },
-  pending: { color: "#f97316", label: "Pending" },
-  completed: { color: "#10b981", label: "Completed" },
-  failed: { color: "#ef4444", label: "Failed" },
-  paused: { color: "#a78bfa", label: "Paused" },
-  blocked: { color: "#ef4444", label: "Blocked" },
+  online:    { color: "var(--success, #34d399)",         label: "Online" },
+  offline:   { color: "var(--foreground-dim, #6b7280)",  label: "Offline" },
+  idle:      { color: "var(--foreground-dim, #94a3b8)",  label: "Idle" },
+  active:    { color: "var(--primary, #38bdf8)",         label: "Active" },
+  running:   { color: "var(--primary, #38bdf8)",         label: "Running" },
+  pending:   { color: "var(--secondary, #a78bfa)",       label: "Pending" },
+  completed: { color: "var(--success, #34d399)",         label: "Completed" },
+  failed:    { color: "var(--danger, #f87171)",          label: "Failed" },
+  paused:    { color: "var(--secondary, #a78bfa)",       label: "Paused" },
+  blocked:   { color: "var(--danger, #f87171)",          label: "Blocked" },
 };
 
 export interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
