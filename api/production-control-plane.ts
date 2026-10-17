@@ -53,6 +53,9 @@ import {
   FirestoreOnboardingSessionStore,
   FirestoreProvisionedProjectStore,
   FirestoreAppendOnlySecurityEventStore,
+  FirestoreAssignmentRepository,
+  FirestoreExecutionReceiptStore,
+  FirestoreWriteScopeLeaseRepository,
   isTransactionalFirestore,
   FirestoreEventPublisher,
   type FirebaseServices,
@@ -78,6 +81,8 @@ import {
   SpecialistHandoffService,
   InMemoryAssignmentRepository,
   InMemoryLeaseRepository,
+  type AssignmentRepository,
+  type ExecutionReceiptStore,
   ProjectWorkforcePlanner,
   SpecialistAssignmentService,
   WriteScopeLeaseManager,
@@ -226,7 +231,7 @@ export interface ProductionControlPlaneRuntime {
    */
   readonly specialist: {
     readonly assignments: SpecialistAssignmentService;
-    readonly assignmentRepository: InMemoryAssignmentRepository;
+    readonly assignmentRepository: AssignmentRepository;
     readonly handoffs: SpecialistHandoffService;
     readonly writeLeases: WriteScopeLeaseManager;
   };
@@ -607,11 +612,33 @@ export async function createProductionControlPlaneRuntime(
   // execution disagree about who exists and who is enabled — which is precisely
   // the failure this layer exists to remove.
   const agentOps = new AgentOperationalStore(agentOpsRepository);
-  const assignmentRepository = new InMemoryAssignmentRepository();
+  // R1 — durable execution state. Promote the Firestore handle up front so
+  // assignments, leases, and execution receipts can be write-through
+  // persisted from here on. In test contexts without a transactional
+  // Firestore seam we fall back to pure in-memory repositories so the
+  // existing test harness continues to work.
+  const _firestoreForDurable = services.firestore;
+  const _transactionalFirestoreForDurable = isTransactionalFirestore(
+    _firestoreForDurable,
+  )
+    ? _firestoreForDurable
+    : undefined;
+  const assignmentRepository: AssignmentRepository =
+    _transactionalFirestoreForDurable
+      ? new FirestoreAssignmentRepository(_transactionalFirestoreForDurable, {
+          collectionPrefix: options.collectionPrefix,
+        })
+      : new InMemoryAssignmentRepository();
+  const writeScopeLeaseRepository = _transactionalFirestoreForDurable
+    ? new FirestoreWriteScopeLeaseRepository(
+        _transactionalFirestoreForDurable,
+        { collectionPrefix: options.collectionPrefix },
+      )
+    : new InMemoryLeaseRepository();
   const specialistAssignments = new SpecialistAssignmentService(
     assignmentRepository,
     () => bootstrap.agents.listDescriptors(),
-    new InMemoryLeaseRepository(),
+    writeScopeLeaseRepository,
     () => new Date().toISOString(),
     audit,
     environmentRegistry,
@@ -717,7 +744,12 @@ export async function createProductionControlPlaneRuntime(
   createPlatformAdapters({
     containerPolicy: { approvedImages: [], requireDigest: true },
   }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
-  const executionReceipts = new InMemoryExecutionReceiptStore();
+  const executionReceipts: ExecutionReceiptStore =
+    _transactionalFirestoreForDurable
+      ? new FirestoreExecutionReceiptStore(_transactionalFirestoreForDurable, {
+          collectionPrefix: options.collectionPrefix,
+        })
+      : new InMemoryExecutionReceiptStore();
   const executionRecords = new FirestoreExecutionRecordStore(
     transactionalFirestore,
     { collectionPrefix: options.collectionPrefix },
@@ -1349,6 +1381,24 @@ export async function createProductionControlPlaneRuntime(
       production: process.env.NODE_ENV === "production",
     },
   });
+
+  // R1 — hydrate the durable execution-state caches before the control
+  // plane accepts traffic. Each Firestore-backed repository exposes a
+  // `.ready` promise that completes after its initial `.get()` lands.
+  // In-memory fallbacks have nothing to load, so this is a no-op there.
+  const readyWaits: Array<Promise<void>> = [];
+  if (assignmentRepository instanceof FirestoreAssignmentRepository) {
+    readyWaits.push(assignmentRepository.ready);
+  }
+  if (writeScopeLeaseRepository instanceof FirestoreWriteScopeLeaseRepository) {
+    readyWaits.push(writeScopeLeaseRepository.ready);
+  }
+  if (executionReceipts instanceof FirestoreExecutionReceiptStore) {
+    readyWaits.push(executionReceipts.ready);
+  }
+  if (readyWaits.length > 0) {
+    await Promise.all(readyWaits);
+  }
 
   return Object.freeze({
     handler,

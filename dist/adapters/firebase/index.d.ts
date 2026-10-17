@@ -20,3 +20,6 @@ export * from "./firestore-execution-state.js";
 export * from "./firestore-onboarding-store.js";
 export * from "./firestore-append-only-security-events.js";
 export * from "./firebase-app-check-verifier.js";
+export * from "./firestore-assignment-repository.js";
+export * from "./firestore-write-scope-lease-repository.js";
+export * from "./firestore-execution-receipt-store.js";

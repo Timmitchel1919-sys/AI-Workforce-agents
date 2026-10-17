@@ -27,7 +27,21 @@ import { EnvironmentRegistry } from "../environments/environment-registry.js";
 import { WriteScopeLeaseManager, type LeaseRepository } from "./lease-manager.js";
 import { AuditLog } from "../audit/audit-log.js";
 import type { WriteScopeLease } from "../../contracts/index.js";
-export declare class InMemoryAssignmentRepository {
+/**
+ * The sync surface every assignment repository (in-memory or durable
+ * write-through cache) must satisfy. Pure Firestore async access is not
+ * possible without making every `SpecialistAssignmentService` call site
+ * async, so durable backends front a cache that services sync reads.
+ */
+export interface AssignmentRepository {
+    list(): Assignment[];
+    findById(id: string): Assignment | undefined;
+    upsert(item: Assignment): void;
+    /** The most recent assignment for a task — the one currently in force. */
+    currentForTask(taskId: string): Assignment | undefined;
+    historyForTask(taskId: string): Assignment[];
+}
+export declare class InMemoryAssignmentRepository implements AssignmentRepository {
     private readonly items;
     list(): Assignment[];
     findById(id: string): Assignment | undefined;
@@ -70,7 +84,7 @@ export declare class SpecialistAssignmentService {
     private readonly qualification;
     readonly leases: WriteScopeLeaseManager;
     private readonly audit;
-    constructor(assignments: InMemoryAssignmentRepository, descriptors: () => readonly AgentDescriptor[], leaseRepository?: LeaseRepository<WriteScopeLease>, clock?: () => string, audit?: AuditLog, environmentRegistry?: EnvironmentRegistry);
+    constructor(assignments: AssignmentRepository, descriptors: () => readonly AgentDescriptor[], leaseRepository?: LeaseRepository<WriteScopeLease>, clock?: () => string, audit?: AuditLog, environmentRegistry?: EnvironmentRegistry);
     /**
      * The one qualification router, exposed so planning reads the SAME rules
      * that assignment enforces. A second copy of the qualification logic is how

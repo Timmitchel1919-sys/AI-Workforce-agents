@@ -86,7 +86,7 @@ import { beginAttempt, finishAttempt } from "./execution-sessions.js";
 import {
   boundOutput,
   createExecutionReceipt,
-  type InMemoryExecutionReceiptStore,
+  type ExecutionReceiptStore,
 } from "./execution-receipts.js";
 import {
   validateOperationOutput,
@@ -118,7 +118,7 @@ export interface ExecutionManagerOptions {
   /** The one bounded tool pipeline every invocation passes through. */
   toolEngine?: ToolExecutionEngine;
   dispatcher?: BoundedInvocationDispatcher;
-  receipts?: InMemoryExecutionReceiptStore;
+  receipts?: ExecutionReceiptStore;
   /** Simultaneous invocations per environment instance. Default 2. */
   maxConcurrentPerEnvironment?: number;
   /** Deployment environment passed to the ToolExecutionEngine. Default local. */

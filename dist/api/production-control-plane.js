@@ -22,7 +22,7 @@ import { KnowledgeDocumentService } from "../core/knowledge/knowledge-document-s
  */
 import { randomUUID } from "node:crypto";
 import { PermissionDeniedError, } from "../contracts/index.js";
-import { FirebaseOperatorDirectory, FirebaseAppCheckVerifier, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { FirebaseOperatorDirectory, FirebaseAppCheckVerifier, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, FirestoreAssignmentRepository, FirestoreExecutionReceiptStore, FirestoreWriteScopeLeaseRepository, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
 import { createPlatformAdapters } from "../adapters/environments/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
 import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, OperationalAuditSink, OperationalDataSystem, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
@@ -185,8 +185,24 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     // execution disagree about who exists and who is enabled — which is precisely
     // the failure this layer exists to remove.
     const agentOps = new AgentOperationalStore(agentOpsRepository);
-    const assignmentRepository = new InMemoryAssignmentRepository();
-    const specialistAssignments = new SpecialistAssignmentService(assignmentRepository, () => bootstrap.agents.listDescriptors(), new InMemoryLeaseRepository(), () => new Date().toISOString(), audit, environmentRegistry);
+    // R1 — durable execution state. Promote the Firestore handle up front so
+    // assignments, leases, and execution receipts can be write-through
+    // persisted from here on. In test contexts without a transactional
+    // Firestore seam we fall back to pure in-memory repositories so the
+    // existing test harness continues to work.
+    const _firestoreForDurable = services.firestore;
+    const _transactionalFirestoreForDurable = isTransactionalFirestore(_firestoreForDurable)
+        ? _firestoreForDurable
+        : undefined;
+    const assignmentRepository = _transactionalFirestoreForDurable
+        ? new FirestoreAssignmentRepository(_transactionalFirestoreForDurable, {
+            collectionPrefix: options.collectionPrefix,
+        })
+        : new InMemoryAssignmentRepository();
+    const writeScopeLeaseRepository = _transactionalFirestoreForDurable
+        ? new FirestoreWriteScopeLeaseRepository(_transactionalFirestoreForDurable, { collectionPrefix: options.collectionPrefix })
+        : new InMemoryLeaseRepository();
+    const specialistAssignments = new SpecialistAssignmentService(assignmentRepository, () => bootstrap.agents.listDescriptors(), writeScopeLeaseRepository, () => new Date().toISOString(), audit, environmentRegistry);
     const projectWorkforcePlanner = new ProjectWorkforcePlanner(specialistAssignments, () => bootstrap.agents.listDescriptors());
     const specialistHandoffs = new SpecialistHandoffService(() => bootstrap.agents.listDescriptors(), (agentId, projectId) => agentOps.isEnabled(agentId, projectId), handoffRepository);
     const workflowControl = new WorkflowControlStore(workflowControlRepository);
@@ -263,7 +279,11 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     createPlatformAdapters({
         containerPolicy: { approvedImages: [], requireDigest: true },
     }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
-    const executionReceipts = new InMemoryExecutionReceiptStore();
+    const executionReceipts = _transactionalFirestoreForDurable
+        ? new FirestoreExecutionReceiptStore(_transactionalFirestoreForDurable, {
+            collectionPrefix: options.collectionPrefix,
+        })
+        : new InMemoryExecutionReceiptStore();
     const executionRecords = new FirestoreExecutionRecordStore(transactionalFirestore, { collectionPrefix: options.collectionPrefix });
     // Shared with the verification service below: it must see exactly the operations and sandbox
     // providers the execution manager sees — one registry each, never a second copy.
@@ -702,6 +722,23 @@ export async function createProductionControlPlaneRuntime(options = {}) {
             production: process.env.NODE_ENV === "production",
         },
     });
+    // R1 — hydrate the durable execution-state caches before the control
+    // plane accepts traffic. Each Firestore-backed repository exposes a
+    // `.ready` promise that completes after its initial `.get()` lands.
+    // In-memory fallbacks have nothing to load, so this is a no-op there.
+    const readyWaits = [];
+    if (assignmentRepository instanceof FirestoreAssignmentRepository) {
+        readyWaits.push(assignmentRepository.ready);
+    }
+    if (writeScopeLeaseRepository instanceof FirestoreWriteScopeLeaseRepository) {
+        readyWaits.push(writeScopeLeaseRepository.ready);
+    }
+    if (executionReceipts instanceof FirestoreExecutionReceiptStore) {
+        readyWaits.push(executionReceipts.ready);
+    }
+    if (readyWaits.length > 0) {
+        await Promise.all(readyWaits);
+    }
     return Object.freeze({
         handler,
         context,

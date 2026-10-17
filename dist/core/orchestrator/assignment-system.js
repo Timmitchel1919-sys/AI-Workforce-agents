@@ -27,9 +27,6 @@ import { AgentQualificationRouter, NO_QUALIFIED_AGENT, } from "../environments/a
 import { EnvironmentRegistry } from "../environments/environment-registry.js";
 import { WriteScopeLeaseManager, } from "./lease-manager.js";
 import { InMemoryAuditSink, AuditLog } from "../audit/audit-log.js";
-/* ------------------------------------------------------------------ */
-/* In-memory repositories                                             */
-/* ------------------------------------------------------------------ */
 export class InMemoryAssignmentRepository {
     items = new Map();
     list() {

@@ -142,8 +142,19 @@ export function createExecutionReceipt(
   return deepFreeze({ ...clean, redaction: { applied: true, redactedValues } });
 }
 
+/**
+ * The sync surface every execution-receipt store (in-memory or durable
+ * write-through cache) must satisfy. Append-only: a `receiptId` can be
+ * written exactly once; subsequent calls raise `ValidationError`.
+ */
+export interface ExecutionReceiptStore {
+  record(receipt: ExecutionReceipt): ExecutionReceipt;
+  get(receiptId: string): ExecutionReceipt | undefined;
+  forSession(sessionId: string): ExecutionReceipt[];
+}
+
 /** Append-only receipt store: a receipt id can be written exactly once. */
-export class InMemoryExecutionReceiptStore {
+export class InMemoryExecutionReceiptStore implements ExecutionReceiptStore {
   private readonly receipts = new Map<string, ExecutionReceipt>();
 
   record(receipt: ExecutionReceipt): ExecutionReceipt {

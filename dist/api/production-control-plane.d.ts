@@ -1,6 +1,6 @@
 import { type FirebaseServices } from "../adapters/firebase/index.js";
 import { WorkforceCommandService, WorkforceQueryService, type ControlPlaneContext } from "../control/index.js";
-import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, SpecialistHandoffService, InMemoryAssignmentRepository, SpecialistAssignmentService, WriteScopeLeaseManager, OperationalDataSystem, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
+import { BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, SpecialistHandoffService, type AssignmentRepository, SpecialistAssignmentService, WriteScopeLeaseManager, OperationalDataSystem, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RuleAuditor, SourceControlOrchestrator, UsageLedger, VerificationService } from "../core/index.js";
 import { FirebaseRepositoryProvider } from "./firebase-repositories.js";
 import { type ApiHandler } from "./http-api.js";
 import { DestructiveActionService } from "../core/security/destructive-action-service.js";
@@ -42,7 +42,7 @@ export interface ProductionControlPlaneRuntime {
      */
     readonly specialist: {
         readonly assignments: SpecialistAssignmentService;
-        readonly assignmentRepository: InMemoryAssignmentRepository;
+        readonly assignmentRepository: AssignmentRepository;
         readonly handoffs: SpecialistHandoffService;
         readonly writeLeases: WriteScopeLeaseManager;
     };

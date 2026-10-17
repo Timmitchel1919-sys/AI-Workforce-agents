@@ -21,7 +21,7 @@ import { type ExecutionPolicyRegistry } from "./execution-policy.js";
 import { type ExecutionOperationRegistry } from "./execution-operations.js";
 import { type CancelOutcome, type ExecutionSessionStore } from "./execution-sessions.js";
 import { type SandboxRegistry } from "./sandbox.js";
-import { type InMemoryExecutionReceiptStore } from "./execution-receipts.js";
+import { type ExecutionReceiptStore } from "./execution-receipts.js";
 import { type BoundedInvocationDispatcher, type ExecutionToolRegistry } from "./execution-tools.js";
 import type { ToolExecutionEngine } from "../tools/tool-execution-engine.js";
 import type { EnvironmentAdapterRegistry } from "./environment-adapters.js";
@@ -50,7 +50,7 @@ export interface ExecutionManagerOptions {
     /** The one bounded tool pipeline every invocation passes through. */
     toolEngine?: ToolExecutionEngine;
     dispatcher?: BoundedInvocationDispatcher;
-    receipts?: InMemoryExecutionReceiptStore;
+    receipts?: ExecutionReceiptStore;
     /** Simultaneous invocations per environment instance. Default 2. */
     maxConcurrentPerEnvironment?: number;
     /** Deployment environment passed to the ToolExecutionEngine. Default local. */

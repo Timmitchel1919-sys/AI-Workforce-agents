@@ -31,4 +31,5 @@ temp/
 dataconnect/
 ui/src/dataconnect-generated/
 ui/.test-tmp/
+.cache/firebase-cli/
 functions.yaml

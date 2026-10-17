@@ -32,8 +32,18 @@ export declare function createLogEntry(input: {
  * the number of redacted values is recorded. `simulated` must be stated.
  */
 export declare function createExecutionReceipt(input: Omit<ExecutionReceipt, "redaction">, knownSecrets?: readonly string[]): ExecutionReceipt;
+/**
+ * The sync surface every execution-receipt store (in-memory or durable
+ * write-through cache) must satisfy. Append-only: a `receiptId` can be
+ * written exactly once; subsequent calls raise `ValidationError`.
+ */
+export interface ExecutionReceiptStore {
+    record(receipt: ExecutionReceipt): ExecutionReceipt;
+    get(receiptId: string): ExecutionReceipt | undefined;
+    forSession(sessionId: string): ExecutionReceipt[];
+}
 /** Append-only receipt store: a receipt id can be written exactly once. */
-export declare class InMemoryExecutionReceiptStore {
+export declare class InMemoryExecutionReceiptStore implements ExecutionReceiptStore {
     private readonly receipts;
     record(receipt: ExecutionReceipt): ExecutionReceipt;
     get(receiptId: string): ExecutionReceipt | undefined;
