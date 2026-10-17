@@ -38,7 +38,7 @@ export default function LandingPage() {
       <a className="lp-skip-link" href="#lp-main">
         {t("landing.skip")}
       </a>
-      <PageBackground variant="beams" />
+      <PageBackground variant="beams" video />
       <Nav />
       <main id="lp-main" className="lp-main" tabIndex={-1}>
         <Hero />

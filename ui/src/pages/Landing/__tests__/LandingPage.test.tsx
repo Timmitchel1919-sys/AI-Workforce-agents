@@ -24,6 +24,21 @@ describe("Landing Page (v2)", () => {
     expect(h1s[0]).toHaveTextContent(/coordinated workforce/i);
   });
 
+  it("uses the supplied video as a silent looping background", () => {
+    const { container } = renderLanding();
+    const video = container.querySelector<HTMLVideoElement>("video.aw-bg-video");
+
+    expect(video).not.toBeNull();
+    expect(video).toHaveProperty("autoplay", true);
+    expect(video).toHaveProperty("muted", true);
+    expect(video).toHaveProperty("loop", true);
+    expect(video).toHaveProperty("playsInline", true);
+    expect(video?.querySelector("source")).toHaveAttribute(
+      "src",
+      "/media/workforce-background.mp4",
+    );
+  });
+
   it("exposes a semantic nav, main, and footer", () => {
     renderLanding();
     expect(screen.getByRole("navigation", { name: /Primary/i })).toBeInTheDocument();

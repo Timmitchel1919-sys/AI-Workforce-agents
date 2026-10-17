@@ -119,6 +119,21 @@ function Harness(options: HarnessOptions) {
 }
 
 describe("Login", () => {
+  it("shares the silent looping video background with the auth gateway", () => {
+    const { container } = render(<Harness path="/login" />);
+    const video = container.querySelector<HTMLVideoElement>("video.aw-bg-video");
+
+    expect(video).not.toBeNull();
+    expect(video).toHaveProperty("autoplay", true);
+    expect(video).toHaveProperty("muted", true);
+    expect(video).toHaveProperty("loop", true);
+    expect(video).toHaveProperty("playsInline", true);
+    expect(video?.querySelector("source")).toHaveAttribute(
+      "src",
+      "/media/workforce-background.mp4",
+    );
+  });
+
   it("renders the secure sign-in form without decorative OAuth buttons or role fields", () => {
     render(<Harness path="/login" />);
 

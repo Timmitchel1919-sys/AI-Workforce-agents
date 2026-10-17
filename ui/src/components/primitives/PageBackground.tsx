@@ -7,6 +7,8 @@ export interface PageBackgroundProps {
   variant?: Variant;
   /** Reduce intensity for auth / dense data views. */
   calm?: boolean;
+  /** Optional supplied cinematic backdrop. Static canvas remains the reduced-motion fallback. */
+  video?: boolean;
 }
 
 /**
@@ -14,7 +16,7 @@ export interface PageBackgroundProps {
  * beam field. Hand-authored — zero external WebGL deps. Pauses when offscreen
  * or when the tab is hidden; renders a static mesh under reduced-motion.
  */
-export function PageBackground({ variant = "beams", calm = false }: PageBackgroundProps) {
+export function PageBackground({ variant = "beams", calm = false, video = false }: PageBackgroundProps) {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
   React.useEffect(() => {
@@ -125,8 +127,14 @@ export function PageBackground({ variant = "beams", calm = false }: PageBackgrou
   }, [variant, calm]);
 
   return (
-    <div className="aw-bg" aria-hidden>
+    <div className={`aw-bg${video ? " aw-bg--video" : ""}`} aria-hidden>
+      {video ? (
+        <video className="aw-bg-video" autoPlay muted loop playsInline preload="metadata" tabIndex={-1}>
+          <source src="/media/workforce-background.mp4" type="video/mp4" />
+        </video>
+      ) : null}
       {variant === "beams" && <canvas className="aw-bg-canvas" ref={canvasRef} />}
+      {video ? <div className="aw-bg-video-shade" /> : null}
       <div className="aw-bg-noise" />
       <div className="aw-bg-vignette" />
     </div>

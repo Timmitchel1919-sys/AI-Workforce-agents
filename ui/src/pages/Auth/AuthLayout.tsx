@@ -63,7 +63,7 @@ export default function AuthLayout() {
 
   return (
     <div className="auth os-theme aw-bg-host">
-      <PageBackground variant="beams" calm />
+      <PageBackground variant="beams" calm video />
 
       <header className="auth-topbar">
         <Link to="/" className="auth-topbar__brand" aria-label="AI Workforce home">

@@ -219,6 +219,32 @@
   overflow: hidden;
   pointer-events: none;
 }
+.aw-bg-video,
+.aw-bg-video-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.aw-bg-video {
+  z-index: 0;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.82) contrast(1.08) brightness(0.72);
+}
+.aw-bg-video-shade {
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgb(3 3 8 / 0.5) 0%, rgb(3 3 8 / 0.68) 52%, rgb(3 3 8 / 0.88) 100%),
+    radial-gradient(circle at 50% 34%, transparent 0%, rgb(3 3 8 / 0.22) 58%, rgb(3 3 8 / 0.72) 100%);
+}
+.aw-bg--video .aw-bg-canvas { z-index: 2; opacity: 0.58; }
+.aw-bg--video .aw-bg-noise { z-index: 3; opacity: 0.32; }
+.aw-bg--video .aw-bg-vignette { z-index: 4; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-bg-video { display: none; }
+}
 .aw-bg-canvas {
   position: absolute;
   inset: 0;
