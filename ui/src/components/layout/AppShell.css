@@ -12,8 +12,9 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: var(--color-bg-gradient);
-  background-color: var(--color-background);
+  /* Internal sonar background provides the ambient fill; keep this transparent
+     so the sonar canvas + grid + vignette are visible behind panels. */
+  background: transparent;
   color: var(--color-text);
   transition: grid-template-columns 200ms var(--ease-standard);
 }

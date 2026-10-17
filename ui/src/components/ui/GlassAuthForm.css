@@ -1,0 +1,152 @@
+/* Glassmorphism auth form — adapted from 21st.dev @ai2/input-group-glass to project tokens. */
+
+.ui-glass-auth {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-8) var(--space-6);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-card), var(--glass-highlight);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.ui-glass-auth-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: center;
+}
+.ui-glass-auth-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-text-heading);
+  letter-spacing: -0.01em;
+}
+.ui-glass-auth-subtitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ui-glass-auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ui-glass-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 2.75rem;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in oklab, var(--color-surface-muted) 90%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  transition:
+    border-color var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard),
+    background var(--duration-normal) var(--ease-standard);
+}
+.ui-glass-field:focus-within {
+  border-color: var(--color-border-selected);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 3px var(--color-focus);
+}
+
+.ui-glass-field-icon {
+  display: inline-flex;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.ui-glass-field:focus-within .ui-glass-field-icon {
+  color: var(--color-primary-strong);
+}
+
+.ui-glass-field-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-family: inherit;
+}
+.ui-glass-field-input::placeholder {
+  color: var(--color-text-muted);
+}
+.ui-glass-field-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Surface variants (frost, tint, smoke, crystal) */
+.ui-glass-field.tint {
+  border-color: color-mix(in oklab, var(--color-info) 32%, transparent);
+  background: color-mix(in oklab, var(--color-info) 10%, var(--color-surface-muted));
+}
+.ui-glass-field.smoke {
+  border-color: color-mix(in oklab, var(--color-text) 18%, transparent);
+  background: color-mix(in oklab, var(--color-text) 8%, var(--color-surface-muted));
+}
+.ui-glass-field.crystal {
+  border-color: color-mix(in oklab, var(--color-background) 60%, transparent);
+  background: color-mix(in oklab, var(--color-background) 40%, var(--color-surface-muted));
+}
+
+.ui-glass-field-error {
+  color: var(--color-danger);
+}
+.ui-glass-field-error.ui-glass-field { border-color: var(--color-danger); }
+
+.ui-glass-auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+.ui-glass-auth-footer {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.ui-glass-auth-footer a,
+.ui-glass-auth-footer button.link {
+  color: var(--color-primary-strong);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-glass-field,
+  .ui-glass-field-icon {
+    transition: none !important;
+  }
+}

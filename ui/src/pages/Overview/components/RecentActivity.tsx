@@ -1,16 +1,30 @@
 import { Link } from "react-router-dom";
 import { useI18n } from "../../../i18n";
-import { Card, StatusBadge } from "../../../components/ui";
-import type { RecentActivityItem } from "../overviewData";
+import { DataPanel } from "../../../components/primitives/DataPanel";
+import { StatusChip, type StatusTone } from "../../../components/primitives/StatusChip";
+import type { ActivityStatus, RecentActivityItem } from "../overviewData";
 
 interface RecentActivityProps {
   items: RecentActivityItem[];
 }
 
+const toneByStatus: Record<ActivityStatus, StatusTone> = {
+  active: "running",
+  running: "running",
+  completed: "success",
+  pending: "queued",
+  failed: "blocked",
+  paused: "idle",
+};
+
 export function RecentActivity({ items }: RecentActivityProps) {
   const { t } = useI18n();
   return (
-    <Card className="recent-activity" title={t("overview.recentActivity")} description={t("overview.recentActivityCard")}>
+    <DataPanel className="recent-activity">
+      <div className="recent-activity__head">
+        <h3 className="recent-activity__title-head">{t("overview.recentActivity")}</h3>
+        <p className="recent-activity__description-head">{t("overview.recentActivityCard")}</p>
+      </div>
       <ul className="recent-activity__list" aria-label={t("overview.recentActivityList")}>
         {items.map((item) => {
           const content = (
@@ -20,7 +34,9 @@ export function RecentActivity({ items }: RecentActivityProps) {
                   <span className="recent-activity__type">{t(`overview.activityType.${item.type}`)}</span>
                   {item.actor ? <span className="recent-activity__actor">{item.actor}</span> : null}
                 </div>
-                <StatusBadge status={item.status}>{t(`status.${item.status}`)}</StatusBadge>
+                <StatusChip tone={toneByStatus[item.status] ?? "neutral"}>
+                  {t(`status.${item.status}`)}
+                </StatusChip>
               </div>
 
               <h3 className="recent-activity__title">{item.title}</h3>
@@ -52,6 +68,6 @@ export function RecentActivity({ items }: RecentActivityProps) {
           );
         })}
       </ul>
-    </Card>
+    </DataPanel>
   );
 }

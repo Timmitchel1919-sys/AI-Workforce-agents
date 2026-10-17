@@ -1,4 +1,5 @@
-import { Badge, Card, StatusBadge } from "../../../components/ui";
+import { GlassCard } from "../../../components/primitives/GlassCard";
+import { StatusChip } from "../../../components/primitives/StatusChip";
 import { useI18n } from "../../../i18n";
 
 interface WorkforceStatusCardProps {
@@ -11,22 +12,22 @@ export function WorkforceStatusCard({ connection }: WorkforceStatusCardProps) {
   const connected = connection === "connected";
 
   return (
-    <Card
-      className="workforce-status-card"
-      title={t("overview.statusTitle")}
-      description={connected ? t("overview.statusConnected") : t("overview.statusDegraded")}
-    >
-      <div className="workforce-status-card__content">
-        <div>
-          <p className="workforce-status-card__label">{t("overview.currentState")}</p>
-          <StatusBadge status={connected ? "online" : "pending"}>
-            {connected ? t("overview.connected") : t("overview.degraded")}
-          </StatusBadge>
-        </div>
-        <Badge variant={connected ? "success" : "warning"}>
+    <GlassCard pad="md" className="workforce-status-card">
+      <div className="workforce-status-card__head">
+        <h3 className="workforce-status-card__title">{t("overview.statusTitle")}</h3>
+        <StatusChip tone={connected ? "success" : "warning"} pulse={connected}>
           {connected ? t("overview.liveData") : t("overview.partialData")}
-        </Badge>
+        </StatusChip>
       </div>
-    </Card>
+      <p className="workforce-status-card__description">
+        {connected ? t("overview.statusConnected") : t("overview.statusDegraded")}
+      </p>
+      <div className="workforce-status-card__content">
+        <p className="workforce-status-card__label">{t("overview.currentState")}</p>
+        <StatusChip tone={connected ? "running" : "warning"} pulse={connected}>
+          {connected ? t("overview.connected") : t("overview.degraded")}
+        </StatusChip>
+      </div>
+    </GlassCard>
   );
 }

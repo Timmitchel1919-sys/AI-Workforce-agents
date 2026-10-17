@@ -1,0 +1,181 @@
+/* AI Workforce — Design Token Extensions
+   Augments tokens.css with the Phase-8-approved cyan/violet command-center palette.
+   Preserves every existing --color-* variable; adds the Phase-8 token names on top. */
+
+:root {
+  /* Core surfaces (semantic aliases over existing color tokens) */
+  --background:          #050507;
+  --surface:             rgba(14, 16, 22, 0.72);
+  --surface-elevated:    rgba(22, 24, 32, 0.84);
+  --glass:               rgba(255, 255, 255, 0.04);
+  --glass-strong:        rgba(255, 255, 255, 0.08);
+  --glass-border:        rgba(255, 255, 255, 0.10);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
+
+  --foreground:          #f5f7fb;
+  --foreground-muted:    #a9b2c3;
+  --foreground-dim:      #6c7384;
+
+  /* Accents — cyan primary, violet secondary, silver detail */
+  --primary:             #38bdf8;
+  --primary-strong:      #0ea5e9;
+  --primary-soft:        rgba(56, 189, 248, 0.14);
+  --primary-glow:        rgba(56, 189, 248, 0.35);
+
+  --secondary:           #a78bfa;
+  --secondary-strong:    #8b5cf6;
+  --secondary-soft:      rgba(167, 139, 250, 0.14);
+  --secondary-glow:      rgba(167, 139, 250, 0.30);
+
+  --silver:              rgba(226, 232, 240, 0.72);
+  --silver-dim:          rgba(226, 232, 240, 0.44);
+
+  /* State */
+  --ring:                rgba(56, 189, 248, 0.55);
+  --border:              var(--glass-border);
+  --border-strong:       var(--glass-border-strong);
+
+  /* Shape */
+  --radius-button:       14px;
+  --radius-card:         18px;
+  --radius-card-lg:      22px;
+
+  /* Motion */
+  --ease-cmd:            cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-beam:       6s;
+
+  /* Typographic stack — Inter + JetBrains Mono loaded from Google Fonts in index.html. */
+  --font-sans: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* --- Blur tiers + opacity tiers (surface hierarchy LEVEL 0..4) ------- */
+  --blur-sm: 10px;
+  --blur-md: 16px;
+  --blur-lg: 22px;
+  --blur-xl: 28px;
+  --glass-opacity-flat:     0.56;
+  --glass-opacity-card:     0.72;
+  --glass-opacity-elevated: 0.84;
+  --glass-opacity-critical: 0.92;
+
+  /* --- Status language --------------------------------------------------- */
+  --success:        #34d399;
+  --success-strong: #10b981;
+  --success-soft:   rgba(52, 211, 153, 0.14);
+  --success-glow:   rgba(52, 211, 153, 0.30);
+  --warning:        #fbbf24;
+  --warning-strong: #d97706;
+  --warning-soft:   rgba(251, 191, 36, 0.14);
+  --warning-glow:   rgba(251, 191, 36, 0.30);
+  --danger:         #f87171;
+  --danger-strong:  #dc2626;
+  --danger-soft:    rgba(248, 113, 113, 0.14);
+  --danger-glow:    rgba(248, 113, 113, 0.30);
+  --info:           var(--primary);
+  --info-strong:    var(--primary-strong);
+  --info-soft:      var(--primary-soft);
+  --info-glow:      var(--primary-glow);
+
+  /* State colours */
+  --state-running:  var(--primary);
+  --state-active:   var(--primary);
+  --state-queued:   var(--secondary);
+  --state-idle:     var(--foreground-dim);
+  --state-blocked:  var(--danger);
+  --state-success:  var(--success);
+  --state-warning:  var(--warning);
+
+  /* Durations */
+  --duration-fast-ms:   140ms;
+  --duration-normal-ms: 220ms;
+  --duration-slow-ms:   360ms;
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit:  cubic-bezier(0.4, 0, 1, 1);
+
+  /* Extra radii for app shell surfaces */
+  --radius-panel: 20px;
+  --radius-modal: 22px;
+
+  /* --- Legacy --lp-* token aliases ---------------------------------------
+     Make the old auth / os-theme styling resolve to the new cyan/violet
+     palette so /login and /landing visibly belong to the same product.
+     Nothing is deleted here; os-theme.css still owns the initial values —
+     these overrides win because they come later in the cascade.
+     --------------------------------------------------------------------- */
+  --lp-bg:                 var(--background);
+  --lp-bg-deep:            #020203;
+  --lp-navy:               #040509;
+  --lp-blue:               var(--primary-strong);
+  --lp-blue-bright:        var(--primary);
+  --lp-blue-soft:          var(--primary-soft);
+  --lp-cyan:               var(--primary);
+  --lp-gold:               var(--secondary);
+  --lp-gold-bright:        var(--secondary-strong);
+  --lp-gold-soft:          var(--secondary-soft);
+  --lp-text:               var(--foreground);
+  --lp-text-secondary:     var(--silver);
+  --lp-text-muted:         var(--foreground-muted);
+
+  --lp-glass-bg:           var(--surface);
+  --lp-glass-bg-strong:    var(--surface-elevated);
+  --lp-glass-border:       var(--glass-border);
+  --lp-glass-border-hover: var(--glass-border-strong);
+  --lp-glass-highlight:    rgba(255, 255, 255, 0.08);
+
+  --lp-field-bg:           color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  --lp-field-border:       var(--glass-border-strong);
+  --lp-field-border-focus: color-mix(in oklab, var(--primary) 55%, transparent);
+  --lp-field-glow:         0 0 0 3px var(--ring), 0 0 18px var(--primary-glow);
+  --lp-focus:              var(--ring);
+  --lp-font:               var(--font-sans);
+}
+
+/* `.os-theme` scope also carries its own copies of --lp-* tokens for the
+   landing + auth routes. Those scoped definitions override :root for every
+   descendant, so we must redeclare them on .os-theme as well. */
+.os-theme {
+  --lp-bg:                 var(--background);
+  --lp-bg-deep:            #020203;
+  --lp-navy:               #040509;
+  --lp-blue:               var(--primary-strong);
+  --lp-blue-bright:        var(--primary);
+  --lp-blue-soft:          var(--primary-soft);
+  --lp-cyan:               var(--primary);
+  --lp-gold:               var(--secondary);
+  --lp-gold-bright:        var(--secondary-strong);
+  --lp-gold-soft:          var(--secondary-soft);
+  --lp-text:               var(--foreground);
+  --lp-text-secondary:     var(--silver);
+  --lp-text-muted:         var(--foreground-muted);
+  --lp-glass-bg:           var(--surface);
+  --lp-glass-bg-strong:    var(--surface-elevated);
+  --lp-glass-border:       var(--glass-border);
+  --lp-glass-border-hover: var(--glass-border-strong);
+  --lp-glass-highlight:    rgba(255, 255, 255, 0.08);
+  --lp-field-bg:           color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  --lp-field-border:       var(--glass-border-strong);
+  --lp-field-border-focus: color-mix(in oklab, var(--primary) 55%, transparent);
+  --lp-field-glow:         0 0 0 3px var(--ring), 0 0 18px var(--primary-glow);
+  --lp-focus:              var(--ring);
+  --lp-font:               var(--font-sans);
+}
+
+:root[data-theme='light'],
+[data-theme='light'] {
+  --background:          #f7f8fb;
+  --surface:             rgba(255, 255, 255, 0.78);
+  --surface-elevated:    rgba(255, 255, 255, 0.90);
+  --glass:               rgba(17, 24, 39, 0.03);
+  --glass-strong:        rgba(17, 24, 39, 0.06);
+  --glass-border:        rgba(17, 24, 39, 0.10);
+  --glass-border-strong: rgba(17, 24, 39, 0.17);
+  --foreground:          #111318;
+  --foreground-muted:    #4b5563;
+  --foreground-dim:      #9ca3af;
+  --silver:              rgba(17, 24, 39, 0.72);
+  --silver-dim:          rgba(17, 24, 39, 0.44);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration-beam: 0s; }
+}

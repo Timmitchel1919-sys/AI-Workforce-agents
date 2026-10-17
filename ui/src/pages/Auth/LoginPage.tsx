@@ -12,85 +12,9 @@ import { AuthAlert, AuthField, PasswordField } from "./components/AuthFields";
 import { ACCESS_GRANTED_MS, focusFirstInvalid, useAuthFlow } from "./authFlow";
 import { InstallAppButton } from "../../components/pwa/InstallAppButton";
 
-type View = "signin" | "reset";
-
 interface FieldErrors {
   email?: string;
   password?: string;
-}
-
-function ResetPassword({ initialEmail, onBack }: { initialEmail: string; onBack: () => void }) {
-  const { sendPasswordReset } = useAuth();
-  const { t } = useI18n();
-  const [email, setEmail] = useState(initialEmail);
-  const [error, setError] = useState<string>();
-  const [formError, setFormError] = useState<string>();
-  const [sent, setSent] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (submitting) return;
-    if (!isValidEmail(email)) {
-      setError(t("auth.validation.email"));
-      return;
-    }
-    setError(undefined);
-    setFormError(undefined);
-    setSubmitting(true);
-    try {
-      await sendPasswordReset(email.trim());
-      setSent(true);
-    } catch (err) {
-      setFormError(t(authErrorKey(err, "reset")));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <AuthCard
-      eyebrow={t("auth.secureAccess")}
-      title={t("auth.resetTitle")}
-      description={t("auth.resetDescription")}
-      footer={
-        <button type="button" className="auth-link" onClick={onBack}>
-          {t("auth.backToSignIn")}
-        </button>
-      }
-    >
-      {sent ? (
-        // Identical message whether or not an account exists for the address.
-        <AuthAlert tone="success">
-          {t("auth.resetSent")}
-        </AuthAlert>
-      ) : (
-        <form className="auth-form" onSubmit={submit} noValidate>
-          <AuthField
-            label={t("auth.email")}
-            icon={Mail}
-            type="email"
-            name="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={error}
-            required
-          />
-          {formError ? <AuthAlert>{formError}</AuthAlert> : null}
-          <button
-            type="submit"
-            className="lp-button lp-button--primary auth-submit"
-            disabled={submitting}
-            aria-busy={submitting}
-          >
-            {submitting ? t("auth.sending") : t("auth.sendReset")}
-          </button>
-        </form>
-      )}
-    </AuthCard>
-  );
 }
 
 export default function LoginPage() {
@@ -101,7 +25,6 @@ export default function LoginPage() {
   const [params] = useSearchParams();
   const next = safeRedirectPath(params.get("next"));
 
-  const [view, setView] = useState<View>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -114,10 +37,6 @@ export default function LoginPage() {
   const timerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => () => window.clearTimeout(timerRef.current), []);
-
-  if (view === "reset") {
-    return <ResetPassword initialEmail={email} onBack={() => setView("signin")} />;
-  }
 
   const validate = (): FieldErrors => {
     const nextErrors: FieldErrors = {};
@@ -163,8 +82,6 @@ export default function LoginPage() {
     }
   };
 
-  const signupHref = params.get("next") ? `/signup?next=${encodeURIComponent(next)}` : "/signup";
-
   return (
     <AuthCard
       eyebrow={t("auth.secureAccess")}
@@ -172,11 +89,8 @@ export default function LoginPage() {
       description={t("auth.signInDescription")}
       granted={granted}
       footer={
-        <p className="auth-switch">
-          {t("auth.newHere")}{" "}
-          <Link to={signupHref} className="auth-link">
-            {t("auth.createAccount")} <ArrowRight size={13} aria-hidden="true" />
-          </Link>
+        <p className="auth-switch auth-switch--private">
+          {t("auth.inviteOnly")}
         </p>
       }
     >
@@ -225,9 +139,9 @@ export default function LoginPage() {
               <span className="auth-check__box" aria-hidden="true" />
               {t("auth.keepSignedIn")}
             </label>
-            <button type="button" className="auth-link" onClick={() => setView("reset")}>
+            <Link to="/forgot-password" className="auth-link">
               {t("auth.forgotPassword")}
-            </button>
+            </Link>
           </div>
 
           {formError ? <AuthAlert>{formError}</AuthAlert> : null}
