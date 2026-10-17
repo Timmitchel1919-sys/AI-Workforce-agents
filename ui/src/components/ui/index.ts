@@ -24,5 +24,9 @@ export { EmptyState } from '../states/EmptyState';
 export { ErrorState } from '../states/ErrorState';
 export { Breadcrumb } from './Breadcrumb';
 export { default as UserAvatar } from './UserAvatar';
+export { GlassButton } from './GlassButton';
+export type { GlassButtonProps } from './GlassButton';
+export { GlassAuthForm, GlassField } from './GlassAuthForm';
+export type { GlassAuthFormProps, GlassFieldProps } from './GlassAuthForm';
 
 export * from './ui.css';
