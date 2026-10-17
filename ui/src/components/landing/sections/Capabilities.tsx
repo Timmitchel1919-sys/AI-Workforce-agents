@@ -24,7 +24,7 @@ export function Capabilities() {
       title={t("landing.v2.capabilities.title")}
       lede={t("landing.v2.capabilities.lede")}
     >
-      <div className="lp2-bento">
+      <div className="lp2-bento lp2-bento--3">
         {tiles.map(({ key, icon: Icon }) => (
           <GlassCard key={key} pad="md">
             <div className="lp2-tile-head"><Icon size={14} aria-hidden /> {t(`landing.v2.capabilities.${key}.head` as MessageKey)}</div>

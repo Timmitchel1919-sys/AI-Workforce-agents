@@ -7,24 +7,41 @@
   font-family: var(--font-sans, Inter, "Segoe UI", system-ui, sans-serif);
 }
 
-.lp-skip-link {
+/* Skip link: offscreen until keyboard focus brings it in.
+   Use clip + size technique (not transform) because .os-theme or other
+   ancestor styles can override `transform: translateY(-200%)`. */
+.lp .lp-skip-link,
+.aw-bg-host .lp-skip-link {
   position: absolute;
   left: 1rem;
   top: 1rem;
-  transform: translateY(-200%);
-  padding: 0.6rem 0.9rem;
-  border-radius: 10px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
   background: var(--surface-elevated);
   color: var(--foreground);
-  border: 1px solid var(--glass-border-strong);
   font-weight: 500;
   text-decoration: none;
   z-index: 100;
-  transition: transform 180ms var(--ease-cmd);
+  border-radius: 10px;
 }
-.lp-skip-link:focus,
-.lp-skip-link:focus-visible {
-  transform: translateY(0);
+.lp .lp-skip-link:focus,
+.lp .lp-skip-link:focus-visible,
+.aw-bg-host .lp-skip-link:focus,
+.aw-bg-host .lp-skip-link:focus-visible {
+  width: auto;
+  height: auto;
+  padding: 0.6rem 0.9rem;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  border: 1px solid var(--glass-border-strong);
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }

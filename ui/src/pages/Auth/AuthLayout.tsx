@@ -4,41 +4,18 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../../auth/useAuth";
 import { useI18n } from "../../i18n";
 import { safeRedirectPath } from "../../auth/redirect";
-import { BackgroundField } from "../../components/brand/BackgroundField";
-import { RotatingEmblem } from "../../components/brand/RotatingEmblem";
-import { LOGO_MARK_SRC } from "../../components/brand/brand";
+import { PageBackground } from "../../components/primitives/PageBackground";
 import { Spinner } from "../../components/ui";
 import { AccessPending } from "./components/AccessPending";
 import { AuthAlert } from "./components/AuthFields";
-import { GlobeVisual } from "./components/GlobeVisual";
 import type { AuthFlowContext } from "./authFlow";
 import "../../styles/os-theme.css";
 import "./AuthPage.css";
 
-function BrandCopy() {
-  const { t } = useI18n();
-  return (
-    <>
-      <p className="auth-brand__name">AI Workforce</p>
-      <p className="auth-brand__tagline">Intelligence at work</p>
-      <p className="auth-brand__description">
-        {t("landing.hero.description")}
-      </p>
-      <p className="auth-brand__verbs" aria-label={t("landing.hero.verbs")}>
-        <span>{t("landing.hero.architect")}</span>
-        <span>{t("landing.hero.build")}</span>
-        <span>{t("landing.hero.test")}</span>
-        <span>{t("landing.hero.secure")}</span>
-        <span>{t("landing.hero.deploy")}</span>
-      </p>
-    </>
-  );
-}
-
 /**
- * The secure gateway between the landing page and the Control Center. The
- * brand environment persists while the card switches between sign-in,
- * sign-up, reset, and pending states.
+ * The secure gateway between the landing page and the Control Center. Shares
+ * the same primitives (PageBackground + GlassCard + GlowBorder + GlassButton)
+ * as the landing so the transition reads as moving deeper into one product.
  */
 export default function AuthLayout() {
   const { configured, loading, user, access } = useAuth();
@@ -67,17 +44,14 @@ export default function AuthLayout() {
   let card;
   if (loading) {
     card = (
-      <div className="auth-card auth-card--loading lp-glass" role="status" aria-live="polite">
+      <div className="auth-card auth-card--loading" role="status" aria-live="polite">
         <Spinner />
         <span>{t("shell.verifyingSession")}</span>
       </div>
     );
   } else if (user && access === "granted" && !inFlight) {
-    // Already signed in with access: go straight to the Control Center.
     return <Navigate to={next} replace />;
   } else if (user && access !== "granted" && access !== "none" && !inFlight) {
-    // Signed in, but the Control Plane grants no access (pending, rejected,
-    // suspended, revoked, or unreachable).
     card = <AccessPending next={next} justCreated={accountCreated} />;
   } else {
     card = (
@@ -88,46 +62,26 @@ export default function AuthLayout() {
   }
 
   return (
-    <div className="auth os-theme">
-      <BackgroundField />
+    <div className="auth os-theme aw-bg-host">
+      <PageBackground variant="beams" calm />
 
       <header className="auth-topbar">
-        <Link to="/" className="auth-topbar__brand">
-          <img src={LOGO_MARK_SRC} alt="" width={28} height={28} />
+        <Link to="/" className="auth-topbar__brand" aria-label="AI Workforce home">
+          <span className="auth-topbar__dot" aria-hidden />
           <span>AI Workforce</span>
         </Link>
         <Link to="/" className="auth-topbar__back">
           <ArrowLeft size={14} aria-hidden="true" />
-          {t("auth.backToSystem")}
+          {t("auth.backToLanding")}
         </Link>
       </header>
 
       <main className="auth-main">
-        <aside className="auth-brand" aria-label="AI Workforce">
-          <GlobeVisual />
-          <div className="auth-brand__inner">
-            <RotatingEmblem className="auth-emblem" />
-            <BrandCopy />
-          </div>
-        </aside>
-
         <div className="auth-panel">
-          <div className="auth-mobile-brand" aria-hidden="true">
-            <RotatingEmblem className="auth-mobile-emblem" decorative />
-            <span>AI Workforce</span>
-          </div>
-
           {!configured ? (
-            <AuthAlert tone="info">
-              {t("auth.notConfigured")}
-            </AuthAlert>
+            <AuthAlert tone="info">{t("auth.notConfigured")}</AuthAlert>
           ) : null}
-
           {card}
-
-          <div className="auth-mobile-copy">
-            <BrandCopy />
-          </div>
         </div>
       </main>
     </div>

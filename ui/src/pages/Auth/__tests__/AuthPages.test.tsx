@@ -10,6 +10,7 @@ import { safeRedirectPath } from "../../../auth/redirect";
 import AuthLayout from "../AuthLayout";
 import LoginPage from "../LoginPage";
 import SignupPage from "../SignupPage";
+import ForgotPasswordPage from "../ForgotPasswordPage";
 
 // Reduced motion → the "access granted" transition navigates immediately.
 beforeAll(() => {
@@ -92,6 +93,7 @@ function Harness(options: HarnessOptions) {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           </Route>
           <Route
             path="/overview"
@@ -218,8 +220,8 @@ describe("Login", () => {
     const sendPasswordReset = vi.fn(async () => {});
     render(<Harness path="/login" sendPasswordReset={sendPasswordReset} />);
 
-    await user.click(screen.getByRole("button", { name: /Forgot password/i }));
-    await user.type(screen.getByLabelText(/Email address/i), "someone@example.com");
+    await user.click(screen.getByRole("link", { name: /Forgot password/i }));
+    await user.type(await screen.findByLabelText(/Email address/i), "someone@example.com");
     await user.click(screen.getByRole("button", { name: /Send reset link/i }));
 
     expect(sendPasswordReset).toHaveBeenCalledWith("someone@example.com");
@@ -229,6 +231,23 @@ describe("Login", () => {
   it("redirects an already-authenticated user straight to the Control Center", async () => {
     render(<Harness path="/login" user={TEST_USER} access="granted" />);
     expect(await screen.findByText("Control Center")).toBeInTheDocument();
+  });
+});
+
+describe("Forgot password", () => {
+  it("renders the reset form directly when the URL is /forgot-password", async () => {
+    render(<Harness path="/forgot-password" />);
+    expect(await screen.findByRole("heading", { name: /Reset password/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email address/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Send reset link/i })).toBeInTheDocument();
+    // Should not show the signin form.
+    expect(screen.queryByLabelText(/^Password$/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Enter Workforce/i })).toBeNull();
+  });
+
+  it("offers a Back to sign in link", () => {
+    render(<Harness path="/forgot-password" />);
+    expect(screen.getByRole("link", { name: /Back to sign in/i })).toHaveAttribute("href", "/login");
   });
 });
 

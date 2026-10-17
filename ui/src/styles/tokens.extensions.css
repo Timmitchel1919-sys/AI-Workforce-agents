@@ -82,6 +82,36 @@
   --lp-font:               var(--font-sans);
 }
 
+/* `.os-theme` scope also carries its own copies of --lp-* tokens for the
+   landing + auth routes. Those scoped definitions override :root for every
+   descendant, so we must redeclare them on .os-theme as well. */
+.os-theme {
+  --lp-bg:                 var(--background);
+  --lp-bg-deep:            #020203;
+  --lp-navy:               #040509;
+  --lp-blue:               var(--primary-strong);
+  --lp-blue-bright:        var(--primary);
+  --lp-blue-soft:          var(--primary-soft);
+  --lp-cyan:               var(--primary);
+  --lp-gold:               var(--secondary);
+  --lp-gold-bright:        var(--secondary-strong);
+  --lp-gold-soft:          var(--secondary-soft);
+  --lp-text:               var(--foreground);
+  --lp-text-secondary:     var(--silver);
+  --lp-text-muted:         var(--foreground-muted);
+  --lp-glass-bg:           var(--surface);
+  --lp-glass-bg-strong:    var(--surface-elevated);
+  --lp-glass-border:       var(--glass-border);
+  --lp-glass-border-hover: var(--glass-border-strong);
+  --lp-glass-highlight:    rgba(255, 255, 255, 0.08);
+  --lp-field-bg:           color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  --lp-field-border:       var(--glass-border-strong);
+  --lp-field-border-focus: color-mix(in oklab, var(--primary) 55%, transparent);
+  --lp-field-glow:         0 0 0 3px var(--ring), 0 0 18px var(--primary-glow);
+  --lp-focus:              var(--ring);
+  --lp-font:               var(--font-sans);
+}
+
 :root[data-theme='light'],
 [data-theme='light'] {
   --background:          #f7f8fb;

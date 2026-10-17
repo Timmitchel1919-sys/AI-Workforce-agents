@@ -79,7 +79,7 @@
 /* ---------- SectionContainer ---------- */
 .aw-section {
   width: 100%;
-  padding: clamp(3rem, 6vw, 6rem) clamp(1rem, 4vw, 2.5rem);
+  padding: clamp(2.5rem, 5vw, 5rem) clamp(1rem, 4vw, 2.5rem);
 }
 .aw-section-inner {
   max-width: 1200px;
@@ -117,16 +117,16 @@
 }
 
 /* ---------- PageBackground (canvas layer host + static fallback) ----------
-   Place inside an element with class `aw-bg-host` to scope it to that
-   subtree; `position: absolute` keeps it from leaking into other routes
-   that happen to also mount a background. */
+   `aw-bg-host` creates an isolation boundary so the background doesn't leak
+   into siblings. The background itself stays fixed to the viewport, so the
+   canvas never exceeds viewport dimensions regardless of document height. */
 .aw-bg-host { position: relative; isolation: isolate; }
-.aw-bg-host > .aw-bg { position: absolute; z-index: 0; }
+.aw-bg-host > .aw-bg { z-index: 0; }
 .aw-bg-host > :not(.aw-bg) { position: relative; z-index: 1; }
 .aw-bg {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   background:
     radial-gradient(1200px 600px at 85% -10%, var(--secondary-soft), transparent 60%),
     radial-gradient(900px 500px at 5% 10%, var(--primary-soft), transparent 65%),
@@ -214,11 +214,18 @@
 .aw-cmd {
   position: relative;
   border-radius: var(--radius-card-lg);
-  padding: 1.25rem;
+  padding: 1rem;
   display: grid;
-  grid-template-columns: 220px 1fr 240px;
-  gap: 1rem;
+  grid-template-columns: minmax(240px, 1fr) minmax(260px, 1.2fr) minmax(260px, 1fr);
+  gap: 0.75rem;
   min-height: 420px;
+}
+.aw-cmd-col-head {
+  white-space: nowrap;
+}
+.aw-cmd-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .aw-cmd-col {
   display: flex;
