@@ -7,10 +7,11 @@ import PageHeader from "../../components/layout/PageHeader";
 import { useI18n } from "../../i18n";
 import "./SettingsPage.css";
 import "./UsersAccess.css";
+import PreferencesCard from "../Profile/PreferencesCard";
 
 /**
- * Settings hub. Theme, language and the profile photo live on the Profile
- * page; administrators reach Users & Access from here.
+ * Settings hub. Theme and language live here; administrators reach Users &
+ * Access from the same surface.
  */
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -21,6 +22,8 @@ export default function SettingsPage() {
   return (
     <PageContainer>
       <PageHeader eyebrow={t("common.brand")} title={t("settings.title")} description={t("settings.description")} />
+
+      <PreferencesCard />
 
       {canManageAccess ? (
         <section className="settings-section" aria-labelledby="settings-access">

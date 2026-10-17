@@ -36,7 +36,7 @@ describe('TopBar', () => {
 
     expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search commands or pages/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /interface language/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /interface language/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /switch to (light|dark) theme/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /approvals/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^notifications$/i })).toBeEnabled();

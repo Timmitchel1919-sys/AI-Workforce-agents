@@ -11,7 +11,7 @@ const THEME_OPTIONS: Array<{ mode: ResolvedTheme; icon: LucideIcon; label: Messa
 ];
 
 /**
- * Profile → Preferences: two separate cards, Theme and Language. Both apply
+ * Settings → Preferences: two separate cards, Theme and Language. Both apply
  * immediately, are independent, and persist locally (allowlisted values
  * only). The selected theme shown is the one in effect.
  */

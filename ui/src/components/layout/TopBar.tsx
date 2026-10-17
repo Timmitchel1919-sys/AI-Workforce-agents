@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Languages, LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "lucide-react";
+import { LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { IconButton, UserAvatar } from "../ui";
@@ -25,7 +25,7 @@ export default function TopBar({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { t, language, setLanguage } = useI18n();
+  const { t } = useI18n();
   const { resolvedTheme, setTheme } = useTheme();
   const { data: profile } = useMyProfile();
   const accountLabel = user?.displayName || user?.email || "Operator";
@@ -118,16 +118,6 @@ export default function TopBar({
             {resolvedTheme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
           </IconButton>
 
-          <IconButton
-            type="button"
-            label={t("shell.languageQuick")}
-            className="topbar__action-button topbar__language"
-            onClick={() => setLanguage(language === "en" ? "nl" : "en")}
-          >
-            <Languages size={16} aria-hidden="true" />
-            <span aria-hidden="true">{language.toUpperCase()}</span>
-          </IconButton>
-
           <div className="topbar__account">
             <button
               type="button"
@@ -164,7 +154,7 @@ export default function TopBar({
                       role="menuitem"
                       onClick={() => {
                         setMenuOpen(false);
-                        navigate("/profile#preferences");
+                        navigate("/settings#preferences");
                       }}
                     >
                       <SlidersHorizontal size={15} aria-hidden="true" />

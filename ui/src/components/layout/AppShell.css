@@ -188,6 +188,12 @@
 
   .app-shell__main {
     padding: var(--space-5);
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  html[data-workspace-layout="split"] .overview-widgets {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 

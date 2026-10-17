@@ -347,11 +347,11 @@
 
 @media (max-width: 768px) {
   .topbar__nav-trigger {
-    display: inline-flex;
+    display: none;
   }
 
   .topbar__content {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-2);
     padding: 0 var(--space-4);
   }
@@ -364,16 +364,16 @@
     display: none;
   }
 
-  .topbar__language span { display: none; }
+  .topbar__secondary-action { display: none; }
+
+  .topbar__account-name { display: none; }
+
+  .topbar__account-button { padding: 0.1875rem; }
 }
 
 @media (max-width: 560px) {
-  .topbar__secondary-action {
-    display: none;
-  }
-
   .topbar__content {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-2);
   }
 

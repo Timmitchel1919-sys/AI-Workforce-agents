@@ -9,7 +9,6 @@ import PageHeader from "../../components/layout/PageHeader";
 import { UserAvatar } from "../../components/ui";
 import { resizeToAvatar, useMyProfile, useProfilePhoto } from "../../features/profile";
 import { useI18n, type MessageKey } from "../../i18n";
-import PreferencesCard from "./PreferencesCard";
 import "../Settings/SettingsPage.css";
 import "./ProfilePage.css";
 
@@ -22,8 +21,8 @@ const ROLE_LABELS: Record<string, MessageKey> = {
 type Notice = { tone: "success" | "error"; text: string } | null;
 
 /**
- * Profile: two separate cards — the operator's profile (photo, display name,
- * read-only identity and role) and their preferences (theme, language).
+ * Profile: the operator's profile (photo, display name, read-only identity and
+ * role) and session security. Theme and language belong to Settings.
  * The role is shown as reported by the Control Plane and is never editable.
  */
 export default function ProfilePage() {
@@ -41,7 +40,6 @@ export default function ProfilePage() {
       <PageHeader eyebrow={t("common.brand")} title={t("profile.title")} description={t("profile.description")} />
       <div className="profile-cards">
         <ProfileCard />
-        <PreferencesCard />
         <SessionSecurityCard />
       </div>
     </PageContainer>

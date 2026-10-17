@@ -104,16 +104,15 @@ afterEach(() => {
 });
 
 describe("Profile", () => {
-  it("shows the profile and preferences as separate cards without a back button", async () => {
+  it("shows profile and session security without duplicating settings", async () => {
     mockApi();
     renderPage(<ProfilePage />);
     expect(screen.getByRole("heading", { level: 1, name: "Profile" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Profile" })).toBeInTheDocument();
-    // Theme and Language are separate cards; no "Preferences" heading, no System option.
-    expect(screen.getByRole("region", { name: "Theme" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Language" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Theme" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Language" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Preferences" })).toBeNull();
-    expect(screen.getAllByRole("radio").map((r) => (r as HTMLInputElement).value)).toEqual(["light", "dark"]);
+    expect(screen.queryAllByRole("radio")).toEqual([]);
     expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
     const card = screen.getByRole("region", { name: "Profile" });
     expect(await within(card).findByText("Operator")).toBeInTheDocument();
@@ -163,7 +162,7 @@ describe("Profile", () => {
   it("switches theme immediately and persists it", async () => {
     const user = userEvent.setup();
     mockApi();
-    renderPage(<ProfilePage />, { language: "en" });
+    renderPage(<SettingsPage />, { language: "en", path: "/settings" });
 
     await user.click(screen.getByRole("radio", { name: /Dark/ }));
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -175,10 +174,10 @@ describe("Profile", () => {
   it("switches language immediately (no reload) and persists it", async () => {
     const user = userEvent.setup();
     mockApi();
-    renderPage(<ProfilePage />, { language: "en" });
+    renderPage(<SettingsPage />, { language: "en", path: "/settings" });
 
     await user.selectOptions(screen.getByRole("combobox", { name: "Language" }), "nl");
-    expect(screen.getByRole("heading", { level: 1, name: "Profiel" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Instellingen" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Thema" })).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Hoofdnavigatie" });
     expect(within(nav).getByText("Overzicht")).toBeInTheDocument();
@@ -189,14 +188,14 @@ describe("Profile", () => {
   });
 
   it.each([
-    ["light", "en", "Profile", "Theme"],
-    ["light", "nl", "Profiel", "Thema"],
-    ["dark", "en", "Profile", "Theme"],
-    ["dark", "nl", "Profiel", "Thema"],
+    ["light", "en", "Settings", "Theme"],
+    ["light", "nl", "Instellingen", "Thema"],
+    ["dark", "en", "Settings", "Theme"],
+    ["dark", "nl", "Instellingen", "Thema"],
   ] as const)("works as %s + %s", async (theme, language, title, section) => {
     window.localStorage.setItem("ai-workforce-theme", theme);
     mockApi();
-    renderPage(<ProfilePage />, { language });
+    renderPage(<SettingsPage />, { language, path: "/settings" });
     expect(document.documentElement.dataset.theme).toBe(theme);
     expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: section })).toBeInTheDocument();
@@ -206,12 +205,12 @@ describe("Profile", () => {
 });
 
 describe("Settings", () => {
-  it("has no Appearance card; Users & Access only for administrators", () => {
+  it("contains appearance preferences; Users & Access remains administrator-only", () => {
     renderPage(<SettingsPage />, { path: "/settings" });
     expect(screen.queryByRole("heading", { name: /Appearance/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Profile & preferences/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Users & Access/i })).toBeNull();
-    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
   });
 
   it("restores the saved language on the next start", () => {
