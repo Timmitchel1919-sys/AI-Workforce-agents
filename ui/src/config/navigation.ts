@@ -87,17 +87,16 @@ export const navigationItems: NavigationItem[] = [
   { labelKey: "nav.settings", route: "/settings", icon: "settings", section: "governance" },
   { labelKey: "nav.integrations", route: "/integrations", icon: "integrations", section: "integrations" },
   { labelKey: "nav.extensions", route: "/extensions", icon: "extensions", section: "integrations" },
-  { labelKey: "nav.organization", route: "/organizations", icon: "organization", section: "main", minimumRole: "admin" },
-  { labelKey: "nav.billing", route: "/billing", icon: "billing", section: "main", minimumRole: "admin" },
-  { labelKey: "nav.sso", route: "/sso-settings", icon: "sso", section: "main", minimumRole: "admin" },
+  // Private-mode: enterprise/SaaS navigation entries are intentionally not
+  // exposed in the sidebar. Routes remain registered for direct-URL access
+  // during the deprecation window but are no longer part of the user-facing
+  // navigation surface. Items removed: organization, billing, sso,
+  // commercial-admin, customer-ops, marketing. See PHASE 17 cleanup report.
   { labelKey: "nav.platformAdmin", route: "/admin", icon: "admin", section: "governance", minimumRole: "admin" },
-  { labelKey: "nav.commercialAdmin", route: "/commercial-admin", icon: "commercial-admin", section: "governance", minimumRole: "admin" },
-  { labelKey: "nav.customerOps", route: "/customer-operations", icon: "customer-ops", section: "main", minimumRole: "admin" },
   { labelKey: "nav.incidents", route: "/incidents", icon: "incidents", section: "governance" },
   { labelKey: "nav.privacy", route: "/privacy", icon: "privacy", section: "governance", minimumRole: "admin" },
   { labelKey: "nav.developer", route: "/developer-platform", icon: "developer", section: "main", minimumRole: "admin" },
   { labelKey: "nav.secops", route: "/secops", icon: "secops", section: "governance", minimumRole: "admin" },
-  { labelKey: "nav.marketing", route: "/marketing", icon: "marketing", section: "main", minimumRole: "admin" },
   { labelKey: "nav.trustCenter", route: "/trust", icon: "governance", section: "governance" },
   { labelKey: "nav.itsm", route: "/itsm", icon: "infrastructure", section: "governance" },
 ];

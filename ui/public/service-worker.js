@@ -2,7 +2,7 @@
 
 // Only the static shell is cached. API responses are NEVER cached (see the
 // fetch handler), so no authorized data or token outlives a session revocation.
-const CACHE_NAME = "ai-workforce-shell-v2";
+const CACHE_NAME = "ai-workforce-shell-v3";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
