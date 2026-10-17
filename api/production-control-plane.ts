@@ -61,7 +61,11 @@ import {
   type FirebaseServices,
   createFirebaseServices,
 } from "../adapters/firebase/index.js";
-import { createPlatformAdapters } from "../adapters/environments/index.js";
+import {
+  createPlatformAdapters,
+  DockerContainerRunner,
+  type DockerImageBinding,
+} from "../adapters/environments/index.js";
 import {
   AgentOperationalStore,
   WorkflowControlStore,
@@ -735,15 +739,32 @@ export async function createProductionControlPlaneRuntime(
     version: BASELINE_DENY_ALL_POLICY.version,
   });
   executionPolicies.register(BASELINE_DENY_ALL_POLICY);
-  // EO-4.5/4.7: platform adapter CONTRACTS only — no runner is registered in
-  // production, so every family reports `not_configured` and nothing runs.
+  // EO-4.5/4.7: platform adapter CONTRACTS. A Docker runner is optionally
+  // registered below when BOTH a trusted ContainerPolicy and a local docker
+  // daemon binding are configured; otherwise every family remains honestly
+  // `not_configured` and nothing runs.
+  const containerPolicy = resolveContainerPolicy();
   const environmentAdapters = new EnvironmentAdapterRegistry({
     environments: environmentRegistry,
     audit,
   });
-  createPlatformAdapters({
-    containerPolicy: { approvedImages: [], requireDigest: true },
-  }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
+  createPlatformAdapters({ containerPolicy }).forEach((adapter) =>
+    environmentAdapters.registerAdapter(adapter),
+  );
+  const dockerBinding = resolveDockerRunnerBinding(containerPolicy);
+  if (dockerBinding) {
+    environmentAdapters.registerRunner(
+      new DockerContainerRunner({
+        runnerId: dockerBinding.runnerId,
+        adapterId: "docker-container",
+        environmentInstanceIds: dockerBinding.environmentInstanceIds,
+        identityFingerprint: dockerBinding.identityFingerprint,
+        dockerExecutable: dockerBinding.dockerExecutable,
+        imagesByExecutable: dockerBinding.imagesByExecutable,
+        containerPolicy,
+      }),
+    );
+  }
   const executionReceipts: ExecutionReceiptStore =
     _transactionalFirestoreForDurable
       ? new FirestoreExecutionReceiptStore(_transactionalFirestoreForDurable, {
@@ -1498,6 +1519,83 @@ async function buildSoftwareFactoryEnvironmentProvider(
   } catch (error) {
     void error;
     return denyByDefaultEnvironmentProvider();
+  }
+}
+
+/**
+ * Resolve the trusted {@link ContainerPolicy} from a server-side JSON env var.
+ * Agent surfaces cannot influence it. An empty / missing / malformed value
+ * yields the fail-closed empty policy; digest pinning is required by default.
+ */
+function resolveContainerPolicy(): import("../contracts/index.js").ContainerPolicy {
+  const raw = process.env.AIW_CONTAINER_POLICY_JSON;
+  if (!raw) return { approvedImages: [], requireDigest: true };
+  try {
+    const parsed = JSON.parse(raw) as {
+      approvedImages?: readonly {
+        name: string;
+        versions: readonly string[];
+        digest?: string;
+      }[];
+      requireDigest?: boolean;
+    };
+    return {
+      approvedImages: parsed.approvedImages ?? [],
+      requireDigest: parsed.requireDigest ?? true,
+    };
+  } catch {
+    return { approvedImages: [], requireDigest: true };
+  }
+}
+
+interface DockerRunnerBindingConfig {
+  readonly runnerId: string;
+  readonly environmentInstanceIds: readonly string[];
+  readonly identityFingerprint: string;
+  readonly dockerExecutable: string;
+  readonly imagesByExecutable: Readonly<Record<string, DockerImageBinding>>;
+}
+
+/**
+ * Opt-in Docker runner binding. Returns `null` when any trust precondition
+ * is missing: a fully specified JSON config, at least one approved image in
+ * the policy, and (when the policy demands it) a digest pin per binding.
+ * Any shape mismatch is a hard fail-closed null, never a partial activation.
+ */
+function resolveDockerRunnerBinding(
+  policy: import("../contracts/index.js").ContainerPolicy,
+): DockerRunnerBindingConfig | null {
+  const raw = process.env.AIW_DOCKER_RUNNER_JSON;
+  if (!raw) return null;
+  if (policy.approvedImages.length === 0) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<DockerRunnerBindingConfig>;
+    if (
+      typeof parsed.runnerId !== "string" ||
+      typeof parsed.identityFingerprint !== "string" ||
+      typeof parsed.dockerExecutable !== "string" ||
+      !Array.isArray(parsed.environmentInstanceIds) ||
+      parsed.environmentInstanceIds.some((v) => typeof v !== "string") ||
+      !parsed.imagesByExecutable ||
+      typeof parsed.imagesByExecutable !== "object"
+    ) {
+      return null;
+    }
+    const bindings = parsed.imagesByExecutable as Record<string, DockerImageBinding>;
+    for (const b of Object.values(bindings)) {
+      if (typeof b?.name !== "string" || typeof b?.version !== "string") return null;
+      if (policy.requireDigest && !b.digest) return null;
+    }
+    if (Object.keys(bindings).length === 0) return null;
+    return {
+      runnerId: parsed.runnerId,
+      environmentInstanceIds: parsed.environmentInstanceIds,
+      identityFingerprint: parsed.identityFingerprint,
+      dockerExecutable: parsed.dockerExecutable,
+      imagesByExecutable: bindings,
+    };
+  } catch {
+    return null;
   }
 }
 
