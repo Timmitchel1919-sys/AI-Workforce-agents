@@ -23,3 +23,4 @@ export * from "./firebase-app-check-verifier.js";
 export * from "./firestore-assignment-repository.js";
 export * from "./firestore-write-scope-lease-repository.js";
 export * from "./firestore-execution-receipt-store.js";
+export * from "./firestore-execution-job-queue.js";

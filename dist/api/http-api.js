@@ -1574,7 +1574,22 @@ export function createControlPlaneApi(options) {
         const status = result.errorKind ? ERROR_KIND_STATUS[result.errorKind] : 200;
         return send(res, status, result, correlationId);
     }
-    function send(res, status, payload, correlationId) {
+    async function send(res, status, payload, correlationId) {
+        // R2 — HTTP response boundary flush. Awaits any pending durable
+        // writes (R1 write-through caches, audit events) before the response
+        // leaves this function. If the flush itself fails we still respond —
+        // the write-through adapters have already written through to the
+        // cache; the flush is only there to turn the sub-ms "crash before
+        // Firestore acks the mirror" window into zero. We log so the caller
+        // can observe durability degradation.
+        if (options.flushDurableWrites) {
+            try {
+                await options.flushDurableWrites();
+            }
+            catch (error) {
+                console.warn("[http-api] flushDurableWrites failed before response", error);
+            }
+        }
         const json = JSON.stringify(payload ?? null);
         res.writeHead(status, {
             "content-type": "application/json; charset=utf-8",

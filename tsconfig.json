@@ -17,6 +17,7 @@
     "control/**/*.ts",
     "api/**/*.ts",
     "functions/**/*.ts",
+    "worker/**/*.ts",
     "tests/**/*.ts"
   ]
 }

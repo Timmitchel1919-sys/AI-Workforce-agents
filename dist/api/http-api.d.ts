@@ -76,6 +76,13 @@ export interface ControlPlaneApiOptions {
         /** Emit production HTTPS headers (HSTS). Opt-in. */
         production?: boolean;
     };
+    /**
+     * R2 HTTP response boundary flush. If set, the `send()` helper awaits
+     * this before writing the response head so write-through durable
+     * repositories (assignments, leases, receipts) and any pending audit
+     * events are durable in Firestore before the client sees success.
+     */
+    flushDurableWrites?: () => Promise<void>;
 }
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
 export declare function createControlPlaneApi(options: ControlPlaneApiOptions): ApiHandler;

@@ -1380,7 +1380,27 @@ export async function createProductionControlPlaneRuntime(
       },
       production: process.env.NODE_ENV === "production",
     },
+    // R2 — HTTP response boundary flush. Before every response we await
+    // the pending Firestore mirror writes on the three R1 write-through
+    // caches so a client that sees HTTP 2xx can rely on durability.
+    flushDurableWrites: flushR1DurableAdapters,
   });
+
+  function flushR1DurableAdapters(): Promise<void> {
+    const flushes: Array<Promise<void>> = [];
+    if (assignmentRepository instanceof FirestoreAssignmentRepository) {
+      flushes.push(assignmentRepository.flush());
+    }
+    if (writeScopeLeaseRepository instanceof FirestoreWriteScopeLeaseRepository) {
+      flushes.push(writeScopeLeaseRepository.flush());
+    }
+    if (executionReceipts instanceof FirestoreExecutionReceiptStore) {
+      flushes.push(executionReceipts.flush());
+    }
+    return flushes.length > 0
+      ? Promise.all(flushes).then(() => undefined)
+      : Promise.resolve();
+  }
 
   // R1 — hydrate the durable execution-state caches before the control
   // plane accepts traffic. Each Firestore-backed repository exposes a
@@ -1444,7 +1464,17 @@ export async function createProductionControlPlaneRuntime(
     routing: { modelCapabilities, router: modelRouter },
     environmentDetector,
     operations,
-    flush: () => repositories.flushAll(),
+    // R2 — dispatcher-wide barrier: the Firebase HTTPS adapter wraps
+    // `response.end()` with this flush so EVERY response path (success,
+    // error, middleware early-return) awaits both the cached-repository
+    // writes AND the R1 write-through adapters before the serverless
+    // instance is allowed to freeze.
+    flush: async () => {
+      await Promise.all([
+        repositories.flushAll(),
+        flushR1DurableAdapters(),
+      ]);
+    },
   });
 }
 

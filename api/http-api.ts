@@ -154,6 +154,13 @@ export interface ControlPlaneApiOptions {
     /** Emit production HTTPS headers (HSTS). Opt-in. */
     production?: boolean;
   };
+  /**
+   * R2 HTTP response boundary flush. If set, the `send()` helper awaits
+   * this before writing the response head so write-through durable
+   * repositories (assignments, leases, receipts) and any pending audit
+   * events are durable in Firestore before the client sees success.
+   */
+  flushDurableWrites?: () => Promise<void>;
 }
 
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
@@ -3140,12 +3147,29 @@ export function createControlPlaneApi(
     return send(res, status, result, correlationId);
   }
 
-  function send(
+  async function send(
     res: ServerResponse,
     status: number,
     payload: unknown,
     correlationId: string,
-  ): void {
+  ): Promise<void> {
+    // R2 — HTTP response boundary flush. Awaits any pending durable
+    // writes (R1 write-through caches, audit events) before the response
+    // leaves this function. If the flush itself fails we still respond —
+    // the write-through adapters have already written through to the
+    // cache; the flush is only there to turn the sub-ms "crash before
+    // Firestore acks the mirror" window into zero. We log so the caller
+    // can observe durability degradation.
+    if (options.flushDurableWrites) {
+      try {
+        await options.flushDurableWrites();
+      } catch (error) {
+        console.warn(
+          "[http-api] flushDurableWrites failed before response",
+          error,
+        );
+      }
+    }
     const json = JSON.stringify(payload ?? null);
     res.writeHead(status, {
       "content-type": "application/json; charset=utf-8",

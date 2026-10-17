@@ -3,3 +3,4 @@ export { WorkspaceRepositorySandbox } from "./workspace-repository-sandbox.js";
 export { resolveTrustedExecutable } from "./trusted-executables.js";
 export { WorkspaceBuildRunner } from "./workspace-build-runner.js";
 export { GovernedGitAdapter } from "./governed-git-adapter.js";
+export { EphemeralLocalWorkspaceManager } from "./ephemeral-local-workspace-manager.js";

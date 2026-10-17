@@ -12,3 +12,5 @@ export type {
   GovernedGitAdapterOptions,
   GovernedRepositoryConfig,
 } from "./governed-git-adapter.js";
+export { EphemeralLocalWorkspaceManager } from "./ephemeral-local-workspace-manager.js";
+export type { EphemeralLocalWorkspaceManagerOptions } from "./ephemeral-local-workspace-manager.js";
