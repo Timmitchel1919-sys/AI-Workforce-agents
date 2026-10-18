@@ -54,6 +54,7 @@ import {
   FirestoreProvisionedProjectStore,
   FirestoreAppendOnlySecurityEventStore,
   FirestoreAssignmentRepository,
+  FirestoreExecutionJobQueue,
   FirestoreExecutionReceiptStore,
   FirestoreWriteScopeLeaseRepository,
   isTransactionalFirestore,
@@ -66,6 +67,10 @@ import {
   DockerContainerRunner,
   type DockerImageBinding,
 } from "../adapters/environments/index.js";
+import {
+  FirebaseHostingDeploymentAdapter,
+  type FirebaseHostingAdapterConfig,
+} from "../adapters/release/index.js";
 import {
   AgentOperationalStore,
   WorkflowControlStore,
@@ -771,6 +776,17 @@ export async function createProductionControlPlaneRuntime(
           collectionPrefix: options.collectionPrefix,
         })
       : new InMemoryExecutionReceiptStore();
+  // R2B — Firestore-backed execution-job queue the Cloud Run worker
+  // drains. Always constructed (so admin HTTP routes can read status
+  // even when work is paused), but the enqueue path is gated by the
+  // backend-authoritative `EXECUTION_WORKER_ENABLED` env flag.
+  const executionJobQueue = _transactionalFirestoreForDurable
+    ? new FirestoreExecutionJobQueue(_transactionalFirestoreForDurable, {
+        collectionPrefix: options.collectionPrefix,
+      })
+    : undefined;
+  const executionWorkerEnabled =
+    process.env.EXECUTION_WORKER_ENABLED === "true";
   const executionRecords = new FirestoreExecutionRecordStore(
     transactionalFirestore,
     { collectionPrefix: options.collectionPrefix },
@@ -844,6 +860,16 @@ export async function createProductionControlPlaneRuntime(
     audit,
     store: executionRecords,
   });
+  // Opt-in Firebase Hosting deployment adapter. Registered only when a
+  // trusted JSON binding points at an absolute firebase CLI path AND a
+  // working directory; targets themselves still have to be registered by a
+  // later composition step (not driven by agent input).
+  const firebaseAdapterConfig = resolveFirebaseHostingAdapterConfig();
+  if (firebaseAdapterConfig) {
+    deployments.registerAdapter(
+      new FirebaseHostingDeploymentAdapter(firebaseAdapterConfig),
+    );
+  }
   // DERIVED, at read time, from the ports and registries the services were composed with — never
   // declared. A capability turns on only when a real provider/adapter is registered.
   const releaseCapabilities = deriveReleaseCapabilities({
@@ -1405,6 +1431,8 @@ export async function createProductionControlPlaneRuntime(
     // the pending Firestore mirror writes on the three R1 write-through
     // caches so a client that sees HTTP 2xx can rely on durability.
     flushDurableWrites: flushR1DurableAdapters,
+    executionJobQueue,
+    executionWorkerEnabled,
   });
 
   function flushR1DurableAdapters(): Promise<void> {
@@ -1593,6 +1621,34 @@ function resolveDockerRunnerBinding(
       identityFingerprint: parsed.identityFingerprint,
       dockerExecutable: parsed.dockerExecutable,
       imagesByExecutable: bindings,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Trusted, OFF-by-default Firebase Hosting adapter config. The agent surface
+ * cannot influence it: executable path and working directory come from a
+ * server-side JSON env var, and must both be absolute paths. Anything else
+ * yields null and the adapter stays unregistered.
+ */
+function resolveFirebaseHostingAdapterConfig():
+  | Pick<FirebaseHostingAdapterConfig, "firebaseExecutable" | "workingDirectory">
+  | null {
+  const raw = process.env.AIW_FIREBASE_HOSTING_ADAPTER_JSON;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<FirebaseHostingAdapterConfig>;
+    if (
+      typeof parsed.firebaseExecutable !== "string" ||
+      typeof parsed.workingDirectory !== "string"
+    ) {
+      return null;
+    }
+    return {
+      firebaseExecutable: parsed.firebaseExecutable,
+      workingDirectory: parsed.workingDirectory,
     };
   } catch {
     return null;
