@@ -1,0 +1,30 @@
+# Honors .gitignore automatically. Additional excludes specific to
+# Cloud Build to keep the upload small and secrets out of build context.
+.gcloudignore
+.gitignore
+.git/
+.github/
+.firebase/
+.cache/
+.agents/
+.claude/
+.codex/
+node_modules/
+dist/
+ui/
+dataconnect/
+temp/
+docs/
+# repo-root clutter not needed by the worker Dockerfile
+*.log
+*.jpeg
+*.png
+*.webp
+*.mp4
+users.json
+make-admin*.cjs
+patch*.cjs
+patch-tests.cjs
+.env*
+firestore-debug.log
+functions.yaml

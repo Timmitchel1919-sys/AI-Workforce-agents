@@ -22,8 +22,9 @@ import { KnowledgeDocumentService } from "../core/knowledge/knowledge-document-s
  */
 import { randomUUID } from "node:crypto";
 import { PermissionDeniedError, } from "../contracts/index.js";
-import { FirebaseOperatorDirectory, FirebaseAppCheckVerifier, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, FirestoreAssignmentRepository, FirestoreExecutionReceiptStore, FirestoreWriteScopeLeaseRepository, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
-import { createPlatformAdapters } from "../adapters/environments/index.js";
+import { FirebaseOperatorDirectory, FirebaseAppCheckVerifier, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, FirestoreAssignmentRepository, FirestoreExecutionJobQueue, FirestoreExecutionReceiptStore, FirestoreWriteScopeLeaseRepository, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
+import { createPlatformAdapters, DockerContainerRunner, } from "../adapters/environments/index.js";
+import { FirebaseHostingDeploymentAdapter, } from "../adapters/release/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
 import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, OperationalAuditSink, OperationalDataSystem, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
 import { CONTROL_PLANE_ANALYSIS_AGENT_ID, LazyOpenAIModelProvider, createProductionOpenAIAgentExecutor, } from "../agents/control-plane-analysis/index.js";
@@ -270,20 +271,43 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         version: BASELINE_DENY_ALL_POLICY.version,
     });
     executionPolicies.register(BASELINE_DENY_ALL_POLICY);
-    // EO-4.5/4.7: platform adapter CONTRACTS only — no runner is registered in
-    // production, so every family reports `not_configured` and nothing runs.
+    // EO-4.5/4.7: platform adapter CONTRACTS. A Docker runner is optionally
+    // registered below when BOTH a trusted ContainerPolicy and a local docker
+    // daemon binding are configured; otherwise every family remains honestly
+    // `not_configured` and nothing runs.
+    const containerPolicy = resolveContainerPolicy();
     const environmentAdapters = new EnvironmentAdapterRegistry({
         environments: environmentRegistry,
         audit,
     });
-    createPlatformAdapters({
-        containerPolicy: { approvedImages: [], requireDigest: true },
-    }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
+    createPlatformAdapters({ containerPolicy }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
+    const dockerBinding = resolveDockerRunnerBinding(containerPolicy);
+    if (dockerBinding) {
+        environmentAdapters.registerRunner(new DockerContainerRunner({
+            runnerId: dockerBinding.runnerId,
+            adapterId: "docker-container",
+            environmentInstanceIds: dockerBinding.environmentInstanceIds,
+            identityFingerprint: dockerBinding.identityFingerprint,
+            dockerExecutable: dockerBinding.dockerExecutable,
+            imagesByExecutable: dockerBinding.imagesByExecutable,
+            containerPolicy,
+        }));
+    }
     const executionReceipts = _transactionalFirestoreForDurable
         ? new FirestoreExecutionReceiptStore(_transactionalFirestoreForDurable, {
             collectionPrefix: options.collectionPrefix,
         })
         : new InMemoryExecutionReceiptStore();
+    // R2B — Firestore-backed execution-job queue the Cloud Run worker
+    // drains. Always constructed (so admin HTTP routes can read status
+    // even when work is paused), but the enqueue path is gated by the
+    // backend-authoritative `EXECUTION_WORKER_ENABLED` env flag.
+    const executionJobQueue = _transactionalFirestoreForDurable
+        ? new FirestoreExecutionJobQueue(_transactionalFirestoreForDurable, {
+            collectionPrefix: options.collectionPrefix,
+        })
+        : undefined;
+    const executionWorkerEnabled = process.env.EXECUTION_WORKER_ENABLED === "true";
     const executionRecords = new FirestoreExecutionRecordStore(transactionalFirestore, { collectionPrefix: options.collectionPrefix });
     // Shared with the verification service below: it must see exactly the operations and sandbox
     // providers the execution manager sees — one registry each, never a second copy.
@@ -353,6 +377,14 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         audit,
         store: executionRecords,
     });
+    // Opt-in Firebase Hosting deployment adapter. Registered only when a
+    // trusted JSON binding points at an absolute firebase CLI path AND a
+    // working directory; targets themselves still have to be registered by a
+    // later composition step (not driven by agent input).
+    const firebaseAdapterConfig = resolveFirebaseHostingAdapterConfig();
+    if (firebaseAdapterConfig) {
+        deployments.registerAdapter(new FirebaseHostingDeploymentAdapter(firebaseAdapterConfig));
+    }
     // DERIVED, at read time, from the ports and registries the services were composed with — never
     // declared. A capability turns on only when a real provider/adapter is registered.
     const releaseCapabilities = deriveReleaseCapabilities({
@@ -725,6 +757,8 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         // the pending Firestore mirror writes on the three R1 write-through
         // caches so a client that sees HTTP 2xx can rely on durability.
         flushDurableWrites: flushR1DurableAdapters,
+        executionJobQueue,
+        executionWorkerEnabled,
     });
     function flushR1DurableAdapters() {
         const flushes = [];
@@ -833,6 +867,95 @@ async function buildSoftwareFactoryEnvironmentProvider(environmentRegistry) {
     catch (error) {
         void error;
         return denyByDefaultEnvironmentProvider();
+    }
+}
+/**
+ * Resolve the trusted {@link ContainerPolicy} from a server-side JSON env var.
+ * Agent surfaces cannot influence it. An empty / missing / malformed value
+ * yields the fail-closed empty policy; digest pinning is required by default.
+ */
+function resolveContainerPolicy() {
+    const raw = process.env.AIW_CONTAINER_POLICY_JSON;
+    if (!raw)
+        return { approvedImages: [], requireDigest: true };
+    try {
+        const parsed = JSON.parse(raw);
+        return {
+            approvedImages: parsed.approvedImages ?? [],
+            requireDigest: parsed.requireDigest ?? true,
+        };
+    }
+    catch {
+        return { approvedImages: [], requireDigest: true };
+    }
+}
+/**
+ * Opt-in Docker runner binding. Returns `null` when any trust precondition
+ * is missing: a fully specified JSON config, at least one approved image in
+ * the policy, and (when the policy demands it) a digest pin per binding.
+ * Any shape mismatch is a hard fail-closed null, never a partial activation.
+ */
+function resolveDockerRunnerBinding(policy) {
+    const raw = process.env.AIW_DOCKER_RUNNER_JSON;
+    if (!raw)
+        return null;
+    if (policy.approvedImages.length === 0)
+        return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.runnerId !== "string" ||
+            typeof parsed.identityFingerprint !== "string" ||
+            typeof parsed.dockerExecutable !== "string" ||
+            !Array.isArray(parsed.environmentInstanceIds) ||
+            parsed.environmentInstanceIds.some((v) => typeof v !== "string") ||
+            !parsed.imagesByExecutable ||
+            typeof parsed.imagesByExecutable !== "object") {
+            return null;
+        }
+        const bindings = parsed.imagesByExecutable;
+        for (const b of Object.values(bindings)) {
+            if (typeof b?.name !== "string" || typeof b?.version !== "string")
+                return null;
+            if (policy.requireDigest && !b.digest)
+                return null;
+        }
+        if (Object.keys(bindings).length === 0)
+            return null;
+        return {
+            runnerId: parsed.runnerId,
+            environmentInstanceIds: parsed.environmentInstanceIds,
+            identityFingerprint: parsed.identityFingerprint,
+            dockerExecutable: parsed.dockerExecutable,
+            imagesByExecutable: bindings,
+        };
+    }
+    catch {
+        return null;
+    }
+}
+/**
+ * Trusted, OFF-by-default Firebase Hosting adapter config. The agent surface
+ * cannot influence it: executable path and working directory come from a
+ * server-side JSON env var, and must both be absolute paths. Anything else
+ * yields null and the adapter stays unregistered.
+ */
+function resolveFirebaseHostingAdapterConfig() {
+    const raw = process.env.AIW_FIREBASE_HOSTING_ADAPTER_JSON;
+    if (!raw)
+        return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.firebaseExecutable !== "string" ||
+            typeof parsed.workingDirectory !== "string") {
+            return null;
+        }
+        return {
+            firebaseExecutable: parsed.firebaseExecutable,
+            workingDirectory: parsed.workingDirectory,
+        };
+    }
+    catch {
+        return null;
     }
 }
 /** Deny-by-default provider: every code is unsupported; nothing routes. */

@@ -10,7 +10,7 @@
 FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev=false
+RUN npm ci
 COPY tsconfig.json ./
 COPY contracts/ contracts/
 COPY core/ core/
@@ -20,6 +20,8 @@ COPY control/ control/
 COPY api/ api/
 COPY functions/ functions/
 COPY worker/ worker/
+COPY sdk/ sdk/
+COPY tests/ tests/
 RUN npx tsc -p tsconfig.json
 
 FROM node:22-slim AS runtime

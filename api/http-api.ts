@@ -24,6 +24,7 @@ import {
   WorkforceError,
   type AuditEventQuery,
   type ControlErrorKind,
+  type ExecutionJob,
   type IdentityVerifier,
   type OperatorDirectory,
   type OperatorPrincipal,
@@ -34,6 +35,7 @@ import {
   type WorkflowQuery,
   type WorkforceGraphUnchanged,
 } from "../contracts/index.js";
+import type { ExecutionJobQueue } from "../core/execution/execution-job-queue.js";
 import {
   type WorkforceCommandService,
   type WorkforceQueryService,
@@ -161,6 +163,20 @@ export interface ControlPlaneApiOptions {
    * events are durable in Firestore before the client sees success.
    */
   flushDurableWrites?: () => Promise<void>;
+  /**
+   * R2B — the Firestore-backed execution-job queue the Cloud Run worker
+   * drains. Set together with `executionWorkerEnabled`; both must be set
+   * for the admin `/execution-jobs` routes to accept work. Fail-closed
+   * when unset.
+   */
+  executionJobQueue?: ExecutionJobQueue;
+  /**
+   * R2B — backend-authoritative execution worker activation. The
+   * `EXECUTION_WORKER_ENABLED` env flag resolves to this; the UI cannot
+   * set it. When false, the admin `/execution-jobs` routes return 503
+   * and no production tool handlers run.
+   */
+  executionWorkerEnabled?: boolean;
 }
 
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
@@ -853,6 +869,19 @@ export function createControlPlaneApi(
           req,
           res,
           route,
+          method,
+          principal,
+          correlationId,
+        );
+      }
+      // R2B — admin-only execution-job routes. Fail-closed when the
+      // backend flag is off or the queue is unset. The worker is the
+      // only consumer; this endpoint never executes code itself.
+      if (segs[0] === "execution-jobs") {
+        return await handleExecutionJobs(
+          req,
+          res,
+          segs,
           method,
           principal,
           correlationId,
@@ -2847,6 +2876,181 @@ export function createControlPlaneApi(
    * `GET /me/profile`, `PUT /me/profile/photo` {dataUrl},
    * `DELETE /me/profile/photo` — always the principal's own profile.
    */
+  async function handleExecutionJobs(
+    req: IncomingMessage,
+    res: ServerResponse,
+    segs: readonly string[],
+    method: string,
+    principal: OperatorPrincipal,
+    correlationId: string,
+  ): Promise<void> {
+    // R2B — fail-closed when the backend flag is off or the queue was
+    // not supplied by the composition root. Returned as 503 so a client
+    // can distinguish "disabled" from "forbidden" or "not found".
+    if (!options.executionWorkerEnabled || !options.executionJobQueue) {
+      return send(
+        res,
+        503,
+        { error: { message: "execution worker disabled" } },
+        correlationId,
+      );
+    }
+    if (principal.role !== "admin") {
+      return send(
+        res,
+        403,
+        { error: { message: "admin role required" } },
+        correlationId,
+      );
+    }
+    const queue = options.executionJobQueue;
+
+    // POST /execution-jobs  — enqueue a new job
+    if (method === "POST" && segs.length === 1) {
+      let body: Record<string, unknown>;
+      try {
+        body = await readJsonBody(req, maxBody);
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      const projectId = typeof body.projectId === "string" ? body.projectId : "";
+      if (!projectId) {
+        return send(
+          res,
+          400,
+          { error: { message: "projectId required" } },
+          correlationId,
+        );
+      }
+      if (!operatorCanAccessProject(principal, projectId)) {
+        return send(
+          res,
+          403,
+          { error: { message: "project outside operator scope" } },
+          correlationId,
+        );
+      }
+      const tool = body.tool as
+        | { toolId?: unknown; action?: unknown; input?: unknown; requiredCapability?: unknown }
+        | undefined;
+      if (
+        !tool ||
+        typeof tool.toolId !== "string" ||
+        typeof tool.action !== "string" ||
+        typeof tool.requiredCapability !== "string"
+      ) {
+        return send(
+          res,
+          400,
+          { error: { message: "tool.toolId, tool.action and tool.requiredCapability required" } },
+          correlationId,
+        );
+      }
+      const idempotencyKey =
+        typeof body.idempotencyKey === "string" && body.idempotencyKey
+          ? body.idempotencyKey
+          : `job-${randomUUID()}`;
+      // Dedupe: same idempotency key returns the existing job.
+      const existing = await queue.findByIdempotencyKey(idempotencyKey);
+      if (existing) {
+        return send(
+          res,
+          200,
+          { jobId: existing.jobId, status: existing.status, deduped: true },
+          correlationId,
+        );
+      }
+      const now = new Date().toISOString();
+      const job: ExecutionJob = {
+        jobId: `job_${randomUUID()}`,
+        idempotencyKey,
+        projectId,
+        taskId: typeof body.taskId === "string" ? body.taskId : "ad-hoc",
+        agentId:
+          typeof body.agentId === "string" ? body.agentId : `operator:${principal.id}`,
+        executionId:
+          typeof body.executionId === "string" ? body.executionId : `exec_${randomUUID()}`,
+        tool: {
+          toolId: tool.toolId,
+          action: tool.action,
+          input: tool.input ?? {},
+          requiredCapability: tool.requiredCapability,
+        },
+        status: "queued",
+        attempt: 0,
+        maxAttempts:
+          typeof body.maxAttempts === "number" && body.maxAttempts >= 1
+            ? Math.min(10, Math.floor(body.maxAttempts))
+            : 3,
+        createdAt: now,
+        availableAt: now,
+        updatedAt: now,
+      };
+      try {
+        await queue.enqueue({ job });
+      } catch (error) {
+        return send(
+          res,
+          400,
+          { error: { message: errorMessage(error) } },
+          correlationId,
+        );
+      }
+      return send(res, 202, { jobId: job.jobId, status: job.status }, correlationId);
+    }
+
+    // GET /execution-jobs/{jobId} — read status
+    if (method === "GET" && segs.length === 2) {
+      const jobId = segs[1];
+      const job = await queue.get(jobId);
+      if (!job) {
+        return send(res, 404, { error: { message: "job not found" } }, correlationId);
+      }
+      if (!operatorCanAccessProject(principal, job.projectId)) {
+        return send(
+          res,
+          403,
+          { error: { message: "project outside operator scope" } },
+          correlationId,
+        );
+      }
+      return send(res, 200, { job }, correlationId);
+    }
+
+    // POST /execution-jobs/{jobId}/cancel — cancellation request
+    if (method === "POST" && segs.length === 3 && segs[2] === "cancel") {
+      const jobId = segs[1];
+      const job = await queue.get(jobId);
+      if (!job) {
+        return send(res, 404, { error: { message: "job not found" } }, correlationId);
+      }
+      if (!operatorCanAccessProject(principal, job.projectId)) {
+        return send(
+          res,
+          403,
+          { error: { message: "project outside operator scope" } },
+          correlationId,
+        );
+      }
+      let reason = "operator-requested";
+      try {
+        const body = await readJsonBody(req, maxBody);
+        if (typeof body.reason === "string" && body.reason) reason = body.reason;
+      } catch {
+        /* body optional */
+      }
+      await queue.requestCancellation(jobId, reason);
+      return send(res, 202, { jobId, cancellationRequested: true }, correlationId);
+    }
+
+    return send(res, 405, { error: { message: "method not allowed" } }, correlationId);
+  }
+
   async function handleProfile(
     req: IncomingMessage,
     res: ServerResponse,

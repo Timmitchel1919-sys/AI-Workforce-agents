@@ -1,5 +1,6 @@
 import { type IncomingMessage, type ServerResponse } from "node:http";
 import { type IdentityVerifier, type OperatorDirectory } from "../contracts/index.js";
+import type { ExecutionJobQueue } from "../core/execution/execution-job-queue.js";
 import { type WorkforceCommandService, type WorkforceQueryService } from "../control/index.js";
 import type { AccessService, ProfileService } from "../core/index.js";
 import { FirebaseMfaVerifier, FirebaseReauthenticationVerifier, type AppAttestationVerifier, type AppCheckMode, type CorsPolicy, type RateLimiter } from "./security/index.js";
@@ -83,6 +84,20 @@ export interface ControlPlaneApiOptions {
      * events are durable in Firestore before the client sees success.
      */
     flushDurableWrites?: () => Promise<void>;
+    /**
+     * R2B — the Firestore-backed execution-job queue the Cloud Run worker
+     * drains. Set together with `executionWorkerEnabled`; both must be set
+     * for the admin `/execution-jobs` routes to accept work. Fail-closed
+     * when unset.
+     */
+    executionJobQueue?: ExecutionJobQueue;
+    /**
+     * R2B — backend-authoritative execution worker activation. The
+     * `EXECUTION_WORKER_ENABLED` env flag resolves to this; the UI cannot
+     * set it. When false, the admin `/execution-jobs` routes return 503
+     * and no production tool handlers run.
+     */
+    executionWorkerEnabled?: boolean;
 }
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
 export declare function createControlPlaneApi(options: ControlPlaneApiOptions): ApiHandler;

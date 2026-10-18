@@ -455,6 +455,12 @@ export function createControlPlaneApi(options) {
             if (route === "/me/profile" || route === "/me/profile/photo") {
                 return await handleProfile(req, res, route, method, principal, correlationId);
             }
+            // R2B — admin-only execution-job routes. Fail-closed when the
+            // backend flag is off or the queue is unset. The worker is the
+            // only consumer; this endpoint never executes code itself.
+            if (segs[0] === "execution-jobs") {
+                return await handleExecutionJobs(req, res, segs, method, principal, correlationId);
+            }
             if (method === "GET") {
                 return await handleGet(res, segs, url.searchParams, principal, correlationId);
             }
@@ -1395,6 +1401,115 @@ export function createControlPlaneApi(options) {
      * `GET /me/profile`, `PUT /me/profile/photo` {dataUrl},
      * `DELETE /me/profile/photo` — always the principal's own profile.
      */
+    async function handleExecutionJobs(req, res, segs, method, principal, correlationId) {
+        // R2B — fail-closed when the backend flag is off or the queue was
+        // not supplied by the composition root. Returned as 503 so a client
+        // can distinguish "disabled" from "forbidden" or "not found".
+        if (!options.executionWorkerEnabled || !options.executionJobQueue) {
+            return send(res, 503, { error: { message: "execution worker disabled" } }, correlationId);
+        }
+        if (principal.role !== "admin") {
+            return send(res, 403, { error: { message: "admin role required" } }, correlationId);
+        }
+        const queue = options.executionJobQueue;
+        // POST /execution-jobs  — enqueue a new job
+        if (method === "POST" && segs.length === 1) {
+            let body;
+            try {
+                body = await readJsonBody(req, maxBody);
+            }
+            catch (error) {
+                return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+            }
+            const projectId = typeof body.projectId === "string" ? body.projectId : "";
+            if (!projectId) {
+                return send(res, 400, { error: { message: "projectId required" } }, correlationId);
+            }
+            if (!operatorCanAccessProject(principal, projectId)) {
+                return send(res, 403, { error: { message: "project outside operator scope" } }, correlationId);
+            }
+            const tool = body.tool;
+            if (!tool ||
+                typeof tool.toolId !== "string" ||
+                typeof tool.action !== "string" ||
+                typeof tool.requiredCapability !== "string") {
+                return send(res, 400, { error: { message: "tool.toolId, tool.action and tool.requiredCapability required" } }, correlationId);
+            }
+            const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey
+                ? body.idempotencyKey
+                : `job-${randomUUID()}`;
+            // Dedupe: same idempotency key returns the existing job.
+            const existing = await queue.findByIdempotencyKey(idempotencyKey);
+            if (existing) {
+                return send(res, 200, { jobId: existing.jobId, status: existing.status, deduped: true }, correlationId);
+            }
+            const now = new Date().toISOString();
+            const job = {
+                jobId: `job_${randomUUID()}`,
+                idempotencyKey,
+                projectId,
+                taskId: typeof body.taskId === "string" ? body.taskId : "ad-hoc",
+                agentId: typeof body.agentId === "string" ? body.agentId : `operator:${principal.id}`,
+                executionId: typeof body.executionId === "string" ? body.executionId : `exec_${randomUUID()}`,
+                tool: {
+                    toolId: tool.toolId,
+                    action: tool.action,
+                    input: tool.input ?? {},
+                    requiredCapability: tool.requiredCapability,
+                },
+                status: "queued",
+                attempt: 0,
+                maxAttempts: typeof body.maxAttempts === "number" && body.maxAttempts >= 1
+                    ? Math.min(10, Math.floor(body.maxAttempts))
+                    : 3,
+                createdAt: now,
+                availableAt: now,
+                updatedAt: now,
+            };
+            try {
+                await queue.enqueue({ job });
+            }
+            catch (error) {
+                return send(res, 400, { error: { message: errorMessage(error) } }, correlationId);
+            }
+            return send(res, 202, { jobId: job.jobId, status: job.status }, correlationId);
+        }
+        // GET /execution-jobs/{jobId} — read status
+        if (method === "GET" && segs.length === 2) {
+            const jobId = segs[1];
+            const job = await queue.get(jobId);
+            if (!job) {
+                return send(res, 404, { error: { message: "job not found" } }, correlationId);
+            }
+            if (!operatorCanAccessProject(principal, job.projectId)) {
+                return send(res, 403, { error: { message: "project outside operator scope" } }, correlationId);
+            }
+            return send(res, 200, { job }, correlationId);
+        }
+        // POST /execution-jobs/{jobId}/cancel — cancellation request
+        if (method === "POST" && segs.length === 3 && segs[2] === "cancel") {
+            const jobId = segs[1];
+            const job = await queue.get(jobId);
+            if (!job) {
+                return send(res, 404, { error: { message: "job not found" } }, correlationId);
+            }
+            if (!operatorCanAccessProject(principal, job.projectId)) {
+                return send(res, 403, { error: { message: "project outside operator scope" } }, correlationId);
+            }
+            let reason = "operator-requested";
+            try {
+                const body = await readJsonBody(req, maxBody);
+                if (typeof body.reason === "string" && body.reason)
+                    reason = body.reason;
+            }
+            catch {
+                /* body optional */
+            }
+            await queue.requestCancellation(jobId, reason);
+            return send(res, 202, { jobId, cancellationRequested: true }, correlationId);
+        }
+        return send(res, 405, { error: { message: "method not allowed" } }, correlationId);
+    }
     async function handleProfile(req, res, route, method, principal, correlationId) {
         const profile = options.profile;
         if (!profile) {
