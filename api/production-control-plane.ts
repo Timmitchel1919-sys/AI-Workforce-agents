@@ -860,15 +860,27 @@ export async function createProductionControlPlaneRuntime(
     audit,
     store: executionRecords,
   });
-  // Opt-in Firebase Hosting deployment adapter. Registered only when a
-  // trusted JSON binding points at an absolute firebase CLI path AND a
-  // working directory; targets themselves still have to be registered by a
-  // later composition step (not driven by agent input).
+  // Opt-in Firebase Hosting deployment adapter + targets. Both come from
+  // server-side JSON env vars (never agent input), and targets are only
+  // registered when the adapter itself is registered.
   const firebaseAdapterConfig = resolveFirebaseHostingAdapterConfig();
   if (firebaseAdapterConfig) {
     deployments.registerAdapter(
       new FirebaseHostingDeploymentAdapter(firebaseAdapterConfig),
     );
+    for (const target of resolveFirebaseHostingTargets()) {
+      try {
+        deployments.registerTarget(target);
+      } catch (error) {
+        // A malformed target is a composition bug; log and keep going so a
+        // broken entry cannot block the Control Plane from starting.
+        console.error("[deployments] Firebase target rejected", {
+          targetId: target.targetId,
+          projectId: target.projectId,
+          error: error instanceof Error ? error.message : "unknown",
+        });
+      }
+    }
   }
   // DERIVED, at read time, from the ports and registries the services were composed with — never
   // declared. A capability turns on only when a real provider/adapter is registered.
@@ -1625,6 +1637,68 @@ function resolveDockerRunnerBinding(
   } catch {
     return null;
   }
+}
+
+const FIREBASE_HOSTING_RESOURCE_RE = /^hosting:[A-Za-z0-9-]+(?::[A-Za-z0-9-]+)?@https:\/\/[A-Za-z0-9.-]+(?:\/[^\s"]*)?$/;
+
+/**
+ * Trusted, OFF-by-default Firebase Hosting deployment targets. Parsed from a
+ * server-side JSON env var: an array of DeploymentTarget-shaped records.
+ * Any shape mismatch, unknown targetClass, bad resource spec or malformed
+ * credentialRef drops that one entry (never a partial-trust fallback).
+ */
+function resolveFirebaseHostingTargets(): import("../contracts/index.js").DeploymentTarget[] {
+  const raw = process.env.AIW_FIREBASE_HOSTING_TARGETS_JSON;
+  if (!raw) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const out: import("../contracts/index.js").DeploymentTarget[] = [];
+  for (const entry of parsed) {
+    if (!entry || typeof entry !== "object") continue;
+    const t = entry as Partial<import("../contracts/index.js").DeploymentTarget>;
+    if (
+      typeof t.targetId !== "string" ||
+      typeof t.projectId !== "string" ||
+      typeof t.providerRef !== "string" ||
+      typeof t.targetClass !== "string" ||
+      !["development", "preview", "staging", "production"].includes(t.targetClass) ||
+      !Array.isArray(t.resources) ||
+      t.resources.length === 0 ||
+      t.resources.some(
+        (r) => typeof r !== "string" || !FIREBASE_HOSTING_RESOURCE_RE.test(r),
+      ) ||
+      !Number.isInteger(t.timeoutMs) ||
+      (t.timeoutMs ?? 0) <= 0 ||
+      (t.timeoutMs ?? 0) > 3_600_000
+    ) {
+      continue;
+    }
+    if (
+      t.credentialRef !== undefined &&
+      (typeof t.credentialRef !== "string" ||
+        !t.credentialRef.startsWith("secret://"))
+    ) {
+      continue;
+    }
+    out.push({
+      targetId: t.targetId,
+      projectId: t.projectId,
+      targetClass: t.targetClass as import("../contracts/index.js").DeploymentTargetClass,
+      adapterId: "firebase-hosting",
+      resources: [...t.resources] as readonly string[],
+      providerRef: t.providerRef,
+      ...(t.credentialRef
+        ? { credentialRef: t.credentialRef as `secret://${string}` }
+        : {}),
+      timeoutMs: t.timeoutMs as number,
+    });
+  }
+  return out;
 }
 
 /**

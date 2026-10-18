@@ -220,6 +220,104 @@ test("DockerContainerRunner cancel issues docker kill against the job's containe
   );
 });
 
+test("DockerContainerRunner mounts the workspace read-only by default via a trusted resolver", async () => {
+  const cap = captureRunner();
+  const hostPath =
+    process.platform === "win32" ? "C:\\aiw\\ws\\ws-1" : "/var/aiw/ws/ws-1";
+  const runner = new DockerContainerRunner({
+    runnerId: "docker-local",
+    adapterId: "docker-container",
+    environmentInstanceIds: ["inst-1"],
+    identityFingerprint: "fp-1",
+    dockerExecutable: DOCKER_PATH,
+    imagesByExecutable: { node: BINDING },
+    containerPolicy: POLICY_PIN,
+    workspaceResolver: {
+      resolve: async (workspaceId, projectId) => {
+        assert.equal(workspaceId, "ws-1");
+        assert.equal(projectId, "proj-1");
+        return hostPath;
+      },
+    },
+    processRunner: cap.runner,
+    nameFactory: () => "aiw-exec-mount",
+  });
+  await runner.prepare(JOB);
+  await runner.run(JOB.jobId, invocation(), RUN_OPTIONS);
+  const argv = cap.spec?.argv ?? [];
+  const mountIdx = argv.indexOf("--mount");
+  assert.notEqual(mountIdx, -1, "expected --mount flag");
+  const mountSpec = argv[mountIdx + 1] ?? "";
+  assert.ok(mountSpec.includes("type=bind"));
+  assert.ok(mountSpec.includes(`source=${hostPath}`));
+  assert.ok(mountSpec.includes("target=/workspace"));
+  assert.ok(mountSpec.includes("readonly"), "default spec is read_only");
+  assert.ok(mountSpec.includes("bind-propagation=rprivate"));
+  assert.ok(argv.includes("--workdir=/workspace"));
+});
+
+test("DockerContainerRunner mounts read-write only when workspaceMode == read_write", async () => {
+  const cap = captureRunner();
+  const runner = new DockerContainerRunner({
+    runnerId: "docker-local",
+    adapterId: "docker-container",
+    environmentInstanceIds: ["inst-1"],
+    identityFingerprint: "fp-1",
+    dockerExecutable: DOCKER_PATH,
+    imagesByExecutable: { node: BINDING },
+    containerPolicy: POLICY_PIN,
+    workspaceResolver: { resolve: async () => "/var/aiw/ws/ws-rw" },
+    processRunner: cap.runner,
+  });
+  const rwSpec: RunnerJobSpec = Object.freeze({ ...JOB, workspaceMode: "read_write" });
+  await runner.prepare(rwSpec);
+  await runner.run(rwSpec.jobId, invocation(), RUN_OPTIONS);
+  const mountSpec =
+    cap.spec?.argv[(cap.spec.argv.indexOf("--mount") + 1) | 0] ?? "";
+  assert.ok(mountSpec.includes("source=/var/aiw/ws/ws-rw"));
+  assert.ok(!mountSpec.includes("readonly"), "rw spec drops the readonly flag");
+});
+
+test("DockerContainerRunner rejects a non-absolute workspace path with WORKSPACE_VIOLATION", async () => {
+  const cap = captureRunner();
+  const runner = new DockerContainerRunner({
+    runnerId: "docker-local",
+    adapterId: "docker-container",
+    environmentInstanceIds: ["inst-1"],
+    identityFingerprint: "fp-1",
+    dockerExecutable: DOCKER_PATH,
+    imagesByExecutable: { node: BINDING },
+    containerPolicy: POLICY_PIN,
+    workspaceResolver: { resolve: async () => "relative/path" },
+    processRunner: cap.runner,
+  });
+  await runner.prepare(JOB);
+  const result = await runner.run(JOB.jobId, invocation(), RUN_OPTIONS);
+  assert.equal(result.exitClass, "denied");
+  assert.equal(result.denial?.code, "WORKSPACE_VIOLATION");
+  assert.equal(cap.spec, null);
+});
+
+test("DockerContainerRunner runs without a mount when the resolver returns null", async () => {
+  const cap = captureRunner();
+  const runner = new DockerContainerRunner({
+    runnerId: "docker-local",
+    adapterId: "docker-container",
+    environmentInstanceIds: ["inst-1"],
+    identityFingerprint: "fp-1",
+    dockerExecutable: DOCKER_PATH,
+    imagesByExecutable: { node: BINDING },
+    containerPolicy: POLICY_PIN,
+    workspaceResolver: { resolve: async () => null },
+    processRunner: cap.runner,
+  });
+  await runner.prepare(JOB);
+  const result = await runner.run(JOB.jobId, invocation(), RUN_OPTIONS);
+  assert.equal(result.exitClass, "success");
+  const argv = cap.spec?.argv ?? [];
+  assert.equal(argv.indexOf("--mount"), -1, "no mount flag when resolver returns null");
+});
+
 test("DockerContainerRunner requires at least one image binding", () => {
   assert.throws(
     () =>
