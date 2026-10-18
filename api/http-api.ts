@@ -661,6 +661,49 @@ export function createControlPlaneApi(
       );
     }
 
+    // R7 (ADR-0034) — per-operator post-auth rate limit on every non-GET
+    // route. Sits on top of the earlier route+IP bucket: a compromised token
+    // can rotate IPs, so the identity check is the one that bounds abuse per
+    // principal. Health probes and read traffic are already excluded by
+    // method.
+    if (method !== "GET" && method !== "HEAD") {
+      const opDecision = rateLimiter.check({
+        profile: "operator_mutation",
+        key: `operator:${principal.id}`,
+      });
+      if (!opDecision.allowed) {
+        await recordSecurityEvent({
+          category: "api_security",
+          type: SECURITY_EVENT_TYPES.RATE_LIMIT_EXCEEDED,
+          severity: "medium",
+          outcome: "blocked",
+          actor: { kind: "human", id: principal.id },
+          source: {
+            kind: "network",
+            ip:
+              headerValue(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+              req.socket.remoteAddress,
+          },
+          correlationId,
+          evidence: {
+            path: route,
+            method,
+            scope: "operator_mutation",
+            retryAfterSeconds: opDecision.retryAfterSeconds,
+          },
+        });
+        if (opDecision.retryAfterSeconds !== undefined) {
+          res.setHeader("retry-after", String(opDecision.retryAfterSeconds));
+        }
+        const { status, body } = apiError(
+          "rate_limited",
+          "too many requests for this operator",
+          correlationId,
+        );
+        return send(res, status, body, correlationId);
+      }
+    }
+
     // Static route metadata is defense in depth. Core command services still
     // perform their own authorization; this early gate prevents privileged
     // handlers from being reached with a capability the route forbids.
