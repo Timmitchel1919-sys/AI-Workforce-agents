@@ -65,7 +65,9 @@ import {
 import {
   createPlatformAdapters,
   DockerContainerRunner,
+  SandboxWorkspacePathResolver,
   type DockerImageBinding,
+  type WorkspaceRootLookup,
 } from "../adapters/environments/index.js";
 import {
   FirebaseHostingDeploymentAdapter,
@@ -758,19 +760,10 @@ export async function createProductionControlPlaneRuntime(
     environmentAdapters.registerAdapter(adapter),
   );
   const dockerBinding = resolveDockerRunnerBinding(containerPolicy);
-  if (dockerBinding) {
-    environmentAdapters.registerRunner(
-      new DockerContainerRunner({
-        runnerId: dockerBinding.runnerId,
-        adapterId: "docker-container",
-        environmentInstanceIds: dockerBinding.environmentInstanceIds,
-        identityFingerprint: dockerBinding.identityFingerprint,
-        dockerExecutable: dockerBinding.dockerExecutable,
-        imagesByExecutable: dockerBinding.imagesByExecutable,
-        containerPolicy,
-      }),
-    );
-  }
+  // The Docker runner is registered BELOW, after the workspace sandbox port
+  // is declared, so R9's resolver can see it when a real sandbox is
+  // composed. Keeping the binding resolution here keeps all policy reads at
+  // the top.
   const executionReceipts: ExecutionReceiptStore =
     _transactionalFirestoreForDurable
       ? new FirestoreExecutionReceiptStore(_transactionalFirestoreForDurable, {
@@ -824,6 +817,37 @@ export async function createProductionControlPlaneRuntime(
   // needs one is a fail-closed "unavailable" port: the services read their durable records and
   // enforce their state machines, and anything that would act is DENIED (never simulated).
   const unavailableWorkspace = new UnavailableWorkspaceControl();
+
+  if (dockerBinding) {
+    // R9 (ADR-0034) — attach the trusted workspace path resolver when the
+    // composition actually provides a WorkspaceRepositorySandbox exposing
+    // `workspaceRoot(workspaceId, projectId)`. The current production uses
+    // `UnavailableWorkspaceControl` (no such method), so the resolver
+    // stays unwired and Docker runs mount-less — correct and honest.
+    // Future wiring that composes a real sandbox gets the mount
+    // automatically.
+    const workspaceLookup = isWorkspaceRootLookup(unavailableWorkspace)
+      ? (unavailableWorkspace as WorkspaceRootLookup)
+      : null;
+    environmentAdapters.registerRunner(
+      new DockerContainerRunner({
+        runnerId: dockerBinding.runnerId,
+        adapterId: "docker-container",
+        environmentInstanceIds: dockerBinding.environmentInstanceIds,
+        identityFingerprint: dockerBinding.identityFingerprint,
+        dockerExecutable: dockerBinding.dockerExecutable,
+        imagesByExecutable: dockerBinding.imagesByExecutable,
+        containerPolicy,
+        ...(workspaceLookup
+          ? {
+              workspaceResolver: new SandboxWorkspacePathResolver(
+                workspaceLookup,
+              ),
+            }
+          : {}),
+      }),
+    );
+  }
   const unavailableArtifactSource = new UnavailableArtifactSource();
   const unavailableGit = new UnavailableGovernedGit();
   const artifacts = new ArtifactManager({
@@ -1735,6 +1759,15 @@ function resolveFirebaseHostingAdapterConfig():
   } catch {
     return null;
   }
+}
+
+/** R9 — duck-type check: does this value expose `workspaceRoot(id, projectId)`? */
+function isWorkspaceRootLookup(value: unknown): value is WorkspaceRootLookup {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { workspaceRoot?: unknown }).workspaceRoot === "function"
+  );
 }
 
 /** Deny-by-default provider: every code is unsupported; nothing routes. */
