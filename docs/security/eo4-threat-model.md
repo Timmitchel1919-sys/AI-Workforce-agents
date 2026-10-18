@@ -76,18 +76,21 @@ Test files are under `tests/`. `gate` = `eo48-security-gate.test.ts`.
 
 ## Platform honesty
 
-| Platform                  | Contract verified              | Real runner verified                                                       | Production runner configured |
-| ------------------------- | ------------------------------ | -------------------------------------------------------------------------- | ---------------------------- |
-| Node (Linux/Windows host) | yes                            | yes: real `node` builds and tests (verification suite), gate process tests | no                           |
-| Windows / .NET            | yes                            | Node only (`node --version` via the Windows adapter); .NET not run         | no                           |
-| macOS / Xcode             | yes                            | no                                                                         | no                           |
-| Android                   | yes                            | no                                                                         | no                           |
-| Linux                     | yes                            | no (development host is Windows)                                           | no                           |
-| Docker                    | yes (policy)                   | no                                                                         | no                           |
-| Cloud runner              | yes                            | no                                                                         | no                           |
-| Unity                     | yes                            | no                                                                         | no                           |
-| Unreal                    | yes                            | no                                                                         | no                           |
-| Firebase deployment       | contract (`DeploymentAdapter`) | no                                                                         | no                           |
+Updated by ADR-0034 (R3/R4/R5). "Production runner configured" means the
+backing env-var toggle is set; nothing executes without it.
+
+| Platform                  | Contract verified              | Real runner verified                                                       | Production runner configured                                   |
+| ------------------------- | ------------------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Node (Linux/Windows host) | yes                            | yes: real `node` builds and tests (verification suite), gate process tests | yes, via the host-process runner                               |
+| Windows / .NET            | yes                            | Node only (`node --version` via the Windows adapter); .NET not run         | no                                                             |
+| macOS / Xcode             | yes                            | no                                                                         | no                                                             |
+| Android                   | yes                            | no                                                                         | no                                                             |
+| Linux                     | yes                            | no (development host is Windows)                                           | no                                                             |
+| Docker                    | yes (policy + runner)          | yes: `DockerContainerRunner` (R3/R5), hardened argv + mount                | opt-in, via `AIW_CONTAINER_POLICY_JSON` + `AIW_DOCKER_RUNNER_JSON` |
+| Cloud runner              | yes                            | no                                                                         | no                                                             |
+| Unity                     | yes                            | no                                                                         | no                                                             |
+| Unreal                    | yes                            | no                                                                         | no                                                             |
+| Firebase deployment       | yes (`DeploymentAdapter`)      | yes: `FirebaseHostingDeploymentAdapter` (R4), bounded `firebase` CLI       | opt-in, via `AIW_FIREBASE_HOSTING_ADAPTER_JSON` + targets JSON |
 
 ## Residual risks (accepted, documented)
 
@@ -95,18 +98,29 @@ Test files are under `tests/`. `gate` = `eo48-security-gate.test.ts`.
    `taskkill /T` snapshots the tree can survive. Node has no Job Objects.
    POSIX process-group kill is not affected. Existing trees are killed
    reliably (tested).
-2. **The host build runner is not isolated.** It is used only with a
-   per-project `trustedHostBuild` opt-in. OS-level isolation (containers or
-   VMs) is required before untrusted code is verified.
+2. **The host build runner is not isolated.** *Mitigated by R3/R5
+   (ADR-0034).* The `DockerContainerRunner` provides OS-level isolation
+   (own root fs, `--network=none`, `--cap-drop=ALL`,
+   `--security-opt=no-new-privileges`, non-root UID, memory/pids/cpu caps,
+   workspace bind-mount read-only by default). Projects that still select
+   the host-process runner remain unisolated — the `trustedHostBuild`
+   opt-in is a conscious risk acceptance, not a default.
 3. **Audit is write-through, not fail-closed.** Cached audit writes are
    flushed before every response, and failures are logged, but a Firestore
    outage during a flush does not roll back an action that already happened.
    High-risk mutations are gated earlier by durable reservations.
-4. **No rate limiting.** Every mutation requires an authenticated, authorized
-   operator, and Functions are capped at 2 instances.
-5. **DNS rebinding.** Hostname checks do not resolve addresses. No
-   network-enabled execution provider exists yet; one must enforce
-   resolved-address checks.
+4. **No rate limiting.** *Addressed by R7 (ADR-0034).* The HTTP API runs a
+   two-tier limiter: a pre-auth bucket keyed by `method:path:ip`, and a
+   post-auth bucket keyed by `operator:<principalId>` with a tighter
+   `operator_mutation` profile for every non-GET route. 429s include a
+   `Retry-After` header and emit a `rate_limit_exceeded` canonical event.
+   Functions remain capped at 2 instances as a capacity ceiling.
+5. **DNS rebinding.** Hostname checks do not resolve addresses. The
+   `DockerContainerRunner` (R3) currently always passes `--network=none`,
+   so the risk does not apply there. It becomes relevant only when a
+   future runner opts into `allow_approved_hosts`; such a runner MUST
+   enforce resolved-address checks and MUST pin an IP egress policy at
+   the container network layer.
 6. **The Control Plane runtime is rebuilt per request.** This is slow but
    correct. Memoizing it requires read-through stores for the cached
    collections.
