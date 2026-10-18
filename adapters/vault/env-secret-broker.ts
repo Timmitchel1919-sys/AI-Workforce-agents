@@ -28,6 +28,7 @@ import {
   type SecretHandle,
   type SecretReference,
 } from "../../contracts/index.js";
+import { noopMetrics, type MetricsPort } from "../../core/observability/index.js";
 import type { SecretValueResolver } from "../../core/release/source-control-orchestrator.js";
 
 /** Env-var prefix. The whole mapping is public — no secret in the NAME. */
@@ -51,6 +52,8 @@ export interface EnvSecretBrokerOptions {
    * handleIds cannot be forged offline. Defaults to a per-process random.
    */
   readonly handleKey?: string;
+  /** R11: optional observability port; emits sanitized counters. */
+  readonly metrics?: MetricsPort;
 }
 
 /**
@@ -61,11 +64,13 @@ export interface EnvSecretBrokerOptions {
 export class EnvSecretBroker implements SecretBroker, SecretValueResolver {
   private readonly env: () => Readonly<Record<string, string | undefined>>;
   private readonly handleKey: string;
+  private readonly metrics: MetricsPort;
 
   constructor(options: EnvSecretBrokerOptions = {}) {
     this.env = options.env ?? (() => process.env);
     this.handleKey =
       options.handleKey ?? `${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    this.metrics = options.metrics ?? noopMetrics;
   }
 
   async describe(ref: SecretReference): Promise<SecretDescriptor> {
@@ -116,11 +121,13 @@ export class EnvSecretBroker implements SecretBroker, SecretValueResolver {
     const name = envNameForSecret(ref);
     const value = this.env()[name];
     if (typeof value !== "string" || value.length === 0) {
+      this.metrics.counter("secret_resolution_denied", { ref });
       throw new ExecutionDeniedError(
         "POLICY_DENIED",
         `secret ${ref} is not configured on this deployment`,
       );
     }
+    this.metrics.counter("secret_resolution_ok", { ref });
     return value;
   }
 }

@@ -30,6 +30,7 @@ import type {
   DeploymentAdapter,
   DeploymentContext,
 } from "../../contracts/index.js";
+import { noopMetrics, type MetricsPort } from "../../core/observability/index.js";
 import {
   runBoundedProcess,
   type BoundedProcessResult,
@@ -54,6 +55,8 @@ export interface FirebaseHostingAdapterConfig {
   readonly processRunner?: (
     spec: BoundedProcessSpec,
   ) => Promise<BoundedProcessResult>;
+  /** R11: optional observability port; emits sanitized counters + timings. */
+  readonly metrics?: MetricsPort;
 }
 
 interface HostingResourceSpec {
@@ -99,6 +102,7 @@ export class FirebaseHostingDeploymentAdapter implements DeploymentAdapter {
   private readonly httpFetch: NonNullable<
     FirebaseHostingAdapterConfig["httpFetch"]
   >;
+  private readonly metrics: MetricsPort;
 
   constructor(private readonly config: FirebaseHostingAdapterConfig) {
     if (!path.isAbsolute(config.firebaseExecutable)) {
@@ -114,6 +118,7 @@ export class FirebaseHostingDeploymentAdapter implements DeploymentAdapter {
         const r = await fetch(url, { signal });
         return { status: r.status, text: () => r.text() };
       });
+    this.metrics = config.metrics ?? noopMetrics;
   }
 
   async deploy(ctx: DeploymentContext): Promise<{
@@ -170,6 +175,11 @@ export class FirebaseHostingDeploymentAdapter implements DeploymentAdapter {
       // publish.
       if (!providerReleaseId) providerReleaseId = releaseName;
     }
+    this.metrics.counter("firebase_deploy_completed", {
+      project: ctx.target.providerRef,
+      sites: sites.length,
+      failed: failed.length,
+    });
     return {
       providerReleaseId,
       ...(failed.length > 0 ? { failedResources: failed } : {}),

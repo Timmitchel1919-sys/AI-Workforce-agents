@@ -191,6 +191,11 @@ import {
   GoogleSecretManagerVault,
   InMemorySecretVault,
 } from "../adapters/vault/index.js";
+import {
+  createJsonLineMetrics,
+  noopMetrics,
+  type MetricsPort,
+} from "../core/observability/index.js";
 import type {
   SecretVault,
   CredentialBroker,
@@ -876,12 +881,19 @@ export async function createProductionControlPlaneRuntime(
     audit,
     store: executionRecords,
   });
+  // R11 (ADR-0034) — JSON-line metrics port. Writes one structured line
+  // per event to stdout, which Cloud Logging ingests as a LogEntry. Enabled
+  // via `AIW_METRICS_ENABLED=1`; off → noop so unit tests stay silent.
+  const metrics: MetricsPort =
+    process.env.AIW_METRICS_ENABLED === "1"
+      ? createJsonLineMetrics()
+      : noopMetrics;
   // R8 (ADR-0034) — production SecretValueResolver for deployment
   // credentials. Reads `secret://<name>` from server-side env vars
   // (`AIW_SECRET_<normalized>`), which Firebase Functions already backs
   // with Google Secret Manager via `defineSecret`. A missing value throws
   // `POLICY_DENIED` so the orchestrator aborts BEFORE any provider call.
-  const envSecretBroker = new EnvSecretBroker();
+  const envSecretBroker = new EnvSecretBroker({ metrics });
   const deployments = new DeploymentOrchestrator({
     sourceControl,
     verification,
