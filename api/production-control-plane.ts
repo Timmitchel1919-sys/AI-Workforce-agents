@@ -185,6 +185,7 @@ import {
   SecretLeakHandler,
 } from "../core/security/index.js";
 import {
+  EnvSecretBroker,
   GoogleSecretManagerVault,
   InMemorySecretVault,
 } from "../adapters/vault/index.js";
@@ -851,6 +852,12 @@ export async function createProductionControlPlaneRuntime(
     audit,
     store: executionRecords,
   });
+  // R8 (ADR-0034) — production SecretValueResolver for deployment
+  // credentials. Reads `secret://<name>` from server-side env vars
+  // (`AIW_SECRET_<normalized>`), which Firebase Functions already backs
+  // with Google Secret Manager via `defineSecret`. A missing value throws
+  // `POLICY_DENIED` so the orchestrator aborts BEFORE any provider call.
+  const envSecretBroker = new EnvSecretBroker();
   const deployments = new DeploymentOrchestrator({
     sourceControl,
     verification,
@@ -859,6 +866,7 @@ export async function createProductionControlPlaneRuntime(
     projects: bootstrap.projects,
     audit,
     store: executionRecords,
+    credentials: envSecretBroker,
   });
   // Opt-in Firebase Hosting deployment adapter + targets. Both come from
   // server-side JSON env vars (never agent input), and targets are only
