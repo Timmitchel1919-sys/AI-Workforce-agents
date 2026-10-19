@@ -61,6 +61,11 @@ export interface DestructiveApproverResolver {
   resolve(operatorId: string): OperatorPrincipal | undefined;
 }
 
+export interface DestructiveRecoveryGuard {
+  prepare(input: { projectId?: string; targetResourceId: string; correlationId: string }): Promise<{ recoveryPointId: string; verified: true }>;
+  validate(input: { recoveryPointId: string; projectId?: string; targetResourceId: string; revision: number }): Promise<boolean>;
+}
+
 /**
  * Trusted MFA / reauth evidence passed to the executor by the API
  * middleware (Layer 5). The service never fabricates this; raw client
@@ -345,13 +350,14 @@ export class DestructiveActionService {
     private readonly repo: Repository<DestructiveActionRequest> = new InMemoryRepository<DestructiveActionRequest>(),
     private readonly approverResolver?: DestructiveApproverResolver,
     private readonly observer?: DestructiveActionObserver,
+    private readonly recoveryGuard?: DestructiveRecoveryGuard,
   ) {}
 
   /* ---------------------------------------------------------------- */
   /* request                                                           */
   /* ---------------------------------------------------------------- */
 
-  request(
+  async request(
     principal: OperatorPrincipal,
     draft: DestructiveActionRequestDraft,
     correlationId: string,
@@ -399,6 +405,11 @@ export class DestructiveActionService {
     const needsRecovery =
       (draft.irreversible || draft.production) &&
       (policyDecision.risk === "high" || policyDecision.risk === "critical");
+    const recovery = needsRecovery && this.recoveryGuard
+      ? await this.recoveryGuard.prepare({ projectId: draft.projectId, targetResourceId: draft.targetResourceId, correlationId })
+      : undefined;
+    if (needsRecovery && this.recoveryGuard && (!recovery || !recovery.verified))
+      throw new ValidationError("destructive action blocked: verified recovery point required");
     if (
       needsRecovery &&
       !draft.justification.backupAvailable &&
@@ -489,6 +500,7 @@ export class DestructiveActionService {
       updatedAt: ts,
       expiresAt: undefined,
       correlationId,
+      recoveryPointId: recovery?.recoveryPointId,
     };
     this.repo.upsert(record);
     return record;
@@ -846,7 +858,7 @@ export class DestructiveActionService {
   /* assertApproved — the hardened TOCTOU execution guard               */
   /* ---------------------------------------------------------------- */
 
-  assertApproved(input: AssertApprovedInput): DestructiveActionRequest {
+  async assertApproved(input: AssertApprovedInput): Promise<DestructiveActionRequest> {
     const record = this.require(input.requestId);
 
     // 1. status
@@ -908,6 +920,16 @@ export class DestructiveActionService {
       throw new StateTransitionError(
         "destructive action target changed since approval; re-approval required",
       );
+    }
+
+    if (record.recoveryPointId && (!this.recoveryGuard || !(await this.recoveryGuard.validate({
+      recoveryPointId: record.recoveryPointId,
+      projectId: record.projectId,
+      targetResourceId: record.targetResourceId,
+      revision: record.revision,
+    })))) {
+      this.emitBlock(record, "recovery point is no longer valid");
+      throw new StateTransitionError("verified recovery point invalidated; re-approval required");
     }
 
     // 6. revision-bound approvals — resolve the current revision row.
@@ -1430,10 +1452,10 @@ export class DestructiveActionService {
  * the service's TOCTOU revalidation so executors can be oblivious to
  * the service wiring.
  */
-export function assertDestructiveActionApproved(
+export async function assertDestructiveActionApproved(
   service: DestructiveActionService,
   input: AssertApprovedInput,
-): DestructiveActionRequest {
+): Promise<DestructiveActionRequest> {
   return service.assertApproved(input);
 }
 

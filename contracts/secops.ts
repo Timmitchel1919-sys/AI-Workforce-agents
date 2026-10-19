@@ -69,3 +69,91 @@ export interface AccessRequest {
   decidedAt?: Date;
   decidedBy?: string;
 }
+
+/** Layer 9: immutable backup and recovery state. */
+export type BackupArtifactStatus =
+  | "CREATED"
+  | "UPLOADING"
+  | "STORED"
+  | "VERIFYING"
+  | "VERIFIED"
+  | "DEGRADED"
+  | "CORRUPT"
+  | "EXPIRED"
+  | "FAILED";
+
+export interface BackupPolicy {
+  policyId: string;
+  organizationId: string;
+  name: string;
+  schedule: string;
+  retentionDays: number;
+  immutable: boolean;
+  isolated: boolean;
+  enabled: boolean;
+}
+
+export interface BackupArtifact {
+  artifactId: string;
+  policyId: string;
+  organizationId: string;
+  createdAt: Date;
+  expiresAt: Date;
+  status: BackupArtifactStatus;
+  contentHash: string;
+  manifestHash: string;
+  storageLocator: string;
+}
+
+export interface RestorePlan {
+  restorePlanId: string;
+  organizationId: string;
+  artifactId: string;
+  targetEnvironment: "local" | "test" | "staging" | "production";
+  validationChecks: string[];
+  destructiveActionId?: string;
+}
+
+export interface RecoveryPoint {
+  artifactId: string;
+  organizationId: string;
+  verifiedAt: Date;
+  integrity: "VERIFIED" | "DEGRADED" | "CORRUPT";
+  tested: boolean;
+}
+
+/** Layer 11: normalized, explainable detection output. */
+export interface NormalizedSecuritySignal {
+  signalId: string;
+  organizationId: string;
+  source: SecurityEvent["source"];
+  kind: string;
+  actor: string;
+  observedAt: Date;
+  attributes: Record<string, string | number | boolean>;
+}
+
+export interface SecurityFinding {
+  findingId: string;
+  organizationId: string;
+  signalIds: string[];
+  ruleId: string;
+  riskScore: number;
+  rationale: string[];
+  status: "OPEN" | "ACKNOWLEDGED" | "RESOLVED" | "SUPPRESSED";
+  createdAt: Date;
+}
+
+export type BackupLifecycle = "ACTIVE" | "RETENTION_LOCKED" | "EXPIRED" | "ELIGIBLE_FOR_DELETION" | "DELETED";
+export interface BackupJob { id: string; jobId: string; policyId: string; organizationId: string; status: "CREATED" | "RUNNING" | "VERIFIED" | "FAILED"; artifactId?: string; startedAt: Date; completedAt?: Date; error?: string; }
+export interface BackupManifest { id: string; manifestId: string; artifactId: string; organizationId: string; sourceFingerprint: string; manifestHash: string; createdAt: Date; }
+export interface RestoreJob { id: string; restoreJobId: string; restorePlanId: string; status: "CREATED" | "RUNNING" | "VERIFIED" | "FAILED"; startedAt: Date; completedAt?: Date; }
+export interface RestoreVerification { id: string; verificationId: string; restoreJobId: string; integrity: "VERIFIED" | "FAILED"; checks: string[]; verifiedAt: Date; }
+export interface RecoveryDrill { id: string; drillId: string; recoveryPointId: string; status: "RUNNING" | "PASSED" | "FAILED"; startedAt: Date; completedAt?: Date; measuredRpo?: number; measuredRto?: number; failures: string[]; }
+
+export type IncidentLifecycle = "DETECTED" | "TRIAGED" | "INVESTIGATING" | "CONTAINED" | "REMEDIATING" | "RECOVERING" | "RESOLVED" | "POSTMORTEM" | "CLOSED";
+export type IncidentSeverity = "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export interface SecurityIncidentV2 { id: string; incidentId: string; organizationId: string; title: string; severity: IncidentSeverity; status: IncidentLifecycle; createdAt: Date; updatedAt: Date; findingIds: string[]; evidenceIds: string[]; }
+export interface IncidentEvidence { id: string; evidenceId: string; incidentId: string; source: string; resourceRef: string; occurredAt: Date; fingerprint: string; classification: "PUBLIC" | "INTERNAL" | "CONFIDENTIAL"; integrityRef: string; }
+export interface IncidentTimelineEntry { id: string; incidentId: string; type: string; occurredAt: Date; actorId: string; canonicalEventId?: string; reference?: string; }
+export interface SecurityPostmortem { id: string; postmortemId: string; incidentId: string; summary: string; rootCause: string; correctiveActions: string[]; createdAt: Date; finalizedAt?: Date; version: number; }

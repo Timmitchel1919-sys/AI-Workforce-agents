@@ -170,6 +170,8 @@ export interface DestructiveActionRequest extends Entity {
   updatedAt: string;
   expiresAt?: string;
   correlationId: string;
+  /** Verified recovery point bound to this request revision when policy requires one. */
+  recoveryPointId?: string;
   /** Only set on `executed`. The verified post-execution evidence. */
   executionEvidence?: Readonly<Record<string, unknown>>;
 }

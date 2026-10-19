@@ -34,7 +34,7 @@ export class DestructiveSecurityPolicyMutationAuthorizer implements SecurityPoli
         "destructive approval is not bound to security_policy.mutate",
       );
     }
-    this.destructiveActions.assertApproved({
+    await this.destructiveActions.assertApproved({
       requestId: context.destructiveActionId,
       principal,
       actionType: "other_destructive",

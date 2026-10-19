@@ -3331,7 +3331,7 @@ export function createControlPlaneApi(
         }
 
         try {
-          options.destructiveActionService.assertApproved({
+          await options.destructiveActionService.assertApproved({
             requestId: body.destructiveActionId,
             principal,
             actionType: record.actionType,

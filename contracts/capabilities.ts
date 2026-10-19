@@ -155,6 +155,17 @@ export const CAPABILITY_TAXONOMY: readonly CapabilityDefinition[] =
       id: "deployment.firebase",
       description: "Governed Firebase build, deploy and health verification.",
     },
+    { id: "security", description: "Governed security operations." },
+    { id: "security.backup", description: "Backup lifecycle operations." },
+    { id: "security.restore", description: "Governed restore operations." },
+    { id: "security.recovery", description: "Recovery and drill operations." },
+    { id: "security.incident", description: "Incident management." },
+    { id: "security.finding", description: "Security finding operations." },
+    { id: "security.detection", description: "Detection rule governance." },
+    { id: "security.suppression", description: "Detection suppression governance." },
+    { id: "security.response", description: "Governed response operations." },
+    { id: "security.postmortem", description: "Postmortem management." },
+    { id: "security.posture", description: "Read-only security posture." },
     /* reserved for later specialists (declared, not yet staffed) */
     {
       id: "data",

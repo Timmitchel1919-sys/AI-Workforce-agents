@@ -166,6 +166,7 @@ import {
 } from "./security/index.js";
 import { DestructiveActionService } from "../core/security/destructive-action-service.js";
 import { IncidentResponseService } from "../core/secops/incident-response-service.js";
+import { FailClosedDestructiveRecoveryGuard } from "../core/secops/recovery-orchestration.js";
 import type {
   ContainmentExecutor,
   SecurityIncidentRecord,
@@ -1369,6 +1370,7 @@ export async function createProductionControlPlaneRuntime(
     destructiveActionsRepository,
     undefined,
     destructiveActionObserver,
+    new FailClosedDestructiveRecoveryGuard(),
   );
   const securityPolicies = new SecurityPolicyService(
     securityPoliciesRepository,

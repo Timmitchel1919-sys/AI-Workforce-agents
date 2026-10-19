@@ -99,7 +99,7 @@ export class IncidentResponseService {
     return updated;
   }
 
-  requestContainment(
+  async requestContainment(
     principal: OperatorPrincipal,
     input: ContainmentRequest,
   ): DestructiveActionRequest {
@@ -112,7 +112,7 @@ export class IncidentResponseService {
     );
     if (incident.status === "RESOLVED")
       throw new StateTransitionError("resolved incident cannot be contained");
-    return this.destructiveActions.request(
+    return await this.destructiveActions.request(
       principal,
       {
         actionType: "other_destructive",
@@ -189,7 +189,7 @@ export class IncidentResponseService {
       throw new PermissionDeniedError(
         "containment executor is not configured; execution refused",
       );
-    const executing = this.destructiveActions.assertApproved({
+    const executing = await this.destructiveActions.assertApproved({
       requestId: destructiveActionId,
       principal,
       actionType: request.actionType,

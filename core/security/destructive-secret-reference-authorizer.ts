@@ -27,7 +27,7 @@ export class DestructiveSecretReferenceMutationAuthorizer implements SecretRefer
         `destructive approval is not bound to ${expectedAction}`,
       );
     }
-    this.destructiveActions.assertApproved({
+    await this.destructiveActions.assertApproved({
       requestId: context.destructiveActionId,
       principal,
       actionType: "other_destructive",
