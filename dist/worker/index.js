@@ -35,9 +35,7 @@ export function buildDefaultDispatcher(workspace) {
     const resolve = (executableId) => {
         try {
             const path = resolveTrustedExecutable(executableId);
-            return typeof path === "string"
-                ? { executableId, path }
-                : undefined;
+            return typeof path === "string" ? { executableId, path } : undefined;
         }
         catch {
             return undefined;

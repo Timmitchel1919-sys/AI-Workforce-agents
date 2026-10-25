@@ -26,6 +26,7 @@
  */
 import os from "node:os";
 import path from "node:path";
+import { noopMetrics, } from "../../core/observability/index.js";
 import { runBoundedProcess, } from "../execution/bounded-process-runner.js";
 /**
  * Parse `target.resources` into `firebase hosting` resource specs. The
@@ -42,7 +43,8 @@ function parseHostingResources(resources) {
         const parts = body.split(":");
         if (parts.length < 2 || !parts[1])
             continue;
-        if (!siteBaseUrl || !/^https:\/\/[A-Za-z0-9.-]+(?:\/|$)/.test(siteBaseUrl)) {
+        if (!siteBaseUrl ||
+            !/^https:\/\/[A-Za-z0-9.-]+(?:\/|$)/.test(siteBaseUrl)) {
             continue;
         }
         parsed.push({
@@ -60,6 +62,7 @@ export class FirebaseHostingDeploymentAdapter {
     simulated = false;
     processRunner;
     httpFetch;
+    metrics;
     constructor(config) {
         this.config = config;
         if (!path.isAbsolute(config.firebaseExecutable)) {
@@ -75,6 +78,7 @@ export class FirebaseHostingDeploymentAdapter {
                     const r = await fetch(url, { signal });
                     return { status: r.status, text: () => r.text() };
                 });
+        this.metrics = config.metrics ?? noopMetrics;
     }
     async deploy(ctx) {
         const sites = parseHostingResources(ctx.target.resources);
@@ -128,6 +132,11 @@ export class FirebaseHostingDeploymentAdapter {
             if (!providerReleaseId)
                 providerReleaseId = releaseName;
         }
+        this.metrics.counter("firebase_deploy_completed", {
+            project: ctx.target.providerRef,
+            sites: sites.length,
+            failed: failed.length,
+        });
         return {
             providerReleaseId,
             ...(failed.length > 0 ? { failedResources: failed } : {}),

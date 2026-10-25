@@ -87,6 +87,22 @@ export declare class WorkspaceRepositorySandbox implements SandboxProvider, Work
     setChangeSetStatus(workspaceId: string, status: ChangeSet["status"]): void;
     changeSet(workspaceId: string): ChangeSet | undefined;
     workspace(workspaceId: string): ManagedWorkspaceView | undefined;
+    /**
+     * R9 (ADR-0034) — TRUSTED project-scoped host path lookup.
+     *
+     * Returns the absolute host path of a leased workspace ONLY when:
+     *   - the workspace exists on this adapter;
+     *   - its view's `projectId` matches `projectId`;
+     *   - its state is not `closed`.
+     *
+     * Anything else returns `null` so the Docker runner falls back to a
+     * mount-less invocation (and callers can never derive another project's
+     * path from the result). The RAW host path crosses the adapter boundary
+     * only to a trusted composition-time consumer (the `DockerContainerRunner`
+     * via its `WorkspacePathResolver` port); it never reaches a view,
+     * receipt, audit event or network response.
+     */
+    workspaceRoot(workspaceId: string, projectId: string): string | null;
     rollback(workspaceId: string, sessionId: string): Promise<RollbackReport>;
     /**
      * Release the lease and remove ONLY the adapter's own state directory, and

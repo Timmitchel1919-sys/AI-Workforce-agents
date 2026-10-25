@@ -22,6 +22,17 @@ export interface DockerImageBinding {
         readonly pidsLimit?: number;
     };
 }
+/**
+ * Trusted port that maps `workspaceId` to an absolute HOST path. Production
+ * composition supplies this (e.g. the WorkspaceRepositorySandbox's state
+ * root). Agents never influence it; a lookup that returns `null` means the
+ * workspace cannot be mounted and the invocation runs without it.
+ */
+export interface WorkspacePathResolver {
+    resolve(workspaceId: string, projectId: string): Promise<string | null>;
+}
+/** The fixed, hard-coded in-container target for the workspace bind-mount. */
+export declare const CONTAINER_WORKSPACE_TARGET = "/workspace";
 export interface DockerContainerRunnerOptions {
     readonly runnerId: string;
     /** Must equal the registered adapter id (`docker-container`). */
@@ -36,6 +47,13 @@ export interface DockerContainerRunnerOptions {
     /** Live container policy — re-evaluated on every call. */
     readonly containerPolicy: ContainerPolicy;
     readonly capacity?: number;
+    /**
+     * Trusted workspace resolver. When present, the runner bind-mounts the
+     * resolved host path at `/workspace` inside the container, read-only
+     * unless the job spec's `workspaceMode` is `read_write`. Target path is a
+     * fixed server-side constant; agents cannot influence the mount at all.
+     */
+    readonly workspaceResolver?: WorkspacePathResolver;
     /** Injected for tests; defaults to the EO-4.2 bounded process runner. */
     readonly processRunner?: (spec: BoundedProcessSpec) => Promise<BoundedProcessResult>;
     /** Injected for tests; defaults to crypto.randomUUID. */
@@ -59,6 +77,9 @@ export declare class DockerContainerRunner implements ExecutionRunner {
     release(jobId: string): Promise<void>;
     private buildChildEnv;
     /** Build the hardened `docker run` argv. Pure function, test-friendly. */
-    composeDockerArgv(containerName: string, binding: DockerImageBinding, invocation: StructuredInvocation): string[];
+    composeDockerArgv(containerName: string, binding: DockerImageBinding, invocation: StructuredInvocation, workspaceMount?: {
+        hostSource: string;
+        readOnly: boolean;
+    }): string[];
     private formatImageRef;
 }

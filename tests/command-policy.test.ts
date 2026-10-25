@@ -36,12 +36,16 @@ test("evaluateCommand allows npm run <script> with safe name", () => {
 });
 
 test("evaluateCommand denies executable not in allowlist", () => {
-  const decision = evaluateCommand(cmd({ executable: "bash", args: ["-c", "id"] }));
+  const decision = evaluateCommand(
+    cmd({ executable: "bash", args: ["-c", "id"] }),
+  );
   assert.equal(decision.outcome, "denied");
 });
 
 test("evaluateCommand denies npm args that do not match any pattern", () => {
-  const decision = evaluateCommand(cmd({ executable: "npm", args: ["install", "evil-package"] }));
+  const decision = evaluateCommand(
+    cmd({ executable: "npm", args: ["install", "evil-package"] }),
+  );
   assert.equal(decision.outcome, "denied");
 });
 
@@ -54,7 +58,10 @@ test("evaluateCommand denies npm run with disallowed script name", () => {
 
 test("evaluateCommand enforces per-executable timeout ceiling", () => {
   const decision = evaluateCommand(
-    cmd({ executable: "node", timeoutMs: DEFAULT_COMMAND_POLICY.defaultMaxTimeoutMs * 100 }),
+    cmd({
+      executable: "node",
+      timeoutMs: DEFAULT_COMMAND_POLICY.defaultMaxTimeoutMs * 100,
+    }),
   );
   assert.equal(decision.outcome, "denied");
 });
@@ -77,21 +84,41 @@ test("evaluateCommand denies env variables not in allowlist", () => {
 });
 
 test("evaluateCommand denies args containing null byte", () => {
-  const decision = evaluateCommand(cmd({ executable: "node", args: ["foo\0bar"] }));
+  const decision = evaluateCommand(
+    cmd({ executable: "node", args: ["foo\0bar"] }),
+  );
   assert.equal(decision.outcome, "denied");
 });
 
 test("validateCommandDescriptor rejects malformed inputs", () => {
   assert.throws(
-    () => validateCommandDescriptor({ executable: "", args: [], cwd: "/", timeoutMs: 1 }),
+    () =>
+      validateCommandDescriptor({
+        executable: "",
+        args: [],
+        cwd: "/",
+        timeoutMs: 1,
+      }),
     (e: unknown) => e instanceof ValidationError,
   );
   assert.throws(
-    () => validateCommandDescriptor({ executable: "node", args: [], cwd: "", timeoutMs: 1 }),
+    () =>
+      validateCommandDescriptor({
+        executable: "node",
+        args: [],
+        cwd: "",
+        timeoutMs: 1,
+      }),
     (e: unknown) => e instanceof ValidationError,
   );
   assert.throws(
-    () => validateCommandDescriptor({ executable: "node", args: [], cwd: "/", timeoutMs: 0 }),
+    () =>
+      validateCommandDescriptor({
+        executable: "node",
+        args: [],
+        cwd: "/",
+        timeoutMs: 0,
+      }),
     (e: unknown) => e instanceof ValidationError,
   );
 });

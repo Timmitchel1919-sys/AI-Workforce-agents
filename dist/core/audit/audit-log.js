@@ -28,7 +28,8 @@ export class AuditLog {
         // the repository survives, so skip every durable id that already exists instead of overwriting
         // an audit record (or colliding with an append-only OperationalAuditSink observation).
         let id = createId("audit");
-        while (this.events.some((event) => event.id === id) || this.repo?.findById(id)) {
+        while (this.events.some((event) => event.id === id) ||
+            this.repo?.findById(id)) {
             id = createId("audit");
         }
         const event = {

@@ -5,22 +5,26 @@ import { AccessUnavailable } from "./AccessUnavailable";
 import { loginPathFor } from "./redirect";
 import { useAuth } from "./useAuth";
 import { useI18n } from "../i18n";
+import { AuthConfigurationError } from "./AuthConfigurationError";
 
 /**
  * Route guard for the Control Center. It only decides where to send the
  * browser; the Control Plane API still verifies the ID token and enforces
  * authorization on every request.
  *
- * Without Firebase web config (local development with demo data) the guard is
- * a pass-through, matching the app's existing development behaviour.
+ * Missing/invalid configuration fails closed. The only pass-through is an
+ * explicitly enabled development demo mode that cannot be enabled in a
+ * production build.
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { configured, loading, user, access } = useAuth();
+  const { configured, demoMode = false, configurationError = false, loading, user, access } = useAuth();
   const location = useLocation();
   const { t } = useI18n();
 
+  if (configurationError) return <AuthConfigurationError />;
+
   if (!configured) {
-    return <>{children}</>;
+    return demoMode && !configurationError ? <>{children}</> : <AuthConfigurationError />;
   }
 
   if (loading) {

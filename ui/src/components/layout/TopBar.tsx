@@ -3,6 +3,7 @@ import { LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserRo
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { IconButton, UserAvatar } from "../ui";
+import { initialsOf } from "../ui/userInitials";
 import { getPageTitleKey } from "../../config/pageTitles";
 import { useMyProfile } from "../../features/profile";
 import { useI18n } from "../../i18n";
@@ -122,11 +123,12 @@ export default function TopBar({
             <button
               type="button"
               className="topbar__account-button"
-              aria-label={t("shell.accountMenu")}
+              aria-label={`${initialsOf(accountLabel)} ${accountLabel} ${t("shell.accountMenu")}`}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((open) => !open)}
             >
               <UserAvatar name={accountLabel} src={profile?.avatarDataUrl} size={30} className="topbar__avatar" />
+              {" "}
               <span className="topbar__account-name">{accountLabel}</span>
             </button>
 

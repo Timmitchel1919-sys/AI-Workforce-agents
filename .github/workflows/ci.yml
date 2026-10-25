@@ -65,4 +65,39 @@ jobs:
       - run: npm --prefix ui run test:ci
       - run: npm --prefix ui run build
 
+  ui-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+      - run: npm --prefix ui ci --legacy-peer-deps
+      - name: Install Chromium
+        working-directory: ui
+        run: npx playwright install --with-deps chromium
+      - name: Public and demo-shell E2E (axe + responsive)
+        run: npm --prefix ui run test:e2e
+
+  authenticated-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm --prefix ui ci --legacy-peer-deps
+      - name: Install Chromium
+        working-directory: ui
+        run: npx playwright install --with-deps chromium
+      - name: Authenticated Firebase E2E
+        run: npm run test:e2e:authenticated
+
 # No secrets or AI provider credentials are required or referenced by this workflow.

@@ -32,8 +32,7 @@ test("worker end-to-end: enqueue a filesystem.write job and drain it to succeede
   const dispatcher = new ToolActionDispatcher({ workspace });
   dispatcher.register(
     { toolId: "workspace.filesystem", action: "write" },
-    ({ workspace, job }) =>
-      filesystem.run(workspace, job.tool.input as never),
+    ({ workspace, job }) => filesystem.run(workspace, job.tool.input as never),
   );
 
   const t = new Date().toISOString();

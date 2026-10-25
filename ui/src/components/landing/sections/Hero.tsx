@@ -12,10 +12,12 @@ export function Hero() {
     <SectionContainer
       as="section"
       className="lp2-hero-section"
-      eyebrow={<><ShieldCheck size={12} aria-hidden /> {t("landing.v2.hero.eyebrow")}</>}
     >
       <div className="lp2-hero">
         <div className="lp2-hero-head">
+          <div className="aw-section-eyebrow">
+            <ShieldCheck size={12} aria-hidden /> {t("landing.v2.hero.eyebrow")}
+          </div>
           <h1 className="lp2-hero-title">
             {t("landing.v2.hero.titleA")}
             <span className="lp2-hero-accent">{t("landing.v2.hero.titleAccent")}</span>

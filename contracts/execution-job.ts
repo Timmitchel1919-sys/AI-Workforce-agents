@@ -25,15 +25,16 @@ export type ExecutionJobStatus =
   | "cancelled"
   | "dead_letter";
 
-export const EXECUTION_JOB_STATUSES: readonly ExecutionJobStatus[] = Object.freeze([
-  "queued",
-  "leased",
-  "running",
-  "succeeded",
-  "failed",
-  "cancelled",
-  "dead_letter",
-]);
+export const EXECUTION_JOB_STATUSES: readonly ExecutionJobStatus[] =
+  Object.freeze([
+    "queued",
+    "leased",
+    "running",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "dead_letter",
+  ]);
 
 /**
  * The tool action the worker will carry out. Carries the normalized input
@@ -152,7 +153,9 @@ export function validateExecutionJob(job: ExecutionJob): void {
     );
   }
   if (!Number.isInteger(job.attempt) || job.attempt < 0) {
-    throw new ValidationError("execution job: attempt must be a non-negative integer");
+    throw new ValidationError(
+      "execution job: attempt must be a non-negative integer",
+    );
   }
   if (!Number.isInteger(job.maxAttempts) || job.maxAttempts < 1) {
     throw new ValidationError("execution job: maxAttempts must be >= 1");

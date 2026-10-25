@@ -6,20 +6,14 @@
  * handler is registered by `toolId` + `action`. Unknown routes fail
  * closed. Returns a structured `ToolActionResult`.
  */
-import {
-  ValidationError,
-  type ExecutionJob,
-} from "../../contracts/index.js";
+import { ValidationError, type ExecutionJob } from "../../contracts/index.js";
 import type {
   WorkerWorkspaceManager,
   WorkspaceAccess,
 } from "./worker-workspace.js";
 
 export type ToolActionStatus =
-  | "succeeded"
-  | "failed"
-  | "cancelled"
-  | "timed_out";
+  "succeeded" | "failed" | "cancelled" | "timed_out";
 
 export interface ToolActionResult {
   readonly status: ToolActionStatus;

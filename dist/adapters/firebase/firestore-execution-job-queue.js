@@ -45,9 +45,7 @@ export class FirestoreExecutionJobQueue {
         const expiresAt = new Date((input.now ?? this.clock()).getTime() + input.leaseTtlMs).toISOString();
         const scan = async () => {
             const snapshot = input.projectId
-                ? await this.collection
-                    .where("projectId", "==", input.projectId)
-                    .get()
+                ? await this.collection.where("projectId", "==", input.projectId).get()
                 : await this.collection.get();
             const result = [];
             for (const doc of snapshot.docs) {
@@ -72,7 +70,8 @@ export class FirestoreExecutionJobQueue {
         // atomically claim the oldest eligible one.
         const second = sweepable.length > 0 ? await scan() : first;
         const claimable = second
-            .filter(({ job }) => job.status === "queued" && (!job.availableAt || job.availableAt <= now))
+            .filter(({ job }) => job.status === "queued" &&
+            (!job.availableAt || job.availableAt <= now))
             .sort((a, b) => a.job.createdAt.localeCompare(b.job.createdAt))
             .slice(0, this.scanLimit);
         for (const { id } of claimable) {
@@ -116,7 +115,8 @@ export class FirestoreExecutionJobQueue {
             if (!job.lease || job.lease.workerId !== input.workerId) {
                 throw new ValidationError(`complete denied: worker ${input.workerId} does not own ${input.jobId}`);
             }
-            if (job.status === input.status && job.lease.workerId === input.workerId) {
+            if (job.status === input.status &&
+                job.lease.workerId === input.workerId) {
                 // Idempotent completion.
                 return;
             }

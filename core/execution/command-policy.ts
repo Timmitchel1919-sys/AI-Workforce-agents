@@ -67,7 +67,14 @@ export const DEFAULT_COMMAND_POLICY: CommandPolicy = Object.freeze({
   maxArgLength: 256,
   maxArgs: 32,
   defaultMaxTimeoutMs: 60_000,
-  envAllowlist: Object.freeze(["PATH", "HOME", "LANG", "LC_ALL", "CI", "NODE_ENV"]),
+  envAllowlist: Object.freeze([
+    "PATH",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "CI",
+    "NODE_ENV",
+  ]),
 });
 
 export type CommandPolicyDecision =
@@ -172,6 +179,8 @@ export function validateCommandDescriptor(descriptor: CommandDescriptor): void {
     !Number.isFinite(descriptor.timeoutMs) ||
     descriptor.timeoutMs <= 0
   ) {
-    throw new ValidationError("command descriptor: timeoutMs must be a positive number");
+    throw new ValidationError(
+      "command descriptor: timeoutMs must be a positive number",
+    );
   }
 }

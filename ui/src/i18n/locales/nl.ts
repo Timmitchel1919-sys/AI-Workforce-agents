@@ -1169,7 +1169,8 @@ export const nl: Messages = {
   auth: {
     backToSystem: "Terug naar het systeem",
     backToLanding: "Terug naar startpagina",
-    notConfigured: "Authenticatie is niet geconfigureerd voor deze omgeving (Firebase-webconfiguratie ontbreekt).",
+    notConfiguredTitle: "Beveiligde toegang niet beschikbaar",
+    notConfigured: "De authenticatieconfiguratie is niet beschikbaar. Beveiligde inhoud is vergrendeld. Neem contact op met de systeembeheerder.",
     authNode: "Authenticatieknooppunt",
     encrypted: "Versleutelde verbinding (HTTPS)",
     protected: "Beveiligde toegang · inloggegevens worden verwerkt door Firebase Authentication",

@@ -55,14 +55,20 @@ test("issueHandle() refuses a grant without secret.reference.use", async () => {
   });
   await assert.rejects(
     () =>
-      broker.issueHandle(REF, grant({ capability: "filesystem.read" as never })),
+      broker.issueHandle(
+        REF,
+        grant({ capability: "filesystem.read" as never }),
+      ),
     /secret\.reference\.use/,
   );
 });
 
 test("issueHandle() fails closed when the secret is missing", async () => {
   const broker = new EnvSecretBroker({ env: () => ({}) });
-  await assert.rejects(() => broker.issueHandle(REF, grant()), /not configured/);
+  await assert.rejects(
+    () => broker.issueHandle(REF, grant()),
+    /not configured/,
+  );
 });
 
 test("issueHandle() returns a grant-bound opaque handle (never the value)", async () => {

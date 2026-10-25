@@ -40,7 +40,14 @@ export const DEFAULT_COMMAND_POLICY = Object.freeze({
     maxArgLength: 256,
     maxArgs: 32,
     defaultMaxTimeoutMs: 60_000,
-    envAllowlist: Object.freeze(["PATH", "HOME", "LANG", "LC_ALL", "CI", "NODE_ENV"]),
+    envAllowlist: Object.freeze([
+        "PATH",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "CI",
+        "NODE_ENV",
+    ]),
 });
 export function evaluateCommand(descriptor, policy = DEFAULT_COMMAND_POLICY) {
     if (!descriptor.executable || typeof descriptor.executable !== "string") {

@@ -8,6 +8,8 @@ const stages = [
   ["UI tests", "npm", ["--prefix", "ui", "run", "test:ci"]],
   ["backend build", "npm", ["run", "build"]],
   ["UI build", "npm", ["--prefix", "ui", "run", "build"]],
+  ["UI browser E2E", "npm", ["--prefix", "ui", "run", "test:e2e"]],
+  ["authenticated browser E2E", "npm", ["run", "test:e2e:authenticated"]],
   ["security checks", "npm", ["run", "security:check"]],
   ["git diff check", "git", ["diff", "--check"]],
 ];
