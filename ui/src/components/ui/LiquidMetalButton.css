@@ -1,0 +1,150 @@
+/* Liquid Metal Button — animated metallic rim + glass fill + hover sheen */
+
+.lmb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.4rem;
+  min-height: 46px;
+  border: 0;
+  background: transparent;
+  color: #e8f5ff;
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  border-radius: 999px;
+  isolation: isolate;
+  overflow: hidden;
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.lmb--lg { min-height: 52px; padding: 0 1.75rem; font-size: 0.95rem; }
+.lmb:active { transform: translateY(1px) scale(0.985); }
+.lmb:focus-visible { outline: 2px solid var(--ring, #7dd3fc); outline-offset: 3px; }
+
+/* Rotating liquid-metal rim */
+.lmb__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from 0deg,
+    #00ffcc,
+    #7000ff,
+    #00c8ff,
+    #ffffff,
+    #00ffcc,
+    #4a00e0,
+    #00ffcc
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: lmb-spin 6s linear infinite;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 204, 0.35));
+  z-index: 0;
+}
+
+/* Dark glass surface */
+.lmb__surface {
+  position: absolute;
+  inset: 1.5px;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 160% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 55%),
+    linear-gradient(180deg, #1a1d26 0%, #05070b 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+    0 10px 28px rgba(0, 0, 0, 0.45);
+  z-index: 1;
+}
+
+/* Travelling specular sheen on hover */
+.lmb__sheen {
+  position: absolute;
+  inset: 1.5px;
+  border-radius: inherit;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.18) 45%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(255, 255, 255, 0.18) 55%,
+    transparent 75%
+  );
+  background-size: 220% 100%;
+  background-position: 150% 0;
+  opacity: 0;
+  transition: opacity 200ms ease, background-position 900ms ease;
+  z-index: 2;
+  pointer-events: none;
+}
+.lmb:hover .lmb__sheen {
+  opacity: 1;
+  background-position: -50% 0;
+}
+
+.lmb__label {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(180deg, #f3f4f6 0%, #9ca3af 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+.lmb__ripples {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4;
+}
+.lmb__ripple {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  animation: lmb-ripple 0.65s ease-out forwards;
+}
+
+/* Variants */
+.lmb--chrome .lmb__ring {
+  background: conic-gradient(from 0deg, #e8e8e8, #8a8a8a, #ffffff, #666, #e8e8e8);
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.25));
+}
+.lmb--gold .lmb__ring {
+  background: conic-gradient(from 0deg, #ffd56b, #a35b00, #ffe9a3, #7a3b00, #ffd56b);
+  filter: drop-shadow(0 0 10px rgba(255, 183, 77, 0.45));
+}
+
+@keyframes lmb-spin {
+  to { transform: rotate(1turn); }
+}
+@keyframes lmb-ripple {
+  to { transform: translate(-50%, -50%) scale(4); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lmb__ring { animation: none; }
+  .lmb__sheen { display: none; }
+}
