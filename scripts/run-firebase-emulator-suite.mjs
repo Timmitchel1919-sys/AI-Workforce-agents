@@ -17,13 +17,7 @@ const env = {
 const firebaseCli = await ensureFirebaseCli();
 const emulator = spawn(
   firebaseCli,
-  [
-    "emulators:start",
-    "--project",
-    project,
-    "--only",
-    "auth,firestore,storage",
-  ],
+  ["emulators:start", "--project", project, "--only", "auth,firestore,storage"],
   { stdio: "inherit", env, shell: false },
 );
 
@@ -55,9 +49,7 @@ const stopEmulator = async () => {
       const killer = spawn(
         "taskkill.exe",
         ["/PID", String(emulator.pid), "/T", "/F"],
-        {
-          stdio: "ignore",
-        },
+        { stdio: "ignore" },
       );
       killer.once("exit", resolve);
       killer.once("error", resolve);

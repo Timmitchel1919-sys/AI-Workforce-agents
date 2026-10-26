@@ -83,13 +83,12 @@ test("complete transitions a leased job to succeeded only for the owner", async 
   const queue = new FirestoreExecutionJobQueue(firestore);
   await queue.enqueue({ job: job({ jobId: "j-O" }) });
   await queue.acquire({ workerId: "owner", leaseTtlMs: 60_000 });
-  await assert.rejects(
-    () =>
-      queue.complete({
-        jobId: "j-O",
-        workerId: "someone-else",
-        status: "succeeded",
-      }),
+  await assert.rejects(() =>
+    queue.complete({
+      jobId: "j-O",
+      workerId: "someone-else",
+      status: "succeeded",
+    }),
   );
   await queue.complete({
     jobId: "j-O",

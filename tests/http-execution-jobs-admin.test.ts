@@ -155,28 +155,26 @@ test("POST /execution-jobs enqueues a job and returns 202 with jobId", async () 
     tool: sampleTool,
   });
   assert.equal(status, 202);
-  assert.ok(typeof body?.jobId === "string" && (body.jobId as string).startsWith("job_"));
+  assert.ok(
+    typeof body?.jobId === "string" &&
+      (body.jobId as string).startsWith("job_"),
+  );
   assert.equal(body?.status, "queued");
 
   // Round-trip via GET /execution-jobs/{jobId}
   const read = await h.call("GET", `/execution-jobs/${body!.jobId}`, "admin");
   assert.equal(read.status, 200);
-  assert.equal(
-    (read.body?.job as { jobId: string }).jobId,
-    body!.jobId,
-  );
+  assert.equal((read.body?.job as { jobId: string }).jobId, body!.jobId);
   await h.close();
 });
 
 test("POST /execution-jobs refuses a project outside the admin's scope", async () => {
   const queue = new FirestoreExecutionJobQueue(new FakeFirestore());
   const h = await harness({ executionWorkerEnabled: true, queue });
-  const { status } = await h.call(
-    "POST",
-    "/execution-jobs",
-    "admin-scoped",
-    { projectId: "other", tool: sampleTool },
-  );
+  const { status } = await h.call("POST", "/execution-jobs", "admin-scoped", {
+    projectId: "other",
+    tool: sampleTool,
+  });
   assert.equal(status, 403);
   await h.close();
 });
@@ -216,6 +214,10 @@ test("POST /execution-jobs/{id}/cancel marks the job for cancellation", async ()
   assert.equal(cancel.body?.cancellationRequested, true);
 
   const read = await h.call("GET", `/execution-jobs/${jobId}`, "admin");
-  assert.equal((read.body?.job as { cancellationRequested?: boolean }).cancellationRequested, true);
+  assert.equal(
+    (read.body?.job as { cancellationRequested?: boolean })
+      .cancellationRequested,
+    true,
+  );
   await h.close();
 });

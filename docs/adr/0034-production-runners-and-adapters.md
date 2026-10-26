@@ -20,6 +20,7 @@ adapters. R7/R8 close the remaining residual gaps.
 ## Decision
 
 ### R1 — Firestore durable state
+
 Replace the in-memory execution-receipt, assignment and write-scope-lease
 repositories with Firestore-backed write-through implementations. Each
 exposes `.ready` (hydrate before serving) and `.flush()` (await pending
@@ -27,6 +28,7 @@ writes). Composition awaits `.ready` before the Control Plane accepts
 traffic.
 
 ### R2 — HTTP response-boundary flush barrier
+
 Dispatcher-wide barrier in `functions/control-plane-function.ts`:
 `createControlPlaneHttpsAdapter` wraps `response.end()` with
 `holdResponseUntilFlushed`, which awaits `runtime.flush()` (bounded by
@@ -35,12 +37,14 @@ runtime's `flush` awaits both `repositories.flushAll()` and the three R1
 adapters' `flush()`.
 
 ### R2B — Cloud Run worker + enqueue path
+
 Admin-only HTTP routes on the Control Plane (`POST /execution-jobs`, `GET`,
 `POST .../cancel`) enqueue governed jobs; a Cloud Run worker claims and
 drains them. `EXECUTION_WORKER_ENABLED` env var is the backend-authoritative
 activation gate — unset → 503, nothing executes.
 
 ### R3 — Docker container runner (opt-in, fail-closed)
+
 `DockerContainerRunner` implements `ExecutionRunner` and wraps every
 `StructuredInvocation` in a hardened `docker run`:
 
@@ -68,9 +72,11 @@ both, the family stays `not_configured`.
 isolated") is now mitigated for projects that select the Docker runner.
 
 ### R4 — Firebase Hosting deployment adapter (opt-in, fail-closed)
+
 `FirebaseHostingDeploymentAdapter` implements `DeploymentAdapter`:
+
 - `deploy()` → `firebase deploy --only hosting:<siteId> --project <ref>
-  --non-interactive --json`, parses `{ result: { "<siteId>": { release } } }`;
+--non-interactive --json`, parses `{ result: { "<siteId>": { release } } }`;
 - `verify()` → HTTP GET `<siteBase>/__/release.json`; HEALTHY requires 200
   **and** `manifest.commit == candidate.commitSha` (a 200 alone is only
   `deployed`);
@@ -81,10 +87,11 @@ Credentials ride into the child as `FIREBASE_TOKEN` env var only; never in
 argv, logs or receipts. Activated via `AIW_FIREBASE_HOSTING_ADAPTER_JSON`.
 
 ### R5 — Docker workspace mounts + Firebase target wiring
+
 - `WorkspacePathResolver` port: when provided and the `RunnerJobSpec` names
   a `workspaceId`, the runner bind-mounts the resolved host path at
   `/workspace` (`type=bind,source=<host>,target=/workspace[,readonly]
-  ,bind-propagation=rprivate`), sets `--workdir=/workspace`, and refuses a
+,bind-propagation=rprivate`), sets `--workdir=/workspace`, and refuses a
   non-absolute resolver output with `WORKSPACE_VIOLATION`.
 - `AIW_FIREBASE_HOSTING_TARGETS_JSON` provides deployment targets with
   strict per-entry validation (regex on resource shape, bounded timeout,
@@ -92,6 +99,7 @@ argv, logs or receipts. Activated via `AIW_FIREBASE_HOSTING_ADAPTER_JSON`.
   adapter does.
 
 ### R7 — Per-operator rate limit for mutations
+
 Augment the existing route+IP rate limiter (`api/security/rate-limit.ts`) with
 a POST-auth check keyed by `operator:<principal.id>` using a tighter
 profile (`operator_mutation`). Applies to every non-GET route. Returns 429
@@ -102,7 +110,9 @@ addressed. Function `maxInstances=1` stays as capacity cap; this adds a
 per-identity cap on top.
 
 ### R8 — Production secret resolver (env-backed)
+
 `EnvSecretBroker` + `EnvSecretValueResolver` in `adapters/vault/`:
+
 - `secret://<name>` maps to env var `AIW_SECRET_<normalized>`, where
   `normalized` upper-cases, replaces every non-`[A-Z0-9]` byte with `_` and
   caps at 64 chars.

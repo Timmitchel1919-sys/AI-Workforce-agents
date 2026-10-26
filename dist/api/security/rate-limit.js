@@ -20,6 +20,11 @@ export const DEFAULT_RATE_LIMIT_PROFILES = {
     destructive_approval: { windowMs: 60_000, maxRequests: 60 },
     deployment: { windowMs: 60_000, maxRequests: 10 },
     access_management: { windowMs: 60_000, maxRequests: 30 },
+    // R7 (ADR-0034): post-auth per-operator cap on every non-GET route. Sits
+    // on top of the existing route+IP bucket and the Function `maxInstances`.
+    // Tighter than `authenticated_default` because mutations are the ones a
+    // compromised token can meaningfully abuse.
+    operator_mutation: { windowMs: 60_000, maxRequests: 120 },
 };
 /**
  * Pure in-memory limiter. One instance per API composition root.

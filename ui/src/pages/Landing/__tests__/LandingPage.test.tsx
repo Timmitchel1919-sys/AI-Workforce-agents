@@ -63,8 +63,13 @@ describe("Landing Page (v2)", () => {
   });
 
   it("renders the Command Center preview inline inside the hero", () => {
-    renderLanding();
+    const { container } = renderLanding();
+    const hero = container.querySelector(".lp2-hero");
+    const copy = hero?.querySelector(".lp2-hero-head");
+
     expect(screen.getByLabelText(/AI Workforce command preview/i)).toBeInTheDocument();
+    expect(copy?.querySelector(".aw-section-eyebrow")).toHaveTextContent(/Private operating system/i);
+    expect(copy?.querySelector(".lp2-hero-meta")).toHaveTextContent(/Private.*single-tenant/i);
   });
 
   it("renders each primary section by its id anchor", () => {

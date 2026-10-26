@@ -12,4 +12,3 @@ Layer 2 is accepted only when the automated suite and browser QA confirm:
 - no acceptance interaction causes an unintended backend mutation.
 
 The release evidence must include the exact test/build commands, browser route exercised, commit, push, deployment target and production bundle verification. A document alone is not proof that a gate ran.
-

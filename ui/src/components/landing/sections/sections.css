@@ -364,7 +364,7 @@
 .lp2-project-row:last-child { border-bottom: 0; }
 .lp2-project-row span.meta { color: var(--foreground-muted); font-family: var(--font-mono); font-size: 0.72rem; }
 
-/* Dimensional Field hero background */
+/* Dimensional Field — adapted from 21st.dev @mengto. */
 .lp2-hero-section--dimensional { position: relative; isolation: isolate; overflow: hidden; }
 .lp2-hero-section--dimensional > .lp2-hero { position: relative; z-index: 1; }
 .lp2-hero-bg { position: absolute; inset: 0; z-index: 0; }
@@ -374,10 +374,5 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(5, 6, 8, 0.0) 0%,
-    rgba(5, 6, 8, 0.35) 60%,
-    rgba(5, 6, 8, 0.85) 100%
-  );
+  background: linear-gradient(180deg, rgb(5 6 8 / 0.08), rgb(5 6 8 / 0.38) 60%, rgb(5 6 8 / 0.9));
 }

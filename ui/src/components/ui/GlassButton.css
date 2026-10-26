@@ -129,6 +129,34 @@
 @media (prefers-reduced-motion: reduce) {
   .ui-glass-btn-spinner { animation-duration: 2.4s; }
 }
+
+/* Liquid Metal treatment adapted from 21st.dev @johuniq. */
+.ui-glass-btn { position: relative; isolation: isolate; overflow: hidden; }
+.ui-glass-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: conic-gradient(from 0deg, #00ffcc, #7000ff, #00c8ff, #fff, #00ffcc, #4a00e0, #00ffcc);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ui-lmb-spin 7s linear infinite;
+  filter: drop-shadow(0 0 8px rgb(0 255 204 / 0.28));
+  pointer-events: none;
+  opacity: 0.9;
+  z-index: 0;
+}
+.ui-glass-btn > * { position: relative; z-index: 1; }
+.ui-glass-btn-wrap.v-ghost .ui-glass-btn::before,
+.ui-glass-btn-wrap.v-toolbar .ui-glass-btn::before { opacity: 0.42; filter: drop-shadow(0 0 6px rgb(125 211 252 / 0.18)); }
+.ui-glass-btn-wrap.v-premium .ui-glass-btn::before { animation-duration: 5s; filter: drop-shadow(0 0 12px rgb(0 255 204 / 0.45)); }
+.ui-glass-btn-wrap.v-danger .ui-glass-btn::before { background: conic-gradient(from 0deg, #ff5577, #ffbb33, #fff, #ff5577); }
+.ui-glass-btn-wrap.v-success .ui-glass-btn::before { background: conic-gradient(from 0deg, #00ffcc, #7cff6e, #fff, #00ffcc); }
+@keyframes ui-lmb-spin { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) { .ui-glass-btn::before { animation: none; } }
 .ui-glass-btn:disabled { cursor: not-allowed; opacity: 0.55; }
 .ui-glass-btn-wrap[data-disabled="true"] { pointer-events: none; }
 
@@ -346,58 +374,4 @@
     transition: none !important;
   }
   .ui-glass-btn-wrap:has(.ui-glass-btn:active) { transform: none; }
-}
-
-/* -------------------------------------------------------------------------
-   Liquid Metal overlay — platform-wide metallic rim + sheen for GlassButton.
-   Non-invasive: layered via ::before, existing visuals (incl. ::after) kept.
-   ------------------------------------------------------------------------- */
-.ui-glass-btn { position: relative; isolation: isolate; overflow: hidden; }
-.ui-glass-btn::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.25px;
-  background: conic-gradient(
-    from 0deg,
-    #00ffcc, #7000ff, #00c8ff, #ffffff,
-    #00ffcc, #4a00e0, #00ffcc
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: ui-lmb-spin 7s linear infinite;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 204, 0.28));
-  pointer-events: none;
-  opacity: 0.9;
-  z-index: 0;
-}
-.ui-glass-btn > * { position: relative; z-index: 1; }
-
-.ui-glass-btn-wrap.v-ghost .ui-glass-btn::before,
-.ui-glass-btn-wrap.v-toolbar .ui-glass-btn::before {
-  opacity: 0.45;
-  filter: drop-shadow(0 0 6px rgba(125, 211, 252, 0.18));
-}
-.ui-glass-btn-wrap.v-premium .ui-glass-btn::before {
-  animation-duration: 5s;
-  filter: drop-shadow(0 0 12px rgba(0, 255, 204, 0.45));
-}
-.ui-glass-btn-wrap.v-danger .ui-glass-btn::before {
-  background: conic-gradient(from 0deg, #ff5577, #ffbb33, #ffffff, #ff5577);
-}
-.ui-glass-btn-wrap.v-success .ui-glass-btn::before {
-  background: conic-gradient(from 0deg, #00ffcc, #7cff6e, #ffffff, #00ffcc);
-}
-
-@keyframes ui-lmb-spin { to { transform: rotate(1turn); } }
-
-@media (prefers-reduced-motion: reduce) {
-  .ui-glass-btn::before { animation: none; }
 }

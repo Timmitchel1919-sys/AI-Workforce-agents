@@ -37,13 +37,20 @@ export function DimensionalField({ className, style }: DimensionalFieldProps) {
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const canvas = document.createElement("canvas");
     canvas.style.cssText =
       "position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;";
     host.appendChild(canvas);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    } catch {
+      canvas.remove();
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     const scene = new THREE.Scene();

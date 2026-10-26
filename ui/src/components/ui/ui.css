@@ -208,7 +208,7 @@ aside.ui-card { background: var(--surface-elevated, var(--color-surface-solid));
 /* Simple responsive utilities */
 .sr-only { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
-/* Liquid Metal overlay — platform-wide for base Button */
+/* Platform Button receives the same restrained liquid-metal edge. */
 .ui-button { position: relative; isolation: isolate; overflow: hidden; }
 .ui-button::before {
   content: "";
@@ -216,27 +216,17 @@ aside.ui-card { background: var(--surface-elevated, var(--color-surface-solid));
   inset: 0;
   border-radius: inherit;
   padding: 1.25px;
-  background: conic-gradient(
-    from 0deg,
-    #00ffcc, #7000ff, #00c8ff, #ffffff,
-    #00ffcc, #4a00e0, #00ffcc
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
+  background: conic-gradient(from 0deg, #00ffcc, #7000ff, #00c8ff, #fff, #00ffcc, #4a00e0, #00ffcc);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   animation: ui-btn-lmb-spin 7s linear infinite;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 204, 0.28));
+  filter: drop-shadow(0 0 8px rgb(0 255 204 / 0.28));
   pointer-events: none;
   z-index: 0;
 }
-.ui-button.ghost::before { opacity: 0.45; }
+.ui-button.ghost::before { opacity: 0.42; }
 .ui-button > * { position: relative; z-index: 1; }
 @keyframes ui-btn-lmb-spin { to { transform: rotate(1turn); } }
-@media (prefers-reduced-motion: reduce) {
-  .ui-button::before { animation: none; }
-}
+@media (prefers-reduced-motion: reduce) { .ui-button::before { animation: none; } }

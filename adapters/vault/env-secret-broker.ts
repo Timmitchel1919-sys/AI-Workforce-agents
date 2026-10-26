@@ -28,7 +28,10 @@ import {
   type SecretHandle,
   type SecretReference,
 } from "../../contracts/index.js";
-import { noopMetrics, type MetricsPort } from "../../core/observability/index.js";
+import {
+  noopMetrics,
+  type MetricsPort,
+} from "../../core/observability/index.js";
 import type { SecretValueResolver } from "../../core/release/source-control-orchestrator.js";
 
 /** Env-var prefix. The whole mapping is public — no secret in the NAME. */
@@ -69,7 +72,8 @@ export class EnvSecretBroker implements SecretBroker, SecretValueResolver {
   constructor(options: EnvSecretBrokerOptions = {}) {
     this.env = options.env ?? (() => process.env);
     this.handleKey =
-      options.handleKey ?? `${Date.now()}:${Math.random().toString(36).slice(2)}`;
+      options.handleKey ??
+      `${Date.now()}:${Math.random().toString(36).slice(2)}`;
     this.metrics = options.metrics ?? noopMetrics;
   }
 

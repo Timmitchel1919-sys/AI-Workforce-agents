@@ -127,7 +127,12 @@ async function pollUntilTerminal(jobId) {
         `\r[r2b] status=${body.job.status} attempt=${body.job.attempt}   `,
       );
       const s = body.job.status;
-      if (s === "succeeded" || s === "failed" || s === "cancelled" || s === "dead_letter") {
+      if (
+        s === "succeeded" ||
+        s === "failed" ||
+        s === "cancelled" ||
+        s === "dead_letter"
+      ) {
         process.stdout.write("\n");
         return body.job;
       }

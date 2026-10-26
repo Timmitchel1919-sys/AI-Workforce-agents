@@ -22,7 +22,10 @@ test("write + read round-trip", async () => {
     path: "greet.txt",
     content: "hello",
   });
-  const result = await handler.run(lease, { action: "read", path: "greet.txt" });
+  const result = await handler.run(lease, {
+    action: "read",
+    path: "greet.txt",
+  });
   assert.equal(result.action, "read");
   if (result.action === "read") {
     assert.equal(result.content, "hello");
@@ -35,11 +38,21 @@ test("write + read round-trip", async () => {
 test("exists returns correct kind", async () => {
   const lease = await workspace();
   const handler = new FilesystemToolHandler();
-  const missing = await handler.run(lease, { action: "exists", path: "nope.txt" });
+  const missing = await handler.run(lease, {
+    action: "exists",
+    path: "nope.txt",
+  });
   assert.deepEqual(missing, { action: "exists", kind: "missing" });
 
-  await handler.run(lease, { action: "write", path: "there.txt", content: "x" });
-  const file = await handler.run(lease, { action: "exists", path: "there.txt" });
+  await handler.run(lease, {
+    action: "write",
+    path: "there.txt",
+    content: "x",
+  });
+  const file = await handler.run(lease, {
+    action: "exists",
+    path: "there.txt",
+  });
   assert.deepEqual(file, { action: "exists", kind: "file" });
   await lease.release();
 });
@@ -61,9 +74,15 @@ test("list returns bounded entries", async () => {
 test("path confinement rejects traversal and absolute paths", async () => {
   const lease = await workspace();
   const handler = new FilesystemToolHandler();
-  await assert.rejects(() => handler.run(lease, { action: "read", path: "../etc/passwd" }));
-  await assert.rejects(() => handler.run(lease, { action: "read", path: "/etc/passwd" }));
-  await assert.rejects(() => handler.run(lease, { action: "write", path: "../x", content: "evil" }));
+  await assert.rejects(() =>
+    handler.run(lease, { action: "read", path: "../etc/passwd" }),
+  );
+  await assert.rejects(() =>
+    handler.run(lease, { action: "read", path: "/etc/passwd" }),
+  );
+  await assert.rejects(() =>
+    handler.run(lease, { action: "write", path: "../x", content: "evil" }),
+  );
   await lease.release();
 });
 
@@ -71,7 +90,12 @@ test("write to secret-classified path is denied", async () => {
   const lease = await workspace();
   const handler = new FilesystemToolHandler();
   await assert.rejects(
-    () => handler.run(lease, { action: "write", path: ".env", content: "SECRET=x" }),
+    () =>
+      handler.run(lease, {
+        action: "write",
+        path: ".env",
+        content: "SECRET=x",
+      }),
     (e: unknown) =>
       e instanceof ValidationError && /classified as secret/.test(e.message),
   );
@@ -95,7 +119,12 @@ test("write that exceeds policy maxWriteBytes is denied", async () => {
     },
   });
   await assert.rejects(
-    () => handler.run(lease, { action: "write", path: "big.txt", content: "x".repeat(100) }),
+    () =>
+      handler.run(lease, {
+        action: "write",
+        path: "big.txt",
+        content: "x".repeat(100),
+      }),
     (e: unknown) =>
       e instanceof ValidationError && /exceeds maxWriteBytes/.test(e.message),
   );

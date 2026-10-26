@@ -22,9 +22,7 @@ const DOCKER_PATH =
     : "/usr/bin/docker";
 
 const POLICY_PIN: ContainerPolicy = {
-  approvedImages: [
-    { name: "node", versions: ["22"], digest: "sha256:aaaa" },
-  ],
+  approvedImages: [{ name: "node", versions: ["22"], digest: "sha256:aaaa" }],
   requireDigest: true,
 };
 
@@ -269,7 +267,10 @@ test("DockerContainerRunner mounts read-write only when workspaceMode == read_wr
     workspaceResolver: { resolve: async () => "/var/aiw/ws/ws-rw" },
     processRunner: cap.runner,
   });
-  const rwSpec: RunnerJobSpec = Object.freeze({ ...JOB, workspaceMode: "read_write" });
+  const rwSpec: RunnerJobSpec = Object.freeze({
+    ...JOB,
+    workspaceMode: "read_write",
+  });
   await runner.prepare(rwSpec);
   await runner.run(rwSpec.jobId, invocation(), RUN_OPTIONS);
   const mountSpec =
@@ -315,7 +316,11 @@ test("DockerContainerRunner runs without a mount when the resolver returns null"
   const result = await runner.run(JOB.jobId, invocation(), RUN_OPTIONS);
   assert.equal(result.exitClass, "success");
   const argv = cap.spec?.argv ?? [];
-  assert.equal(argv.indexOf("--mount"), -1, "no mount flag when resolver returns null");
+  assert.equal(
+    argv.indexOf("--mount"),
+    -1,
+    "no mount flag when resolver returns null",
+  );
 });
 
 test("DockerContainerRunner requires at least one image binding", () => {

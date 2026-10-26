@@ -3,3 +3,4 @@ export * from "./declarative-environment-probe.js";
 export * from "./platform-adapters.js";
 export * from "./host-process-runner.js";
 export * from "./docker-container-runner.js";
+export * from "./sandbox-workspace-path-resolver.js";

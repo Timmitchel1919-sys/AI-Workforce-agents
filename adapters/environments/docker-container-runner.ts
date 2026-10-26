@@ -103,7 +103,9 @@ export interface DockerContainerRunnerOptions {
    */
   readonly workspaceResolver?: WorkspacePathResolver;
   /** Injected for tests; defaults to the EO-4.2 bounded process runner. */
-  readonly processRunner?: (spec: BoundedProcessSpec) => Promise<BoundedProcessResult>;
+  readonly processRunner?: (
+    spec: BoundedProcessSpec,
+  ) => Promise<BoundedProcessResult>;
   /** Injected for tests; defaults to crypto.randomUUID. */
   readonly nameFactory?: () => string;
 }
@@ -119,7 +121,9 @@ const CONTAINER_NAME_PREFIX = "aiw-exec-";
 export class DockerContainerRunner implements ExecutionRunner {
   readonly descriptor: RunnerDescriptor;
   private readonly jobs = new Map<string, JobState>();
-  private readonly processRunner: (spec: BoundedProcessSpec) => Promise<BoundedProcessResult>;
+  private readonly processRunner: (
+    spec: BoundedProcessSpec,
+  ) => Promise<BoundedProcessResult>;
   private readonly nameFactory: () => string;
 
   constructor(private readonly options: DockerContainerRunnerOptions) {
@@ -191,7 +195,10 @@ export class DockerContainerRunner implements ExecutionRunner {
     );
     if (!present) return { ready: false, detail: "docker CLI is missing" };
     const result = await this.processRunner({
-      executable: { executableId: "docker", path: this.options.dockerExecutable },
+      executable: {
+        executableId: "docker",
+        path: this.options.dockerExecutable,
+      },
       argv: ["version", "--format", "{{.Server.Version}}"],
       cwd: os.tmpdir(),
       env: this.buildChildEnv(),

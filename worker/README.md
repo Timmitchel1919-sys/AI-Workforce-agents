@@ -83,16 +83,16 @@ default so a half-provisioned worker never silently receives traffic.
 
 ## Environment variables
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `PORT` | `8080` | HTTP port for `GET /healthz` |
-| `WORKER_ID` | `worker-<pid>` | Identifier recorded on every lease |
-| `LEASE_TTL_MS` | `60000` | How long a worker holds a job lease |
-| `IDLE_POLL_MS` | `2000` | Poll interval when the queue is empty |
-| `WORKER_PROJECT_ID` | unset | Optional per-project filter |
-| `FIREBASE_PROJECT_ID` | — | Required to construct Firestore client |
-| `FIRESTORE_EMULATOR_HOST` | — | Point at emulator for dev runs |
-| `GOOGLE_APPLICATION_CREDENTIALS` | — | Service-account key path (Cloud Run supplies this automatically) |
+| Variable                         | Default        | Purpose                                                          |
+| -------------------------------- | -------------- | ---------------------------------------------------------------- |
+| `PORT`                           | `8080`         | HTTP port for `GET /healthz`                                     |
+| `WORKER_ID`                      | `worker-<pid>` | Identifier recorded on every lease                               |
+| `LEASE_TTL_MS`                   | `60000`        | How long a worker holds a job lease                              |
+| `IDLE_POLL_MS`                   | `2000`         | Poll interval when the queue is empty                            |
+| `WORKER_PROJECT_ID`              | unset          | Optional per-project filter                                      |
+| `FIREBASE_PROJECT_ID`            | —              | Required to construct Firestore client                           |
+| `FIRESTORE_EMULATOR_HOST`        | —              | Point at emulator for dev runs                                   |
+| `GOOGLE_APPLICATION_CREDENTIALS` | —              | Service-account key path (Cloud Run supplies this automatically) |
 
 ## Security posture
 

@@ -137,7 +137,6 @@ export default function Sidebar({
           <NavLink
             to="/overview"
             className="sidebar__brand"
-            aria-label={t("shell.homeLink")}
             onClick={() => onNavigate?.()}
           >
             <img src={LOGO_SRC} alt="" className="sidebar__logo" />

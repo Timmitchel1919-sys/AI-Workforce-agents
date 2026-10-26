@@ -24,8 +24,7 @@ export interface TestRunOutput extends GovernedProcessOutput {
   readonly passed: boolean;
 }
 
-export interface TestRunnerToolHandlerOptions
-  extends GovernedProcessToolHandlerOptions {
+export interface TestRunnerToolHandlerOptions extends GovernedProcessToolHandlerOptions {
   readonly defaultExecutableId?: string;
   readonly defaultArgs?: readonly string[];
   readonly defaultTimeoutMs?: number;

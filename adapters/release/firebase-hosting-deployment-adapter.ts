@@ -30,7 +30,10 @@ import type {
   DeploymentAdapter,
   DeploymentContext,
 } from "../../contracts/index.js";
-import { noopMetrics, type MetricsPort } from "../../core/observability/index.js";
+import {
+  noopMetrics,
+  type MetricsPort,
+} from "../../core/observability/index.js";
 import {
   runBoundedProcess,
   type BoundedProcessResult,
@@ -80,7 +83,10 @@ function parseHostingResources(
     const [body, siteBaseUrl] = spec.split("@");
     const parts = body.split(":");
     if (parts.length < 2 || !parts[1]) continue;
-    if (!siteBaseUrl || !/^https:\/\/[A-Za-z0-9.-]+(?:\/|$)/.test(siteBaseUrl)) {
+    if (
+      !siteBaseUrl ||
+      !/^https:\/\/[A-Za-z0-9.-]+(?:\/|$)/.test(siteBaseUrl)
+    ) {
       continue;
     }
     parsed.push({
@@ -215,7 +221,8 @@ export class FirebaseHostingDeploymentAdapter implements DeploymentAdapter {
       }
       const body = await response.text();
       const manifest = safeParseJson(body) as { commit?: unknown } | null;
-      const commit = typeof manifest?.commit === "string" ? manifest.commit : "";
+      const commit =
+        typeof manifest?.commit === "string" ? manifest.commit : "";
       if (!commit) {
         return {
           reachable: true,

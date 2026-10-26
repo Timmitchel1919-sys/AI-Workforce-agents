@@ -2961,7 +2961,8 @@ export function createControlPlaneApi(
           correlationId,
         );
       }
-      const projectId = typeof body.projectId === "string" ? body.projectId : "";
+      const projectId =
+        typeof body.projectId === "string" ? body.projectId : "";
       if (!projectId) {
         return send(
           res,
@@ -2979,7 +2980,12 @@ export function createControlPlaneApi(
         );
       }
       const tool = body.tool as
-        | { toolId?: unknown; action?: unknown; input?: unknown; requiredCapability?: unknown }
+        | {
+            toolId?: unknown;
+            action?: unknown;
+            input?: unknown;
+            requiredCapability?: unknown;
+          }
         | undefined;
       if (
         !tool ||
@@ -2990,7 +2996,12 @@ export function createControlPlaneApi(
         return send(
           res,
           400,
-          { error: { message: "tool.toolId, tool.action and tool.requiredCapability required" } },
+          {
+            error: {
+              message:
+                "tool.toolId, tool.action and tool.requiredCapability required",
+            },
+          },
           correlationId,
         );
       }
@@ -3015,9 +3026,13 @@ export function createControlPlaneApi(
         projectId,
         taskId: typeof body.taskId === "string" ? body.taskId : "ad-hoc",
         agentId:
-          typeof body.agentId === "string" ? body.agentId : `operator:${principal.id}`,
+          typeof body.agentId === "string"
+            ? body.agentId
+            : `operator:${principal.id}`,
         executionId:
-          typeof body.executionId === "string" ? body.executionId : `exec_${randomUUID()}`,
+          typeof body.executionId === "string"
+            ? body.executionId
+            : `exec_${randomUUID()}`,
         tool: {
           toolId: tool.toolId,
           action: tool.action,
@@ -3044,7 +3059,12 @@ export function createControlPlaneApi(
           correlationId,
         );
       }
-      return send(res, 202, { jobId: job.jobId, status: job.status }, correlationId);
+      return send(
+        res,
+        202,
+        { jobId: job.jobId, status: job.status },
+        correlationId,
+      );
     }
 
     // GET /execution-jobs/{jobId} — read status
@@ -3052,7 +3072,12 @@ export function createControlPlaneApi(
       const jobId = segs[1];
       const job = await queue.get(jobId);
       if (!job) {
-        return send(res, 404, { error: { message: "job not found" } }, correlationId);
+        return send(
+          res,
+          404,
+          { error: { message: "job not found" } },
+          correlationId,
+        );
       }
       if (!operatorCanAccessProject(principal, job.projectId)) {
         return send(
@@ -3070,7 +3095,12 @@ export function createControlPlaneApi(
       const jobId = segs[1];
       const job = await queue.get(jobId);
       if (!job) {
-        return send(res, 404, { error: { message: "job not found" } }, correlationId);
+        return send(
+          res,
+          404,
+          { error: { message: "job not found" } },
+          correlationId,
+        );
       }
       if (!operatorCanAccessProject(principal, job.projectId)) {
         return send(
@@ -3083,15 +3113,26 @@ export function createControlPlaneApi(
       let reason = "operator-requested";
       try {
         const body = await readJsonBody(req, maxBody);
-        if (typeof body.reason === "string" && body.reason) reason = body.reason;
+        if (typeof body.reason === "string" && body.reason)
+          reason = body.reason;
       } catch {
         /* body optional */
       }
       await queue.requestCancellation(jobId, reason);
-      return send(res, 202, { jobId, cancellationRequested: true }, correlationId);
+      return send(
+        res,
+        202,
+        { jobId, cancellationRequested: true },
+        correlationId,
+      );
     }
 
-    return send(res, 405, { error: { message: "method not allowed" } }, correlationId);
+    return send(
+      res,
+      405,
+      { error: { message: "method not allowed" } },
+      correlationId,
+    );
   }
 
   async function handleProfile(

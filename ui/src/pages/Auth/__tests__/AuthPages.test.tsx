@@ -32,6 +32,8 @@ interface HarnessOptions {
   user?: AuthUser | null;
   access?: AccessState;
   configured?: boolean;
+  demoMode?: boolean;
+  configurationError?: boolean;
   signIn?: (email: string, password: string, remember: boolean) => Promise<AccessState>;
   signUp?: AuthContextValue["signUp"];
   sendPasswordReset?: AuthContextValue["sendPasswordReset"];
@@ -57,6 +59,8 @@ function Harness(options: HarnessOptions) {
       loading: false,
       accessToken: session.user ? "token" : null,
       configured: options.configured ?? true,
+      demoMode: options.demoMode,
+      configurationError: options.configurationError,
       signIn: async (email, password, remember) => {
         const access = await (options.signIn ?? (async () => "granted" as const))(email, password, remember);
         setSession({ user: { ...TEST_USER, email }, access });
@@ -339,9 +343,21 @@ describe("Protected routes", () => {
     expect(screen.queryByText("Control Center")).toBeNull();
   });
 
-  it("keeps the development pass-through when Firebase is not configured", () => {
+  it("fails closed when Firebase is not configured", () => {
     render(<Harness path="/overview" configured={false} />);
+    expect(screen.getByRole("heading", { name: /Secure access unavailable/i })).toBeInTheDocument();
+    expect(screen.queryByText("Control Center")).toBeNull();
+  });
+
+  it("keeps only the explicitly enabled development demo pass-through", () => {
+    render(<Harness path="/overview" configured={false} demoMode />);
     expect(screen.getByText("Control Center")).toBeInTheDocument();
+  });
+
+  it("fails closed when initialization reports a configuration error", () => {
+    render(<Harness path="/overview" configured configurationError user={TEST_USER} access="granted" />);
+    expect(screen.getByRole("heading", { name: /Secure access unavailable/i })).toBeInTheDocument();
+    expect(screen.queryByText("Control Center")).toBeNull();
   });
 });
 

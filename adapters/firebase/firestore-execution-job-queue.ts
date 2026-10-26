@@ -86,9 +86,7 @@ export class FirestoreExecutionJobQueue implements ExecutionJobQueue {
 
     const scan = async () => {
       const snapshot = input.projectId
-        ? await this.collection
-            .where("projectId", "==", input.projectId)
-            .get()
+        ? await this.collection.where("projectId", "==", input.projectId).get()
         : await this.collection.get();
       const result: Array<{ id: string; job: ExecutionJob }> = [];
       for (const doc of snapshot.docs) {
@@ -119,7 +117,8 @@ export class FirestoreExecutionJobQueue implements ExecutionJobQueue {
     const claimable = second
       .filter(
         ({ job }) =>
-          job.status === "queued" && (!job.availableAt || job.availableAt <= now),
+          job.status === "queued" &&
+          (!job.availableAt || job.availableAt <= now),
       )
       .sort((a, b) => a.job.createdAt.localeCompare(b.job.createdAt))
       .slice(0, this.scanLimit);
@@ -139,7 +138,8 @@ export class FirestoreExecutionJobQueue implements ExecutionJobQueue {
     const ref = this.collection.doc(input.jobId);
     await this.firestore.runTransaction(async (transaction) => {
       const snap = await transaction.get(ref);
-      if (!snap.exists) throw new ValidationError(`unknown job: ${input.jobId}`);
+      if (!snap.exists)
+        throw new ValidationError(`unknown job: ${input.jobId}`);
       const job = toJob(snap.data()!);
       if (!job.lease || job.lease.workerId !== input.workerId) {
         throw new ValidationError(
@@ -156,7 +156,10 @@ export class FirestoreExecutionJobQueue implements ExecutionJobQueue {
         heartbeatAt: now,
         expiresAt,
       };
-      transaction.set(ref, this.serialize({ ...job, lease: nextLease, updatedAt: now }));
+      transaction.set(
+        ref,
+        this.serialize({ ...job, lease: nextLease, updatedAt: now }),
+      );
     });
   }
 
@@ -165,14 +168,18 @@ export class FirestoreExecutionJobQueue implements ExecutionJobQueue {
     const ref = this.collection.doc(input.jobId);
     await this.firestore.runTransaction(async (transaction) => {
       const snap = await transaction.get(ref);
-      if (!snap.exists) throw new ValidationError(`unknown job: ${input.jobId}`);
+      if (!snap.exists)
+        throw new ValidationError(`unknown job: ${input.jobId}`);
       const job = toJob(snap.data()!);
       if (!job.lease || job.lease.workerId !== input.workerId) {
         throw new ValidationError(
           `complete denied: worker ${input.workerId} does not own ${input.jobId}`,
         );
       }
-      if (job.status === input.status && job.lease.workerId === input.workerId) {
+      if (
+        job.status === input.status &&
+        job.lease.workerId === input.workerId
+      ) {
         // Idempotent completion.
         return;
       }

@@ -17,12 +17,19 @@ export function AnimatedShaderBackground({ className, style }: AnimatedShaderBac
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const canvas = document.createElement("canvas");
     canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;";
     host.appendChild(canvas);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: false });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: false });
+    } catch {
+      canvas.remove();
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 
     const uniforms = {
@@ -168,10 +175,10 @@ export function AnimatedShaderBackground({ className, style }: AnimatedShaderBac
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: -1,
+        zIndex: 0,
         pointerEvents: "none",
         overflow: "hidden",
-        background: "#06091a",
+        background: "#030408",
         ...style,
       }}
     />

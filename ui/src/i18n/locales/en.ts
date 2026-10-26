@@ -1170,7 +1170,8 @@ export const en = {
   auth: {
     backToSystem: "Back to system",
     backToLanding: "Back to landing",
-    notConfigured: "Authentication is not configured for this environment (Firebase web config missing).",
+    notConfiguredTitle: "Secure access unavailable",
+    notConfigured: "Authentication configuration is unavailable. Protected content has been locked. Contact the system administrator.",
     authNode: "Authentication node",
     encrypted: "Encrypted connection (HTTPS)",
     protected: "Protected access · credentials are handled by Firebase Authentication",
