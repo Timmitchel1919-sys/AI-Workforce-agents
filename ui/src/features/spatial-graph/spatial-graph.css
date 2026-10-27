@@ -34,7 +34,7 @@
   box-shadow: 0 8px 32px color-mix(in srgb, var(--aw-blue-900) 35%, transparent);
 }
 
-.sg-panel { background: var(--color-surface); backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2); border: 1px solid var(--color-border); border-radius: 8px; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; color: var(--color-text); }
+.sg-panel { background: var(--color-surface-solid, var(--surface)); backdrop-filter: none; -webkit-backdrop-filter: none; border: 1px solid var(--color-border); border-radius: 8px; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; color: var(--color-text); }
 .sg-panel__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
 .sg-panel__title { margin: 0; font-size: 1rem; color: var(--color-text-heading); word-break: break-word; }
 .sg-subtitle { margin: 0.5rem 0 0.15rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-secondary); }
@@ -71,7 +71,7 @@
 .sg-edge-status { font-size: 0.75rem; font-weight: 600; }
 .sg-edge-status--blocking { color: var(--color-danger); text-decoration: underline wavy; text-underline-offset: 3px; }
 .sg-edge-status--satisfied { color: var(--color-success); }
-.sg-canvas-tooltip, .sg-canvas-edge-label { backdrop-filter: blur(6px); }
+.sg-canvas-tooltip, .sg-canvas-edge-label { backdrop-filter: none; }
 
 /* Controlled motion: short, subtle transitions only; none when the user prefers reduced motion. */
 .sg-btn, .sg-chip, .sg-list__item, .sg-link { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
@@ -161,7 +161,7 @@
   position: absolute; left: 0.6rem; bottom: 0.6rem; z-index: 2;
   display: grid; grid-template-columns: repeat(5, 2rem); gap: 0.25rem; padding: 0.3rem;
   border-radius: 10px; border: 1px solid var(--color-border-strong);
-  background: var(--color-surface); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  background: var(--color-surface-solid, var(--surface)); backdrop-filter: none; -webkit-backdrop-filter: none;
 }
 .sg-camera .sg-btn--icon { min-width: 0; width: 2rem; min-height: 2rem; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 @media (max-width: 480px) { .sg-camera { grid-template-columns: repeat(5, 1.9rem); } .sg-camera .sg-btn--icon { width: 1.9rem; } }

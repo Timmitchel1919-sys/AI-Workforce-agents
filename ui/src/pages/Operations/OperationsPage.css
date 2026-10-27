@@ -9,7 +9,7 @@
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: var(--color-surface);
-  backdrop-filter: blur(var(--glass-blur, 12px));
+  backdrop-filter: none;
 }
 .ops-card--wide { grid-column: 1 / -1; }
 .ops-card h2 { margin: 0 0 10px; font-size: 15px; color: var(--color-text-heading); }

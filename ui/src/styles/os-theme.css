@@ -28,8 +28,8 @@ html.os-document body {
   --lp-text-muted: #64748b;
 
   /* Glass - frosted transparency */
-  --lp-glass-bg: rgba(10, 10, 12, 0.6);
-  --lp-glass-bg-strong: rgba(15, 15, 18, 0.75);
+  --lp-glass-bg: #0a0a0c;
+  --lp-glass-bg-strong: #0f0f12;
   --lp-glass-border: rgba(255, 255, 255, 0.1);
   --lp-glass-border-hover: rgba(255, 255, 255, 0.25);
   --lp-glass-highlight: rgba(255, 255, 255, 0.1);
@@ -219,8 +219,8 @@ html.os-document body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.02);
   color: var(--lp-text-secondary);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .lp-button--secondary:hover {

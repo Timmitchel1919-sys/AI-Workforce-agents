@@ -12,9 +12,7 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  /* Internal sonar background provides the ambient fill; keep this transparent
-     so the sonar canvas + grid + vignette are visible behind panels. */
-  background: transparent;
+  background: var(--background, #050507);
   color: var(--color-text);
   transition: grid-template-columns 200ms var(--ease-standard);
 }
@@ -25,8 +23,8 @@
 
 .app-shell__sidebar {
   background: var(--color-sidebar);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   border-right: 1px solid var(--color-border);
   min-width: 0;
   min-height: 0;
@@ -92,15 +90,24 @@
   inset: 0;
   border: 0;
   background: var(--color-overlay);
-  z-index: 40;
+  z-index: 1000;
 }
+
+.app-shell__mobile-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.app-shell__mobile-layer > * { pointer-events: auto; }
 
 .app-shell__mobile-drawer {
   position: fixed;
   inset: 0 auto 0 0;
   width: min(88vw, 360px);
   max-width: 360px;
-  z-index: 50;
+  z-index: 1001;
   display: flex;
   flex-direction: column;
   background: var(--color-surface-solid);
@@ -108,6 +115,16 @@
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   animation: slide-in 180ms var(--ease-standard);
+}
+
+@media (max-width: 560px) {
+  .app-shell__mobile-drawer {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-right: 0;
+  }
 }
 
 .app-shell__mobile-drawer .sidebar {
@@ -349,7 +366,7 @@ html[data-workspace-layout="split"] .overview-widgets { grid-template-columns:re
     padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--color-border);
     background: var(--color-topbar, var(--color-surface-solid));
-    backdrop-filter: blur(var(--glass-blur, 12px));
+    backdrop-filter: none;
   }
   .mobile-tabbar__item {
     display: flex;

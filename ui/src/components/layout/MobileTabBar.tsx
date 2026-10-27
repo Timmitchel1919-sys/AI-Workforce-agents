@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { ClipboardCheck, Factory, LayoutDashboard, Menu, TerminalSquare } from "lucide-react";
 import { useI18n } from "../../i18n";
+import type { RefObject } from "react";
 
 const TABS = [
   { to: "/overview", key: "home", icon: LayoutDashboard },
@@ -13,7 +14,15 @@ const TABS = [
  * UI Layer 7 — thumb-reach bottom navigation on phones. The full module list
  * stays one tap away in the existing drawer ("More"). Hidden above 768px.
  */
-export function MobileTabBar({ onMore, moreOpen }: { onMore: () => void; moreOpen: boolean }) {
+export function MobileTabBar({
+  onMore,
+  moreOpen,
+  moreTriggerRef,
+}: {
+  onMore: () => void;
+  moreOpen: boolean;
+  moreTriggerRef?: RefObject<HTMLButtonElement | null>;
+}) {
   const { t } = useI18n();
   return (
     <nav className="mobile-tabbar" aria-label={t("mobileCommand.tabs.label")}>
@@ -24,6 +33,7 @@ export function MobileTabBar({ onMore, moreOpen }: { onMore: () => void; moreOpe
         </NavLink>
       ))}
       <button
+        ref={moreTriggerRef}
         type="button"
         className="mobile-tabbar__item"
         aria-expanded={moreOpen}

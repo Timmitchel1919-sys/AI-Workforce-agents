@@ -14,8 +14,8 @@
   border-radius: var(--radius-panel, 20px);
   background: var(--surface);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--blur-sm, 10px));
-  -webkit-backdrop-filter: blur(var(--blur-sm, 10px));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   color: var(--foreground);
 }
 .overview-personalize > div,

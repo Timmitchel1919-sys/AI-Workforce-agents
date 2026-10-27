@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
@@ -9,7 +10,6 @@ import { MobileTabBar } from "./MobileTabBar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { WorkspaceContextProvider } from "../../features/workspaceContext";
 import { WorkspaceControls } from "./WorkspaceControls";
-import { ShootingStars } from "../ui/ShootingStars";
 import { AppUpdatePrompt } from "../pwa/AppUpdatePrompt";
 import { MobileAccountMenu } from "./MobileAccountMenu";
 import "./AppShell.css";
@@ -87,7 +87,6 @@ export default function AppShell() {
   return (
     <WorkspaceContextProvider>
     <div className={`app-shell aw-bg-host${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
-      <ShootingStars className="aw-sonar aw-shooting-stars" />
       <aside
         ref={sidebarRef}
         className="app-shell__sidebar"
@@ -100,8 +99,8 @@ export default function AppShell() {
         />
       </aside>
 
-      {mobileNavigationOpen ? (
-        <>
+      {mobileNavigationOpen ? createPortal(
+        <div className="app-shell__mobile-layer">
           <button
             type="button"
             className="app-shell__mobile-backdrop"
@@ -135,15 +134,12 @@ export default function AppShell() {
             </div>
             <MobileAccountMenu onNavigate={closeMobileNavigation} />
           </div>
-        </>
+        </div>,
+        document.body,
       ) : null}
 
       <div className="app-shell__workspace">
-        <TopBar
-          onMobileNavigationToggle={() => setMobileNavigationOpen((open) => !open)}
-          mobileNavigationOpen={mobileNavigationOpen}
-          mobileNavigationTriggerRef={triggerRef}
-        />
+        <TopBar />
 
         <ConnectionStatus />
         <WorkspaceControls />
@@ -151,7 +147,11 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      <MobileTabBar moreOpen={mobileNavigationOpen} onMore={() => setMobileNavigationOpen((open) => !open)} /> 
+      <MobileTabBar
+        moreOpen={mobileNavigationOpen}
+        moreTriggerRef={triggerRef}
+        onMore={() => setMobileNavigationOpen((open) => !open)}
+      />
       <AppUpdatePrompt />
     </div>
     </WorkspaceContextProvider>

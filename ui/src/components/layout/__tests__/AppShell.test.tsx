@@ -24,6 +24,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByText('Overview page')).toBeInTheDocument();
+    expect(document.querySelector('.shooting-stars')).not.toBeInTheDocument();
   });
 
   it('opens and closes the mobile drawer and restores focus', () => {
@@ -39,7 +40,8 @@ describe('AppShell', () => {
       </AuthProvider></ThemeProvider></QueryClientProvider>,
     );
 
-    const trigger = screen.getByRole('button', { name: /open navigation/i });
+    expect(screen.queryByRole('button', { name: /open navigation/i })).not.toBeInTheDocument();
+    const trigger = screen.getByRole('button', { name: /^more$/i });
     trigger.focus();
     fireEvent.click(trigger);
 

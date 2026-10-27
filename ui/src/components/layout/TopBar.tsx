@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "lucide-react";
+import { LogOut, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { IconButton, UserAvatar } from "../ui";
@@ -12,17 +12,7 @@ import CommandPalette from "../command/CommandPalette";
 import NotificationCenter from "../../features/notifications/NotificationCenter";
 import "./TopBar.css";
 
-interface TopBarProps {
-  onMobileNavigationToggle?: () => void;
-  mobileNavigationOpen?: boolean;
-  mobileNavigationTriggerRef?: React.RefObject<HTMLButtonElement | null>;
-}
-
-export default function TopBar({
-  onMobileNavigationToggle,
-  mobileNavigationOpen = false,
-  mobileNavigationTriggerRef,
-}: TopBarProps) {
+export default function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -67,18 +57,6 @@ export default function TopBar({
     <header className="topbar app-shell__topbar" aria-label={t("shell.headerActions")}>
       <div className="topbar__content app-shell__topbar-content">
         <div className="topbar__left app-shell__topbar-branding">
-          <button
-            ref={mobileNavigationTriggerRef}
-            type="button"
-            className="topbar__nav-trigger"
-            aria-label={mobileNavigationOpen ? t("shell.toggleNavigation") : t("shell.openNavigation")}
-            aria-controls="mobile-navigation-drawer"
-            aria-expanded={mobileNavigationOpen}
-            onClick={onMobileNavigationToggle}
-          >
-            <Menu size={16} aria-hidden="true" />
-          </button>
-
           <div className="topbar__context" aria-live="polite">
             <span className="topbar__eyebrow">{t("shell.currentView")}</span>
             <span className="topbar__title">{t(pageTitleKey)}</span>
