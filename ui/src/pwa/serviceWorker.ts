@@ -12,6 +12,34 @@
 export const SERVICE_WORKER_URL = "/service-worker.js";
 export const APP_CACHE_PREFIX = "ai-workforce-";
 
+let waitingWorker: ServiceWorker | null = null;
+let updateAvailable = false;
+let reloading = false;
+const updateListeners = new Set<() => void>();
+
+function publishUpdate(worker: ServiceWorker) {
+  waitingWorker = worker;
+  updateAvailable = true;
+  updateListeners.forEach((listener) => listener());
+}
+
+export function subscribeToServiceWorkerUpdate(listener: () => void) {
+  updateListeners.add(listener);
+  return () => {
+    updateListeners.delete(listener);
+  };
+}
+
+export function getServiceWorkerUpdateSnapshot() {
+  return updateAvailable;
+}
+
+export function activateServiceWorkerUpdate() {
+  if (!waitingWorker) return;
+  reloading = true;
+  waitingWorker.postMessage({ type: "SKIP_WAITING" });
+}
+
 export interface ServiceWorkerEnv {
   isProduction: boolean;
   serviceWorker?: Pick<
@@ -26,8 +54,29 @@ export async function registerServiceWorker(): Promise<void> {
     typeof navigator !== "undefined" && "serviceWorker" in navigator
       ? navigator.serviceWorker
       : undefined;
+  if (import.meta.env.PROD && container) {
+    const registration = await container.register(SERVICE_WORKER_URL);
+    const showWaitingUpdate = () => {
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        publishUpdate(registration.waiting);
+      }
+    };
+
+    showWaitingUpdate();
+    registration.addEventListener("updatefound", () => {
+      const installing = registration.installing;
+      installing?.addEventListener("statechange", () => {
+        if (installing.state === "installed") showWaitingUpdate();
+      });
+    });
+    container.addEventListener("controllerchange", () => {
+      if (reloading) window.location.reload();
+    });
+    return;
+  }
+
   await syncServiceWorker({
-    isProduction: import.meta.env.PROD,
+    isProduction: false,
     serviceWorker: container,
     cacheStorage: typeof caches !== "undefined" ? caches : undefined,
   });

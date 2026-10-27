@@ -9,7 +9,8 @@ import { MobileTabBar } from "./MobileTabBar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { WorkspaceContextProvider } from "../../features/workspaceContext";
 import { WorkspaceControls } from "./WorkspaceControls";
-import { AnimatedShaderBackground } from "../ui/AnimatedShaderBackground";
+import { ShootingStars } from "../ui/ShootingStars";
+import { AppUpdatePrompt } from "../pwa/AppUpdatePrompt";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -85,7 +86,7 @@ export default function AppShell() {
   return (
     <WorkspaceContextProvider>
     <div className={`app-shell aw-bg-host${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
-      <AnimatedShaderBackground className="aw-sonar aw-shader-background" />
+      <ShootingStars className="aw-sonar aw-shooting-stars" />
       <aside
         ref={sidebarRef}
         className="app-shell__sidebar"
@@ -149,6 +150,7 @@ export default function AppShell() {
         </main>
       </div>
       <MobileTabBar moreOpen={mobileNavigationOpen} onMore={() => setMobileNavigationOpen((open) => !open)} /> 
+      <AppUpdatePrompt />
     </div>
     </WorkspaceContextProvider>
   );

@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../../auth/useAuth";
 import { useI18n } from "../../i18n";
 import { safeRedirectPath } from "../../auth/redirect";
-import { PageBackground } from "../../components/primitives/PageBackground";
+import { DimensionalField } from "../../components/ui/DimensionalField";
 import { Spinner } from "../../components/ui";
 import { AccessPending } from "./components/AccessPending";
 import { AuthAlert } from "./components/AuthFields";
@@ -14,7 +14,7 @@ import "./AuthPage.css";
 
 /**
  * The secure gateway between the landing page and the Control Center. Shares
- * the same primitives (PageBackground + GlassCard + GlowBorder + GlassButton)
+ * the same visual language as the landing page
  * as the landing so the transition reads as moving deeper into one product.
  */
 export default function AuthLayout() {
@@ -63,7 +63,10 @@ export default function AuthLayout() {
 
   return (
     <div className="auth os-theme aw-bg-host">
-      <PageBackground variant="beams" calm video />
+      <DimensionalField
+        className="aw-bg auth-dimensional-background"
+        style={{ position: "fixed" }}
+      />
 
       <header className="auth-topbar">
         <Link to="/" className="auth-topbar__brand" aria-label="AI Workforce home">

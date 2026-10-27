@@ -29,6 +29,7 @@
 }
 
 .ui-glass-btn-shadow {
+  display: none;
   --gb-cutoff: 2em;
   position: absolute;
   pointer-events: none;
@@ -66,14 +67,12 @@
   font-weight: 500;
   letter-spacing: -0.01em;
   -webkit-tap-highlight-color: transparent;
-  -webkit-backdrop-filter: blur(clamp(1px, 0.125em, 4px));
-  backdrop-filter: blur(clamp(1px, 0.125em, 4px));
   transition: all var(--gb-anim-time) var(--gb-anim-ease);
   background: linear-gradient(
     -75deg,
-    color-mix(in oklab, var(--color-background) 95%, transparent),
-    color-mix(in oklab, var(--color-background) 80%, transparent),
-    color-mix(in oklab, var(--color-background) 95%, transparent)
+    #11151d,
+    #05070c,
+    #11151d
   );
   box-shadow:
     inset 0 0.125em 0.125em rgba(248, 250, 252, 0.05),
@@ -92,8 +91,6 @@
 }
 
 .ui-glass-btn:hover {
-  -webkit-backdrop-filter: blur(0.01em);
-  backdrop-filter: blur(0.01em);
   transform: scale(0.975);
   box-shadow:
     inset 0 0.125em 0.125em rgba(248, 250, 252, 0.05),
@@ -177,7 +174,7 @@
 .ui-glass-btn-wrap.v-primary .ui-glass-btn-text { color: #f5fbff; }
 
 .ui-glass-btn-wrap.v-ghost .ui-glass-btn {
-  background: transparent;
+  background: #080b11;
   box-shadow: inset 0 0 0 1px var(--glass-border, rgba(255,255,255,0.1));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -191,9 +188,9 @@
 .ui-glass-btn-wrap.v-premium .ui-glass-btn {
   background: linear-gradient(
     -75deg,
-    color-mix(in oklab, var(--primary, #38bdf8) 18%, transparent),
-    color-mix(in oklab, var(--secondary, #a78bfa) 22%, transparent),
-    color-mix(in oklab, var(--primary, #38bdf8) 18%, transparent)
+    color-mix(in oklab, var(--primary, #38bdf8) 18%, #07090f),
+    color-mix(in oklab, var(--secondary, #a78bfa) 22%, #07090f),
+    color-mix(in oklab, var(--primary, #38bdf8) 18%, #07090f)
   );
   box-shadow:
     inset 0 0.125em 0.125em rgba(255, 255, 255, 0.14),
@@ -242,7 +239,7 @@
 
 /* Toolbar — minimal chrome, for filter/table row actions. */
 .ui-glass-btn-wrap.v-toolbar .ui-glass-btn {
-  background: transparent;
+  background: #080b11;
   box-shadow: inset 0 0 0 1px var(--glass-border, rgba(255,255,255,0.08));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;

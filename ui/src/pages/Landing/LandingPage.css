@@ -3,8 +3,33 @@
 
 .lp {
   min-height: 100vh;
+  background: transparent;
   color: var(--foreground);
   font-family: var(--font-sans, Inter, "Segoe UI", system-ui, sans-serif);
+}
+
+/* Full-page 21st.dev @mengto Dimensional Field. The surface remains fixed
+   while landing content scrolls above it; the shade preserves text contrast. */
+.lp-dimensional-background {
+  opacity: 0.82;
+}
+
+.lp-dimensional-background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgb(2 3 7 / 0.22), rgb(2 3 7 / 0.52) 48%, rgb(2 3 7 / 0.82)),
+    radial-gradient(circle at 50% 18%, transparent 0 18%, rgb(2 3 7 / 0.3) 70%);
+}
+
+@media (max-width: 720px) {
+  .lp-dimensional-background { opacity: 0.68; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-dimensional-background { opacity: 0.72; }
 }
 
 /* Skip link: offscreen until keyboard focus brings it in.
