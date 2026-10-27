@@ -31,13 +31,13 @@
   --color-bg-gradient: radial-gradient(circle at 70% 0%, rgba(113, 55, 232, 0.08), transparent 34%), linear-gradient(135deg, #050505 0%, #0b0b0c 55%, #111111 100%);
 
   /* Liquid glass surfaces */
-  --color-surface: #111111;
-  --color-surface-solid: #111111;
-  --color-surface-muted: #181818;
+  --color-surface: #333334;
+  --color-surface-solid: #333334;
+  --color-surface-muted: #2b2b2c;
   --color-surface-lavender: #1e1c2a;
   --color-surface-hover: #24242c;
 
-  --color-sidebar: #050505;
+  --color-sidebar: #333334;
   --sidebar-ink: #f8fafc;
   --sidebar-ink-secondary: #cbd5e1;
   --sidebar-ink-muted: #94a3b8;
@@ -76,6 +76,7 @@
   --color-warning: #fbbf24;
   --color-danger: #f87171;
   --color-info: #7aa2ff;
+  --color-number-accent: #e27d60;
   --color-disabled: #475569;
   --color-focus: rgba(255, 255, 255, 0.3);
   --color-overlay: rgba(0, 0, 0, 0.8);

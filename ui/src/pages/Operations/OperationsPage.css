@@ -15,7 +15,7 @@
 .ops-card h2 { margin: 0 0 10px; font-size: 15px; color: var(--color-text-heading); }
 .ops-muted { color: var(--color-text-muted); font-size: 13px; }
 .ops-mono { font-family: ui-monospace, monospace; font-size: 12px; }
-.ops-big { font-size: 22px; font-weight: 600; margin: 4px 0 8px; }
+.ops-big { font-size: 22px; font-weight: 600; margin: 4px 0 8px; color: var(--color-number-accent); }
 .ops-list { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
 .ops-health {
   display: grid;
@@ -41,7 +41,7 @@
 .ops-status--unknown { border-left-color: var(--color-border-strong); border-left-style: dashed; }
 .ops-counts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 8px; }
 .ops-counts dt { font-size: 12px; color: var(--color-text-muted); }
-.ops-counts dd { margin: 0; font-size: 18px; font-weight: 600; }
+.ops-counts dd { margin: 0; font-size: 18px; font-weight: 600; color: var(--color-number-accent); }
 .ops-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin: 8px 0 12px; }
 .ops-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--color-text-secondary); }
 .ops-field input {

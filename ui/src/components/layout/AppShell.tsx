@@ -95,6 +95,7 @@ export default function AppShell() {
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          showAccount
         />
       </aside>
 

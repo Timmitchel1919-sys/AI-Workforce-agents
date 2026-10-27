@@ -12,7 +12,10 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: var(--background, #050507);
+  background:
+    linear-gradient(rgb(0 0 0 / 0.28), rgb(0 0 0 / 0.42)),
+    url('/media/workforce-grid-background.jpg') center / cover fixed no-repeat,
+    var(--background, #050507);
   color: var(--color-text);
   transition: grid-template-columns 200ms var(--ease-standard);
 }
@@ -69,6 +72,7 @@
   grid-template-rows: var(--header-height) minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
+  background: transparent;
 }
 
 .app-shell__main {
@@ -143,7 +147,36 @@
   flex: 0 0 auto;
   padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--color-border);
-  background: var(--color-surface-solid);
+  background: var(--color-sidebar);
+}
+
+.app-shell__sidebar > .sidebar > .mobile-account {
+  margin: 0 calc(-1 * var(--space-1)) calc(-1 * var(--space-1));
+  padding: var(--space-3) var(--space-1) 0;
+}
+
+.sidebar--collapsed .mobile-account {
+  width: 100%;
+  padding-inline: 0;
+}
+
+.sidebar--collapsed .mobile-account__trigger {
+  display: flex;
+  justify-content: center;
+  padding: 0.35rem;
+  border: 0;
+  background: transparent;
+}
+
+.sidebar--collapsed .mobile-account__trigger > span:last-child {
+  display: none;
+}
+
+.sidebar--collapsed .mobile-account__menu {
+  right: auto;
+  bottom: 0;
+  left: calc(100% + 0.75rem);
+  width: 13rem;
 }
 
 .mobile-account__trigger {

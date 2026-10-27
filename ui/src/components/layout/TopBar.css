@@ -13,7 +13,7 @@
 
 .topbar__content {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-4);
   width: 100%;
@@ -84,7 +84,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  justify-self: center;
+  justify-self: start;
   width: min(100%, 640px);
   min-width: 0;
 }

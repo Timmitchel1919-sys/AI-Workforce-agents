@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
+import { useApprovalQueue } from "../../features/governance";
 import { useI18n } from "../../i18n";
 import {
   navigationSections,
@@ -49,6 +50,7 @@ import {
   type NavigationIconId,
 } from "../../config/navigation";
 import "./Sidebar.css";
+import { MobileAccountMenu } from "./MobileAccountMenu";
 
 const iconMap: Record<NavigationIconId, LucideIcon> = {
   overview: LayoutDashboard,
@@ -99,6 +101,8 @@ interface SidebarProps {
   onToggleCollapsed?: () => void;
   /** Mobile drawer control; closes the drawer without adding a separate title bar. */
   onDismiss?: () => void;
+  /** Keep the desktop account card pinned below the independently scrolling modules. */
+  showAccount?: boolean;
 }
 
 export default function Sidebar({
@@ -106,11 +110,13 @@ export default function Sidebar({
   collapsed = false,
   onToggleCollapsed,
   onDismiss,
+  showAccount = false,
 }: SidebarProps) {
   const isRail = collapsed && Boolean(onToggleCollapsed);
   const { t } = useI18n();
   const { accessDetails } = useAuth();
   const availableItems = visibleNavigationItems(accessDetails.role);
+  const pendingApprovals = useApprovalQueue({ status: "requested" });
 
   return (
     <nav
@@ -210,12 +216,12 @@ export default function Sidebar({
                           <Icon size={16} />
                         </span>
                         <span className="sidebar__label">{t(item.labelKey)}</span>
-                        {item.badge !== undefined ? (
+                        {(item.route === "/approvals" && pendingApprovals.state === "ready") || item.badge !== undefined ? (
                           <span
                             className="sidebar__badge"
-                            aria-label={`${item.badge} notifications`}
+                            aria-label={`${item.route === "/approvals" ? pendingApprovals.total : item.badge} notifications`}
                           >
-                            {item.badge}
+                            {item.route === "/approvals" ? pendingApprovals.total : item.badge}
                           </span>
                         ) : null}
                       </NavLink>
@@ -227,6 +233,8 @@ export default function Sidebar({
           );
         })}
       </div>
+
+      {showAccount ? <MobileAccountMenu onNavigate={() => undefined} /> : null}
 
     </nav>
   );

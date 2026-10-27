@@ -5,10 +5,10 @@
 :root {
   /* Core surfaces (semantic aliases over existing color tokens) */
   --background:          #050507;
-  --surface:             #0e1016;
-  --surface-elevated:    #161820;
-  --glass:               #12151c;
-  --glass-strong:        #191d27;
+  --surface:             #333334;
+  --surface-elevated:    #333334;
+  --glass:               #333334;
+  --glass-strong:        #3a3a3b;
   --glass-border:        rgba(255, 255, 255, 0.10);
   --glass-border-strong: rgba(255, 255, 255, 0.16);
 

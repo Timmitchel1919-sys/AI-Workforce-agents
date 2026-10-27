@@ -47,6 +47,9 @@ function mockApi(initial: { avatarDataUrl?: string; putStatus?: number } = {}) {
           ...(avatar ? { avatarDataUrl: avatar } : {}),
         });
       }
+      if (url.startsWith("/api/approvals")) {
+        return respond(200, { items: [{ approvalId: "approval-1" }], total: 3, nextCursor: null });
+      }
       return respond(404, { error: { message: "not found" } });
     }),
   );
@@ -119,6 +122,7 @@ describe("Profile", () => {
     expect(within(card).getByText("ada@example.test")).toBeInTheDocument();
     // The role is shown, never editable.
     expect(within(card).queryByRole("combobox")).toBeNull();
+    expect(await screen.findByLabelText("3 notifications")).toHaveTextContent("3");
   });
 
   it("uploads and removes a profile photo through the Control Plane only", async () => {
@@ -135,7 +139,9 @@ describe("Profile", () => {
     await user.click(screen.getByRole("button", { name: "Remove photo" }));
     expect(await screen.findByText("Profile photo removed.")).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /Profile photo of/ })).toBeNull();
-    for (const call of calls) expect(call.url).toMatch(/^\/api\/me\/profile/);
+    for (const call of calls.filter((call) => call.url.startsWith("/api/me/profile"))) {
+      expect(call.url).toMatch(/^\/api\/me\/profile/);
+    }
   });
 
   it("reports a rejected photo", async () => {
@@ -159,18 +165,6 @@ describe("Profile", () => {
     expect(await screen.findByText("Display name saved.")).toBeInTheDocument();
   });
 
-  it("switches theme immediately and persists it", async () => {
-    const user = userEvent.setup();
-    mockApi();
-    renderPage(<SettingsPage />, { language: "en", path: "/settings" });
-
-    await user.click(screen.getByRole("radio", { name: /Dark/ }));
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(window.localStorage.getItem("ai-workforce-theme")).toBe("dark");
-    await user.click(screen.getByRole("radio", { name: /Light/ }));
-    expect(document.documentElement.dataset.theme).toBe("light");
-  });
-
   it("switches language immediately (no reload) and persists it", async () => {
     const user = userEvent.setup();
     mockApi();
@@ -178,7 +172,7 @@ describe("Profile", () => {
 
     await user.selectOptions(screen.getByRole("combobox", { name: "Language" }), "nl");
     expect(screen.getByRole("heading", { level: 1, name: "Instellingen" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Thema" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Thema" })).not.toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Hoofdnavigatie" });
     expect(within(nav).getByText("Overzicht")).toBeInTheDocument();
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("nl");
@@ -188,29 +182,26 @@ describe("Profile", () => {
   });
 
   it.each([
-    ["light", "en", "Settings", "Theme"],
-    ["light", "nl", "Instellingen", "Thema"],
-    ["dark", "en", "Settings", "Theme"],
-    ["dark", "nl", "Instellingen", "Thema"],
-  ] as const)("works as %s + %s", async (theme, language, title, section) => {
-    window.localStorage.setItem("ai-workforce-theme", theme);
+    ["en", "Settings", "Language"],
+    ["nl", "Instellingen", "Taal"],
+  ] as const)("works without a theme control in %s", async (language, title, section) => {
     mockApi();
     renderPage(<SettingsPage />, { language, path: "/settings" });
-    expect(document.documentElement.dataset.theme).toBe(theme);
     expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: section })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: new RegExp(theme === "light" ? "Light|Licht" : "Dark|Donker") })).toBeChecked();
+    expect(screen.queryAllByRole("radio")).toEqual([]);
     expect(document.body.textContent).not.toMatch(/\bprofile\.[a-zA-Z]+/);
   });
 });
 
 describe("Settings", () => {
-  it("contains appearance preferences; Users & Access remains administrator-only", () => {
+  it("contains language preferences only; Users & Access remains administrator-only", () => {
     renderPage(<SettingsPage />, { path: "/settings" });
     expect(screen.queryByRole("heading", { name: /Appearance/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Profile & preferences/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Users & Access/i })).toBeNull();
-    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(screen.queryAllByRole("radio")).toEqual([]);
+    expect(screen.getByRole("combobox", { name: "Language" })).toBeInTheDocument();
   });
 
   it("restores the saved language on the next start", () => {

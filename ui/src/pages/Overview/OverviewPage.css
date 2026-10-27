@@ -261,7 +261,7 @@
 .overview-activity-card__value {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--foreground);
+  color: var(--color-number-accent);
   letter-spacing: -0.015em;
 }
 .overview-activity-card__detail {
