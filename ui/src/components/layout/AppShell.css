@@ -98,8 +98,8 @@
 .app-shell__mobile-drawer {
   position: fixed;
   inset: 0 auto 0 0;
-  width: min(84vw, 320px);
-  max-width: 320px;
+  width: min(88vw, 360px);
+  max-width: 360px;
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -113,11 +113,99 @@
 .app-shell__mobile-drawer .sidebar {
   flex: 1;
   min-height: 0;
+  padding-bottom: var(--space-2);
 }
 
 .app-shell__mobile-install {
   padding: var(--space-3) var(--space-4) var(--space-4);
   border-top: 1px solid var(--color-border);
+}
+
+.mobile-account {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-solid);
+}
+
+.mobile-account__trigger {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-account__trigger > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.mobile-account__trigger strong,
+.mobile-account__trigger small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-account__trigger strong { font-size: 0.85rem; }
+.mobile-account__trigger small { color: var(--color-text-muted); font-size: 0.7rem; }
+
+.mobile-account__menu {
+  position: absolute;
+  right: 1rem;
+  bottom: calc(100% + 0.5rem);
+  left: 1rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface-solid);
+  box-shadow: 0 -14px 36px rgb(0 0 0 / 0.46);
+}
+
+.mobile-account__menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-account__menu button:hover,
+.mobile-account__menu button:focus-visible,
+.mobile-account__trigger:focus-visible {
+  background: var(--color-surface-muted);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.mobile-account__menu .mobile-account__danger {
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 10px 10px;
+  color: var(--color-danger);
 }
 
 .app-shell__mobile-drawer-header {
@@ -187,7 +275,7 @@
   }
 
   .app-shell__main {
-    padding: var(--space-5);
+    padding: 0;
     width: 100%;
     max-width: 100vw;
   }
@@ -203,6 +291,8 @@
     transition: none;
     animation: none;
   }
+
+  .app-shell__mobile-drawer .sidebar__footer { display: none; }
 }
 
 /* UI Layer 7 — connection banner + phone bottom tab bar. */
@@ -280,5 +370,5 @@ html[data-workspace-layout="split"] .overview-widgets { grid-template-columns:re
   .mobile-tabbar__item.is-active,
   .mobile-tabbar__item[aria-expanded="true"] { color: var(--color-primary); }
   .mobile-tabbar__item:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
-  .app-shell__main { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .app-shell__main { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
 }

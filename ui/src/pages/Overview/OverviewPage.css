@@ -127,6 +127,50 @@
   .overview-hero__meta { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
 }
 
+@media (max-width: 560px) {
+  .overview-page { gap: 1rem; }
+  .overview-hero {
+    gap: 1.1rem;
+    padding: 1.1rem;
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .overview-hero__copy { gap: 0.45rem; }
+  .overview-hero__kicker { font-size: 0.61rem; letter-spacing: 0.12em; }
+  .overview-hero__title { font-size: 1.55rem; }
+  .overview-hero__tagline { font-size: 0.86rem; }
+  .overview-hero__description {
+    font-size: 0.83rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+  .overview-hero__meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.55rem;
+    width: 100%;
+  }
+  .overview-hero__meta .aw-status-chip { width: fit-content; max-width: 100%; }
+  .overview-hero__meta .aw-status-chip:last-child { width: 100%; }
+  .overview-personalize {
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 16px;
+    font-size: 0.82rem;
+  }
+  .overview-personalize__button { min-height: 40px; }
+  .overview-metrics,
+  .overview-activity-grid,
+  .overview-loading-state__metrics,
+  .overview-loading-row-group { grid-template-columns: minmax(0, 1fr); }
+  .workforce-status-card__head,
+  .workforce-status-card__content,
+  .overview-activity-card__value-row,
+  .recent-activity__header { align-items: flex-start; flex-direction: column; }
+  .recent-activity__item { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+  .recent-activity__time { white-space: normal; }
+}
+
 /* ---------- Metrics grid ---------- */
 .overview-metrics {
   display: grid;

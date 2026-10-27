@@ -347,11 +347,13 @@
 
 @media (max-width: 768px) {
   .topbar__nav-trigger {
-    display: none;
+    display: inline-flex;
+    width: 2.5rem;
+    padding: 0;
   }
 
   .topbar__content {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: var(--space-2);
     padding: 0 var(--space-4);
   }
@@ -369,12 +371,14 @@
   .topbar__account-name { display: none; }
 
   .topbar__account-button { padding: 0.1875rem; }
+  .topbar__right { display: none; }
 }
 
 @media (max-width: 560px) {
   .topbar__content {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: var(--space-2);
+    padding-inline: 0.75rem;
   }
 
   .topbar__context {

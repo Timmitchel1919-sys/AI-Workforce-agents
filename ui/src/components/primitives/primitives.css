@@ -457,3 +457,27 @@
   .aw-cmd-mobile-summary > span { white-space: nowrap; }
   .aw-cmd-mobile-summary b { color: var(--foreground); font-weight: 500; }
 }
+
+@media (max-width: 560px) {
+  .aw-panel,
+  .aw-card,
+  .aw-data-panel {
+    max-width: 100%;
+    min-width: 0;
+    border-radius: 18px;
+  }
+
+  .aw-card,
+  .aw-card.pad-lg,
+  .aw-data-panel {
+    padding: 1rem;
+  }
+
+  .aw-status-chip {
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+  }
+}

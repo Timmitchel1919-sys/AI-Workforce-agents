@@ -11,6 +11,7 @@ import { WorkspaceContextProvider } from "../../features/workspaceContext";
 import { WorkspaceControls } from "./WorkspaceControls";
 import { ShootingStars } from "../ui/ShootingStars";
 import { AppUpdatePrompt } from "../pwa/AppUpdatePrompt";
+import { MobileAccountMenu } from "./MobileAccountMenu";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -132,6 +133,7 @@ export default function AppShell() {
             <div className="app-shell__mobile-install">
               <InstallAppButton fullWidth />
             </div>
+            <MobileAccountMenu onNavigate={closeMobileNavigation} />
           </div>
         </>
       ) : null}

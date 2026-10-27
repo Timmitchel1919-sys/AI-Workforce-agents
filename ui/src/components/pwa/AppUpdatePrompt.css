@@ -17,5 +17,25 @@
 .app-update strong { display: block; font-size: 0.92rem; }
 .app-update p { margin: 0.2rem 0 0; color: var(--foreground-muted); font-size: 0.78rem; line-height: 1.4; }
 @media (max-width: 560px) {
-  .app-update { left: 1rem; right: 1rem; width: auto; align-items: stretch; flex-direction: column; }
+  .app-update {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.54);
+  }
+  .app-update > div { min-width: 0; flex: 1; }
+  .app-update strong { font-size: 0.82rem; }
+  .app-update p { margin-top: 0.1rem; font-size: 0.7rem; line-height: 1.35; }
+  .app-update .ui-button {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0.55rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.78rem;
+  }
 }
