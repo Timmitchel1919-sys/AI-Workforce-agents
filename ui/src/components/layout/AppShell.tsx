@@ -10,7 +10,6 @@ import { MobileTabBar } from "./MobileTabBar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { WorkspaceContextProvider } from "../../features/workspaceContext";
 import { WorkspaceControls } from "./WorkspaceControls";
-import { AppUpdatePrompt } from "../pwa/AppUpdatePrompt";
 import { MobileAccountMenu } from "./MobileAccountMenu";
 import "./AppShell.css";
 
@@ -116,19 +115,10 @@ export default function AppShell() {
             aria-modal="true"
             aria-label={t("shell.navigationDrawer")}
           >
-            <div className="app-shell__mobile-drawer-header">
-              <div className="app-shell__mobile-drawer-title">{t("shell.navigation")}</div>
-              <button
-                type="button"
-                className="app-shell__mobile-close"
-                data-drawer-close
-                aria-label={t("shell.closeNavigation")}
-                onClick={closeMobileNavigation}
-              >
-                {t("common.close")}
-              </button>
-            </div>
-            <Sidebar onNavigate={closeMobileNavigation} />
+            <Sidebar
+              onNavigate={closeMobileNavigation}
+              onDismiss={closeMobileNavigation}
+            />
             <div className="app-shell__mobile-install">
               <InstallAppButton fullWidth />
             </div>
@@ -152,7 +142,6 @@ export default function AppShell() {
         moreTriggerRef={triggerRef}
         onMore={() => setMobileNavigationOpen((open) => !open)}
       />
-      <AppUpdatePrompt />
     </div>
     </WorkspaceContextProvider>
   );

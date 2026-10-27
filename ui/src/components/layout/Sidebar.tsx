@@ -8,6 +8,7 @@ import {
   GitBranch,
   LayoutDashboard,
   ListTodo,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Scale,
@@ -96,12 +97,15 @@ interface SidebarProps {
   collapsed?: boolean;
   /** Omit to render without a collapse control (e.g. inside the mobile drawer). */
   onToggleCollapsed?: () => void;
+  /** Mobile drawer control; closes the drawer without adding a separate title bar. */
+  onDismiss?: () => void;
 }
 
 export default function Sidebar({
   onNavigate,
   collapsed = false,
   onToggleCollapsed,
+  onDismiss,
 }: SidebarProps) {
   const isRail = collapsed && Boolean(onToggleCollapsed);
   const { t } = useI18n();
@@ -158,6 +162,18 @@ export default function Sidebar({
           >
             <PanelLeftClose size={18} aria-hidden="true" />
           </button>
+        ) : onDismiss ? (
+          <button
+            type="button"
+            className="sidebar__collapse"
+            data-drawer-close
+            onClick={onDismiss}
+            aria-label={t("shell.closeNavigation")}
+            aria-expanded={true}
+            title={t("shell.closeNavigation")}
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
         ) : null}
       </div>
 
@@ -212,12 +228,6 @@ export default function Sidebar({
         })}
       </div>
 
-      <div className="sidebar__footer">
-        <p className="sidebar__footer-brand">
-          <span className="sidebar__footer-mark" aria-hidden="true" />
-          <span className="sidebar__label">{t("shell.brandFooter")}</span>
-        </p>
-      </div>
     </nav>
   );
 }

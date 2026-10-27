@@ -119,8 +119,8 @@
 
 @media (max-width: 560px) {
   .app-shell__mobile-drawer {
-    width: 100vw;
-    max-width: none;
+    width: clamp(16rem, 50vw, 22rem);
+    max-width: calc(100vw - 3.5rem);
     height: 100dvh;
     max-height: 100dvh;
     border-right: 0;
@@ -225,33 +225,6 @@
   color: var(--color-danger);
 }
 
-.app-shell__mobile-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.app-shell__mobile-drawer-title {
-  color: var(--color-text);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.app-shell__mobile-close {
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-muted);
-  color: var(--color-text-secondary);
-  border-radius: var(--radius-md);
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-}
-
-.app-shell__mobile-close:focus-visible,
 .app-shell__mobile-backdrop:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
