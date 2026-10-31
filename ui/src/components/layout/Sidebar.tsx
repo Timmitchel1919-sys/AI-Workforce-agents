@@ -37,9 +37,11 @@ import {
   Palette,
   TrendingUp,
   Users,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { useI18n } from "../../i18n";
 import {
@@ -89,6 +91,19 @@ const iconMap: Record<NavigationIconId, LucideIcon> = {
 };
 
 const LOGO_SRC = "/brand/logo-mark.png";
+const COLLAPSED_SECTIONS_KEY = "aw.sidebar.collapsedSections";
+const DEFAULT_COLLAPSED_SECTIONS = ["integrations", "governance"];
+
+function readCollapsedSections(): string[] {
+  try {
+    const stored = localStorage.getItem(COLLAPSED_SECTIONS_KEY);
+    if (stored === null) return DEFAULT_COLLAPSED_SECTIONS;
+    const parsed: unknown = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return DEFAULT_COLLAPSED_SECTIONS;
+  }
+}
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -107,6 +122,21 @@ export default function Sidebar({
   const { t } = useI18n();
   const { accessDetails } = useAuth();
   const availableItems = visibleNavigationItems(accessDetails.role);
+  const { pathname } = useLocation();
+  // Secondary groups fold away so the primary routes stay scannable; the group
+  // holding the current route is always shown open.
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(readCollapsedSections);
+  const toggleSection = (id: string) => {
+    setCollapsedSections((previous) => {
+      const next = previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id];
+      try {
+        localStorage.setItem(COLLAPSED_SECTIONS_KEY, JSON.stringify(next));
+      } catch {
+        // Persistence is a convenience only.
+      }
+      return next;
+    });
+  };
 
   return (
     <nav
@@ -137,7 +167,6 @@ export default function Sidebar({
           <NavLink
             to="/overview"
             className="sidebar__brand"
-            aria-label={t("shell.homeLink")}
             onClick={() => onNavigate?.()}
           >
             <img src={LOGO_SRC} alt="" className="sidebar__logo" />
@@ -167,6 +196,13 @@ export default function Sidebar({
           const sectionItems = availableItems.filter(
             (item) => item.section === section.id,
           );
+          if (sectionItems.length === 0) return null;
+          const containsActive = sectionItems.some(
+            (item) => pathname === item.route || pathname.startsWith(`${item.route}/`),
+          );
+          const collapsible = section.id !== "main" && !isRail;
+          const open = !collapsible || containsActive || !collapsedSections.includes(section.id);
+          const listId = `sidebar-section-${section.id}`;
 
           return (
             <div
@@ -174,8 +210,22 @@ export default function Sidebar({
               className="sidebar__section"
               aria-label={t("nav.sectionNavigation", { section: t(section.labelKey) })}
             >
-              <div className="sidebar__section-title">{t(section.labelKey)}</div>
-              <ul className="sidebar__list">
+              {collapsible ? (
+                <button
+                  type="button"
+                  className="sidebar__section-title sidebar__section-toggle"
+                  aria-expanded={open}
+                  aria-controls={listId}
+                  disabled={containsActive}
+                  onClick={() => toggleSection(section.id)}
+                >
+                  <span>{t(section.labelKey)}</span>
+                  <ChevronDown size={14} aria-hidden="true" className="sidebar__section-chevron" />
+                </button>
+              ) : (
+                <div className="sidebar__section-title">{t(section.labelKey)}</div>
+              )}
+              <ul className="sidebar__list" id={listId} hidden={!open}>
                 {sectionItems.map((item) => {
                   const Icon = iconMap[item.icon];
 

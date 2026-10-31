@@ -1,5 +1,5 @@
-import { BookmarkPlus, Columns2, Focus, History, Maximize2, PanelRight, Pin, Rows3, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { BookmarkPlus, ChevronDown, Columns2, LayoutTemplate, Focus, History, Maximize2, PanelRight, Pin, Rows3, Sparkles, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { visibleNavigationItems } from "../../config/navigation";
@@ -56,6 +56,17 @@ export function WorkspaceControls() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [allowed, navigate, workspace]);
 
+  // Layout tools are infrequent, so they live behind one disclosure instead of a permanent button row.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (event: PointerEvent) => { if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("pointerdown", onPointer); document.removeEventListener("keydown", onKey); };
+  }, [menuOpen]);
   const setPreset = (preset: WorkspaceLayoutPreset) => workspace.setLayoutPreset(preset);
   const enterFullscreen = () => { if (!document.fullscreenElement) void document.documentElement.requestFullscreen?.(); else void document.exitFullscreen?.(); };
   return <>
@@ -64,13 +75,16 @@ export function WorkspaceControls() {
         {actions.map((item) => <Link key={item.route} to={item.route}>{t(item.labelKey)}</Link>)}
         {suggestion ? <button type="button" className="workspace-controls__insight" onClick={() => navigate(suggestion.route)} title={t("shell.frequentRouteSuggestion")}><Sparkles size={14} aria-hidden="true" /><span>{t("shell.frequentRoute", { page: t(suggestion.labelKey) })}</span></button> : null}
       </div>
-      <div className="workspace-controls__layouts" role="group" aria-label={t("shell.workspaceLayout")}>
+      <div className="workspace-controls__view" ref={menuRef}>
+      <button type="button" className="workspace-controls__view-trigger" aria-expanded={menuOpen} aria-controls="workspace-layout-menu" onClick={() => setMenuOpen((open) => !open)}><LayoutTemplate size={16} aria-hidden="true" /><span>{t("shell.workspaceLayout")}</span><ChevronDown size={14} aria-hidden="true" /></button>
+      <div id="workspace-layout-menu" className="workspace-controls__layouts" role="group" aria-label={t("shell.workspaceLayout")} hidden={!menuOpen}>
         <button type="button" onClick={workspace.saveCurrentView} title={t("shell.saveView")}><BookmarkPlus size={16} /><span>{t("shell.saveView")}</span></button>
         <button type="button" aria-pressed={workspace.layoutPreset === "standard"} onClick={() => setPreset("standard")} title={t("shell.standardLayout")}><Rows3 size={16} /><span>{t("shell.standardLayout")}</span></button>
         <button type="button" aria-pressed={workspace.layoutPreset === "focus"} onClick={() => setPreset("focus")} title={t("shell.focusMode")}><Focus size={16} /><span>{t("shell.focusMode")}</span></button>
         <button type="button" aria-pressed={workspace.layoutPreset === "split"} onClick={() => setPreset("split")} title={t("shell.splitView")}><Columns2 size={16} /><span>{t("shell.splitView")}</span></button>
         <button type="button" aria-pressed={workspace.openPanels.includes("inspector")} onClick={() => workspace.togglePanel("inspector")} title={t("shell.contextInspector")}><PanelRight size={16} /><span>{t("shell.contextInspector")}</span></button>
         <button type="button" onClick={enterFullscreen} title={t("shell.fullscreen")}><Maximize2 size={16} /><span>{t("shell.fullscreen")}</span></button>
+      </div>
       </div>
     </nav>
     {workspace.openPanels.includes("inspector") ? <aside className="workspace-context-inspector" aria-label={t("shell.contextInspector")}>

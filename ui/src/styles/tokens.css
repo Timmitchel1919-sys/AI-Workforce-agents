@@ -44,28 +44,28 @@
   --sidebar-line: rgba(255, 255, 255, 0.08);
   --sidebar-surface-muted: rgba(255, 255, 255, 0.04);
   --sidebar-hover: rgba(255, 255, 255, 0.08);
-  --sidebar-active-bg: rgba(255, 255, 255, 0.12);
-  --sidebar-focus: #e2e8f0;
+  --sidebar-active-bg: rgba(56, 189, 248, 0.12);
+  --sidebar-focus: #38bdf8;
   --sidebar-scrollbar: rgba(255, 255, 255, 0.1);
   --sidebar-scrollbar-hover: rgba(255, 255, 255, 0.2);
   --color-topbar: rgba(5, 5, 5, 0.82);
 
-  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.12);
-  --color-border-selected: rgba(255, 255, 255, 0.25);
+  --color-border-selected: rgba(56, 189, 248, 0.45);
   --color-scrollbar: rgba(255, 255, 255, 0.1);
   --color-scrollbar-hover: rgba(255, 255, 255, 0.2);
 
   --color-text: #f8fafc;
   --color-text-heading: #ffffff;
   --color-text-secondary: #cbd5e1;
-  --color-text-muted: #94a3b8;
+  --color-text-muted: #9aa6b8;
   --color-text-disabled: #475569;
   --color-text-on-brand: #ffffff;
 
-  --color-primary: #cbd5e1;
-  --color-primary-strong: #f8fafc;
-  --color-primary-soft: rgba(255, 255, 255, 0.1);
+  --color-primary: var(--primary, #38bdf8);
+  --color-primary-strong: #7dd3fc;
+  --color-primary-soft: rgba(56, 189, 248, 0.14);
   --color-brand-secondary: #a98bff;
   --color-brand-secondary-soft: rgba(169, 139, 255, 0.16);
   --color-brand-gold: #d9ac52;
@@ -77,25 +77,25 @@
   --color-danger: #f87171;
   --color-info: #7aa2ff;
   --color-disabled: #475569;
-  --color-focus: rgba(255, 255, 255, 0.3);
+  --color-focus: rgba(56, 189, 248, 0.7);
   --color-overlay: rgba(0, 0, 0, 0.8);
 
-  --color-nav-active-bg: rgba(255, 255, 255, 0.1);
+  --color-nav-active-bg: rgba(56, 189, 248, 0.12);
   --color-nav-active-text: #ffffff;
   --color-nav-hover: rgba(255, 255, 255, 0.05);
-  --color-button-primary-bg: rgba(255, 255, 255, 0.1);
-  --color-button-primary-hover: rgba(255, 255, 255, 0.2);
+  --color-button-primary-bg: #0369a1;
+  --color-button-primary-hover: #0284c7;
 
   --color-hero-bg: linear-gradient(115deg, #070709 0%, #0c0c10 50%, #121216 100%);
   --color-hero-text: #f8fafc;
   --color-hero-text-muted: #94a3b8;
 
-  --chart-1: #cbd5e1;
-  --chart-2: #94a3b8;
-  --chart-3: #64748b;
-  --chart-4: #475569;
-  --chart-5: #334155;
-  --chart-6: #1e293b;
+  --chart-1: #38bdf8;
+  --chart-2: #a78bfa;
+  --chart-3: #34d399;
+  --chart-4: #fbbf24;
+  --chart-5: #f472b6;
+  --chart-6: #94a3b8;
 
   --glass-blur: blur(24px) saturate(150%);
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.1);

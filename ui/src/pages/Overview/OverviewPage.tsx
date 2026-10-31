@@ -60,18 +60,15 @@ export default function OverviewPage() {
   const { t } = useI18n();
   const { data, status, refetch } = useOverview();
 
-  const header = (
-    <>
-      <PageHeader title={t("overview.title")} description={t("overview.description")} />
-      <OverviewHero />
-    </>
-  );
+  // Operational data leads; the brand hero sits below it so KPIs stay above the fold.
+  const header = <PageHeader title={t("overview.title")} description={t("overview.description")} />;
 
   if (status === "loading" || status === "error" || status === "unauthorized" || status === "empty") {
     return (
       <PageContainer variant="wide">
         {header}
         <OverviewStateView state={status} onRetry={status === "error" ? refetch : undefined} />
+        <OverviewHero />
       </PageContainer>
     );
   }
@@ -84,6 +81,7 @@ export default function OverviewPage() {
       {data ? (
         <OverviewContent snapshot={data} connection={status === "degraded" ? "degraded" : "connected"} />
       ) : null}
+      <OverviewHero />
     </PageContainer>
   );
 }

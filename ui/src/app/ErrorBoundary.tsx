@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components -- class error boundaries are not Fast Refresh boundaries. */
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { useI18n } from "../i18n";
 import { ErrorState } from '../components/states';
@@ -55,11 +54,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
       );
     }
 
-    const child = React.Children.only(this.props.children);
-    if (React.isValidElement(child)) {
-      return React.cloneElement(child, { key: this.state.resetKey });
-    }
-
-    return child;
+    // Keyed fragment remounts the subtree on retry and tolerates any number of children.
+    return <React.Fragment key={this.state.resetKey}>{this.props.children}</React.Fragment>;
   }
 }
