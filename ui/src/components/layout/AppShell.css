@@ -210,7 +210,7 @@
 }
 
 .mobile-account__trigger strong { font-size: 0.85rem; }
-.mobile-account__trigger small { color: var(--color-text-muted); font-size: 0.7rem; }
+.mobile-account__trigger small { color: var(--sidebar-ink-secondary, #cbd5e1); font-size: 0.7rem; }
 
 .mobile-account__menu {
   position: absolute;

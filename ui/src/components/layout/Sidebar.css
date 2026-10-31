@@ -149,7 +149,7 @@
 }
 
 .sidebar__brand-subtitle {
-  color: var(--silver, var(--color-text-muted));
+  color: var(--sidebar-ink-secondary, #cbd5e1);
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;

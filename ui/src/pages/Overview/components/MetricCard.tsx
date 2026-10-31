@@ -71,7 +71,6 @@ export function MetricCard({
         key={id}
         to={linkTo}
         className="overview-metric__link"
-        aria-label={`${label}: ${value}. ${context}. ${trendMeta?.text ?? t("overview.noTrend")}`}
       >
         {card}
       </Link>
