@@ -96,6 +96,7 @@ describe('AppShell', () => {
     fireEvent.keyDown(window, { key: 'i' });
     expect(screen.getByRole('complementary', { name: /context inspector/i })).toBeInTheDocument();
     expect(screen.getByText(/not connected.*authorized control plane/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /workspace layout/i }));
     fireEvent.click(screen.getByRole('button', { name: /save view/i }));
     expect(screen.getByText(/\/projects · standard/i)).toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'm' });
