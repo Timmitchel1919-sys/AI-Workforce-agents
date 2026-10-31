@@ -93,9 +93,9 @@ describe("Cost Center + Auditor Findings tab (EO-6.2/6.3, read-only)", () => {
   it("shows honest not-configured states — never $0 or an unlimited budget, no write form", async () => {
     mockApi();
     renderPage("/projects/alpha/cost");
-    expect(await screen.findByText("The AI Cost Center is not configured for this deployment.")).toBeInTheDocument();
-    expect(screen.getByText("The Auditor is not configured for this deployment.")).toBeInTheDocument();
-    expect(screen.getByText("Governance policy is not configured for this deployment.")).toBeInTheDocument();
+    expect(await screen.findByText("Cost tracking isn't set up for this workspace yet. Ask your administrator to enable the AI Cost Center.")).toBeInTheDocument();
+    expect(screen.getByText("The Auditor isn't set up for this workspace yet. Ask your administrator to enable it.")).toBeInTheDocument();
+    expect(screen.getByText("No governance policy is set up yet. Ask your administrator to define one.")).toBeInTheDocument();
     expect(screen.queryByText("$0.00")).toBeNull();
     expect(screen.queryByText(/unlimited/i)).toBeNull();
     expect(screen.queryByRole("button", { name: /save|set budget|set policy/i })).toBeNull();

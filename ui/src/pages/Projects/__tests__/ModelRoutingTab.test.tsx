@@ -95,7 +95,7 @@ describe("Model Routing tab (EO-7, read-only)", () => {
   it("shows an honest not-configured state — no write form", async () => {
     mockApi();
     renderPage("/projects/alpha/model-routing");
-    expect(await screen.findByText("The Model Router is not configured for this deployment.")).toBeInTheDocument();
+    expect(await screen.findByText("Model routing isn't set up for this workspace yet. Ask your administrator to enable the Model Router.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /override|save/i })).toBeNull();
     expect(screen.getByRole("link", { name: "Model Routing" })).toHaveAttribute("aria-current", "page");
   });
