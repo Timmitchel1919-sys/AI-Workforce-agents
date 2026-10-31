@@ -78,7 +78,7 @@
 /* ---------- Hero (operational, not marketing) ---------- */
 .overview-hero {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-5);
   align-items: center;
   padding: 1.75rem 1.75rem;
@@ -123,8 +123,10 @@
   align-items: flex-end;
 }
 @media (max-width: 720px) {
-  .overview-hero { grid-template-columns: 1fr; }
-  .overview-hero__meta { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  .overview-hero { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; }
+  .overview-hero__description { display: none; }
+  .overview-hero__meta { flex-direction: row; flex-wrap: wrap; align-items: flex-start; min-width: 0; }
+  .overview-hero__meta > * { max-width: 100%; white-space: normal; }
 }
 
 @media (max-width: 560px) {
@@ -174,7 +176,7 @@
 /* ---------- Metrics grid ---------- */
 .overview-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
   gap: var(--space-3);
 }
 .overview-metric__link {

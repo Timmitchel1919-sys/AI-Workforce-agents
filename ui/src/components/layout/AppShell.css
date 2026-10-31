@@ -69,7 +69,7 @@
 
 .app-shell__workspace {
   display: grid;
-  grid-template-rows: var(--header-height) minmax(0, 1fr);
+  grid-template-rows: var(--header-height) auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   background: transparent;
@@ -210,7 +210,7 @@
 }
 
 .mobile-account__trigger strong { font-size: 0.85rem; }
-.mobile-account__trigger small { color: var(--color-text-muted); font-size: 0.7rem; }
+.mobile-account__trigger small { color: var(--sidebar-ink-secondary, #cbd5e1); font-size: 0.7rem; }
 
 .mobile-account__menu {
   position: absolute;
@@ -394,4 +394,17 @@ html[data-workspace-layout="split"] .overview-widgets { grid-template-columns:re
   .mobile-tabbar__item[aria-expanded="true"] { color: var(--color-primary); }
   .mobile-tabbar__item:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
   .app-shell__main { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Workspace layout menu: one trigger, tools in a popover. */
+.workspace-controls { overflow: visible; }
+.workspace-controls__view { position: relative; margin-left: auto; }
+.workspace-controls .workspace-controls__view-trigger[aria-expanded="true"] { border-color: var(--color-border-selected); color: var(--color-primary); }
+.workspace-controls .workspace-controls__layouts { position: absolute; z-index: 35; top: calc(100% + 6px); right: 0; flex-direction: column; align-items: stretch; min-width: 220px; padding: 6px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); background: var(--color-surface-solid); box-shadow: var(--shadow-lg); }
+.workspace-controls .workspace-controls__layouts[hidden] { display: none; }
+.workspace-controls .workspace-controls__layouts button { justify-content: flex-start; border-color: transparent; background: transparent; font-size: var(--text-sm); }
+.workspace-controls .workspace-controls__layouts button:hover { background: var(--color-surface-hover); }
+.workspace-controls .workspace-controls__layouts button[aria-pressed="true"] { background: var(--color-primary-soft); }
+@media (max-width: 768px) {
+  .workspace-controls .workspace-controls__layouts button span { display: inline; }
 }

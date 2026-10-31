@@ -149,7 +149,7 @@
 }
 
 .sidebar__brand-subtitle {
-  color: var(--silver, var(--color-text-muted));
+  color: var(--sidebar-ink-secondary, #cbd5e1);
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -358,4 +358,45 @@
 .sidebar__brand-subtitle {
   font-size: 0.625rem;
   letter-spacing: 0.08em;
+}
+
+/* Collapsible secondary groups */
+.sidebar__section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 1.75rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar__section-toggle:hover:not(:disabled) {
+  color: var(--sidebar-ink-secondary);
+  background: var(--sidebar-surface-muted);
+}
+
+.sidebar__section-toggle:disabled {
+  cursor: default;
+}
+
+.sidebar__section-toggle:focus-visible {
+  outline: 2px solid var(--sidebar-focus);
+  outline-offset: 2px;
+}
+
+.sidebar__section-chevron {
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.sidebar__section-toggle[aria-expanded="false"] .sidebar__section-chevron {
+  transform: rotate(-90deg);
+}
+
+.sidebar__section-toggle:disabled .sidebar__section-chevron {
+  opacity: 0.35;
 }
