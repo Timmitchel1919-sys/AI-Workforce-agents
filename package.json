@@ -25,6 +25,7 @@
     "test:unit": "npm run build && node scripts/run-unit-tests.mjs",
     "test:firebase": "npm run build && node scripts/check-emulator-runtime.mjs && node scripts/run-firebase-emulator-suite.mjs",
     "test:firebase:inner": "node scripts/run-firebase-tests.mjs",
+    "test:e2e:authenticated": "npm run build && node scripts/run-authenticated-e2e.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "staging:check": "node scripts/check-staging-config.mjs",
     "staging:deploy": "node scripts/deploy-staging.mjs",

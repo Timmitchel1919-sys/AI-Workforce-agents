@@ -128,7 +128,9 @@ test("R12: full deploy → verify → rollback chain with EnvSecretBroker creden
   // STEP 1: broker resolves the credential — this is the authoritative
   // boundary. The DeploymentOrchestrator does exactly this before building
   // the DeploymentContext.
-  const credential = await broker.resolve(TARGET.credentialRef as SecretReference);
+  const credential = await broker.resolve(
+    TARGET.credentialRef as SecretReference,
+  );
   assert.equal(credential, SECRET_VALUE);
 
   function ctx(): DeploymentContext {

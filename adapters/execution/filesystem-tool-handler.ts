@@ -12,12 +12,7 @@
  * also honours the per-project `WorkspaceFilePolicy` so secret-shaped and
  * protected-shape writes fail closed.
  */
-import {
-  readFile,
-  writeFile,
-  readdir,
-  stat,
-} from "node:fs/promises";
+import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Buffer } from "node:buffer";
 import {

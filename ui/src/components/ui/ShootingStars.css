@@ -1,0 +1,56 @@
+.shooting-stars {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 16% 18%, rgb(0 200 255 / 0.1), transparent 28%),
+    radial-gradient(circle at 82% 72%, rgb(112 0 255 / 0.09), transparent 32%),
+    #03050a;
+}
+
+.shooting-stars__field {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(circle, rgb(255 255 255 / 0.75) 0 1px, transparent 1.4px),
+    radial-gradient(circle, rgb(82 208 255 / 0.68) 0 1px, transparent 1.3px);
+  background-position: 0 0, 37px 53px;
+  background-size: 91px 91px, 137px 137px;
+}
+
+.shooting-stars__trail {
+  position: absolute;
+  top: var(--star-top);
+  left: -18rem;
+  width: 14rem;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgb(101 214 255 / 0.28) 52%, #fff);
+  filter: drop-shadow(0 0 5px rgb(65 197 255 / 0.72));
+  transform: rotate(-22deg);
+  animation: shooting-stars-flight var(--star-duration) linear var(--star-delay) infinite;
+}
+
+.shooting-stars__trail::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 10px rgb(85 213 255 / 0.9);
+}
+
+@keyframes shooting-stars-flight {
+  0%, 16% { opacity: 0; transform: translate3d(0, 0, 0) rotate(-22deg); }
+  20% { opacity: 1; }
+  58%, 100% { opacity: 0; transform: translate3d(var(--star-distance), 32vh, 0) rotate(-22deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shooting-stars__trail { display: none; }
+}

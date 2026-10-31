@@ -35,7 +35,9 @@ export interface MetricsPort {
 
 const SECRET_SHAPE = new RegExp(KNOWN_SECRET_VALUE_PATTERN.source, "g");
 
-function sanitizeLabels(labels: MetricLabels | undefined): Record<string, string | number | boolean> {
+function sanitizeLabels(
+  labels: MetricLabels | undefined,
+): Record<string, string | number | boolean> {
   if (!labels) return {};
   const safe: Record<string, string | number | boolean> = {};
   for (const [k, v] of Object.entries(labels)) {

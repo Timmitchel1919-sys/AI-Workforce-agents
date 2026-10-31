@@ -5,10 +5,10 @@
 :root {
   /* Core surfaces (semantic aliases over existing color tokens) */
   --background:          #050507;
-  --surface:             rgba(14, 16, 22, 0.72);
-  --surface-elevated:    rgba(22, 24, 32, 0.84);
-  --glass:               rgba(255, 255, 255, 0.04);
-  --glass-strong:        rgba(255, 255, 255, 0.08);
+  --surface:             #333334;
+  --surface-elevated:    #333334;
+  --glass:               #333334;
+  --glass-strong:        #3a3a3b;
   --glass-border:        rgba(255, 255, 255, 0.10);
   --glass-border-strong: rgba(255, 255, 255, 0.16);
 
@@ -122,7 +122,7 @@
   --lp-glass-border-hover: var(--glass-border-strong);
   --lp-glass-highlight:    rgba(255, 255, 255, 0.08);
 
-  --lp-field-bg:           color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  --lp-field-bg:           var(--surface-elevated);
   --lp-field-border:       var(--glass-border-strong);
   --lp-field-border-focus: color-mix(in oklab, var(--primary) 55%, transparent);
   --lp-field-glow:         0 0 0 3px var(--ring), 0 0 18px var(--primary-glow);
@@ -152,7 +152,7 @@
   --lp-glass-border:       var(--glass-border);
   --lp-glass-border-hover: var(--glass-border-strong);
   --lp-glass-highlight:    rgba(255, 255, 255, 0.08);
-  --lp-field-bg:           color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  --lp-field-bg:           var(--surface-elevated);
   --lp-field-border:       var(--glass-border-strong);
   --lp-field-border-focus: color-mix(in oklab, var(--primary) 55%, transparent);
   --lp-field-glow:         0 0 0 3px var(--ring), 0 0 18px var(--primary-glow);
@@ -163,10 +163,10 @@
 :root[data-theme='light'],
 [data-theme='light'] {
   --background:          #f7f8fb;
-  --surface:             rgba(255, 255, 255, 0.78);
-  --surface-elevated:    rgba(255, 255, 255, 0.90);
-  --glass:               rgba(17, 24, 39, 0.03);
-  --glass-strong:        rgba(17, 24, 39, 0.06);
+  --surface:             #ffffff;
+  --surface-elevated:    #f1f3f6;
+  --glass:               #f4f6f8;
+  --glass-strong:        #e9edf2;
   --glass-border:        rgba(17, 24, 39, 0.10);
   --glass-border-strong: rgba(17, 24, 39, 0.17);
   --foreground:          #111318;

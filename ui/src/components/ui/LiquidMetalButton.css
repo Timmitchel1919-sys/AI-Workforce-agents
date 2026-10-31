@@ -23,22 +23,13 @@
 .lmb:active { transform: translateY(1px) scale(0.985); }
 .lmb:focus-visible { outline: 2px solid var(--ring, #7dd3fc); outline-offset: 3px; }
 
-/* Rotating liquid-metal rim */
+/* Quiet neutral rim; colored travelling lines are intentionally disabled. */
 .lmb__ring {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 1.5px;
-  background: conic-gradient(
-    from 0deg,
-    #00ffcc,
-    #7000ff,
-    #00c8ff,
-    #ffffff,
-    #00ffcc,
-    #4a00e0,
-    #00ffcc
-  );
+  background: #314052;
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -47,8 +38,8 @@
     linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: lmb-spin 6s linear infinite;
-  filter: drop-shadow(0 0 10px rgba(0, 255, 204, 0.35));
+  animation: none;
+  filter: none;
   z-index: 0;
 }
 
@@ -69,6 +60,7 @@
 
 /* Travelling specular sheen on hover */
 .lmb__sheen {
+  display: none;
   position: absolute;
   inset: 1.5px;
   border-radius: inherit;
@@ -106,6 +98,7 @@
 }
 
 .lmb__ripples {
+  display: none;
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -129,16 +122,12 @@
 
 /* Variants */
 .lmb--chrome .lmb__ring {
-  background: conic-gradient(from 0deg, #e8e8e8, #8a8a8a, #ffffff, #666, #e8e8e8);
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.25));
+  background: #596579;
+  filter: none;
 }
 .lmb--gold .lmb__ring {
-  background: conic-gradient(from 0deg, #ffd56b, #a35b00, #ffe9a3, #7a3b00, #ffd56b);
-  filter: drop-shadow(0 0 10px rgba(255, 183, 77, 0.45));
-}
-
-@keyframes lmb-spin {
-  to { transform: rotate(1turn); }
+  background: #8b6c2f;
+  filter: none;
 }
 @keyframes lmb-ripple {
   to { transform: translate(-50%, -50%) scale(4); opacity: 0; }

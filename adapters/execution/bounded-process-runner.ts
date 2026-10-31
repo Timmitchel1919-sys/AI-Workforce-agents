@@ -83,17 +83,27 @@ function finalize(
 }
 
 /** Terminate the child and its descendants where the platform allows it. */
-function killTree(child: ChildProcess): void {
-  if (child.pid === undefined || child.exitCode !== null) return;
+function killTree(child: ChildProcess): Promise<void> {
+  if (child.pid === undefined || child.exitCode !== null) {
+    return Promise.resolve();
+  }
   if (process.platform === "win32") {
     const root = process.env.SystemRoot ?? "C:\\Windows";
-    const taskkill = spawn(
-      path.join(root, "System32", "taskkill.exe"),
-      ["/pid", String(child.pid), "/T", "/F"],
-      { shell: false, windowsHide: true, stdio: "ignore" },
-    );
-    taskkill.on("error", () => child.kill("SIGKILL"));
-    return;
+    return new Promise((resolve) => {
+      const taskkill = spawn(
+        path.join(root, "System32", "taskkill.exe"),
+        ["/pid", String(child.pid), "/T", "/F"],
+        { shell: false, windowsHide: true, stdio: "ignore" },
+      );
+      taskkill.once("error", () => {
+        child.kill("SIGKILL");
+        resolve();
+      });
+      taskkill.once("close", (code) => {
+        if (code !== 0 && child.exitCode === null) child.kill("SIGKILL");
+        resolve();
+      });
+    });
   }
   try {
     // Negative pid: the whole process group created by `detached: true`.
@@ -101,6 +111,7 @@ function killTree(child: ChildProcess): void {
   } catch {
     child.kill("SIGKILL");
   }
+  return Promise.resolve();
 }
 
 export function validateBoundedProcessSpec(spec: BoundedProcessSpec): void {
@@ -139,6 +150,7 @@ export function runBoundedProcess(
     let timedOut = false;
     let cancelled = false;
     let settled = false;
+    let termination = Promise.resolve();
 
     const child = spawn(spec.executable.path, [...spec.argv], {
       cwd: spec.cwd,
@@ -160,11 +172,11 @@ export function runBoundedProcess(
 
     const timer = setTimeout(() => {
       timedOut = true;
-      killTree(child);
+      termination = killTree(child);
     }, spec.timeoutMs);
     const onAbort = () => {
       cancelled = true;
-      killTree(child);
+      termination = killTree(child);
     };
     if (spec.signal.aborted) onAbort();
     else spec.signal.addEventListener("abort", onAbort, { once: true });
@@ -197,6 +209,8 @@ export function runBoundedProcess(
     };
     // A spawn failure (missing executable) is a normalized failure, not a throw.
     child.on("error", () => done(null));
-    child.on("close", (code) => done(code));
+    child.on("close", (code) => {
+      void termination.then(() => done(code));
+    });
   });
 }

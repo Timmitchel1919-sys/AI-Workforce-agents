@@ -37,17 +37,23 @@ function usage(detail) {
 }
 
 function parseArgs(argv) {
-  const args = { scan: false, severity: "HIGH", out: "docker/approved/images.json" };
+  const args = {
+    scan: false,
+    severity: "HIGH",
+    out: "docker/approved/images.json",
+  };
   const positional = [];
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--scan") args.scan = true;
-    else if (a === "--severity") args.severity = (argv[++i] ?? "HIGH").toUpperCase();
+    else if (a === "--severity")
+      args.severity = (argv[++i] ?? "HIGH").toUpperCase();
     else if (a === "--out") args.out = argv[++i] ?? args.out;
     else if (a.startsWith("--")) usage(`unknown flag ${a}`);
     else positional.push(a);
   }
-  if (positional.length !== 1) usage("exactly one <name>:<version> is required");
+  if (positional.length !== 1)
+    usage("exactly one <name>:<version> is required");
   const [imageRef] = positional;
   const m = /^([A-Za-z0-9][A-Za-z0-9._/-]*):([A-Za-z0-9._-]+)$/.exec(imageRef);
   if (!m) usage(`image ref must be <name>:<version>, got ${imageRef}`);
@@ -56,13 +62,19 @@ function parseArgs(argv) {
 
 function run(cmd, cmdArgs) {
   const r = spawnSync(cmd, cmdArgs, { encoding: "utf8" });
-  return { stdout: r.stdout ?? "", stderr: r.stderr ?? "", code: r.status ?? -1 };
+  return {
+    stdout: r.stdout ?? "",
+    stderr: r.stderr ?? "",
+    code: r.status ?? -1,
+  };
 }
 
 function requireDocker() {
   const r = run("docker", ["version", "--format", "{{.Server.Version}}"]);
   if (r.code !== 0) {
-    console.error(`${SCRIPT}: docker daemon not reachable (${r.stderr.trim()})`);
+    console.error(
+      `${SCRIPT}: docker daemon not reachable (${r.stderr.trim()})`,
+    );
     process.exit(1);
   }
 }
@@ -101,7 +113,9 @@ function runTrivy(name, version, severity) {
     console.error(`${SCRIPT}: --scan requested but trivy is not installed`);
     process.exit(1);
   }
-  console.log(`${SCRIPT}: scanning ${name}:${version} (severity>=${severity})…`);
+  console.log(
+    `${SCRIPT}: scanning ${name}:${version} (severity>=${severity})…`,
+  );
   const r = run("trivy", [
     "image",
     "--quiet",
@@ -115,7 +129,9 @@ function runTrivy(name, version, severity) {
   if (r.code !== 0) {
     console.error(r.stdout);
     console.error(r.stderr);
-    console.error(`${SCRIPT}: Trivy reported findings at ${severity}+; refusing to approve.`);
+    console.error(
+      `${SCRIPT}: Trivy reported findings at ${severity}+; refusing to approve.`,
+    );
     process.exit(1);
   }
 }
@@ -128,7 +144,9 @@ function updateRegistry(outPath, entry) {
     try {
       registry = JSON.parse(readFileSync(abs, "utf8"));
     } catch {
-      console.error(`${SCRIPT}: cannot parse existing ${abs}; refusing to overwrite`);
+      console.error(
+        `${SCRIPT}: cannot parse existing ${abs}; refusing to overwrite`,
+      );
       process.exit(1);
     }
   }
@@ -167,7 +185,9 @@ function main() {
         version: args.version,
         digest,
         registry: written,
-        scan: args.scan ? { severity: args.severity, result: "clean" } : "skipped",
+        scan: args.scan
+          ? { severity: args.severity, result: "clean" }
+          : "skipped",
       },
       null,
       2,

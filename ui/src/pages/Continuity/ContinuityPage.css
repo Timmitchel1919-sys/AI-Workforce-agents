@@ -19,8 +19,8 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
+  background: var(--surface, #0e1016);
+  backdrop-filter: none;
   border: 1px solid var(--glass-border);
   border-radius: 12px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
@@ -50,8 +50,8 @@
 }
 
 .liquid-glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
+  background: var(--surface, #0e1016);
+  backdrop-filter: none;
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   padding: 2rem;

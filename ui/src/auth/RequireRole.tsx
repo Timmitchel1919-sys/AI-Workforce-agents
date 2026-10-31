@@ -5,17 +5,23 @@ import { useI18n } from "../i18n";
 import { useAuth } from "./useAuth";
 import { allowsRole } from "./roleAccess";
 import type { AccessDetails } from "./auth.types";
+import { AuthConfigurationError } from "./AuthConfigurationError";
 
 /**
  * Client-side discovery guard. It prevents over-broad page rendering, while
  * the Control Plane remains the only authority for every read and mutation.
  */
 export function RequireRole({ role, children }: { role: NonNullable<AccessDetails["role"]>; children: ReactNode }) {
-  const { configured, accessDetails } = useAuth();
+  const { configured, demoMode = false, configurationError = false, accessDetails } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
 
-  if (!configured || allowsRole(accessDetails.role, role)) return <>{children}</>;
+  if (!configured) {
+    return demoMode && !configurationError ? <>{children}</> : <AuthConfigurationError />;
+  }
+
+  if (configurationError) return <AuthConfigurationError />;
+  if (allowsRole(accessDetails.role, role)) return <>{children}</>;
 
   return (
     <UnauthorizedState

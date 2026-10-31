@@ -11,7 +11,7 @@ import {
   FinalCTA,
   Footer,
 } from "../../components/landing/sections";
-import { PageBackground } from "../../components/primitives/PageBackground";
+import { DimensionalField } from "../../components/ui/DimensionalField";
 import { useI18n } from "../../i18n";
 import "../../styles/os-theme.css";
 import "./LandingPage.css";
@@ -38,7 +38,10 @@ export default function LandingPage() {
       <a className="lp-skip-link" href="#lp-main">
         {t("landing.skip")}
       </a>
-      <PageBackground variant="beams" video />
+      <DimensionalField
+        className="aw-bg lp-dimensional-background"
+        style={{ position: "fixed" }}
+      />
       <Nav />
       <main id="lp-main" className="lp-main" tabIndex={-1}>
         <Hero />

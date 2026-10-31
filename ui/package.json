@@ -11,7 +11,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "vitest --environment jsdom",
-    "test:ci": "node scripts/run-tests-ci.mjs"
+    "test:ci": "node scripts/run-tests-ci.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:authenticated": "playwright test --config playwright.authenticated.config.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -28,7 +30,9 @@
     "zod": "^4.6.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.64.1",
     "@storybook/addon-essentials": "^7.0.0",
     "@storybook/react-vite": "^7.0.0",
     "@testing-library/dom": "^10.4.2",

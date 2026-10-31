@@ -978,9 +978,12 @@ export async function createProductionControlPlaneRuntime(
   // project explicitly permits proceeding on unknown cost — the REAL budget hard-stop still
   // applies regardless (`BudgetEnforcer.evaluateInternal`, checked unconditionally). Every OTHER
   // project stays fail-closed by default (EO-6.3's reviewed, unchanged behavior).
-  const existingMoneyMindGovernance = await governancePolicies.getInternal("money-mind");
+  const existingMoneyMindGovernance =
+    await governancePolicies.getInternal("money-mind");
   if (existingMoneyMindGovernance?.allowUnknownCost !== true) {
-    await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
+    await governancePolicies.setTrusted("money-mind", {
+      allowUnknownCost: true,
+    });
   }
   bootstrap.agentExecutors.replace(
     CONTROL_PLANE_ANALYSIS_AGENT_ID,
@@ -1496,7 +1499,9 @@ export async function createProductionControlPlaneRuntime(
     if (assignmentRepository instanceof FirestoreAssignmentRepository) {
       flushes.push(assignmentRepository.flush());
     }
-    if (writeScopeLeaseRepository instanceof FirestoreWriteScopeLeaseRepository) {
+    if (
+      writeScopeLeaseRepository instanceof FirestoreWriteScopeLeaseRepository
+    ) {
       flushes.push(writeScopeLeaseRepository.flush());
     }
     if (executionReceipts instanceof FirestoreExecutionReceiptStore) {
@@ -1575,10 +1580,7 @@ export async function createProductionControlPlaneRuntime(
     // writes AND the R1 write-through adapters before the serverless
     // instance is allowed to freeze.
     flush: async () => {
-      await Promise.all([
-        repositories.flushAll(),
-        flushR1DurableAdapters(),
-      ]);
+      await Promise.all([repositories.flushAll(), flushR1DurableAdapters()]);
     },
   });
 }
@@ -1665,9 +1667,13 @@ function resolveDockerRunnerBinding(
     ) {
       return null;
     }
-    const bindings = parsed.imagesByExecutable as Record<string, DockerImageBinding>;
+    const bindings = parsed.imagesByExecutable as Record<
+      string,
+      DockerImageBinding
+    >;
     for (const b of Object.values(bindings)) {
-      if (typeof b?.name !== "string" || typeof b?.version !== "string") return null;
+      if (typeof b?.name !== "string" || typeof b?.version !== "string")
+        return null;
       if (policy.requireDigest && !b.digest) return null;
     }
     if (Object.keys(bindings).length === 0) return null;
@@ -1683,7 +1689,8 @@ function resolveDockerRunnerBinding(
   }
 }
 
-const FIREBASE_HOSTING_RESOURCE_RE = /^hosting:[A-Za-z0-9-]+(?::[A-Za-z0-9-]+)?@https:\/\/[A-Za-z0-9.-]+(?:\/[^\s"]*)?$/;
+const FIREBASE_HOSTING_RESOURCE_RE =
+  /^hosting:[A-Za-z0-9-]+(?::[A-Za-z0-9-]+)?@https:\/\/[A-Za-z0-9.-]+(?:\/[^\s"]*)?$/;
 
 /**
  * Trusted, OFF-by-default Firebase Hosting deployment targets. Parsed from a
@@ -1704,13 +1711,17 @@ function resolveFirebaseHostingTargets(): import("../contracts/index.js").Deploy
   const out: import("../contracts/index.js").DeploymentTarget[] = [];
   for (const entry of parsed) {
     if (!entry || typeof entry !== "object") continue;
-    const t = entry as Partial<import("../contracts/index.js").DeploymentTarget>;
+    const t = entry as Partial<
+      import("../contracts/index.js").DeploymentTarget
+    >;
     if (
       typeof t.targetId !== "string" ||
       typeof t.projectId !== "string" ||
       typeof t.providerRef !== "string" ||
       typeof t.targetClass !== "string" ||
-      !["development", "preview", "staging", "production"].includes(t.targetClass) ||
+      !["development", "preview", "staging", "production"].includes(
+        t.targetClass,
+      ) ||
       !Array.isArray(t.resources) ||
       t.resources.length === 0 ||
       t.resources.some(
@@ -1732,7 +1743,8 @@ function resolveFirebaseHostingTargets(): import("../contracts/index.js").Deploy
     out.push({
       targetId: t.targetId,
       projectId: t.projectId,
-      targetClass: t.targetClass as import("../contracts/index.js").DeploymentTargetClass,
+      targetClass:
+        t.targetClass as import("../contracts/index.js").DeploymentTargetClass,
       adapterId: "firebase-hosting",
       resources: [...t.resources] as readonly string[],
       providerRef: t.providerRef,
@@ -1751,9 +1763,10 @@ function resolveFirebaseHostingTargets(): import("../contracts/index.js").Deploy
  * server-side JSON env var, and must both be absolute paths. Anything else
  * yields null and the adapter stays unregistered.
  */
-function resolveFirebaseHostingAdapterConfig():
-  | Pick<FirebaseHostingAdapterConfig, "firebaseExecutable" | "workingDirectory">
-  | null {
+function resolveFirebaseHostingAdapterConfig(): Pick<
+  FirebaseHostingAdapterConfig,
+  "firebaseExecutable" | "workingDirectory"
+> | null {
   const raw = process.env.AIW_FIREBASE_HOSTING_ADAPTER_JSON;
   if (!raw) return null;
   try {

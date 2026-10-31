@@ -120,7 +120,7 @@
 
 @media (max-width: 768px) {
   .page-container {
-    padding: var(--space-6) var(--space-4);
+    padding: 1.25rem 1rem 2rem;
   }
 
   .page-header__row,
@@ -133,6 +133,14 @@
   .page-section__actions {
     justify-content: flex-start;
   }
+}
+
+@media (max-width: 560px) {
+  .page-header { gap: 0.65rem; margin-bottom: 1.25rem; }
+  .page-header__content { gap: 0.55rem; }
+  .page-header__title { font-size: 2rem; }
+  .page-header__description { font-size: 0.95rem; line-height: 1.55; }
+  .page-section { gap: 1rem; margin-top: 1.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

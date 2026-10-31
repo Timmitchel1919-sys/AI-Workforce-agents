@@ -54,9 +54,7 @@ export function buildDefaultDispatcher(
   const resolve = (executableId: string): TrustedExecutable | undefined => {
     try {
       const path = resolveTrustedExecutable(executableId);
-      return typeof path === "string"
-        ? { executableId, path }
-        : undefined;
+      return typeof path === "string" ? { executableId, path } : undefined;
     } catch {
       return undefined;
     }
@@ -99,8 +97,7 @@ export function buildDefaultDispatcher(
   );
   dispatcher.register(
     { toolId: "artifacts", action: "collect" },
-    ({ workspace, job }) =>
-      artifacts.run(workspace, job.tool.input as never),
+    ({ workspace, job }) => artifacts.run(workspace, job.tool.input as never),
   );
   return dispatcher;
 }

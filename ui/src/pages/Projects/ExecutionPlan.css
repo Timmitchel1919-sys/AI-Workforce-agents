@@ -19,8 +19,8 @@
   background: var(--surface, var(--color-surface));
   color: var(--foreground, var(--color-text));
   text-decoration: none;
-  backdrop-filter: blur(var(--blur-sm, 10px)) saturate(130%);
-  -webkit-backdrop-filter: blur(var(--blur-sm, 10px)) saturate(130%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 6px 18px rgba(0, 0, 0, 0.25);
   transition:
     background var(--duration-fast) var(--ease-cmd, var(--ease-standard)),

@@ -33,7 +33,10 @@ export const ASSIGNMENTS_COLLECTION = "assignments";
 export interface FirestoreAssignmentRepositoryOptions {
   readonly collectionPrefix?: string;
   /** Invoked when a background Firestore write fails. */
-  readonly onError?: (error: unknown, context: { assignmentId: string }) => void;
+  readonly onError?: (
+    error: unknown,
+    context: { assignmentId: string },
+  ) => void;
 }
 
 export class FirestoreAssignmentRepository implements AssignmentRepository {

@@ -1104,6 +1104,31 @@ export class WorkspaceRepositorySandbox {
         const record = this.records.get(workspaceId);
         return record ? { ...record.view } : undefined;
     }
+    /**
+     * R9 (ADR-0034) — TRUSTED project-scoped host path lookup.
+     *
+     * Returns the absolute host path of a leased workspace ONLY when:
+     *   - the workspace exists on this adapter;
+     *   - its view's `projectId` matches `projectId`;
+     *   - its state is not `closed`.
+     *
+     * Anything else returns `null` so the Docker runner falls back to a
+     * mount-less invocation (and callers can never derive another project's
+     * path from the result). The RAW host path crosses the adapter boundary
+     * only to a trusted composition-time consumer (the `DockerContainerRunner`
+     * via its `WorkspacePathResolver` port); it never reaches a view,
+     * receipt, audit event or network response.
+     */
+    workspaceRoot(workspaceId, projectId) {
+        const record = this.records.get(workspaceId);
+        if (!record)
+            return null;
+        if (record.view.projectId !== projectId)
+            return null;
+        if (record.view.state === "closed")
+            return null;
+        return record.root;
+    }
     async rollback(workspaceId, sessionId) {
         const record = this.records.get(workspaceId);
         if (!record || record.view.sessionId !== sessionId)

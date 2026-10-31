@@ -6,7 +6,7 @@
  * handler is registered by `toolId` + `action`. Unknown routes fail
  * closed. Returns a structured `ToolActionResult`.
  */
-import { ValidationError, } from "../../contracts/index.js";
+import { ValidationError } from "../../contracts/index.js";
 function routeKey(toolId, action) {
     return `${toolId}\u0000${action}`;
 }

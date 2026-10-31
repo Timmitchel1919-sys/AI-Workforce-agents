@@ -23,7 +23,7 @@ import { KnowledgeDocumentService } from "../core/knowledge/knowledge-document-s
 import { randomUUID } from "node:crypto";
 import { PermissionDeniedError, } from "../contracts/index.js";
 import { FirebaseOperatorDirectory, FirebaseAppCheckVerifier, FirestoreExecutionPlanStore, FirestoreExecutionRecordStore, FirestoreExecutionSessionStore, FirestoreOperatorAccountStore, FirestoreOperatorProfileStore, FirestoreOnboardingSessionStore, FirestoreProvisionedProjectStore, FirestoreAppendOnlySecurityEventStore, FirestoreAssignmentRepository, FirestoreExecutionJobQueue, FirestoreExecutionReceiptStore, FirestoreWriteScopeLeaseRepository, isTransactionalFirestore, FirestoreEventPublisher, createFirebaseServices, } from "../adapters/firebase/index.js";
-import { createPlatformAdapters, DockerContainerRunner, } from "../adapters/environments/index.js";
+import { createPlatformAdapters, DockerContainerRunner, SandboxWorkspacePathResolver, } from "../adapters/environments/index.js";
 import { FirebaseHostingDeploymentAdapter, } from "../adapters/release/index.js";
 import { AgentOperationalStore, WorkflowControlStore, WorkforceCommandService, WorkforceQueryService, } from "../control/index.js";
 import { ApprovalSystem, AuditLog, BudgetEnforcer, BudgetPolicyStore, EnvironmentDetector, EnvironmentRegistry, EnvironmentRouter, HandoffSystem, SpecialistHandoffService, InMemoryAssignmentRepository, InMemoryLeaseRepository, ProjectWorkforcePlanner, SpecialistAssignmentService, Orchestrator, OperationalAuditSink, OperationalDataSystem, ProbeRegistry, SoftwareFactoryOrchestrator, TaskSystem, WorkflowEngine, WorkflowSystem, AccessService, BASELINE_DENY_ALL_POLICY, ExecutionManager, ExecutionOperationRegistry, ExecutionPolicyRegistry, InMemoryExecutionReceiptStore, EnvironmentAdapterRegistry, SandboxRegistry, ProfileService, ExecutionPlanningService, ValidationError, GitHubRepositoryReader, OnboardingService, ProjectProvisioningService, ArtifactManager, DeploymentOrchestrator, GovernancePolicyEngine, GovernancePolicyStore, ModelCapabilityRegistry, ModelProviderRegistry, ModelRouter, RoutedModelProvider, RuleAuditor, SourceControlOrchestrator, UnavailableArtifactSource, UnavailableGovernedGit, UnavailableWorkspaceControl, UsageLedger, VerificationService, deriveCostCenterCapabilities, deriveReleaseCapabilities, now, } from "../core/index.js";
@@ -42,7 +42,8 @@ import { DestructiveActionService } from "../core/security/destructive-action-se
 import { IncidentResponseService } from "../core/secops/incident-response-service.js";
 import { SecurityPolicyEngine, defaultSecurityPolicies, } from "../core/security/security-policy-engine.js";
 import { DestructiveSecretReferenceMutationAuthorizer, DestructiveSecurityPolicyMutationAuthorizer, SecretReferenceService, SecurityPolicyService, SecretAccessService, ToolCredentialBroker, SecretRotationService, SecurityFindingStore, DeploymentSecurityGate, SecretLeakHandler, } from "../core/security/index.js";
-import { GoogleSecretManagerVault, InMemorySecretVault, } from "../adapters/vault/index.js";
+import { EnvSecretBroker, GoogleSecretManagerVault, InMemorySecretVault, } from "../adapters/vault/index.js";
+import { createJsonLineMetrics, noopMetrics, } from "../core/observability/index.js";
 import { createProductionWorkforceBootstrap, } from "./production-workforce-bootstrap.js";
 import { PRODUCTION_ENVIRONMENT_DESCRIPTORS, PRODUCTION_WORKFORCE_CONFIGURATION, } from "./production-workforce-config.js";
 /**
@@ -282,17 +283,10 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     });
     createPlatformAdapters({ containerPolicy }).forEach((adapter) => environmentAdapters.registerAdapter(adapter));
     const dockerBinding = resolveDockerRunnerBinding(containerPolicy);
-    if (dockerBinding) {
-        environmentAdapters.registerRunner(new DockerContainerRunner({
-            runnerId: dockerBinding.runnerId,
-            adapterId: "docker-container",
-            environmentInstanceIds: dockerBinding.environmentInstanceIds,
-            identityFingerprint: dockerBinding.identityFingerprint,
-            dockerExecutable: dockerBinding.dockerExecutable,
-            imagesByExecutable: dockerBinding.imagesByExecutable,
-            containerPolicy,
-        }));
-    }
+    // The Docker runner is registered BELOW, after the workspace sandbox port
+    // is declared, so R9's resolver can see it when a real sandbox is
+    // composed. Keeping the binding resolution here keeps all policy reads at
+    // the top.
     const executionReceipts = _transactionalFirestoreForDurable
         ? new FirestoreExecutionReceiptStore(_transactionalFirestoreForDurable, {
             collectionPrefix: options.collectionPrefix,
@@ -340,6 +334,32 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     // needs one is a fail-closed "unavailable" port: the services read their durable records and
     // enforce their state machines, and anything that would act is DENIED (never simulated).
     const unavailableWorkspace = new UnavailableWorkspaceControl();
+    if (dockerBinding) {
+        // R9 (ADR-0034) — attach the trusted workspace path resolver when the
+        // composition actually provides a WorkspaceRepositorySandbox exposing
+        // `workspaceRoot(workspaceId, projectId)`. The current production uses
+        // `UnavailableWorkspaceControl` (no such method), so the resolver
+        // stays unwired and Docker runs mount-less — correct and honest.
+        // Future wiring that composes a real sandbox gets the mount
+        // automatically.
+        const workspaceLookup = isWorkspaceRootLookup(unavailableWorkspace)
+            ? unavailableWorkspace
+            : null;
+        environmentAdapters.registerRunner(new DockerContainerRunner({
+            runnerId: dockerBinding.runnerId,
+            adapterId: "docker-container",
+            environmentInstanceIds: dockerBinding.environmentInstanceIds,
+            identityFingerprint: dockerBinding.identityFingerprint,
+            dockerExecutable: dockerBinding.dockerExecutable,
+            imagesByExecutable: dockerBinding.imagesByExecutable,
+            containerPolicy,
+            ...(workspaceLookup
+                ? {
+                    workspaceResolver: new SandboxWorkspacePathResolver(workspaceLookup),
+                }
+                : {}),
+        }));
+    }
     const unavailableArtifactSource = new UnavailableArtifactSource();
     const unavailableGit = new UnavailableGovernedGit();
     const artifacts = new ArtifactManager({
@@ -368,6 +388,18 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         audit,
         store: executionRecords,
     });
+    // R11 (ADR-0034) — JSON-line metrics port. Writes one structured line
+    // per event to stdout, which Cloud Logging ingests as a LogEntry. Enabled
+    // via `AIW_METRICS_ENABLED=1`; off → noop so unit tests stay silent.
+    const metrics = process.env.AIW_METRICS_ENABLED === "1"
+        ? createJsonLineMetrics()
+        : noopMetrics;
+    // R8 (ADR-0034) — production SecretValueResolver for deployment
+    // credentials. Reads `secret://<name>` from server-side env vars
+    // (`AIW_SECRET_<normalized>`), which Firebase Functions already backs
+    // with Google Secret Manager via `defineSecret`. A missing value throws
+    // `POLICY_DENIED` so the orchestrator aborts BEFORE any provider call.
+    const envSecretBroker = new EnvSecretBroker({ metrics });
     const deployments = new DeploymentOrchestrator({
         sourceControl,
         verification,
@@ -376,14 +408,28 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         projects: bootstrap.projects,
         audit,
         store: executionRecords,
+        credentials: envSecretBroker,
     });
-    // Opt-in Firebase Hosting deployment adapter. Registered only when a
-    // trusted JSON binding points at an absolute firebase CLI path AND a
-    // working directory; targets themselves still have to be registered by a
-    // later composition step (not driven by agent input).
+    // Opt-in Firebase Hosting deployment adapter + targets. Both come from
+    // server-side JSON env vars (never agent input), and targets are only
+    // registered when the adapter itself is registered.
     const firebaseAdapterConfig = resolveFirebaseHostingAdapterConfig();
     if (firebaseAdapterConfig) {
         deployments.registerAdapter(new FirebaseHostingDeploymentAdapter(firebaseAdapterConfig));
+        for (const target of resolveFirebaseHostingTargets()) {
+            try {
+                deployments.registerTarget(target);
+            }
+            catch (error) {
+                // A malformed target is a composition bug; log and keep going so a
+                // broken entry cannot block the Control Plane from starting.
+                console.error("[deployments] Firebase target rejected", {
+                    targetId: target.targetId,
+                    projectId: target.projectId,
+                    error: error instanceof Error ? error.message : "unknown",
+                });
+            }
+        }
     }
     // DERIVED, at read time, from the ports and registries the services were composed with — never
     // declared. A capability turns on only when a real provider/adapter is registered.
@@ -420,7 +466,9 @@ export async function createProductionControlPlaneRuntime(options = {}) {
     // project stays fail-closed by default (EO-6.3's reviewed, unchanged behavior).
     const existingMoneyMindGovernance = await governancePolicies.getInternal("money-mind");
     if (existingMoneyMindGovernance?.allowUnknownCost !== true) {
-        await governancePolicies.setTrusted("money-mind", { allowUnknownCost: true });
+        await governancePolicies.setTrusted("money-mind", {
+            allowUnknownCost: true,
+        });
     }
     bootstrap.agentExecutors.replace(CONTROL_PLANE_ANALYSIS_AGENT_ID, createProductionOpenAIAgentExecutor(audit, {
         router: modelRouter,
@@ -842,10 +890,7 @@ export async function createProductionControlPlaneRuntime(options = {}) {
         // writes AND the R1 write-through adapters before the serverless
         // instance is allowed to freeze.
         flush: async () => {
-            await Promise.all([
-                repositories.flushAll(),
-                flushR1DurableAdapters(),
-            ]);
+            await Promise.all([repositories.flushAll(), flushR1DurableAdapters()]);
         },
     });
 }
@@ -933,6 +978,64 @@ function resolveDockerRunnerBinding(policy) {
         return null;
     }
 }
+const FIREBASE_HOSTING_RESOURCE_RE = /^hosting:[A-Za-z0-9-]+(?::[A-Za-z0-9-]+)?@https:\/\/[A-Za-z0-9.-]+(?:\/[^\s"]*)?$/;
+/**
+ * Trusted, OFF-by-default Firebase Hosting deployment targets. Parsed from a
+ * server-side JSON env var: an array of DeploymentTarget-shaped records.
+ * Any shape mismatch, unknown targetClass, bad resource spec or malformed
+ * credentialRef drops that one entry (never a partial-trust fallback).
+ */
+function resolveFirebaseHostingTargets() {
+    const raw = process.env.AIW_FIREBASE_HOSTING_TARGETS_JSON;
+    if (!raw)
+        return [];
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    }
+    catch {
+        return [];
+    }
+    if (!Array.isArray(parsed))
+        return [];
+    const out = [];
+    for (const entry of parsed) {
+        if (!entry || typeof entry !== "object")
+            continue;
+        const t = entry;
+        if (typeof t.targetId !== "string" ||
+            typeof t.projectId !== "string" ||
+            typeof t.providerRef !== "string" ||
+            typeof t.targetClass !== "string" ||
+            !["development", "preview", "staging", "production"].includes(t.targetClass) ||
+            !Array.isArray(t.resources) ||
+            t.resources.length === 0 ||
+            t.resources.some((r) => typeof r !== "string" || !FIREBASE_HOSTING_RESOURCE_RE.test(r)) ||
+            !Number.isInteger(t.timeoutMs) ||
+            (t.timeoutMs ?? 0) <= 0 ||
+            (t.timeoutMs ?? 0) > 3_600_000) {
+            continue;
+        }
+        if (t.credentialRef !== undefined &&
+            (typeof t.credentialRef !== "string" ||
+                !t.credentialRef.startsWith("secret://"))) {
+            continue;
+        }
+        out.push({
+            targetId: t.targetId,
+            projectId: t.projectId,
+            targetClass: t.targetClass,
+            adapterId: "firebase-hosting",
+            resources: [...t.resources],
+            providerRef: t.providerRef,
+            ...(t.credentialRef
+                ? { credentialRef: t.credentialRef }
+                : {}),
+            timeoutMs: t.timeoutMs,
+        });
+    }
+    return out;
+}
 /**
  * Trusted, OFF-by-default Firebase Hosting adapter config. The agent surface
  * cannot influence it: executable path and working directory come from a
@@ -957,6 +1060,12 @@ function resolveFirebaseHostingAdapterConfig() {
     catch {
         return null;
     }
+}
+/** R9 — duck-type check: does this value expose `workspaceRoot(id, projectId)`? */
+function isWorkspaceRootLookup(value) {
+    return (typeof value === "object" &&
+        value !== null &&
+        typeof value.workspaceRoot === "function");
 }
 /** Deny-by-default provider: every code is unsupported; nothing routes. */
 function denyByDefaultEnvironmentProvider() {

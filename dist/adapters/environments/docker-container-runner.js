@@ -30,6 +30,8 @@ import os from "node:os";
 import path from "node:path";
 import { evaluateContainerRequest, } from "../../contracts/index.js";
 import { runBoundedProcess, } from "../execution/bounded-process-runner.js";
+/** The fixed, hard-coded in-container target for the workspace bind-mount. */
+export const CONTAINER_WORKSPACE_TARGET = "/workspace";
 const CONTAINER_NAME_PREFIX = "aiw-exec-";
 export class DockerContainerRunner {
     options;
@@ -90,7 +92,10 @@ export class DockerContainerRunner {
         if (!present)
             return { ready: false, detail: "docker CLI is missing" };
         const result = await this.processRunner({
-            executable: { executableId: "docker", path: this.options.dockerExecutable },
+            executable: {
+                executableId: "docker",
+                path: this.options.dockerExecutable,
+            },
             argv: ["version", "--format", "{{.Server.Version}}"],
             cwd: os.tmpdir(),
             env: this.buildChildEnv(),
@@ -110,6 +115,7 @@ export class DockerContainerRunner {
         this.jobs.set(spec.jobId, {
             controller: new AbortController(),
             containerName: this.nameFactory(),
+            spec,
         });
     }
     async run(jobId, invocation, options) {
@@ -144,13 +150,49 @@ export class DockerContainerRunner {
                 },
             };
         }
+        // Resolve the trusted workspace mount BEFORE policy evaluation so the
+        // policy sees the actual request shape (symbolic mount source only;
+        // host paths never cross the contract boundary).
+        const mounts = [];
+        let hostMountSource = null;
+        if (this.options.workspaceResolver && job.spec.workspaceId) {
+            try {
+                hostMountSource = await this.options.workspaceResolver.resolve(job.spec.workspaceId, job.spec.projectId);
+            }
+            catch {
+                hostMountSource = null;
+            }
+            if (hostMountSource && !path.isAbsolute(hostMountSource)) {
+                // A resolver that returns a non-absolute path is a composition bug;
+                // we fail CLOSED rather than let docker interpret a relative one.
+                return {
+                    exitClass: "denied",
+                    exitCode: null,
+                    stdout: blank,
+                    stderr: blank,
+                    durationMs: 0,
+                    redactions: 0,
+                    denial: {
+                        code: "WORKSPACE_VIOLATION",
+                        detail: "workspace resolver returned a non-absolute path",
+                    },
+                };
+            }
+            if (hostMountSource) {
+                mounts.push({
+                    source: "workspace",
+                    target: CONTAINER_WORKSPACE_TARGET,
+                    readOnly: job.spec.workspaceMode !== "read_write",
+                });
+            }
+        }
         const policyReasons = evaluateContainerRequest({
             image: {
                 name: binding.name,
                 version: binding.version,
                 ...(binding.digest ? { digest: binding.digest } : {}),
             },
-            mounts: [],
+            mounts,
         }, this.options.containerPolicy);
         if (policyReasons.length > 0) {
             return {
@@ -166,7 +208,12 @@ export class DockerContainerRunner {
                 },
             };
         }
-        const dockerArgv = this.composeDockerArgv(job.containerName, binding, invocation);
+        const dockerArgv = this.composeDockerArgv(job.containerName, binding, invocation, hostMountSource
+            ? {
+                hostSource: hostMountSource,
+                readOnly: job.spec.workspaceMode !== "read_write",
+            }
+            : undefined);
         const signal = AbortSignal.any([options.signal, job.controller.signal]);
         const run = await this.processRunner({
             executable: {
@@ -237,7 +284,7 @@ export class DockerContainerRunner {
         return env;
     }
     /** Build the hardened `docker run` argv. Pure function, test-friendly. */
-    composeDockerArgv(containerName, binding, invocation) {
+    composeDockerArgv(containerName, binding, invocation, workspaceMount) {
         const argv = [
             "run",
             "--rm",
@@ -256,6 +303,23 @@ export class DockerContainerRunner {
         }
         if (binding.limits?.cpus !== undefined) {
             argv.push(`--cpus=${binding.limits.cpus}`);
+        }
+        if (workspaceMount) {
+            // `type=bind` keeps the source on the host filesystem. `bind-propagation=rprivate`
+            // isolates the mount from any later host-side mount changes. The target is a
+            // fixed server-side constant and the source is a path produced by trusted
+            // composition — agents cannot touch either field.
+            const mountSpec = [
+                `type=bind`,
+                `source=${workspaceMount.hostSource}`,
+                `target=${CONTAINER_WORKSPACE_TARGET}`,
+                workspaceMount.readOnly ? "readonly" : "",
+                `bind-propagation=rprivate`,
+            ]
+                .filter((part) => part.length > 0)
+                .join(",");
+            argv.push("--mount", mountSpec);
+            argv.push(`--workdir=${CONTAINER_WORKSPACE_TARGET}`);
         }
         argv.push(this.formatImageRef(binding));
         const entrypoint = binding.entrypoint ?? [invocation.executableId];

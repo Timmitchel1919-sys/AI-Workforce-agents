@@ -33,7 +33,9 @@ test("R11: label values are sanitized against known secret shapes", () => {
   const lines: string[] = [];
   const metrics = createJsonLineMetrics({ writer: (line) => lines.push(line) });
   // A GitHub PAT-shape token must never land in a metric label.
-  metrics.counter("probe", { token: "ghp_1234567890abcdefghij1234567890abcdef" });
+  metrics.counter("probe", {
+    token: "ghp_1234567890abcdefghij1234567890abcdef",
+  });
   const parsed = JSON.parse(lines[0]!);
   assert.equal(parsed.labels.token, "[redacted]");
 });

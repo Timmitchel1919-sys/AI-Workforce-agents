@@ -54,8 +54,12 @@ export interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   accessToken: string | null;
-  /** False when Firebase web config is absent (local development / demo data). */
+  /** False when a complete Firebase web configuration is unavailable. */
   configured: boolean;
+  /** True only for an explicitly enabled Vite development demo. Never true in production. */
+  demoMode?: boolean;
+  /** Initialization/configuration failed. Protected UI must fail closed. */
+  configurationError?: boolean;
   access: AccessState;
   /** Role and capabilities of an ACTIVE account; empty otherwise. */
   accessDetails: AccessDetails;

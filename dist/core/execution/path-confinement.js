@@ -30,7 +30,9 @@ export function assertWorkspaceRelative(relativePath) {
         // byte to remove the `%2e%2e` traversal class entirely.
         throw new ValidationError("path must not contain percent-encoded bytes");
     }
-    if (isAbsolute(relativePath) || WINDOWS_DRIVE_PREFIX.test(relativePath) || UNC_PREFIX.test(relativePath)) {
+    if (isAbsolute(relativePath) ||
+        WINDOWS_DRIVE_PREFIX.test(relativePath) ||
+        UNC_PREFIX.test(relativePath)) {
         throw new ValidationError(`path must be workspace-relative: ${JSON.stringify(relativePath)}`);
     }
     const parts = relativePath.replace(/\\/g, "/").split("/");

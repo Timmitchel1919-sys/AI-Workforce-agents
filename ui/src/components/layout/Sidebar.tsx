@@ -8,6 +8,7 @@ import {
   GitBranch,
   LayoutDashboard,
   ListTodo,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Scale,
@@ -43,6 +44,7 @@ import {
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
+import { useApprovalQueue } from "../../features/governance";
 import { useI18n } from "../../i18n";
 import {
   navigationSections,
@@ -50,6 +52,7 @@ import {
   type NavigationIconId,
 } from "../../config/navigation";
 import "./Sidebar.css";
+import { MobileAccountMenu } from "./MobileAccountMenu";
 
 const iconMap: Record<NavigationIconId, LucideIcon> = {
   overview: LayoutDashboard,
@@ -111,17 +114,24 @@ interface SidebarProps {
   collapsed?: boolean;
   /** Omit to render without a collapse control (e.g. inside the mobile drawer). */
   onToggleCollapsed?: () => void;
+  /** Mobile drawer control; closes the drawer without adding a separate title bar. */
+  onDismiss?: () => void;
+  /** Keep the desktop account card pinned below the independently scrolling modules. */
+  showAccount?: boolean;
 }
 
 export default function Sidebar({
   onNavigate,
   collapsed = false,
   onToggleCollapsed,
+  onDismiss,
+  showAccount = false,
 }: SidebarProps) {
   const isRail = collapsed && Boolean(onToggleCollapsed);
   const { t } = useI18n();
   const { accessDetails } = useAuth();
   const availableItems = visibleNavigationItems(accessDetails.role);
+  const pendingApprovals = useApprovalQueue({ status: "requested" });
   const { pathname } = useLocation();
   // Secondary groups fold away so the primary routes stay scannable; the group
   // holding the current route is always shown open.
@@ -188,6 +198,18 @@ export default function Sidebar({
           >
             <PanelLeftClose size={18} aria-hidden="true" />
           </button>
+        ) : onDismiss ? (
+          <button
+            type="button"
+            className="sidebar__collapse"
+            data-drawer-close
+            onClick={onDismiss}
+            aria-label={t("shell.closeNavigation")}
+            aria-expanded={true}
+            title={t("shell.closeNavigation")}
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
         ) : null}
       </div>
 
@@ -245,12 +267,12 @@ export default function Sidebar({
                           <Icon size={16} />
                         </span>
                         <span className="sidebar__label">{t(item.labelKey)}</span>
-                        {item.badge !== undefined ? (
+                        {(item.route === "/approvals" && pendingApprovals.state === "ready") || item.badge !== undefined ? (
                           <span
                             className="sidebar__badge"
-                            aria-label={`${item.badge} notifications`}
+                            aria-label={`${item.route === "/approvals" ? pendingApprovals.total : item.badge} notifications`}
                           >
-                            {item.badge}
+                            {item.route === "/approvals" ? pendingApprovals.total : item.badge}
                           </span>
                         ) : null}
                       </NavLink>
@@ -263,12 +285,8 @@ export default function Sidebar({
         })}
       </div>
 
-      <div className="sidebar__footer">
-        <p className="sidebar__footer-brand">
-          <span className="sidebar__footer-mark" aria-hidden="true" />
-          <span className="sidebar__label">{t("shell.brandFooter")}</span>
-        </p>
-      </div>
+      {showAccount ? <MobileAccountMenu onNavigate={() => undefined} /> : null}
+
     </nav>
   );
 }

@@ -28,7 +28,7 @@
 
 .agents-summary__metric strong {
   font-size: var(--text-2xl);
-  color: var(--color-text);
+  color: var(--color-number-accent);
   font-weight: 700;
 }
 

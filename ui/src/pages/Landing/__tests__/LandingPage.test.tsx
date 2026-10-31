@@ -24,19 +24,15 @@ describe("Landing Page (v2)", () => {
     expect(h1s[0]).toHaveTextContent(/coordinated workforce/i);
   });
 
-  it("uses the supplied video as a silent looping background", () => {
+  it("uses one fixed Dimensional Field across the full landing page", () => {
     const { container } = renderLanding();
-    const video = container.querySelector<HTMLVideoElement>("video.aw-bg-video");
+    const fields = container.querySelectorAll(".lp-dimensional-background");
 
-    expect(video).not.toBeNull();
-    expect(video).toHaveProperty("autoplay", true);
-    expect(video).toHaveProperty("muted", true);
-    expect(video).toHaveProperty("loop", true);
-    expect(video).toHaveProperty("playsInline", true);
-    expect(video?.querySelector("source")).toHaveAttribute(
-      "src",
-      "/media/workforce-background.mp4",
-    );
+    expect(fields).toHaveLength(1);
+    expect(fields[0]).toHaveClass("aw-bg");
+    expect(fields[0]).toHaveAttribute("aria-hidden", "true");
+    expect(fields[0]).toHaveStyle({ position: "fixed" });
+    expect(container.querySelector("video.aw-bg-video")).toBeNull();
   });
 
   it("exposes a semantic nav, main, and footer", () => {
@@ -63,8 +59,13 @@ describe("Landing Page (v2)", () => {
   });
 
   it("renders the Command Center preview inline inside the hero", () => {
-    renderLanding();
+    const { container } = renderLanding();
+    const hero = container.querySelector(".lp2-hero");
+    const copy = hero?.querySelector(".lp2-hero-head");
+
     expect(screen.getByLabelText(/AI Workforce command preview/i)).toBeInTheDocument();
+    expect(copy?.querySelector(".aw-section-eyebrow")).toHaveTextContent(/Private operating system/i);
+    expect(copy?.querySelector(".lp2-hero-meta")).toHaveTextContent(/Private.*single-tenant/i);
   });
 
   it("renders each primary section by its id anchor", () => {

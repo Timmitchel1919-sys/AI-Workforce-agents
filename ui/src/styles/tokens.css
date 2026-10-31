@@ -31,13 +31,13 @@
   --color-bg-gradient: radial-gradient(circle at 70% 0%, rgba(113, 55, 232, 0.08), transparent 34%), linear-gradient(135deg, #050505 0%, #0b0b0c 55%, #111111 100%);
 
   /* Liquid glass surfaces */
-  --color-surface: rgba(17, 17, 17, 0.72);
-  --color-surface-solid: #111111;
-  --color-surface-muted: rgba(24, 24, 24, 0.76);
-  --color-surface-lavender: rgba(30, 28, 42, 0.45);
-  --color-surface-hover: rgba(36, 36, 44, 0.85);
+  --color-surface: #333334;
+  --color-surface-solid: #333334;
+  --color-surface-muted: #2b2b2c;
+  --color-surface-lavender: #1e1c2a;
+  --color-surface-hover: #24242c;
 
-  --color-sidebar: rgba(5, 5, 5, 0.9);
+  --color-sidebar: #333334;
   --sidebar-ink: #f8fafc;
   --sidebar-ink-secondary: #cbd5e1;
   --sidebar-ink-muted: #94a3b8;
@@ -48,7 +48,7 @@
   --sidebar-focus: #38bdf8;
   --sidebar-scrollbar: rgba(255, 255, 255, 0.1);
   --sidebar-scrollbar-hover: rgba(255, 255, 255, 0.2);
-  --color-topbar: rgba(5, 5, 5, 0.82);
+  --color-topbar: #050505;
 
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.12);
@@ -76,6 +76,7 @@
   --color-warning: #fbbf24;
   --color-danger: #f87171;
   --color-info: #7aa2ff;
+  --color-number-accent: #e27d60;
   --color-disabled: #475569;
   --color-focus: rgba(56, 189, 248, 0.7);
   --color-overlay: rgba(0, 0, 0, 0.8);
@@ -153,12 +154,12 @@
   --color-bg-secondary: #f0f2f7;
   --color-bg-tertiary: #e8ebf2;
   --color-bg-gradient: radial-gradient(circle at 70% 0%, rgba(113, 55, 232, 0.08), transparent 34%), linear-gradient(135deg, #fbfcff 0%, #f4f6fa 55%, #eef1f7 100%);
-  --color-surface: rgba(255, 255, 255, 0.8);
+  --color-surface: #ffffff;
   --color-surface-solid: #ffffff;
-  --color-surface-muted: rgba(242, 244, 249, 0.88);
-  --color-surface-lavender: rgba(243, 239, 255, 0.8);
-  --color-surface-hover: rgba(233, 236, 244, 0.94);
-  --color-topbar: rgba(255, 255, 255, 0.82);
+  --color-surface-muted: #f2f4f9;
+  --color-surface-lavender: #f3efff;
+  --color-surface-hover: #e9ecf4;
+  --color-topbar: #ffffff;
   --color-border: rgba(17, 24, 39, 0.1);
   --color-border-strong: rgba(17, 24, 39, 0.17);
   --color-border-selected: rgba(89, 36, 200, 0.38);

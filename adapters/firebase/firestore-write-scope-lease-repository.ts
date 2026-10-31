@@ -24,9 +24,7 @@ export interface FirestoreWriteScopeLeaseRepositoryOptions {
   readonly onError?: (error: unknown, context: { leaseId: string }) => void;
 }
 
-export class FirestoreWriteScopeLeaseRepository
-  implements LeaseRepository<WriteScopeLease>
-{
+export class FirestoreWriteScopeLeaseRepository implements LeaseRepository<WriteScopeLease> {
   private readonly collection: FirestoreQueryableCollectionLike;
   private readonly items = new Map<string, WriteScopeLease>();
   private readonly pending = new Set<Promise<unknown>>();

@@ -2,7 +2,6 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { SectionContainer } from "../../primitives";
 import { CommandCenterPreview } from "./CommandCenterPreview";
-import { DimensionalField } from "../../ui/DimensionalField";
 import { LiquidMetalButton } from "../../ui/LiquidMetalButton";
 import { useI18n } from "../../../i18n";
 import "./sections.css";
@@ -11,8 +10,7 @@ export function Hero() {
   const { t } = useI18n();
   const navigate = useNavigate();
   return (
-    <SectionContainer as="section" className="lp2-hero-section lp2-hero-section--dimensional">
-      <DimensionalField className="lp2-hero-bg" />
+    <SectionContainer as="section" className="lp2-hero-section">
       <div className="lp2-hero">
         <div className="lp2-hero-head">
           <div className="aw-section-eyebrow">

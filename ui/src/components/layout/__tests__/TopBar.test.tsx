@@ -31,16 +31,16 @@ function renderTopBar(initialEntry = '/') {
 }
 
 describe('TopBar', () => {
-  it('displays the active route title and global command trigger', () => {
+  it('keeps the topbar focused on search and notifications', () => {
     renderTopBar('/');
 
-    expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search commands or pages/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /interface language/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /switch to (light|dark) theme/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /approvals/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /switch to (light|dark) theme/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /approvals/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^notifications$/i })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /account menu/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/current view/i)).not.toBeInTheDocument();
   });
 
   it('opens smart notifications without exposing a privileged action', () => {
@@ -50,14 +50,6 @@ describe('TopBar', () => {
     expect(screen.getByText(/control plane events only/i)).toBeInTheDocument();
     expect(screen.getByText(/privileged actions still require authorization/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /approve|deploy|delete/i })).not.toBeInTheDocument();
-  });
-
-  it('account menu links to profile and preferences; sign out is styled as danger', () => {
-    renderTopBar('/');
-    fireEvent.click(screen.getByRole('button', { name: /account menu/i }));
-    expect(screen.getByRole('menuitem', { name: 'Profile' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Preferences' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Sign out' })).toHaveClass('topbar__menu-button--danger');
   });
 
   it('opens and focuses the command palette on Ctrl/Cmd + K', async () => {

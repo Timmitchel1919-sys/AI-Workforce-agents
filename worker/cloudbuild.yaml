@@ -7,15 +7,15 @@
 #     --project=ai-workforce-agents \
 #     .
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: "gcr.io/cloud-builders/docker"
     args:
-      - 'build'
-      - '--tag=${_IMAGE}'
-      - '--file=worker/Dockerfile'
-      - '.'
+      - "build"
+      - "--tag=${_IMAGE}"
+      - "--file=worker/Dockerfile"
+      - "."
 images:
-  - '${_IMAGE}'
+  - "${_IMAGE}"
 options:
   logging: CLOUD_LOGGING_ONLY
 substitutions:
-  _IMAGE: 'us-central1-docker.pkg.dev/ai-workforce-agents/execution-worker/execution-worker:latest'
+  _IMAGE: "us-central1-docker.pkg.dev/ai-workforce-agents/execution-worker/execution-worker:latest"

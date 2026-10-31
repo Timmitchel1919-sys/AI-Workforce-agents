@@ -1,4 +1,5 @@
 import type { DeploymentAdapter, DeploymentContext } from "../../contracts/index.js";
+import { type MetricsPort } from "../../core/observability/index.js";
 import { type BoundedProcessResult, type BoundedProcessSpec } from "../execution/bounded-process-runner.js";
 /** Trusted, composition-time config for one Firebase CLI binding. */
 export interface FirebaseHostingAdapterConfig {
@@ -18,6 +19,8 @@ export interface FirebaseHostingAdapterConfig {
     }>;
     /** Injected for tests; defaults to the EO-4.2 bounded process runner. */
     readonly processRunner?: (spec: BoundedProcessSpec) => Promise<BoundedProcessResult>;
+    /** R11: optional observability port; emits sanitized counters + timings. */
+    readonly metrics?: MetricsPort;
 }
 export declare class FirebaseHostingDeploymentAdapter implements DeploymentAdapter {
     private readonly config;
@@ -26,6 +29,7 @@ export declare class FirebaseHostingDeploymentAdapter implements DeploymentAdapt
     readonly simulated = false;
     private readonly processRunner;
     private readonly httpFetch;
+    private readonly metrics;
     constructor(config: FirebaseHostingAdapterConfig);
     deploy(ctx: DeploymentContext): Promise<{
         providerReleaseId: string;

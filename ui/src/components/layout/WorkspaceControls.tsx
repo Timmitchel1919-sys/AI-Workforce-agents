@@ -1,6 +1,6 @@
 import { BookmarkPlus, ChevronDown, Columns2, LayoutTemplate, Focus, History, Maximize2, PanelRight, Pin, Rows3, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { visibleNavigationItems } from "../../config/navigation";
 import { useWorkspaceContext, type WorkspaceLayoutPreset } from "../../features/workspaceContext";
@@ -28,6 +28,7 @@ const resourceType = (pathname: string) => {
 export function WorkspaceControls() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { accessDetails } = useAuth();
   const workspace = useWorkspaceContext();
   const allowed = useMemo(() => new Map(visibleNavigationItems(accessDetails.role).map((item) => [item.route, item])), [accessDetails.role]);
@@ -69,6 +70,11 @@ export function WorkspaceControls() {
   }, [menuOpen]);
   const setPreset = (preset: WorkspaceLayoutPreset) => workspace.setLayoutPreset(preset);
   const enterFullscreen = () => { if (!document.fullscreenElement) void document.documentElement.requestFullscreen?.(); else void document.exitFullscreen?.(); };
+
+  if (pathname.startsWith("/workflow-studio") || pathname.startsWith("/operations")) {
+    return null;
+  }
+
   return <>
     <nav className="workspace-controls" aria-label={t("shell.contextActions")}>
       <div className="workspace-controls__actions">

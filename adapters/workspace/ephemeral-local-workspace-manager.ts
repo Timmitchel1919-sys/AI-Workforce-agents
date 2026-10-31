@@ -62,10 +62,7 @@ export class EphemeralLocalWorkspaceManager implements WorkerWorkspaceManager {
         `workspace already active: ${input.workspaceId}`,
       );
     }
-    const rootPath = join(
-      this.baseDir,
-      `${this.prefix}-${input.workspaceId}`,
-    );
+    const rootPath = join(this.baseDir, `${this.prefix}-${input.workspaceId}`);
     await mkdir(rootPath, { recursive: true });
     // Resolve the root through realpath so a tmp dir that is itself a
     // symlink does not confuse later containment checks.

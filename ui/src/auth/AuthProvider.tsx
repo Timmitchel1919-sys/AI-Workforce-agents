@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import {
   browserLocalPersistence,
   browserSessionPersistence,
+  connectAuthEmulator,
   createUserWithEmailAndPassword,
   getAuth,
   onIdTokenChanged,
@@ -28,19 +29,23 @@ import type {
 import { authContext } from "./authContext";
 import { AuthFlowError } from "./authErrors";
 import { DEFAULT_PASSWORD_POLICY } from "./passwordPolicy";
+import { resolveAuthRuntimeMode, type FirebaseWebConfig } from "./authConfiguration";
 
-const firebaseConfig = {
+const firebaseConfig: FirebaseWebConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const firebaseConfigured =
-  Boolean(firebaseConfig.apiKey) &&
-  Boolean(firebaseConfig.authDomain) &&
-  Boolean(firebaseConfig.projectId) &&
-  Boolean(firebaseConfig.appId);
+const initialAuthMode = resolveAuthRuntimeMode({
+  config: firebaseConfig,
+  production: import.meta.env.PROD,
+  development: import.meta.env.DEV,
+  allowDevelopmentDemo: import.meta.env.VITE_ALLOW_DEVELOPMENT_DEMO_AUTH === "true",
+});
+const firebaseConfigured = initialAuthMode === "firebase";
+let authEmulatorConnected = false;
 
 /** Mirrors `OPERATOR_ROLES` in contracts/control.ts. */
 const OPERATOR_ROLES = ["viewer", "operator", "admin"] as const;
@@ -68,7 +73,13 @@ function getFirebaseApp(): FirebaseApp {
 function getFirebaseAuth(): Auth {
   const app = getFirebaseApp();
   initAppCheck(app);
-  return getAuth(app);
+  const auth = getAuth(app);
+  const emulatorHost = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST?.trim();
+  if (import.meta.env.DEV && emulatorHost && !authEmulatorConnected) {
+    connectAuthEmulator(auth, `http://${emulatorHost}`, { disableWarnings: true });
+    authEmulatorConnected = true;
+  }
+  return auth;
 }
 
 function requireAuth(): Auth {
@@ -121,19 +132,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [access, setAccess] = useState<AccessState>("none");
   const [accessDetails, setAccessDetails] = useState<AccessDetails>(NO_DETAILS);
   const [loading, setLoading] = useState(firebaseConfigured);
+  const [configurationError, setConfigurationError] = useState(initialAuthMode === "configuration-error");
 
   useEffect(() => {
     if (!firebaseConfigured) {
       return;
     }
+    let active = true;
     // Every Control Plane request asks Firebase for the current ID token, so
     // a token captured before sleep/idle (expired after 1 h) is never reused.
-    setAccessTokenProvider(async (forceRefresh) => {
-      const current = getFirebaseAuth().currentUser;
-      return current ? current.getIdToken(forceRefresh) : null;
-    });
-    setAppCheckTokenProvider((forceRefresh) => getAppCheckToken(forceRefresh));
+    try {
+      getFirebaseAuth();
+      setAccessTokenProvider(async (forceRefresh) => {
+        const current = getFirebaseAuth().currentUser;
+        return current ? current.getIdToken(forceRefresh) : null;
+      });
+      setAppCheckTokenProvider((forceRefresh) => getAppCheckToken(forceRefresh));
+    } catch {
+      queueMicrotask(() => {
+        if (!active) return;
+        setConfigurationError(true);
+        setLoading(false);
+      });
+      return () => {
+        active = false;
+      };
+    }
     return () => {
+      active = false;
       setAccessTokenProvider(null);
       setAppCheckTokenProvider(null);
     };
@@ -143,10 +169,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!firebaseConfigured) {
       return;
     }
+    let active = true;
 
     // Fires on sign-in, sign-out, and every token refresh, so the Control
     // Plane always receives a current ID token.
-    return onIdTokenChanged(getFirebaseAuth(), async (firebaseUser) => {
+    let auth: Auth;
+    try {
+      auth = getFirebaseAuth();
+    } catch {
+      queueMicrotask(() => {
+        if (!active) return;
+        setConfigurationError(true);
+        setLoading(false);
+      });
+      return () => {
+        active = false;
+      };
+    }
+
+    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null);
         setAccessToken(null);
@@ -164,6 +205,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setAccessDetails(result.details);
       setLoading(false);
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const readAccess = useCallback(async (firebaseUser: User, forceRefresh: boolean) => {
@@ -181,6 +226,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       loading,
       accessToken,
       configured: firebaseConfigured,
+      demoMode: initialAuthMode === "development-demo",
+      configurationError,
       access,
       accessDetails,
       signIn: async (email, password, remember) => {
@@ -282,7 +329,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         await firebaseSignOut(getFirebaseAuth());
       },
     }),
-    [user, loading, accessToken, access, accessDetails, readAccess],
+    [user, loading, accessToken, access, accessDetails, configurationError, readAccess],
   );
 
   return (

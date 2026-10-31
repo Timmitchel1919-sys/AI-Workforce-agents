@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
@@ -9,7 +10,7 @@ import { MobileTabBar } from "./MobileTabBar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { WorkspaceContextProvider } from "../../features/workspaceContext";
 import { WorkspaceControls } from "./WorkspaceControls";
-import { InternalSonarBackground } from "../primitives/InternalSonarBackground";
+import { MobileAccountMenu } from "./MobileAccountMenu";
 import "./AppShell.css";
 
 const SIDEBAR_COLLAPSED_KEY = "aw.sidebarCollapsed";
@@ -85,7 +86,6 @@ export default function AppShell() {
   return (
     <WorkspaceContextProvider>
     <div className={`app-shell aw-bg-host${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
-      <InternalSonarBackground intensity="calm" />
       <aside
         ref={sidebarRef}
         className="app-shell__sidebar"
@@ -95,11 +95,12 @@ export default function AppShell() {
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          showAccount
         />
       </aside>
 
-      {mobileNavigationOpen ? (
-        <>
+      {mobileNavigationOpen ? createPortal(
+        <div className="app-shell__mobile-layer">
           <button
             type="button"
             className="app-shell__mobile-backdrop"
@@ -115,32 +116,21 @@ export default function AppShell() {
             aria-modal="true"
             aria-label={t("shell.navigationDrawer")}
           >
-            <div className="app-shell__mobile-drawer-header">
-              <div className="app-shell__mobile-drawer-title">{t("shell.navigation")}</div>
-              <button
-                type="button"
-                className="app-shell__mobile-close"
-                data-drawer-close
-                aria-label={t("shell.closeNavigation")}
-                onClick={closeMobileNavigation}
-              >
-                {t("common.close")}
-              </button>
-            </div>
-            <Sidebar onNavigate={closeMobileNavigation} />
+            <Sidebar
+              onNavigate={closeMobileNavigation}
+              onDismiss={closeMobileNavigation}
+            />
             <div className="app-shell__mobile-install">
               <InstallAppButton fullWidth />
             </div>
+            <MobileAccountMenu onNavigate={closeMobileNavigation} />
           </div>
-        </>
+        </div>,
+        document.body,
       ) : null}
 
       <div className="app-shell__workspace">
-        <TopBar
-          onMobileNavigationToggle={() => setMobileNavigationOpen((open) => !open)}
-          mobileNavigationOpen={mobileNavigationOpen}
-          mobileNavigationTriggerRef={triggerRef}
-        />
+        <TopBar />
 
         <ConnectionStatus />
         <WorkspaceControls />
@@ -148,7 +138,11 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      <MobileTabBar moreOpen={mobileNavigationOpen} onMore={() => setMobileNavigationOpen((open) => !open)} /> 
+      <MobileTabBar
+        moreOpen={mobileNavigationOpen}
+        moreTriggerRef={triggerRef}
+        onMore={() => setMobileNavigationOpen((open) => !open)}
+      />
     </div>
     </WorkspaceContextProvider>
   );
