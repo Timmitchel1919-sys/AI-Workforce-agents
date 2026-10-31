@@ -178,6 +178,9 @@
   --primary:             #0369a1;
   --primary-strong:      #075985;
   --ring:                rgba(3, 105, 161, 0.55);
+  /* Darker status tones keep chip text above 4.5:1 on light surfaces. */
+  --success:             #047857;
+  --warning:             #b45309;
 }
 
 @media (prefers-reduced-motion: reduce) {
