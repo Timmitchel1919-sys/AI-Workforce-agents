@@ -3,7 +3,22 @@ import { Search } from "lucide-react";
 import { useI18n } from "../../i18n";
 import CommandPalette from "../command/CommandPalette";
 import NotificationCenter from "../../features/notifications/NotificationCenter";
+import { useOverview } from "../../features/overview";
+import { StatusChip } from "../primitives/StatusChip";
 import "./TopBar.css";
+
+/** The single Control Plane connection indicator; shares the cached overview query. */
+function ConnectionStatus() {
+  const { t } = useI18n();
+  const { status } = useOverview();
+  if (status === "ready" || status === "empty") {
+    return <StatusChip tone="success" pulse>{t("overview.liveData")}</StatusChip>;
+  }
+  if (status === "degraded") {
+    return <StatusChip tone="warning">{t("overview.partialData")}</StatusChip>;
+  }
+  return null;
+}
 
 export default function TopBar() {
   const { t } = useI18n();
@@ -59,8 +74,8 @@ export default function TopBar() {
         </div>
 
         <div className="topbar__right app-shell__topbar-actions" aria-label={t("shell.headerActions")}>
+          <ConnectionStatus />
           <NotificationCenter />
-
         </div>
       </div>
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} returnFocusRef={searchRef} />

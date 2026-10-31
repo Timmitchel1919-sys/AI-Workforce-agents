@@ -6,7 +6,7 @@ import { useI18n } from "../../../i18n";
 /**
  * Operational header for the Overview. Replaces the legacy decorative
  * Earth + rotating emblem — this is an operating-system cockpit, not a brand
- * splash. Shows system identity, posture, and current connection state.
+ * splash. Shows system identity, and posture; connection state lives in the top bar.
  */
 export function OverviewHero() {
   const { t } = useI18n();
@@ -24,7 +24,6 @@ export function OverviewHero() {
         <p className="overview-hero__description">{t("overview.heroDescription")}</p>
       </div>
       <div className="overview-hero__meta">
-        <StatusChip tone="cyan" pulse>{t("overview.connected")}</StatusChip>
         <StatusChip tone="neutral">
           <ShieldCheck size={10} aria-hidden style={{ marginRight: 4 }} />
           {t("overview.heroVerbs")}

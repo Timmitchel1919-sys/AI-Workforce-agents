@@ -479,8 +479,6 @@ export const en = {
     statusTitle: "Workforce status",
     statusConnected: "Connected to the Control Plane. Figures below come from the live workforce snapshot.",
     statusDegraded: "The Control Plane responded with a degraded snapshot. Some figures may be missing.",
-    currentState: "Current state",
-    connected: "Connected",
     degraded: "Degraded",
     liveData: "Live data",
     partialData: "Partial data",
