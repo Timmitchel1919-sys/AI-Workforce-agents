@@ -7,6 +7,11 @@ import { ThemeProvider } from '../../../themes/ThemeProvider';
 import TopBar from '../TopBar';
 import { WorkspaceContextProvider } from '../../../features/workspaceContext';
 
+const overviewStatus = vi.hoisted(() => ({ value: 'ready' }));
+vi.mock('../../../features/overview', () => ({
+  useOverview: () => ({ status: overviewStatus.value, refetch: vi.fn() }),
+}));
+
 vi.mock('../../../features/governance', () => ({
   useApprovalQueue: () => ({ state: 'empty', items: [], total: 0 }),
   useAuditTrail: () => ({ state: 'empty', items: [], total: 0 }),
@@ -31,6 +36,19 @@ function renderTopBar(initialEntry = '/') {
 }
 
 describe('TopBar', () => {
+  it('shows one connection indicator for the Control Plane', () => {
+    overviewStatus.value = 'ready';
+    const { unmount } = renderTopBar('/');
+    expect(screen.getByText('Live data')).toBeInTheDocument();
+    unmount();
+
+    overviewStatus.value = 'degraded';
+    renderTopBar('/');
+    expect(screen.getByText('Partial data')).toBeInTheDocument();
+    expect(screen.queryByText('Live data')).not.toBeInTheDocument();
+    overviewStatus.value = 'ready';
+  });
+
   it('keeps the topbar focused on search and notifications', () => {
     renderTopBar('/');
 

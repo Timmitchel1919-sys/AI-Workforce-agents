@@ -478,8 +478,6 @@ export const nl: Messages = {
     statusTitle: "Status van de workforce",
     statusConnected: "Verbonden met de Control Plane. De cijfers hieronder komen uit de actuele momentopname.",
     statusDegraded: "De Control Plane gaf een onvolledige momentopname. Sommige cijfers kunnen ontbreken.",
-    currentState: "Huidige toestand",
-    connected: "Verbonden",
     degraded: "Beperkt",
     liveData: "Actuele data",
     partialData: "Gedeeltelijke data",
